@@ -125,7 +125,10 @@ def _consume_words(words: list[Word], lyric: str) -> tuple[list[Word], list[Word
     if match.size < 2:
         return words, []
     match_end = match.b + match.size
-    tail = match.b >= max(4, int(len(lyric_norm) * 0.45))
+    # Only treat as a tail if a whole previous line sits in front
+    # (入り浸った after どうでも). Hiragana ASR of the same line
+    # (どひょうめき…響めき) must keep the leading attack.
+    tail = match.b >= len(lyric_norm)
     used: list[Word] = []
     after: list[Word] = []
     pos = 0
@@ -150,6 +153,7 @@ def _pick_span(
     official: int | None,
     official_alive: bool,
     threshold: float,
+    next_text: str = "",
 ) -> tuple[float, int | None, int | None]:
     need = threshold if (official_alive or official is None) else threshold + HOLE_THRESHOLD_BUMP
     best_score, best_i, best_j = 0.0, None, None
@@ -162,6 +166,10 @@ def _pick_span(
         for extra in range(index, min(index + MAX_EXTEND, len(segments))):
             if extra > index and segments[extra].start - segments[extra - 1].end > EXTEND_GAP_S:
                 break
+            extra_text = segments[extra].text
+            if extra > index and next_text:
+                if similarity(next_text, extra_text) > similarity(joined, extra_text) + 0.08:
+                    break
             acc.extend(segments[extra].words)
             text = "".join(item.word for item in acc)
             score = similarity(joined, text)
@@ -172,11 +180,73 @@ def _pick_span(
     return best_score, None, None
 
 
+def _peel_next_line(
+    used: list[Word],
+    leftover: list[Word],
+    next_lyric: str,
+) -> tuple[list[Word], list[Word]]:
+    """If this line ate the next lyric's tail (息が), give those words back."""
+    if leftover or not used or not next_lyric.strip() or len(used) < 2:
+        return used, leftover
+    nxt = normalize(next_lyric)
+    if len(nxt) < 2:
+        return used, leftover
+    parts = [normalize(item.word) for item in used]
+    acc = ""
+    for index in range(len(used) - 1, 0, -1):
+        acc = parts[index] + acc
+        if similarity(nxt, acc) >= 0.72:
+            return used[:index], used[index:]
+        if len(acc) > len(nxt) + 3:
+            break
+    return used, leftover
+
+
+def _min_display_ms(text: str) -> int:
+    n = max(1, len(normalize(text)))
+    return min(MAX_LINE_MS, max(MIN_LINE_MS, 220 * n))
+
+
+def _stretch_short_lines(bounds: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Borrow time from the next line so a 3-char hook is not a 500ms flash."""
+    for index, row in enumerate(bounds[:-1]):
+        nxt = bounds[index + 1]
+        need = _min_display_ms(str(row.get("text") or ""))
+        span = int(row["end_ms"]) - int(row["start_ms"])
+        if span >= need:
+            continue
+        nxt_span = int(nxt["end_ms"]) - int(nxt["start_ms"])
+        steal = min(need - span, max(0, nxt_span - MIN_LINE_MS))
+        if steal < 80:
+            continue
+        row["end_ms"] = int(row["end_ms"]) + steal
+        nxt["start_ms"] = int(nxt["start_ms"]) + steal
+        nxt["end_ms"] = max(nxt["start_ms"] + MIN_LINE_MS, int(nxt["end_ms"]))
+    return bounds
+
+
+def _enforce_monotonic(bounds: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    for index in range(1, len(bounds)):
+        prev = bounds[index - 1]
+        row = bounds[index]
+        if row["start_ms"] < prev["end_ms"]:
+            if row.get("from_asr") and not prev.get("from_asr"):
+                prev["end_ms"] = max(prev["start_ms"] + MIN_LINE_MS, row["start_ms"])
+            else:
+                row["start_ms"] = prev["end_ms"]
+        if prev["end_ms"] > row["start_ms"]:
+            prev["end_ms"] = max(prev["start_ms"] + MIN_LINE_MS, row["start_ms"])
+        row["end_ms"] = max(row["start_ms"] + MIN_LINE_MS, int(row["end_ms"]))
+    return bounds
+
+
 def _match_run_ok(lyric: str, asr_text: str, official_alive: bool) -> bool:
-    match = SequenceMatcher(None, normalize(lyric), normalize(asr_text)).find_longest_match(
-        0, len(normalize(lyric)), 0, len(normalize(asr_text))
+    lyric_norm = normalize(lyric)
+    asr_norm = normalize(asr_text)
+    match = SequenceMatcher(None, lyric_norm, asr_norm).find_longest_match(
+        0, len(lyric_norm), 0, len(asr_norm)
     )
-    return match.size >= (3 if official_alive else 4)
+    return match.size >= min(3, max(2, len(lyric_norm)))
 
 
 def _prev_limit(bounds: list[dict[str, Any]], index: int) -> int:
@@ -279,18 +349,25 @@ def align_lines_with_anchor(
     regions = vocal_regions(envelope or [], hop_ms) if envelope else []
     bounds: list[dict[str, Any]] = []
     cursor = 0
-    for line in kept:
+    for line_index, line in enumerate(kept):
         text = str(line.get("text") or "")
+        next_text = str(kept[line_index + 1].get("text") or "") if line_index + 1 < len(kept) else ""
         official = int(line["ms"]) if line.get("ms") is not None else None
         official_alive = official is not None and _voice_covers(regions, official)
         best_score, best_i, best_j = _pick_span(
-            segments, cursor, text, official, official_alive, threshold
+            segments, cursor, text, official, official_alive, threshold, next_text
         )
         if best_i is not None and best_j is not None:
             words: list[Word] = []
             for index in range(best_i, best_j + 1):
                 words.extend(segments[index].words)
             used, leftover = _consume_words(words, text)
+            leftover_text = "".join(item.word for item in leftover)
+            if leftover and len(normalize(leftover_text)) <= 3:
+                if not next_text or similarity(next_text, leftover_text) < 0.55:
+                    used = used + leftover
+                    leftover = []
+            used, leftover = _peel_next_line(used, leftover, next_text)
             del segments[best_i : best_j + 1]
             if leftover:
                 segments.insert(best_i, _segment_from_words(leftover))
@@ -300,6 +377,8 @@ def align_lines_with_anchor(
             start_ms = int(used[0].start * 1000) if used else int(words[0].start * 1000)
             end_ms = int(used[-1].end * 1000) if used else int(words[-1].end * 1000)
             start_ms = _snap_matched_start(start_ms, regions)
+            if bounds:
+                start_ms = max(start_ms, int(bounds[-1]["end_ms"]))
             bounds.append(
                 {
                     "text": str(line.get("text") or text),
@@ -320,4 +399,8 @@ def align_lines_with_anchor(
                 }
             )
     _fill_unmatched(bounds, kept, regions)
-    return hold_lines_until_next(bounds)
+    _enforce_monotonic(bounds)
+    hold_lines_until_next(bounds, max_gap_ms=8000)
+    _stretch_short_lines(bounds)
+    _enforce_monotonic(bounds)
+    return hold_lines_until_next(bounds, max_gap_ms=8000)

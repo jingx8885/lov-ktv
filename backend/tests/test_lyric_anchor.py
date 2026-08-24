@@ -115,6 +115,43 @@ def test_intro_keeps_official_when_whisper_hears_later_chorus():
     assert 29700 <= bounds[3]["start_ms"] <= 31000
 
 
+def test_peel_short_next_line_off_merged_asr():
+    bounds = align_lines_with_anchor(
+        [
+            {"ms": 70120, "text": "よそに揃い始めてた"},
+            {"ms": 73180, "text": "息が"},
+        ],
+        [
+            {"text": "揃い始めてた", "start_ms": 74580, "end_ms": 77800},
+            {"text": "息が", "start_ms": 77800, "end_ms": 78720},
+        ],
+        "ja",
+    )
+    assert bounds[0]["from_asr"] and bounds[1]["from_asr"]
+    assert bounds[0]["end_ms"] <= bounds[1]["start_ms"]
+    assert bounds[1]["end_ms"] - bounds[1]["start_ms"] >= 700
+    assert bounds[1]["start_ms"] >= 77600
+
+
+def test_chorus_does_not_eat_next_hook():
+    bounds = align_lines_with_anchor(
+        [
+            {"ms": 74610, "text": "どうでもいいような夜だけど"},
+            {"ms": 78510, "text": "響めき煌めきと君も"},
+        ],
+        [
+            {"text": "とってもいい", "start_ms": 78720, "end_ms": 80300, "segment": 0},
+            {"text": "いいような夜だけど", "start_ms": 80300, "end_ms": 82460, "segment": 1},
+            {"text": "どひょうめききらめきときみも", "start_ms": 82460, "end_ms": 86540, "segment": 2},
+        ],
+        "ja",
+    )
+    assert bounds[0]["from_asr"] and bounds[1]["from_asr"]
+    assert bounds[0]["end_ms"] <= bounds[1]["start_ms"]
+    assert bounds[1]["end_ms"] - bounds[1]["start_ms"] >= 2500
+    assert bounds[1]["start_ms"] >= 82000
+
+
 def test_whisper_segment_ids_prevent_cjk_merge():
     segs = asr_words_to_segments(
         [

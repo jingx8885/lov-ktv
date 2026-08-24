@@ -123,8 +123,8 @@ def vocal_regions(
         return []
     ranked = sorted(envelope)
     median = ranked[len(ranked) // 2]
-    p90 = ranked[int(len(ranked) * 0.90)]
-    high = max(median * 1.8, median + 0.35 * (p90 - median), 40.0)
+    p40 = ranked[int(len(ranked) * 0.40)]
+    high = max(p40 * 1.5, median * 0.85, 40.0)
     low = max(high * 0.45, 20.0)
     active = False
     start = 0
@@ -898,12 +898,15 @@ def assign_plain_lines(
     ]
 
 
-def hold_lines_until_next(bounds: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def hold_lines_until_next(
+    bounds: list[dict[str, Any]],
+    max_gap_ms: int = HOLD_GAP_MS,
+) -> list[dict[str, Any]]:
     """Keep a line on screen through a short breath, not a long instrumental."""
     for index, row in enumerate(bounds[:-1]):
         nxt = int(bounds[index + 1]["start_ms"])
         end = int(row["end_ms"])
-        if 0 < nxt - end <= HOLD_GAP_MS:
+        if 0 < nxt - end <= max_gap_ms:
             row["end_ms"] = nxt
     return bounds
 
