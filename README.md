@@ -1,0 +1,52 @@
+# lov-ktv
+
+家庭 / 包厢 KTV：手机**搜歌名入库**（不是先上传文件），服务器做人声分离和中日英扫色字幕，Android TV / 浏览器电视端播放。
+
+搜歌下载逻辑来自 [lovjpn](https://github.com/jingx8885/lovjpn) 的 `fetch_song.py`：
+
+1. tonzhon.com 搜网易云  
+2. 拉带时间戳的 LRC  
+3. 音频：网易外链 → yt-dlp SoundCloud → YouTube  
+
+本地选文件上传只是后备。
+
+## 启动
+
+```bash
+cd /Users/yesone/project/lov-ktv
+python3 -m venv .venv
+.venv/bin/pip install -e backend
+# 搜歌回落需要：
+# brew install ffmpeg yt-dlp
+PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787
+```
+
+- 电视：http://本机:8787/tv.html  
+- 手机：扫电视二维码，或打开 http://本机:8787/m.html?room=房间码  
+- 登录：http://本机:8787/login.html  
+
+微信登录（可选）环境变量：`WECHAT_APP_ID`、`WECHAT_APP_SECRET`；微信内快捷登录再配 `WECHAT_MP_APP_ID`、`WECHAT_MP_APP_SECRET`；公网回调 `LOVKTV_PUBLIC_URL`。没配微信时，手机可用本机身份，电视出二维码给手机确认。
+
+Android TV：用 Android Studio 打开 `android-tv/`，首次填 `http://电脑IP:8787`。说明见 `android-tv/README.md`。
+
+Docker：
+
+```bash
+docker compose up --build
+```
+
+对照仓库：
+
+```bash
+scripts/fetch-vendors.sh
+```
+
+## 文档
+
+- 需求合同：`docs/SPEC.md`
+- Epic / Issue 图谱：`docs/GRAPH.md`
+- 搜歌主路：`docs/issues/I03-upload.md`
+
+## 版权
+
+仅供个人或家庭局域网。不要公开发布 `data/media`。lovjpn 为 PolyForm Noncommercial。

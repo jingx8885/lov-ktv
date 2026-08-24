@@ -1,0 +1,27 @@
+[project]
+name = "lovktv"
+version = "0.1.0"
+description = "lov-ktv server: search/download, vocal split, karaoke rooms"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "python-multipart>=0.0.12",
+  "httpx[socks]>=0.27",
+  "pillow>=10.0",
+  "pykakasi>=2.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+sep = ["audio-separator>=0.30"]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["lovktv*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

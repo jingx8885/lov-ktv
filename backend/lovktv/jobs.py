@@ -1,0 +1,267 @@
+from __future__ import annotations
+
+import queue
+import shutil
+import subprocess
+import threading
+from pathlib import Path
+
+from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation
+from lovktv.catalog.fetch import import_song, parse_lrc
+from lovktv.config import MEDIA_DIR
+from lovktv.pipeline.align import align_lyrics, probe_duration_ms
+from lovktv.pipeline.language import detect_language
+from lovktv.pipeline.lyrics import parse_plain_lines, prepare_lyric_lines, write_subtitles
+from lovktv.pipeline.mtv import compose_mtv
+from lovktv.pipeline.transcribe import transcribe_words
+from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
+from lovktv.store import get_song, list_songs, retry_query, update_song
+
+_JOBS: queue.Queue = queue.Queue()
+_QUEUED: set[str] = set()
+_QUEUE_LOCK = threading.Lock()
+_WORKER_STARTED = False
+
+
+def _fallback_media(src: Path, out_dir: Path) -> None:
+    import shutil
+    import subprocess
+
+    karaoke = out_dir / "karaoke.m4a"
+    guide = out_dir / "guide.m4a"
+    if shutil.which("ffmpeg"):
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "192k", str(karaoke)],
+            check=True,
+            timeout=120,
+            capture_output=True,
+        )
+        subprocess.run(["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)], check=True, timeout=120, capture_output=True)
+    else:
+        shutil.copy2(src, out_dir / "karaoke.m4a")
+        shutil.copy2(src, out_dir / "guide.m4a")
+
+
+def process_import(song_id: str, query: str, netease_id: str = "", language: str | None = None) -> None:
+    out_dir = MEDIA_DIR / song_id
+    try:
+        update_song(song_id, status="fetching")
+        skeleton = import_song(query=query, out_dir=out_dir, song_id=netease_id or None)
+        update_song(
+            song_id,
+            title=skeleton.get("title") or query,
+            audio_source=(skeleton.get("audio") or {}).get("source") or "",
+            status="separating",
+        )
+        src = out_dir / "original.mp3"
+        if not src.exists():
+            raise RuntimeError("音频下载失败，没有 original.mp3")
+        try:
+            separate_vocals(src, out_dir)
+        except Exception as sep_exc:
+            update_song(song_id, error=f"分离降级：{sep_exc}")
+            _fallback_media(src, out_dir)
+        _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=True)
+    except Exception as exc:  # noqa: BLE001 — job must record any failure
+        update_song(song_id, status="failed", error=str(exc))
+
+
+def process_upload(song_id: str, src: Path, language: str | None = None) -> None:
+    out_dir = MEDIA_DIR / song_id
+    try:
+        update_song(song_id, status="separating")
+        if not src.exists():
+            raise RuntimeError("没有上传音频")
+        try:
+            separate_vocals(src, out_dir)
+        except Exception as sep_exc:
+            update_song(song_id, error=f"分离降级：{sep_exc}")
+            _fallback_media(src, out_dir)
+        _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=True)
+    except Exception as exc:  # noqa: BLE001
+        update_song(song_id, status="failed", error=str(exc))
+
+
+def load_lyric_lines(out_dir: Path) -> list[dict]:
+    path = out_dir / "lyrics.lrc"
+    if not path.exists():
+        return []
+    raw = path.read_text(encoding="utf-8")
+    lines = parse_lrc(raw) or parse_plain_lines(raw)
+    lang = detect_language("".join(item.get("text") or "" for item in lines))
+    return prepare_lyric_lines(lines, lang)
+
+
+def _voice_audio(out_dir: Path, src: Path) -> Path:
+    for name in ("vocals.wav", "guide.m4a", "original.mp3"):
+        candidate = out_dir / name
+        if candidate.exists():
+            return candidate
+    return src
+
+
+def _ensure_vocals(out_dir: Path, src: Path) -> Path:
+    """Finish a killed vocal split enough for ASR; do not re-run separator."""
+    vocals = out_dir / "vocals.wav"
+    if vocals.exists():
+        return vocals
+    leftover = named_stem(out_dir, "Vocals")
+    if leftover:
+        return save_stem_wav(leftover, vocals)
+    if src.exists() and shutil.which("ffmpeg"):
+        try:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", str(src), str(vocals)],
+                check=True,
+                timeout=180,
+                capture_output=True,
+            )
+        except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            return _voice_audio(out_dir, src)
+        if vocals.exists():
+            return vocals
+    return _voice_audio(out_dir, src)
+
+
+def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool = False) -> None:
+    """Re-run the same ASR + lyric pipeline used by import/upload."""
+    out_dir = MEDIA_DIR / song_id
+    src = out_dir / "original.mp3"
+    if not src.exists():
+        src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
+    try:
+        if not src.exists():
+            raise RuntimeError("没有可对齐的音频")
+        _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=rebuild_mtv)
+    except Exception as exc:  # noqa: BLE001
+        update_song(song_id, status="failed", error=str(exc))
+
+
+def _align_and_mtv(
+    song_id: str,
+    out_dir: Path,
+    src: Path,
+    language: str | None,
+    rebuild_mtv: bool = True,
+) -> None:
+    lines = load_lyric_lines(out_dir)
+    lang = detect_language("".join(item.get("text") or "" for item in lines), language)
+    update_song(song_id, language=lang, status="aligning")
+    voice = _ensure_vocals(out_dir, src)
+    prompt = "\n".join(str(item.get("text") or "") for item in lines[:10])
+    asr_words = transcribe_words(
+        voice,
+        lang,
+        cache_path=out_dir / "asr.json",
+        prompt=prompt,
+    )
+    timeline = align_lyrics(
+        lines,
+        lang,
+        audio_path=voice,
+        duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
+        asr_words=asr_words or None,
+    )
+    if lang == "ja" and timeline.get("cues"):
+        update_song(song_id, status="annotating")
+        song = get_song(song_id) or {}
+        try:
+            notes = annotate_ja_lines(
+                [str(cue.get("text") or "") for cue in timeline["cues"]],
+                title=str(song.get("title") or ""),
+                artist=str(song.get("artist") or ""),
+                cache_path=out_dir / "ja-annotate.json",
+            )
+            apply_ja_annotation(timeline, notes)
+            previous = str((get_song(song_id) or {}).get("error") or "")
+            if "注音降级" in previous:
+                update_song(song_id, error="")
+        except Exception as ann_exc:
+            previous = str((get_song(song_id) or {}).get("error") or "").strip()
+            update_song(song_id, error=f"{previous} 注音降级：{ann_exc}".strip())
+    if timeline.get("cues"):
+        write_subtitles(timeline, out_dir)
+    update_song(song_id, status="ready")
+    if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
+        return
+    song = get_song(song_id) or {}
+    audio = out_dir / "karaoke.m4a"
+    if not audio.exists():
+        audio = src
+    cover = out_dir / "cover.jpg"
+    try:
+        compose_mtv(
+            out_dir,
+            audio_path=audio,
+            title=str(song.get("title") or "lov-ktv"),
+            artist=str(song.get("artist") or ""),
+            timeline=timeline,
+            cover_path=cover if cover.exists() else None,
+        )
+    except Exception as mtv_exc:
+        previous = str(song.get("error") or "").strip()
+        note = f"MTV降级：{mtv_exc}"
+        update_song(song_id, error=f"{previous} {note}".strip())
+
+
+def _job_key(fn, args: tuple) -> str:
+    name = getattr(fn, "__name__", str(fn))
+    song_id = args[0] if args else ""
+    return f"{name}:{song_id}"
+
+
+def _worker() -> None:
+    while True:
+        fn, args, kwargs, key = _JOBS.get()
+        try:
+            print(f"[lovktv] start {key}", flush=True)
+            fn(*args, **kwargs)
+            print(f"[lovktv] done {key}", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[lovktv] fail {key}: {exc}", flush=True)
+        finally:
+            with _QUEUE_LOCK:
+                _QUEUED.discard(key)
+            _JOBS.task_done()
+
+
+def spawn(fn, *args, **kwargs) -> None:
+    """Queue background work. One worker, so Whisper is not stampeded."""
+    global _WORKER_STARTED
+    key = _job_key(fn, args)
+    with _QUEUE_LOCK:
+        if key in _QUEUED:
+            return
+        _QUEUED.add(key)
+        if not _WORKER_STARTED:
+            _WORKER_STARTED = True
+            threading.Thread(target=_worker, name="lovktv-jobs", daemon=True).start()
+        _JOBS.put((fn, args, kwargs, key))
+
+
+def resume_stuck_jobs() -> int:
+    """Continue songs left queued/aligning after a reload killed the worker."""
+    resumed = 0
+    pending_align: list[tuple] = []
+    pending_import: list[tuple] = []
+    for song in reversed(list_songs()):
+        status = str(song.get("status") or "")
+        song_id = str(song["id"])
+        out_dir = MEDIA_DIR / song_id
+        has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
+        if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
+            pending_align.append((song_id, song.get("language")))
+            continue
+        if status in {"queued", "fetching"}:
+            pending_import.append(
+                (song_id, retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
+            )
+    for song_id, language in pending_align:
+        spawn(process_realign, song_id, language, True)
+        resumed += 1
+    for song_id, query, netease_id, language in pending_import:
+        spawn(process_import, song_id, query, netease_id, language)
+        resumed += 1
+    if resumed:
+        print(f"[lovktv] resume {resumed} stuck songs", flush=True)
+    return resumed

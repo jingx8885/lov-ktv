@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>lov-ktv 电视</title>
+  <link rel="stylesheet" href="/app.css?v=phone5" />
+</head>
+<body class="tv">
+  <video id="mtv" muted playsinline></video>
+  <a class="qrbox" id="phoneLink" href="#">
+    <div id="qr" class="qr"></div>
+    <span class="qr-cap">扫码 · <b id="code"></b></span>
+  </a>
+  <div class="login-gate" id="loginGate" hidden>
+    <div class="login-card">
+      <p class="brand">lov-ktv</p>
+      <h2>扫码登录电视</h2>
+      <p class="muted">手机微信扫一扫，或打开链接后点确认。</p>
+      <div id="loginQr" class="qr"></div>
+      <p class="tiny" id="loginHint">二维码约 3 分钟有效</p>
+      <div class="row wrap-row" style="justify-content:center">
+        <button class="btn primary" id="refreshLogin" type="button">刷新二维码</button>
+        <button class="btn" id="skipLogin" type="button">先不登录</button>
+      </div>
+    </div>
+  </div>
+  <div class="start-gate" id="gate">
+    <button class="btn primary" id="start">点击开唱</button>
+  </div>
+  <div class="tv-ui">
+    <header class="bar">
+      <div>
+        <p class="brand">lov-ktv</p>
+        <h2 id="title">等待点歌</h2>
+        <p class="muted" id="meta"></p>
+      </div>
+      <div class="user-chip">
+        <img class="avatar" id="tvAvatar" alt="" hidden />
+        <span id="tvUser">未登录</span>
+        <button class="btn" id="tvLoginBtn" type="button">登录</button>
+      </div>
+    </header>
+    <section class="lyrics">
+      <div>
+        <div class="prev" id="prev"></div>
+        <div class="line" id="cur"></div>
+        <div class="next" id="next"></div>
+      </div>
+    </section>
+    <footer class="bar">
+      <audio id="karaoke" crossorigin="anonymous"></audio>
+      <audio id="vocal" crossorigin="anonymous" hidden></audio>
+      <canvas id="bands" class="bands" width="1920" height="120"></canvas>
+      <div class="tv-controls">
+        <button class="btn" id="skip" type="button">切歌</button>
+        <button class="btn" id="toggle" type="button">原唱/伴唱</button>
+      </div>
+      <p class="muted" id="qinfo"></p>
+    </footer>
+  </div>
+  <script src="/vendor/qrcode.js"></script>
+  <script src="/bands.js?v=wave5"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STATUS = {
+      queued: "排队",
+      fetching: "搜歌下载",
+      separating: "人声分离",
+      aligning: "按人声对齐歌词",
+      annotating: "日语注音",
+      composing: "生成 MTV",
+      ready: "就绪",
+      failed: "失败",
+    };
+    let room = null;
+    let lyrics = { cues: [] };
+    let lastItem = "";
+    let mediaRev = 0;
+    function mediaUrl(songId, name) {
+      return `/media/${songId}/${name}?v=${mediaRev || Date.now()}`;
+    }
+    let armed = false;
+    const tabId = Math.random().toString(36).slice(2);
+    const audioBus = "BroadcastChannel" in window ? new BroadcastChannel("lovktv-audio") : null;
+    let isLeader = true;
+    let lastLyricsAt = 0;
+    let audioHook = null;
+    let bandsViz = null;
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function renderCue(cue, t) {
+      const tokens = cue.tokens || [];
+      if (!tokens.length) return escapeHtml(cue.text);
+      return tokens.map((tok, i) => {
+        let p = 0;
+        if (t >= tok.end_ms) p = 100;
+        else if (t >= tok.start_ms) {
+          p = ((t - tok.start_ms) / Math.max(tok.end_ms - tok.start_ms, 1)) * 100;
+        }
+        const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
+        const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
+        const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+        const latin = /^[A-Za-z0-9']/.test(tok.text || "");
+        const next = tokens[i + 1];
+        const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
+          ? `<span class="tok-space"> </span>`
+          : "";
+        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}</span></span>${space}`;
+      }).join("");
+    }
+
+    function renderQr(url, target) {
+      const box = $(target || "qr");
+      box.innerHTML = "";
+      if (typeof qrcode === "function") {
+        const qr = qrcode(0, "M");
+        qr.addData(url);
+        qr.make();
+        box.innerHTML = qr.createSvgTag(5, 0);
+        return;
+      }
+      box.textContent = url;
+    }
+
+    function roomCode() {
+      return (new URLSearchParams(location.search).get("room") || localStorage.getItem("tvRoom") || "").toUpperCase();
+    }
+
+    let loginTicket = "";
+    let loginTimer = 0;
+
+    function renderUserChip(user) {
+      $("tvUser").textContent = user ? (user.nickname || "已登录") : "未登录";
+      $("tvLoginBtn").textContent = user ? "换账号" : "登录";
+      if (user && user.avatar) {
+        $("tvAvatar").hidden = false;
+        $("tvAvatar").src = user.avatar;
+      } else {
+        $("tvAvatar").hidden = true;
+      }
+    }
+
+    async function currentUser() {
+      const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ user: null }));
+      return data.user;
+    }
+
+    async function startLoginQr() {
+      $("loginGate").hidden = false;
+      $("loginHint").textContent = "正在生成二维码…";
+      const res = await fetch("/api/auth/qr", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ room: room ? room.code : roomCode() }),
+      });
+      const data = await res.json();
+      loginTicket = data.ticket;
+      renderQr(data.url, "loginQr");
+      $("loginHint").textContent = "用手机微信扫一扫，约 3 分钟有效";
+      if (loginTimer) clearInterval(loginTimer);
+      loginTimer = setInterval(pollLogin, 2000);
+    }
+
+    async function pollLogin() {
+      if (!loginTicket) return;
+      const res = await fetch("/api/auth/qr/" + loginTicket + "?claim=1", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.status === "expired") {
+        $("loginHint").textContent = "二维码过期了，点刷新";
+        return;
+      }
+      if (data.status === "ok" && data.user) {
+        clearInterval(loginTimer);
+        loginTicket = "";
+        $("loginGate").hidden = true;
+        renderUserChip(data.user);
+      }
+    }
+
+    async function boot() {
+      if (/LovKtvAndroidTV/i.test(navigator.userAgent || "") || new URLSearchParams(location.search).get("androidtv")) {
+        document.body.classList.add("androidtv");
+      }
+      const wanted = roomCode();
+      room = wanted
+        ? await fetch("/api/rooms/" + wanted).then((r) => r.json())
+        : await fetch("/api/rooms", { method: "POST" }).then((r) => r.json());
+      localStorage.setItem("tvRoom", room.code);
+      $("code").textContent = room.code;
+      const url = location.origin + "/m.html?room=" + room.code + "&v=queue3";
+      $("phoneLink").href = url;
+      renderQr(url);
+      const user = await currentUser();
+      renderUserChip(user);
+      if (!user && !sessionStorage.getItem("tvSkipLogin")) {
+        startLoginQr();
+      }
+      $("tvLoginBtn").onclick = () => startLoginQr();
+      $("refreshLogin").onclick = () => startLoginQr();
+      $("skipLogin").onclick = () => {
+        sessionStorage.setItem("tvSkipLogin", "1");
+        $("loginGate").hidden = true;
+        if (loginTimer) clearInterval(loginTimer);
+      };
+      tick();
+      setInterval(tick, 1500);
+      requestAnimationFrame(paint);
+    }
+
+    function hookAudio() {
+      audioHook = LovBands.hookAnalyser($("karaoke"), audioHook);
+    }
+
+    function drawBands(t) {
+      if (!bandsViz) bandsViz = LovBands.create($("bands"));
+      const karaoke = $("karaoke");
+      if (karaoke && (karaoke.currentSrc || karaoke.src)) bandsViz.setSource(karaoke.currentSrc || karaoke.src);
+      const playing = !!(audioHook && karaoke && !karaoke.paused && karaoke.src);
+      if (playing) LovBands.pull(audioHook);
+      bandsViz.draw({
+        playing,
+        freq: audioHook && audioHook.freq,
+        wave: audioHook && audioHook.time,
+        playMs: t || 0,
+        duration: (karaoke && karaoke.duration || 0) * 1000,
+      });
+    }
+
+    function silenceMtv(mtv) {
+      mtv.muted = true;
+      mtv.defaultMuted = true;
+      mtv.volume = 0;
+    }
+
+    function bindMtv(songId) {
+      const mtv = $("mtv");
+      silenceMtv(mtv);
+      mtv.onerror = () => {
+        mtv.removeAttribute("src");
+        mtv.hidden = true;
+        document.body.classList.remove("has-mtv");
+      };
+      mtv.onloadeddata = () => {
+        silenceMtv(mtv);
+        mtv.hidden = false;
+        document.body.classList.add("has-mtv");
+        if (canPlay()) mtv.play().catch(() => {});
+      };
+      mtv.src = `/media/${songId}/mtv.mp4`;
+      mtv.load();
+      silenceMtv(mtv);
+    }
+
+    async function tick() {
+      const code = roomCode() || (room && room.code);
+      if (!code) return;
+      room = await fetch("/api/rooms/" + code).then((r) => r.json());
+      localStorage.setItem("tvRoom", room.code);
+      const now = room.now_playing;
+      $("qinfo").textContent = `队列 ${room.queue.length} · 原唱 ${Math.round((room.vocal_mix || 0) * 100)}%`;
+      if (!now) {
+        stopPlayback();
+        $("gate").hidden = true;
+        $("title").textContent = "等待点歌";
+        $("meta").textContent = "";
+        $("prev").innerHTML = "";
+        $("cur").textContent = "用手机扫右上角二维码搜歌";
+        $("next").innerHTML = "";
+        return;
+      }
+      $("title").textContent = now.title;
+      $("meta").textContent = `${now.artist || ""} · ${STATUS[now.status] || now.status}`;
+      if (now.status !== "ready") {
+        $("prev").innerHTML = "";
+        $("cur").textContent = "正在做 KTV：" + (STATUS[now.status] || now.status);
+        $("next").textContent = "";
+        return;
+      }
+      const itemKey = now.id || now.song_id;
+      if (lastItem !== itemKey) {
+        lastItem = itemKey;
+        mediaRev = Date.now();
+        lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
+        lastLyricsAt = Date.now();
+        bindMtv(now.song_id);
+        if (canPlay()) startPlayback();
+        else {
+          stopAudioOnly();
+          $("gate").hidden = false;
+        }
+      } else {
+        applyMix();
+        if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
+          bindMtv(now.song_id);
+        }
+        if (Date.now() - lastLyricsAt > 8000) {
+          lastLyricsAt = Date.now();
+          fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${lastLyricsAt}`)
+            .then((r) => r.ok ? r.json() : null)
+            .then((data) => { if (data && data.cues) lyrics = data; })
+            .catch(() => {});
+        }
+        if (!canPlay()) {
+          stopAudioOnly();
+          $("gate").hidden = false;
+        }
+      }
+    }
+
+    function stopAudioOnly() {
+      ["karaoke", "vocal"].forEach((id) => {
+        const el = $(id);
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      });
+      $("mtv").pause();
+    }
+
+    function stopPlayback() {
+      lyrics = { cues: [] };
+      lastItem = "";
+      ["karaoke", "vocal", "mtv"].forEach((id) => {
+        const el = $(id);
+        el.pause();
+        el.removeAttribute("src");
+        el.load();
+      });
+      $("mtv").hidden = true;
+      document.body.classList.remove("has-mtv");
+    }
+
+    function paint() {
+      const now = room && room.now_playing;
+      if (now && now.status === "ready") {
+        const karaoke = $("karaoke");
+        const mtv = $("mtv");
+        silenceMtv(mtv);
+        const t = Math.floor((karaoke.currentTime || 0) * 1000);
+        syncVocal();
+        if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration)) {
+          if (Math.abs(mtv.currentTime - karaoke.currentTime) > 0.28) {
+            mtv.currentTime = karaoke.currentTime;
+          }
+          if (karaoke.paused) mtv.pause();
+          else if (mtv.paused) mtv.play().catch(() => {});
+        }
+        const cues = lyrics.cues || [];
+        const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
+        const cue = idx >= 0 ? cues[idx] : null;
+        const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
+        if (cue) {
+          $("prev").innerHTML = idx > 0 ? renderCue(cues[idx - 1], 1e12) : "";
+          $("cur").innerHTML = renderCue(cue, t);
+          $("next").innerHTML = cues[idx + 1] ? renderCue(cues[idx + 1], -1) : "";
+        } else if (upcomingIdx >= 0) {
+          const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
+          $("prev").innerHTML = upcomingIdx > 1 ? renderCue(cues[upcomingIdx - 2], 1e12) : "";
+          $("cur").innerHTML = held ? renderCue(held, 1e12) : "";
+          $("next").innerHTML = renderCue(cues[upcomingIdx], -1);
+        } else {
+          $("prev").innerHTML = cues.length ? renderCue(cues[cues.length - 1], 1e12) : "";
+          $("cur").innerHTML = "";
+          $("next").innerHTML = "";
+        }
+      }
+      drawBands(now && now.status === "ready" ? Math.floor(($("karaoke").currentTime || 0) * 1000) : 0);
+      requestAnimationFrame(paint);
+    }
+
+    function claimLeader() {
+      isLeader = true;
+      if (audioBus) audioBus.postMessage({ type: "claim", tabId });
+    }
+
+    function pauseAudio() {
+      ["karaoke", "vocal", "mtv"].forEach((id) => $(id).pause());
+    }
+
+    function syncVocal(forceTime) {
+      const karaoke = $("karaoke");
+      const vocal = $("vocal");
+      if (!vocal || !vocal.getAttribute("src")) return;
+      const t = forceTime != null ? forceTime : (karaoke.currentTime || 0);
+      try {
+        if (Math.abs((vocal.currentTime || 0) - t) > 0.08) vocal.currentTime = t;
+      } catch (err) {}
+      if (karaoke && !karaoke.paused && karaoke.src) {
+        vocal.play().catch(() => {});
+      } else {
+        vocal.pause();
+      }
+    }
+
+    function applyMix() {
+      const mix = room && room.vocal_mix != null ? room.vocal_mix : 1;
+      const vol = ((room && room.volume) || 80) / 100;
+      const karaoke = $("karaoke");
+      const vocal = $("vocal");
+      karaoke.muted = mix >= 0.99;
+      vocal.muted = mix <= 0.01;
+      karaoke.volume = karaoke.muted ? 0 : vol * (1 - mix);
+      vocal.volume = vocal.muted ? 0 : vol * mix;
+      $("qinfo").textContent = `队列 ${(room && room.queue && room.queue.length) || 0} · 原唱 ${Math.round(mix * 100)}%`;
+    }
+
+    function pageVisible() {
+      return document.visibilityState === "visible";
+    }
+
+    function canPlay() {
+      return armed && pageVisible() && isLeader;
+    }
+
+    function startPlayback() {
+      if (!pageVisible()) {
+        stopAudioOnly();
+        $("gate").hidden = false;
+        return;
+      }
+      armed = true;
+      claimLeader();
+      if (!isLeader) return;
+      const songId = room && room.now_playing && room.now_playing.song_id;
+      if (!songId) return;
+      const karaoke = $("karaoke");
+      const vocal = $("vocal");
+      karaoke.src = mediaUrl(songId, "karaoke.m4a");
+      karaoke.onerror = () => { karaoke.src = mediaUrl(songId, "original.mp3"); };
+      vocal.src = mediaUrl(songId, "original.mp3");
+      vocal.onerror = () => { vocal.src = mediaUrl(songId, "guide.m4a"); };
+      applyMix();
+      silenceMtv($("mtv"));
+      hookAudio();
+      const ready = () => {
+        syncVocal(karaoke.currentTime || 0);
+      };
+      karaoke.onloadedmetadata = ready;
+      vocal.onloadedmetadata = ready;
+      karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
+      vocal.play().catch(() => {});
+      $("mtv").play().catch(() => {});
+    }
+
+    if (audioBus) {
+      audioBus.onmessage = (event) => {
+        if (event.data && event.data.type === "claim" && event.data.tabId !== tabId && isLeader) {
+          isLeader = false;
+          pauseAudio();
+        }
+      };
+    }
+    document.addEventListener("visibilitychange", () => {
+      if (!pageVisible()) {
+        pauseAudio();
+        return;
+      }
+      if (armed && room && room.now_playing) startPlayback();
+    });
+
+    $("start").onclick = () => { hookAudio(); startPlayback(); };
+    $("bands").onclick = (event) => {
+      const karaoke = $("karaoke");
+      if (!karaoke.duration) return;
+      const box = event.currentTarget.getBoundingClientRect();
+      karaoke.currentTime = ((event.clientX - box.left) / box.width) * karaoke.duration;
+      syncVocal(karaoke.currentTime);
+    };
+    $("skip").onclick = async () => {
+      const code = roomCode() || (room && room.code);
+      if (!code) return;
+      $("skip").disabled = true;
+      try {
+        room = await fetch("/api/rooms/" + code + "/skip", { method: "POST" }).then((r) => r.json());
+        if (!room.now_playing) stopPlayback();
+        else lastItem = "";
+        if (room.now_playing) $("title").textContent = room.now_playing.title;
+        await tick();
+      } finally {
+        $("skip").disabled = false;
+      }
+    };
+    $("toggle").onclick = async () => {
+      const next = (room.vocal_mix || 0) > 0.5 ? 0 : 1;
+      room = await fetch("/api/rooms/" + (roomCode() || room.code) + "/mix", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocal_mix: next }),
+      }).then((r) => r.json());
+      applyMix();
+    };
+    $("karaoke").addEventListener("ended", () => $("skip").click());
+    boot();
+  </script>
+</body>
+</html>

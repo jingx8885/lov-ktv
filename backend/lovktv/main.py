@@ -1,0 +1,515 @@
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
+
+from lovktv.agents.ja_lyrics import annotate_ja_lines
+from lovktv.auth import (
+    SESSION_COOKIE,
+    auth_status,
+    decode_state,
+    encode_state,
+    exchange_wechat_code,
+    login_page_url,
+    public_base,
+    wechat_authorize_url,
+    wechat_ready,
+)
+from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, search_songs
+from lovktv.catalog.index import query_library
+from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
+from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
+from lovktv.pipeline.lyrics import validate_timeline, write_subtitles
+from lovktv.store import (
+    bump,
+    confirm_login_ticket,
+    consume_confirmed_ticket,
+    create_login_ticket,
+    create_session,
+    create_song,
+    delete_session,
+    delete_song,
+    enqueue,
+    ensure_room,
+    get_login_ticket,
+    get_song,
+    init_db,
+    list_songs,
+    play_now,
+    retry_query,
+    room_snapshot,
+    set_mix,
+    skip,
+    update_song,
+    upsert_device_user,
+    upsert_wechat_user,
+    user_from_session,
+)
+
+WEB = ROOT / "frontend" / "public"
+
+class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if path.endswith(".html") or path in {"/", "/m.html", "/tv.html", "/login.html"}:
+            response.headers["Cache-Control"] = "no-store, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+        return response
+
+
+app = FastAPI(title="lov-ktv")
+app.add_middleware(NoStoreHtmlMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+_rooms: dict[str, set[WebSocket]] = {}
+
+
+def _request_base(request: Request) -> str:
+    if PUBLIC_URL:
+        return PUBLIC_URL
+    proto = request.headers.get("x-forwarded-proto") or request.url.scheme
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
+def _current_user(request: Request) -> dict | None:
+    return user_from_session(request.cookies.get(SESSION_COOKIE) or "")
+
+
+def _set_session(response, token: str, request: Request) -> None:
+    secure = request.url.scheme == "https" or public_base().startswith("https")
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=SESSION_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=secure,
+    )
+
+
+def _clear_session(response) -> None:
+    response.delete_cookie(SESSION_COOKIE, path="/")
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    init_db()
+    resume_stuck_jobs()
+
+
+@app.get("/api/auth/status")
+def api_auth_status() -> dict:
+    return auth_status()
+
+
+@app.get("/api/auth/me")
+def api_auth_me(request: Request) -> dict:
+    return {"user": _current_user(request)}
+
+
+@app.post("/api/auth/logout")
+def api_auth_logout(request: Request) -> JSONResponse:
+    delete_session(request.cookies.get(SESSION_COOKIE) or "")
+    response = JSONResponse({"ok": True, "user": None})
+    _clear_session(response)
+    return response
+
+
+@app.post("/api/auth/device")
+def api_auth_device(request: Request, payload: dict = Body(default={})) -> JSONResponse:
+    try:
+        user = upsert_device_user(str(payload.get("device_id") or ""), str(payload.get("nickname") or ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    token = create_session(user["id"])
+    response = JSONResponse({"user": user})
+    _set_session(response, token, request)
+    return response
+
+
+@app.get("/api/auth/wechat/login")
+def api_wechat_login(
+    request: Request,
+    quick: bool = False,
+    ticket: str = "",
+    next: str = "",
+) -> RedirectResponse:
+    use_quick = bool(quick) and wechat_ready("mp")
+    if use_quick:
+        pass
+    elif wechat_ready("web"):
+        use_quick = False
+    else:
+        raise HTTPException(400, "还没配置微信开放平台 AppID")
+    redirect_uri = f"{_request_base(request)}/api/auth/wechat/callback"
+    state = encode_state("quick" if use_quick else "web", ticket, next)
+    try:
+        url = wechat_authorize_url(redirect_uri, state, quick=use_quick)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/auth/wechat/callback")
+def api_wechat_callback(request: Request, code: str = "", state: str = "") -> RedirectResponse:
+    kind, ticket, next_path = decode_state(state)
+    base = _request_base(request)
+    if not code:
+        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error="微信取消了授权"), 302)
+    try:
+        info = exchange_wechat_code(code, quick=kind == "quick")
+        user = upsert_wechat_user(info["openid"], info.get("unionid") or "", info.get("nickname") or "", info.get("avatar") or "")
+    except ValueError as exc:
+        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error=str(exc)), 302)
+    if ticket:
+        try:
+            confirm_login_ticket(ticket, user["id"])
+        except ValueError:
+            pass
+    dest = next_path if next_path.startswith("/") else login_page_url(base, ticket=ticket, ok=True)
+    response = RedirectResponse(dest, status_code=302)
+    _set_session(response, create_session(user["id"]), request)
+    return response
+
+
+@app.post("/api/auth/qr")
+def api_auth_qr(request: Request, payload: dict = Body(default={})) -> dict:
+    ticket = create_login_ticket()
+    room = str(payload.get("room") or "").upper()
+    url = login_page_url(_request_base(request), ticket=ticket["ticket"], room=room)
+    return {**ticket, "url": url}
+
+
+@app.get("/api/auth/qr/{ticket}")
+def api_auth_qr_status(ticket: str, request: Request, claim: bool = False):
+    row = get_login_ticket(ticket)
+    if not row:
+        raise HTTPException(404, "二维码无效")
+    payload = {"status": row["status"], "expires_at": row["expires_at"]}
+    if claim and row["status"] == "confirmed":
+        user = consume_confirmed_ticket(ticket)
+        if user:
+            response = JSONResponse({"status": "ok", "user": user})
+            _set_session(response, create_session(user["id"]), request)
+            return response
+    if row["status"] == "confirmed" and row.get("user_id"):
+        payload["ready"] = True
+    return payload
+
+
+@app.post("/api/auth/qr/{ticket}/confirm")
+def api_auth_qr_confirm(ticket: str, request: Request) -> dict:
+    user = _current_user(request)
+    if not user:
+        raise HTTPException(401, "请先登录")
+    try:
+        confirm_login_ticket(ticket, user["id"])
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return {"ok": True, "user": user}
+
+
+@app.get("/api/search")
+def api_search(q: str, count: int = 10, page: int = 1) -> dict:
+    if not q.strip():
+        raise HTTPException(400, "缺少 q")
+    try:
+        return search_songs(q.strip(), count=count, page=page)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"搜索失败：{exc}") from exc
+
+
+@app.get("/api/preview/{netease_id}/resolve")
+def api_preview_resolve(netease_id: str, title: str = "", artist: str = "") -> dict:
+    if not netease_id.isdigit():
+        raise HTTPException(400, "无效的试听 id")
+    source = resolve_audio_source(netease_id, title, artist)
+    if not source:
+        raise HTTPException(404, "这首暂时不能试听")
+    return {"ok": True, "id": netease_id, "kind": source.get("kind"), "title": source.get("title") or title}
+
+
+@app.get("/api/preview/{netease_id}")
+def api_preview(netease_id: str, title: str = "", artist: str = ""):
+    if not netease_id.isdigit():
+        raise HTTPException(400, "无效的试听 id")
+    resp, source = open_preview_stream(netease_id, title, artist)
+    if resp is None:
+        raise HTTPException(404, "这首暂时不能试听")
+    ctype = str(resp.headers.get("Content-Type") or "audio/mpeg")
+
+    def chunks():
+        try:
+            while True:
+                data = resp.read(65536)
+                if not data:
+                    break
+                yield data
+        finally:
+            resp.close()
+
+    return StreamingResponse(chunks(), media_type=ctype, headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/songs/import")
+def api_import(payload: dict) -> dict:
+    query = str(payload.get("query") or payload.get("title") or "").strip()
+    if not query:
+        raise HTTPException(400, "缺少 query")
+    song = create_song(
+        title=str(payload.get("title") or query),
+        artist=str(payload.get("artist") or ""),
+        language=str(payload.get("language") or "zh"),
+        netease_id=str(payload.get("id") or ""),
+    )
+    spawn(
+        process_import,
+        song["id"],
+        query,
+        str(payload.get("id") or ""),
+        payload.get("language"),
+    )
+    return song
+
+
+@app.post("/api/songs")
+async def api_upload(
+    file: UploadFile = File(...),
+    title: str = Form(""),
+    artist: str = Form(""),
+    language: str = Form("zh"),
+    lyrics: str = Form(""),
+) -> dict:
+    song = create_song(title or file.filename or "未命名", artist, language)
+    dest = MEDIA_DIR / song["id"] / "original.mp3"
+    with dest.open("wb") as handle:
+        shutil.copyfileobj(file.file, handle)
+    if lyrics.strip():
+        (MEDIA_DIR / song["id"] / "lyrics.lrc").write_text(lyrics, encoding="utf-8")
+    spawn(process_upload, song["id"], dest, language)
+    return song
+
+
+@app.post("/api/agents/ja-lyrics")
+def api_ja_lyrics(payload: dict = Body(default={})) -> dict:
+    lines = [str(item) for item in (payload.get("lines") or []) if str(item).strip()]
+    if not lines:
+        raise HTTPException(400, "缺少 lines")
+    try:
+        return annotate_ja_lines(
+            lines,
+            title=str(payload.get("title") or ""),
+            artist=str(payload.get("artist") or ""),
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"日语注音失败：{exc}") from exc
+
+
+@app.post("/api/songs/{song_id}/realign")
+def api_realign(song_id: str, payload: dict = Body(default={})) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    spawn(
+        process_realign,
+        song_id,
+        payload.get("language") or song.get("language"),
+        bool(payload.get("rebuild_mtv")),
+    )
+    return {"ok": True, "song_id": song_id, "status": "aligning"}
+
+
+@app.put("/api/songs/{song_id}/lyrics")
+def api_save_lyrics(song_id: str, payload: dict = Body(default={})) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    try:
+        timeline = validate_timeline(payload)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    write_subtitles(timeline, MEDIA_DIR / song_id)
+    return {"ok": True, "song_id": song_id, "cues": len(timeline["cues"])}
+
+
+@app.delete("/api/songs/{song_id}")
+def api_delete_song(song_id: str) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    if not delete_song(song_id):
+        raise HTTPException(404, "歌曲不存在")
+    return {"ok": True, "song_id": song_id}
+
+
+@app.post("/api/songs/{song_id}/retry")
+def api_retry_song(song_id: str) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    if song.get("status") != "failed":
+        raise HTTPException(400, "只有失败的歌可以重试")
+    update_song(song_id, status="queued", error="")
+    spawn(
+        process_import,
+        song_id,
+        retry_query(song),
+        str(song.get("netease_id") or ""),
+        song.get("language"),
+    )
+    return {"ok": True, "song_id": song_id, "status": "queued"}
+
+
+@app.get("/api/songs")
+def api_songs(
+    q: str = "",
+    by: str = "all",
+    letter: str = "",
+    page: int | None = None,
+    count: int = 12,
+) -> dict:
+    songs = list_songs()
+    if page is None and not q and not letter:
+        return {"songs": songs, "total": len(songs)}
+    return query_library(songs, q=q, by=by, letter=letter, page=page or 1, count=count)
+
+
+@app.get("/api/songs/{song_id}")
+def api_song(song_id: str) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    folder = MEDIA_DIR / song_id
+    song["files"] = sorted(path.name for path in folder.iterdir()) if folder.exists() else []
+    return song
+
+
+@app.post("/api/rooms")
+def api_create_room() -> dict:
+    return ensure_room()
+
+
+@app.get("/api/rooms/{code}")
+def api_room(code: str) -> dict:
+    return room_snapshot(code.upper())
+
+
+@app.post("/api/rooms/{code}/queue")
+def api_enqueue(code: str, payload: dict) -> dict:
+    song_id = str(payload.get("song_id") or "")
+    if not get_song(song_id):
+        raise HTTPException(404, "歌曲不存在")
+    try:
+        return enqueue(code.upper(), song_id)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/rooms/{code}/bump")
+def api_bump(code: str, payload: dict) -> dict:
+    return bump(code.upper(), str(payload.get("id") or ""))
+
+
+@app.post("/api/rooms/{code}/skip")
+def api_skip(code: str) -> dict:
+    return skip(code.upper())
+
+
+@app.post("/api/rooms/{code}/play")
+def api_play(code: str, payload: dict) -> dict:
+    try:
+        return play_now(code.upper(), str(payload.get("id") or ""), str(payload.get("song_id") or ""))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+
+@app.post("/api/rooms/{code}/mix")
+def api_mix(code: str, payload: dict) -> dict:
+    return set_mix(code.upper(), payload.get("vocal_mix"), payload.get("volume"))
+
+
+@app.websocket("/ws/rooms/{code}")
+async def ws_room(ws: WebSocket, code: str) -> None:
+    code = code.upper()
+    await ws.accept()
+    _rooms.setdefault(code, set()).add(ws)
+    await ws.send_json({"type": "snapshot", "room": room_snapshot(code)})
+    try:
+        while True:
+            msg = await ws.receive_json()
+            action = msg.get("action")
+            if action == "skip":
+                snap = skip(code)
+            elif action == "bump":
+                snap = bump(code, str(msg.get("id") or ""))
+            elif action == "enqueue":
+                try:
+                    snap = enqueue(code, str(msg.get("song_id") or ""))
+                except ValueError as exc:
+                    await ws.send_json({"type": "error", "message": str(exc)})
+                    continue
+            elif action == "mix":
+                snap = set_mix(code, msg.get("vocal_mix"), msg.get("volume"))
+            else:
+                await ws.send_json({"type": "error", "message": "未知命令"})
+                continue
+            for peer in list(_rooms.get(code, set())):
+                try:
+                    await peer.send_json({"type": "snapshot", "room": snap})
+                except Exception:
+                    _rooms.get(code, set()).discard(peer)
+    except WebSocketDisconnect:
+        _rooms.get(code, set()).discard(ws)
+
+
+@app.get("/media/{song_id}/{name}")
+def media(song_id: str, name: str):
+    path = (MEDIA_DIR / song_id / name).resolve()
+    if MEDIA_DIR not in path.parents or not path.exists():
+        raise HTTPException(404)
+    return FileResponse(
+        path,
+        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, must-revalidate"},
+    )
+
+
+@app.get("/m.html")
+def mobile_page() -> FileResponse:
+    path = WEB / "m.html"
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(
+        path,
+        media_type="text/html",
+        headers={"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"},
+    )
+
+
+@app.get("/login.html")
+def login_page() -> FileResponse:
+    path = WEB / "login.html"
+    if not path.exists():
+        raise HTTPException(404)
+    return FileResponse(
+        path,
+        media_type="text/html",
+        headers={"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"},
+    )
+
+
+if WEB.exists():
+    app.mount("/", StaticFiles(directory=WEB, html=True), name="web")

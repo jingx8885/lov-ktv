@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.LovKtvTv" parent="Theme.Leanback">
+        <item name="android:windowBackground">#0B1020</item>
+        <item name="android:colorBackground">#0B1020</item>
+    </style>
+</resources>

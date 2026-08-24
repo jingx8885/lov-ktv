@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0B1020"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="48dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:letterSpacing="0.2"
+        android:text="@string/brand"
+        android:textColor="#F5C16C"
+        android:textSize="18sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/setup_title"
+        android:textColor="#F4F1EA"
+        android:textSize="32sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="@string/setup_hint"
+        android:textColor="#9AA3B5"
+        android:textSize="16sp" />
+
+    <EditText
+        android:id="@+id/server"
+        android:layout_width="560dp"
+        android:layout_height="64dp"
+        android:layout_marginTop="28dp"
+        android:background="#151B2E"
+        android:hint="@string/server_hint"
+        android:inputType="textUri"
+        android:paddingHorizontal="20dp"
+        android:textColor="#F4F1EA"
+        android:textColorHint="#9AA3B5"
+        android:textSize="20sp" />
+
+    <Button
+        android:id="@+id/open"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="#FF4D8D"
+        android:minWidth="220dp"
+        android:minHeight="56dp"
+        android:text="@string/open_tv"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp" />
+</LinearLayout>

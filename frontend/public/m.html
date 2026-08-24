@@ -1,0 +1,1463 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>lov-ktv 手机点歌</title>
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#0b1020" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <link rel="stylesheet" href="/app.css?v=phone17" />
+</head>
+<body class="phone">
+  <div class="app">
+    <header class="topbar">
+      <button type="button" class="room-chip" id="topRoom">进房</button>
+      <h1 id="topTitle">点歌台</h1>
+      <button type="button" class="who-mini" id="topWho" aria-label="我的">我</button>
+    </header>
+
+    <section class="page" id="page-room" hidden>
+      <p class="brand">lov-ktv</p>
+      <div class="card who" id="who">
+        <img class="avatar" id="whoAvatar" alt="" hidden />
+        <div>
+          <b id="whoName">未登录</b>
+          <p class="tiny" id="whoHint">登录后可用微信确认电视扫码</p>
+        </div>
+        <a class="btn wechat" id="whoLogin" href="/login.html">登录</a>
+        <button class="btn" id="whoLogout" type="button" hidden>退出</button>
+      </div>
+      <div class="card">
+        <label class="tiny">房间码</label>
+        <div class="row">
+          <input id="room" placeholder="电视上的 6 位码，空着会新建" />
+        </div>
+        <div class="desk-mix">
+          <button class="btn primary" id="join" type="button">进入房间</button>
+          <a class="btn" id="openTv" href="/tv.html" target="lovktv-tv">打开电视</a>
+        </div>
+        <p class="tiny" id="roomState">进房后电视唱，手机点歌。</p>
+      </div>
+    </section>
+
+    <section class="page" id="page-search" hidden>
+      <div class="search-bar">
+        <input id="q" placeholder="歌名 / 歌手" />
+        <button class="btn primary icon-text" id="goSearch" type="button" aria-label="搜索">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
+        </button>
+        <button class="btn icon-text" id="openUpload" type="button" aria-label="本地入库">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5 5h-3v8h-4V8H7l5-5zM5 19h14v2H5z"/></svg>
+        </button>
+      </div>
+      <p class="page-lead">先试听确认是这首，再加入曲库。</p>
+      <audio id="preview" preload="none"></audio>
+      <input type="file" id="file" accept="audio/*,video/*" hidden />
+      <div id="hits"></div>
+    </section>
+
+    <section class="page page-desk" id="page-desk">
+      <div class="now-dock">
+        <div class="now-card" id="nowCard"></div>
+        <div class="now-tools">
+          <button class="icon-btn" id="skip" type="button" aria-label="切歌">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
+          </button>
+          <button class="icon-btn" id="vocalOff" type="button" aria-label="伴唱">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+          </button>
+          <button class="icon-btn" id="vocalOn" type="button" aria-label="原唱">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="desk-sheet">
+        <div class="desk-tabs" role="tablist">
+          <button type="button" class="desk-tab on" data-desk="queue">已点<em id="queueCount"></em></button>
+          <button type="button" class="desk-tab" data-desk="lib">曲库<em id="libCount"></em></button>
+        </div>
+        <div class="desk-pane" id="queue"></div>
+        <div class="desk-pane desk-lib" id="libPane" hidden>
+          <div class="lib-tools">
+            <div class="lib-search">
+              <input id="libQ" placeholder="搜歌名 / 歌星" autocomplete="off" />
+            </div>
+            <div class="lib-by" role="tablist">
+              <button type="button" class="lib-by-btn on" data-lib-by="all">全部</button>
+              <button type="button" class="lib-by-btn" data-lib-by="title">歌名</button>
+              <button type="button" class="lib-by-btn" data-lib-by="artist">歌星</button>
+            </div>
+            <div class="lib-index" id="libIndex"></div>
+          </div>
+          <div id="songs"></div>
+          <div class="lib-pager" id="libPager"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page page-player" id="page-player" hidden>
+      <div class="player-main" id="playerMain">
+        <div class="player-head">
+          <button class="icon-btn ghost" id="playerToDesk" type="button" aria-label="返回点歌台">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
+          </button>
+          <div class="player-titles">
+            <b id="playerTitle">还没选歌</b>
+            <p class="tiny" id="playerMeta">从点歌台听一首</p>
+          </div>
+          <button class="icon-btn ghost" id="playerEdit" type="button" aria-label="横屏对齐">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
+          </button>
+        </div>
+        <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
+        <audio id="playerGuide" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
+        <div class="player-stage">
+          <div class="player-art" id="playerArt">
+            <img class="player-cover" id="playerCover" alt="" hidden />
+            <div class="player-art-shade"></div>
+            <canvas id="playerBands" class="bands player-bands" width="720" height="220"></canvas>
+          </div>
+          <div class="player-clock">
+            <b id="playerNow">0:00</b>
+            <i class="player-clock-dot" aria-hidden="true"></i>
+            <em id="playerLeft">−0:00</em>
+          </div>
+        </div>
+        <section class="lyrics player-lyrics">
+          <div class="prev" id="playerPrev"></div>
+          <div class="line" id="playerCur"></div>
+          <div class="next" id="playerNext"></div>
+        </section>
+        <div class="player-transport">
+          <button class="icon-btn labeled on" id="playerVocal" type="button" aria-label="原唱">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+            <em id="playerVocalLabel">原唱</em>
+          </button>
+          <button class="icon-btn labeled" id="playerOrder" type="button" aria-label="顺序播放">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>
+            <em id="playerOrderLabel">顺序</em>
+          </button>
+          <button class="play-btn" id="playerPlay" type="button" aria-label="播放">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <button class="icon-btn labeled" id="playerNextBtn" type="button" aria-label="下一首">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
+            <em>下一首</em>
+          </button>
+          <button class="icon-btn labeled" id="playerAlignBtn" type="button" aria-label="横屏对齐">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v2H3zm0 6h12v2H3zm0 6h18v2H3z"/></svg>
+            <em>对齐</em>
+          </button>
+        </div>
+        <div class="player-list" id="playerList"></div>
+      </div>
+      <div class="player-align" id="playerAlign" hidden>
+        <div class="edit-bar">
+          <button class="icon-btn ghost" id="editBack" type="button" aria-label="完成">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
+          </button>
+          <button class="play-btn edit-play" id="editPlay" type="button" aria-label="播放">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+          </button>
+          <div class="align-now">
+            <span class="align-time" id="alignTime"></span>
+            <span class="align-text" id="alignText">拖块吸附，松手从这句起播</span>
+          </div>
+          <button class="icon-btn" id="playerOrderEdit" type="button" aria-label="顺序播放">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>
+          </button>
+          <button class="icon-btn" id="playerNextEdit" type="button" aria-label="下一首">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
+          </button>
+          <button class="icon-btn primary" id="saveAlign" type="button" aria-label="保存">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>
+          </button>
+        </div>
+        <div class="tl-toolbar">
+          <button class="btn tl-icon" id="tlZoomOut" type="button">－</button>
+          <button class="btn tl-icon" id="tlZoomIn" type="button">＋</button>
+          <button class="btn" id="tlChain" type="button">单句</button>
+          <button class="btn" id="nudgeBack" type="button">－0.1s</button>
+          <button class="btn" id="nudgeFwd" type="button">＋0.1s</button>
+        </div>
+        <div class="tl" id="timeline">
+          <aside class="tl-heads">
+            <div class="tl-head tl-head-ruler"></div>
+            <button class="tl-head tl-head-mix" id="tlMixHead" type="button" aria-label="伴奏" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z"/></svg>
+            </button>
+            <button class="tl-head tl-head-voice" id="tlVoiceHead" type="button" aria-label="人声" aria-pressed="true">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+            </button>
+            <div class="tl-head tl-head-lyrics" aria-label="歌词">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
+            </div>
+          </aside>
+          <div class="tl-viewport">
+            <div class="tl-playhead" aria-hidden="true"></div>
+            <div class="tl-stage" id="tlStage">
+              <div class="tl-ruler" id="tlRuler"></div>
+              <canvas class="tl-wave" id="tlWave"></canvas>
+              <canvas class="tl-wave tl-voice" id="tlVoiceWave"></canvas>
+              <div class="tl-track" id="tlTrack"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <nav class="tabbar" id="tabbar">
+      <button type="button" data-nav="desk" class="on">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z"/></svg>
+        点歌台
+      </button>
+      <button type="button" data-nav="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
+        搜歌
+      </button>
+      <button type="button" data-nav="player">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+        播放
+      </button>
+    </nav>
+  </div>
+  <script src="/bands.js?v=wave5"></script>
+  <script src="/timeline.js?v=tl7"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const STATUS = {
+      queued: "排队",
+      fetching: "搜歌下载",
+      separating: "人声分离",
+      aligning: "按人声对齐歌词",
+      annotating: "日语注音",
+      composing: "生成 MTV",
+      ready: "就绪",
+      failed: "失败",
+    };
+    const params = new URLSearchParams(location.search);
+    if (params.get("login")) {
+      location.replace("/login.html?" + params.toString());
+    }
+    $("room").value = (params.get("room") || localStorage.getItem("room") || "").toUpperCase();
+    let previewId = "";
+    let searchPage = 1;
+    const loginQs = () => {
+      const q = new URLSearchParams();
+      if ($("room").value) q.set("room", $("room").value.trim().toUpperCase());
+      q.set("next", location.pathname + location.search);
+      return "/login.html?" + q.toString();
+    };
+
+    async function loadWho() {
+      const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ user: null }));
+      const user = data.user;
+      $("whoName").textContent = user ? (user.nickname || "已登录") : "未登录";
+      $("whoHint").textContent = user ? (user.wechat ? "微信已绑定" : "本机身份") : "登录后可用微信确认电视扫码";
+      $("whoLogin").hidden = !!user;
+      $("whoLogin").href = loginQs();
+      $("whoLogout").hidden = !user;
+      if (user && user.avatar) {
+        $("whoAvatar").hidden = false;
+        $("whoAvatar").src = user.avatar;
+        $("topWho").innerHTML = `<img alt="" src="${user.avatar}">`;
+      } else {
+        $("whoAvatar").hidden = true;
+        $("topWho").textContent = user ? (user.nickname || "我").slice(0, 1) : "我";
+      }
+    }
+    $("whoLogout").onclick = async () => {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      loadWho();
+    };
+    loadWho();
+
+    const PAGES = ["room", "search", "desk", "player"];
+    const PAGE_TITLE = { room: "房间", search: "搜歌", desk: "点歌台", player: "播放" };
+    const ICO = {
+      play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
+      pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>',
+      listen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 0114 0v6a2 2 0 01-2 2h-2v-7h3a6 6 0 00-12 0h3v7H7a2 2 0 01-2-2v-6z"/></svg>',
+      plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
+      trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM8 9h2v9H8V9z"/></svg>',
+      save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>',
+      seq: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>',
+      shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3h4v4h-2V6.4l-3.2 3.2-1.4-1.4L17.6 5H17V3zM3 7h6.6l7 7H21v2h-5.6l-7-7H3V7zm14 8.6l3.2 3.2V17h2v4h-4v-2h1.6L14.6 15l1.4-1.4 1 1zM3 15h4.6l2.2-2.2 1.4 1.4L8.4 17H3v-2z"/></svg>',
+    };
+    function setPlayIcon(playing) {
+      const icon = playing ? ICO.pause : ICO.play;
+      const label = playing ? "暂停" : "播放";
+      ["playerPlay", "editPlay"].forEach((id) => {
+        const btn = $(id);
+        if (!btn) return;
+        btn.innerHTML = icon;
+        btn.setAttribute("aria-label", label);
+      });
+    }
+    function togglePlayer() {
+      if (!playerSong) return alert("先从点歌台听一首");
+      const audio = $("playerAudio");
+      hookPlayerAudio();
+      if (audio.paused) {
+        audio.play().catch(() => alert("点一下播放，手机才允许出声"));
+        setPlayIcon(true);
+        syncGuide();
+      } else {
+        audio.pause();
+        setPlayIcon(false);
+        syncGuide();
+      }
+    }
+    function playFromMs(ms) {
+      if (!playerSong) return;
+      const audio = $("playerAudio");
+      const start = () => {
+        hookPlayerAudio();
+        try { audio.currentTime = Math.max(0, ms) / 1000; } catch (err) {}
+        syncGuide(Math.max(0, ms) / 1000);
+        audio.play().then(() => setPlayIcon(true)).catch(() => setPlayIcon(false));
+        if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
+      };
+      if (audio.readyState >= 1) start();
+      else audio.addEventListener("loadedmetadata", start, { once: true });
+    }
+    let currentPage = "desk";
+    function syncEditAxis() {
+      const rotated = document.body.classList.contains("edit-on") && window.matchMedia("(orientation: portrait)").matches;
+      const tl = $("timeline");
+      if (tl) tl.dataset.axis = rotated ? "y" : "x";
+    }
+    function exitEdit() {
+      document.body.classList.remove("edit-on");
+      $("playerAlign").hidden = true;
+      $("playerAudio").muted = false;
+      try { screen.orientation.unlock(); } catch (err) {}
+      syncEditAxis();
+      syncGuide();
+    }
+    function enterEdit() {
+      if (!playerSong) return alert("先从点歌台听一首");
+      $("playerAlign").hidden = false;
+      document.body.classList.add("edit-on");
+      mixTrackOn = false;
+      voiceTrackOn = true;
+      applyEditorTracks();
+      syncEditAxis();
+      try { screen.orientation.lock("landscape"); } catch (err) {}
+      setPlayIcon(!$("playerAudio").paused);
+      syncGuide();
+      requestAnimationFrame(() => {
+        ensureTimeline().render();
+        applyEditorTracks();
+      });
+    }
+    function showPage(name, songId, push) {
+      if (name === "upload") name = "search";
+      if (!PAGES.includes(name)) name = $("room").value ? "desk" : "room";
+      if (name !== "player") {
+        exitEdit();
+        pausePlayer();
+      }
+      currentPage = name;
+      document.body.dataset.page = name;
+      PAGES.forEach((id) => { $("page-" + id).hidden = id !== name; });
+      document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("on", b.dataset.nav === name));
+      $("topTitle").textContent = PAGE_TITLE[name] || "点歌台";
+      $("topRoom").textContent = ($("room").value || "进房").slice(0, 8);
+      if (push !== false) {
+        const url = new URL(location.href);
+        url.hash = name;
+        history.pushState({ page: name }, "", url);
+      }
+      if (name === "desk") {
+        loadSongs();
+        loadRoom();
+      }
+      if (name === "player") {
+        loadPlayerList();
+        if (songId) loadPlayerSong(songId);
+        else bootPlayer();
+      }
+    }
+    document.querySelectorAll("[data-nav]").forEach((btn) => {
+      btn.onclick = () => showPage(btn.dataset.nav);
+    });
+    document.querySelectorAll(".desk-tab").forEach((btn) => {
+      btn.onclick = () => showDeskPane(btn.dataset.desk);
+    });
+    $("topRoom").onclick = () => showPage("room");
+    $("topWho").onclick = () => {
+      if ($("whoLogin").hidden) showPage("room");
+      else location.href = loginQs();
+    };
+    window.addEventListener("popstate", () => {
+      showPage((location.hash || "").replace("#", "") || ($("room").value ? "desk" : "room"), null, false);
+    });
+    window.addEventListener("orientationchange", () => {
+      syncEditAxis();
+      if (document.body.classList.contains("edit-on")) requestAnimationFrame(() => ensureTimeline().render());
+    });
+    window.addEventListener("resize", () => {
+      if (!document.body.classList.contains("edit-on")) return;
+      syncEditAxis();
+      ensureTimeline().render();
+    });
+
+    function tvUrl(code) {
+      return "/tv.html?room=" + encodeURIComponent(code);
+    }
+
+    function openTv(code) {
+      const url = tvUrl(code);
+      $("openTv").href = url;
+      window.open(url, "lovktv-tv");
+    }
+
+    async function joinRoom(openScreen) {
+      let code = $("room").value.trim().toUpperCase();
+      $("join").disabled = true;
+      try {
+        if (!code) {
+          const created = await fetch("/api/rooms", { method: "POST" }).then((r) => r.json());
+          code = created.code;
+        }
+        $("room").value = code;
+        localStorage.setItem("room", code);
+        const room = await fetch("/api/rooms/" + code).then((r) => r.json());
+        $("roomState").textContent = `已进房 ${room.code} · 队列 ${room.queue.length}`;
+        $("openTv").href = tvUrl(room.code);
+        if (openScreen) {
+          $("roomState").textContent = `已进房 ${room.code} · 点「打开电视」看大屏`;
+        }
+        await loadRoom();
+      } catch (err) {
+        $("roomState").textContent = "进房失败，检查服务是否已开";
+      }
+      $("join").disabled = false;
+    }
+
+    $("join").onclick = () => joinRoom(false);
+    $("openTv").onclick = (event) => {
+      const code = $("room").value.trim().toUpperCase();
+      if (!code) return;
+      event.preventDefault();
+      openTv(code);
+    };
+    if ($("room").value) {
+      $("openTv").href = tvUrl($("room").value);
+      joinRoom(false);
+    }
+
+    function stopPreview() {
+      const audio = $("preview");
+      audio.pause();
+      audio.removeAttribute("src");
+      previewId = "";
+      $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
+        btn.textContent = "试听";
+      });
+    }
+
+    async function togglePreview(hit, btn) {
+      if (previewId === hit.id) {
+        stopPreview();
+        return;
+      }
+      stopPreview();
+      btn.textContent = "准备中";
+      const params = new URLSearchParams({ title: hit.title || "", artist: hit.artist || "" });
+      const infoRes = await fetch(`/api/preview/${hit.id}/resolve?` + params.toString());
+      const info = await infoRes.json().catch(() => ({}));
+      if (!infoRes.ok) {
+        btn.textContent = "试听";
+        alert(info.detail || "这首暂时不能试听，换一条再听");
+        return;
+      }
+      const note = btn.closest(".hit").querySelector(".tiny");
+      if (note && info.title) note.textContent = `试听：${info.title}`;
+      previewId = hit.id;
+      btn.textContent = "停止";
+      const audio = $("preview");
+      audio.src = `/api/preview/${hit.id}?` + params.toString();
+      audio.play().catch(() => {
+        stopPreview();
+        alert("这首暂时不能试听，换一条再听");
+      });
+      audio.onended = stopPreview;
+    }
+
+    function bindSearchHits(q) {
+      $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
+        btn.onclick = () => {
+          const hit = JSON.parse(btn.parentElement.querySelector("[data-import]").dataset.import);
+          togglePreview(hit, btn);
+        };
+      });
+      $("hits").querySelectorAll("[data-import]").forEach((btn) => {
+        btn.onclick = async () => {
+          const hit = JSON.parse(btn.dataset.import);
+          stopPreview();
+          btn.disabled = true;
+          btn.textContent = "入库中";
+          const body = { query: q, id: hit.id, title: hit.title, artist: hit.artist };
+          const created = await fetch("/api/songs/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }).then((r) => r.json());
+          if (!created.id) {
+            btn.disabled = false;
+            btn.textContent = "加入曲库";
+            alert(created.detail || "入库失败");
+            return;
+          }
+          btn.textContent = "已加入";
+          loadSongs();
+        };
+      });
+      $("hits").querySelectorAll("[data-page]").forEach((btn) => {
+        btn.onclick = () => runSearch(Number(btn.dataset.page));
+      });
+    }
+
+    async function runSearch(page) {
+      const q = $("q").value.trim();
+      if (!q) return;
+      searchPage = Math.max(1, page);
+      stopPreview();
+      $("hits").innerHTML = "<p class='muted'>搜索中…</p>";
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${searchPage}&count=10`);
+      const data = await res.json();
+      if (!res.ok) {
+        $("hits").innerHTML = `<p>${data.detail || "搜索失败"}</p>`;
+        return;
+      }
+      const hits = data.hits || [];
+      const cards = hits.map((hit) => `
+        <div class="card hit">
+          <div>
+            <b>${hit.title}</b>
+            <div class="tiny">${hit.artist || ""} ${hit.album ? "· " + hit.album : ""} ${hit.clean ? "" : "· 可能是伴奏/翻唱"}</div>
+          </div>
+          <div class="hit-actions">
+            <button class="btn" data-preview="${hit.id}">试听</button>
+            <button class="btn primary" data-import='${JSON.stringify(hit)}'>加入曲库</button>
+          </div>
+        </div>
+      `).join("") || "<p class='muted'>没有结果</p>";
+      const canPrev = searchPage > 1;
+      const canNext = !!data.has_more && hits.length > 0;
+      const pager = `
+        <div class="pager">
+          <button class="btn" data-page="${searchPage - 1}" ${canPrev ? "" : "disabled"}>上一页</button>
+          <span class="tiny">第 ${searchPage} 页</span>
+          <button class="btn" data-page="${searchPage + 1}" ${canNext ? "" : "disabled"}>下一页</button>
+        </div>`;
+      $("hits").innerHTML = pager + cards + pager;
+      bindSearchHits(q);
+      $("hits").scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+
+    $("goSearch").onclick = () => runSearch(1);
+    $("q").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        runSearch(1);
+      }
+    });
+
+    function songInitial(text) {
+      const ch = String(text || "").replace(/[^\p{L}\p{N}]/gu, "")[0];
+      return ch || "♪";
+    }
+    const LIB_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+    const libState = { q: "", by: "all", letter: "", page: 1 };
+    let libTimer = 0;
+    let libStamp = "";
+    function showDeskPane(name) {
+      const pane = name === "lib" ? "lib" : "queue";
+      $("queue").hidden = pane !== "queue";
+      $("libPane").hidden = pane !== "lib";
+      document.querySelectorAll(".desk-tab").forEach((btn) => {
+        btn.classList.toggle("on", btn.dataset.desk === pane);
+      });
+      if (pane === "lib") loadSongs();
+    }
+    function renderLibIndex(letters) {
+      const have = new Map((letters || []).map((item) => [item.key, item.count]));
+      $("libIndex").innerHTML = `<button type="button" class="lib-letter ${libState.letter ? "" : "on"}" data-lib-letter="">全</button>` +
+        LIB_LETTERS.map((key) => {
+          const n = have.get(key) || 0;
+          const on = libState.letter === key ? "on" : "";
+          return `<button type="button" class="lib-letter ${on}" data-lib-letter="${key}" ${n ? "" : "disabled"}>${key}</button>`;
+        }).join("");
+      $("libIndex").querySelectorAll("[data-lib-letter]").forEach((btn) => {
+        btn.onclick = () => {
+          libState.letter = btn.dataset.libLetter || "";
+          libState.page = 1;
+          loadSongs();
+        };
+      });
+    }
+    function renderLibPager(data) {
+      const pages = Math.max(1, data.pages || 1);
+      const page = data.page || 1;
+      const total = data.total || 0;
+      if (!total) {
+        $("libPager").innerHTML = "";
+        return;
+      }
+      $("libPager").innerHTML = `
+        <button type="button" class="btn" data-lib-page="${page - 1}" ${page > 1 ? "" : "disabled"}>上一页</button>
+        <span class="lib-page-num">${page} / ${pages} · ${total} 首</span>
+        <button type="button" class="btn" data-lib-page="${page + 1}" ${page < pages ? "" : "disabled"}>下一页</button>`;
+      $("libPager").querySelectorAll("[data-lib-page]").forEach((btn) => {
+        btn.onclick = () => {
+          libState.page = Number(btn.dataset.libPage);
+          loadSongs();
+          $("songs").scrollIntoView({ block: "start" });
+        };
+      });
+    }
+    async function loadSongs() {
+      const params = new URLSearchParams({
+        q: libState.q,
+        by: libState.by,
+        letter: libState.letter,
+        page: String(libState.page),
+        count: "8",
+      });
+      const data = await fetch("/api/songs?" + params.toString()).then((r) => r.json());
+      const songs = data.songs || [];
+      libState.page = data.page || libState.page;
+      if ($("libCount")) $("libCount").textContent = (data.lib_total || data.total) ? String(data.lib_total || data.total) : "";
+      const stamp = JSON.stringify({
+        q: libState.q,
+        by: libState.by,
+        letter: libState.letter,
+        page: data.page,
+        pages: data.pages,
+        total: data.total,
+        letters: data.letters,
+        rows: songs.map((song) => [song.id, song.status, song.error, song.title]),
+      });
+      if (stamp === libStamp && $("songs").children.length) return;
+      libStamp = stamp;
+      renderLibIndex(data.letters || []);
+      renderLibPager(data);
+      const emptyHint = libState.q || libState.letter
+        ? `<div class="empty-desk"><p>没有符合的歌</p><button class="btn" type="button" data-lib-clear>清除筛选</button></div>`
+        : `<div class="empty-desk"><p>曲库还是空的</p><button class="btn primary" type="button" data-go-search>去搜歌</button></div>`;
+      $("songs").innerHTML = songs.map((song) => {
+        const canPlay = song.status === "ready";
+        const canRetry = song.status === "failed";
+        const canDelete = song.status !== "fetching" && song.status !== "separating";
+        const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
+        const mark = song.letter || songInitial(song.title);
+        return `
+        <div class="desk-row ${canPlay ? "" : "busy"}" ${canPlay ? `data-player="${song.id}"` : ""}>
+          <span class="desk-avatar">${escapeHtml(mark)}</span>
+          <div class="desk-copy">
+            <b>${escapeHtml(song.title)}</b>
+            <span class="tiny">${escapeHtml(song.artist || "未知歌手")} ${pill}</span>
+            ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
+          </div>
+          <div class="desk-actions">
+            ${canPlay ? `<button class="icon-btn primary" data-queue="${song.id}" aria-label="点歌">${ICO.plus}</button>` : ""}
+            ${canRetry ? `<button class="icon-btn" data-retry="${song.id}" aria-label="重试">${ICO.listen}</button>` : ""}
+            ${canDelete ? `<button class="icon-btn ghost" data-del="${song.id}" aria-label="删除">${ICO.trash}</button>` : ""}
+          </div>
+        </div>`;
+      }).join("") || emptyHint;
+      $("songs").querySelectorAll("[data-player]").forEach((row) => {
+        row.onclick = (event) => {
+          if (event.target.closest("button")) return;
+          openPlayer(row.dataset.player);
+        };
+      });
+      $("songs").querySelectorAll("[data-queue]").forEach((btn) => {
+        btn.onclick = async (event) => {
+          event.stopPropagation();
+          const code = $("room").value.trim();
+          if (!code) return alert("先填房间码并点进入");
+          btn.disabled = true;
+          const res = await fetch(`/api/rooms/${code}/queue`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ song_id: btn.dataset.queue }),
+          });
+          const data = await res.json();
+          btn.disabled = false;
+          if (!res.ok) {
+            alert(data.detail || "还不能点这首");
+            loadSongs();
+            return;
+          }
+          btn.classList.add("on");
+          showDeskPane("queue");
+          loadRoom();
+        };
+      });
+      $("songs").querySelectorAll("[data-retry]").forEach((btn) => {
+        btn.onclick = async (event) => {
+          event.stopPropagation();
+          btn.disabled = true;
+          await fetch(`/api/songs/${btn.dataset.retry}/retry`, { method: "POST" });
+          loadSongs();
+        };
+      });
+      $("songs").querySelectorAll("[data-del]").forEach((btn) => {
+        btn.onclick = async (event) => {
+          event.stopPropagation();
+          if (!confirm("删除这首歌？")) return;
+          btn.disabled = true;
+          await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
+          loadSongs();
+        };
+      });
+      const goSearch = $("songs").querySelector("[data-go-search]");
+      if (goSearch) goSearch.onclick = () => showPage("search");
+      const clear = $("songs").querySelector("[data-lib-clear]");
+      if (clear) {
+        clear.onclick = () => {
+          libState.q = "";
+          libState.letter = "";
+          libState.page = 1;
+          $("libQ").value = "";
+          loadSongs();
+        };
+      }
+    }
+    $("libQ").addEventListener("input", () => {
+      clearTimeout(libTimer);
+      libTimer = setTimeout(() => {
+        libState.q = $("libQ").value.trim();
+        libState.page = 1;
+        loadSongs();
+      }, 200);
+    });
+    $("libQ").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        clearTimeout(libTimer);
+        libState.q = $("libQ").value.trim();
+        libState.page = 1;
+        loadSongs();
+      }
+    });
+    document.querySelectorAll("[data-lib-by]").forEach((btn) => {
+      btn.onclick = () => {
+        libState.by = btn.dataset.libBy || "all";
+        libState.page = 1;
+        document.querySelectorAll("[data-lib-by]").forEach((item) => {
+          item.classList.toggle("on", item === btn);
+        });
+        $("libQ").placeholder = libState.by === "artist" ? "搜歌星" : libState.by === "title" ? "搜歌名" : "搜歌名 / 歌星";
+        loadSongs();
+      };
+    });
+
+    async function loadRoom() {
+      const code = $("room").value.trim();
+      if (!code) return;
+      const room = await fetch(`/api/rooms/${code}`).then((r) => r.json());
+      $("roomState").textContent = `房间 ${room.code} · 已点 ${room.queue.length}`;
+      $("topRoom").textContent = room.code;
+      const now = room.now_playing;
+      const mix = room.vocal_mix || 0;
+      $("vocalOff").classList.toggle("on", mix < 0.5);
+      $("vocalOn").classList.toggle("on", mix >= 0.5);
+      if ($("queueCount")) $("queueCount").textContent = room.queue.length ? String(room.queue.length) : "";
+      $("nowCard").innerHTML = now
+        ? `<button type="button" class="now-hit" id="nowToPlayer" ${now.status === "ready" ? "" : "disabled"}>
+            <span class="now-cover">${now.status === "ready" ? ICO.play : escapeHtml(songInitial(now.title))}</span>
+            <div>
+              <p class="kicker">${now.status === "ready" ? "正在唱" : (STATUS[now.status] || now.status)}</p>
+              <b>${escapeHtml(now.title)}</b>
+              <p class="tiny">${escapeHtml(now.artist || "")}</p>
+            </div>
+            ${now.status === "ready" ? `<span class="now-go">${ICO.play}</span>` : ""}
+          </button>`
+        : `<div class="now-idle">
+            <span class="now-cover">${ICO.listen}</span>
+            <div><b>还没在唱</b><p class="tiny">从曲库点一首，电视开始播</p></div>
+          </div>`;
+      const toPlayer = $("nowToPlayer");
+      if (toPlayer && now && now.status === "ready") toPlayer.onclick = () => openPlayer(now.song_id);
+      $("queue").innerHTML = room.queue.map((item, i) => {
+        const playing = i === room.now_index;
+        const ready = item.status === "ready";
+        return `
+        <div class="desk-row ${playing ? "on" : ""}">
+          <span class="desk-avatar ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1).padStart(2, "0")}</span>
+          <div class="desk-copy">
+            <b>${escapeHtml(item.title)}</b>
+            <span class="tiny">${playing ? "正在唱" : (ready ? "下一首排队" : (STATUS[item.status] || item.status))}</span>
+          </div>
+          <div class="desk-actions">
+            <button class="icon-btn ${playing ? "primary" : ""}" data-play="${item.id}" aria-label="唱这首">${ICO.play}</button>
+          </div>
+        </div>`;
+      }).join("") || `<div class="empty-desk"><p>还没点歌</p><button class="btn" type="button" data-go-lib>去曲库加点</button></div>`;
+      $("queue").querySelectorAll("[data-play]").forEach((btn) => {
+        btn.onclick = async () => {
+          const res = await fetch(`/api/rooms/${code}/play`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: btn.dataset.play }),
+          });
+          const data = await res.json();
+          if (!res.ok) alert(data.detail || "还不能点这首");
+          loadRoom();
+        };
+      });
+      const goLib = $("queue").querySelector("[data-go-lib]");
+      if (goLib) goLib.onclick = () => showDeskPane("lib");
+    }
+
+    const STEP_MS = 100;
+    let playerSong = null;
+    let playerLyrics = { cues: [] };
+    let selectedCue = -1;
+    let lyricsDirty = false;
+    let playerVocal = localStorage.getItem("playerVocal") === "0" ? 0 : 1;
+    let songMediaRev = 0;
+    function mediaUrl(songId, name) {
+      return `/media/${songId}/${name}?v=${songMediaRev || Date.now()}`;
+    }
+    let playerRaf = 0;
+    let playerHook = null;
+    let playerViz = null;
+    let alignTl = null;
+    let chainRest = false;
+    let voiceTrackOn = true;
+    let mixTrackOn = true;
+    let playOrder = localStorage.getItem("playOrder") === "shuffle" ? "shuffle" : "seq";
+    let playerCatalog = [];
+    let playerLoad = 0;
+    const lyricPaint = { prev: "", cur: "", next: "", align: "" };
+
+    function updatePlayOrderBtns() {
+      const shuffle = playOrder === "shuffle";
+      const icon = shuffle ? ICO.shuffle : ICO.seq;
+      const label = shuffle ? "随机" : "顺序";
+      const main = $("playerOrder");
+      if (main) {
+        main.innerHTML = `${icon}<em id="playerOrderLabel">${label}</em>`;
+        main.setAttribute("aria-label", shuffle ? "随机播放" : "顺序播放");
+        main.classList.toggle("on", shuffle);
+      }
+      const edit = $("playerOrderEdit");
+      if (edit) {
+        edit.innerHTML = icon;
+        edit.setAttribute("aria-label", shuffle ? "随机播放" : "顺序播放");
+        edit.classList.toggle("on", shuffle);
+      }
+    }
+    function togglePlayOrder() {
+      playOrder = playOrder === "shuffle" ? "seq" : "shuffle";
+      localStorage.setItem("playOrder", playOrder);
+      updatePlayOrderBtns();
+    }
+    async function loadPlayerList() {
+      const data = await fetch("/api/songs").then((r) => r.json()).catch(() => ({ songs: [] }));
+      playerCatalog = (data.songs || []).filter((song) => song.status === "ready");
+      renderPlayerList();
+    }
+    function renderPlayerList() {
+      const box = $("playerList");
+      if (!box) return;
+      const cur = playerSong && playerSong.id;
+      box.innerHTML = playerCatalog.map((song) => `
+        <button type="button" class="player-pick${song.id === cur ? " on" : ""}" data-pick="${song.id}">
+          <b>${escapeHtml(song.title)}</b>
+          <span class="tiny">${escapeHtml(song.artist || "")}</span>
+        </button>
+      `).join("") || "<p class='empty'>曲库还没有可播的歌</p>";
+      box.querySelectorAll("[data-pick]").forEach((btn) => {
+        btn.onclick = () => {
+          loadPlayerSong(btn.dataset.pick, { play: !$("playerAudio").paused });
+        };
+      });
+      const on = box.querySelector(".player-pick.on");
+      if (on) on.scrollIntoView({ block: "nearest" });
+    }
+    function playNextSong() {
+      const ids = playerCatalog.map((song) => song.id);
+      if (!ids.length) return;
+      const cur = playerSong && playerSong.id;
+      let next = ids[0];
+      if (playOrder === "shuffle") {
+        const pool = ids.filter((id) => id !== cur);
+        const src = pool.length ? pool : ids;
+        next = src[Math.floor(Math.random() * src.length)];
+      } else {
+        const index = Math.max(0, ids.indexOf(cur));
+        next = ids[(index + 1) % ids.length];
+      }
+      loadPlayerSong(next, { play: true });
+    }
+
+    function escapeHtml(text) {
+      return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+    function fmtClock(ms) {
+      const n = Math.max(0, Math.floor((ms || 0) / 1000));
+      return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+    }
+    function setPlayerCover(song) {
+      const art = $("playerArt");
+      const cover = $("playerCover");
+      art.classList.remove("has-cover");
+      cover.hidden = true;
+      cover.removeAttribute("src");
+      if (!song || !song.id) return;
+      cover.onload = () => {
+        cover.hidden = false;
+        art.classList.add("has-cover");
+      };
+      cover.onerror = () => {
+        cover.hidden = true;
+        cover.removeAttribute("src");
+        art.classList.remove("has-cover");
+      };
+      cover.src = mediaUrl(song.id, "cover.jpg");
+    }
+    function fmtMs(ms) {
+      const n = Math.max(0, Math.floor(ms || 0));
+      const m = Math.floor(n / 60000);
+      const s = Math.floor((n % 60000) / 1000);
+      const cs = Math.floor((n % 1000) / 10);
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+    }
+    function tokenProgress(tok, t) {
+      if (t >= tok.end_ms) return 100;
+      if (t >= tok.start_ms) return ((t - tok.start_ms) / Math.max(tok.end_ms - tok.start_ms, 1)) * 100;
+      return 0;
+    }
+    function cueKey(cue) {
+      return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}` : "";
+    }
+    function cueLine(cue) {
+      const text = String(cue.text || "");
+      const tokens = cue.tokens || [];
+      if (/\s/.test(text) || !tokens.length) return text;
+      if (tokens.every((tok) => /^[A-Za-z0-9']/.test(tok.text || ""))) {
+        return tokens.map((tok) => tok.text).join(" ");
+      }
+      return text;
+    }
+    function renderCue(cue, t) {
+      const tokens = cue.tokens || [];
+      if (!tokens.length) return escapeHtml(cueLine(cue));
+      return tokens.map((tok, i) => {
+        const p = Math.round(tokenProgress(tok, t));
+        const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
+        const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
+        const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+        const latin = /^[A-Za-z0-9']/.test(tok.text || "");
+        const next = tokens[i + 1];
+        const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
+          ? `<span class="tok-space"> </span>`
+          : "";
+        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}</span></span>${space}`;
+      }).join("");
+    }
+    function paintLine(el, cue, t, slot, empty) {
+      if (!el) return;
+      if (!cue) {
+        if (lyricPaint[slot] !== "empty") {
+          el.textContent = empty || "";
+          lyricPaint[slot] = "empty";
+        }
+        return;
+      }
+      const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
+      const id = cueKey(cue) + ":" + skin;
+      if (lyricPaint[slot] !== id) {
+        el.innerHTML = renderCue(cue, t);
+        lyricPaint[slot] = id;
+        return;
+      }
+      if (skin !== "live") return;
+      const toks = cue.tokens || [];
+      el.querySelectorAll(".rb").forEach((node, i) => {
+        if (!toks[i]) return;
+        const next = Math.round(tokenProgress(toks[i], t)) + "%";
+        if (node.style.getPropertyValue("--p") !== next) node.style.setProperty("--p", next);
+      });
+    }
+    function cueIndexAt(t) {
+      const cues = playerLyrics.cues || [];
+      const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
+      if (idx >= 0) return idx;
+      const upcoming = cues.findIndex((c) => t < c.start_ms);
+      return upcoming >= 0 ? upcoming : (cues.length ? cues.length - 1 : -1);
+    }
+    function pausePlayer() {
+      const audio = $("playerAudio");
+      audio.pause();
+      const guide = $("playerGuide");
+      if (guide) guide.pause();
+      setPlayIcon(false);
+      if (playerRaf) {
+        cancelAnimationFrame(playerRaf);
+        playerRaf = 0;
+      }
+    }
+    function applyEditorTracks() {
+      const editing = document.body.classList.contains("edit-on");
+      $("playerAudio").muted = editing && !mixTrackOn;
+      $("tlMixHead").classList.toggle("off", !mixTrackOn);
+      $("tlMixHead").setAttribute("aria-pressed", mixTrackOn ? "true" : "false");
+      $("tlVoiceHead").classList.toggle("off", !voiceTrackOn);
+      $("tlVoiceHead").setAttribute("aria-pressed", voiceTrackOn ? "true" : "false");
+      $("timeline").classList.toggle("mix-off", !mixTrackOn);
+      $("timeline").classList.toggle("voice-off", !voiceTrackOn);
+      if (alignTl) {
+        alignTl.setMixOn(mixTrackOn);
+        alignTl.setVoiceOn(voiceTrackOn);
+      }
+    }
+    function syncGuide(forceTime) {
+      const audio = $("playerAudio");
+      const guide = $("playerGuide");
+      if (!guide || !guide.getAttribute("src") || guide.readyState < 1) return;
+      const t = forceTime != null ? forceTime : (audio.currentTime || 0);
+      try {
+        if (Math.abs((guide.currentTime || 0) - t) > 0.08) guide.currentTime = t;
+      } catch (err) {}
+      const editing = document.body.classList.contains("edit-on");
+      // Editor: voice lane is guide.m4a. Don't mute it just because 原唱 is on,
+      // or mix-off + 原唱 becomes total silence.
+      const wantGuide = editing && voiceTrackOn && !(mixTrackOn && playerVocal);
+      guide.muted = !wantGuide;
+      if (wantGuide && audio && !audio.paused && audio.src) {
+        guide.play().catch(() => {});
+      } else {
+        guide.pause();
+      }
+    }
+    function hookPlayerAudio() {
+      playerHook = LovBands.hookAnalyser($("playerAudio"), playerHook);
+      if (playerHook && playerHook.ctx && playerHook.ctx.state === "suspended") {
+        playerHook.ctx.resume().catch(() => {});
+      }
+    }
+    function drawPlayerBands(t) {
+      if (!playerViz) playerViz = LovBands.create($("playerBands"));
+      const audio = $("playerAudio");
+      if (audio && (audio.currentSrc || audio.src)) playerViz.setSource(audio.currentSrc || audio.src);
+      const playing = !!(playerHook && audio && !audio.paused && audio.src);
+      if (playing) LovBands.pull(playerHook);
+      playerViz.draw({
+        playing,
+        freq: playerHook && playerHook.freq,
+        wave: playerHook && playerHook.time,
+        playMs: t || 0,
+        duration: (audio.duration || 0) * 1000,
+        cues: playerLyrics.cues || [],
+        selected: selectedCue,
+      });
+    }
+    function ensureTimeline() {
+      if (alignTl) return alignTl;
+      alignTl = LovTimeline.create({
+        root: $("timeline"),
+        stage: $("tlStage"),
+        wave: $("tlWave"),
+        voice: $("tlVoiceWave"),
+        ruler: $("tlRuler"),
+        track: $("tlTrack"),
+        getCues: () => playerLyrics.cues || [],
+        getAudio: () => $("playerAudio"),
+        selected: () => selectedCue,
+        onSeek: (ms) => syncGuide(ms / 1000),
+        onSelect: (index) => {
+          selectedCue = index;
+          updateAlignNow();
+        },
+        onGrab: () => {
+          $("playerAudio").pause();
+          setPlayIcon(false);
+          syncGuide();
+        },
+        onReleaseCue: (cue) => playFromMs(cue.start_ms),
+        onChange: () => {
+          lyricsDirty = true;
+          updateAlignNow();
+        },
+      });
+      return alignTl;
+    }
+    function updateAlignNow(playMs) {
+      const cues = playerLyrics.cues || [];
+      const dragging = !!(alignTl && alignTl.isDragging());
+      let index = selectedCue;
+      if (playMs != null && !dragging) index = cueIndexAt(playMs);
+      const cue = cues[index];
+      if (!cue) {
+        $("alignTime").textContent = playMs != null ? fmtMs(playMs) : "";
+        if (lyricPaint.align !== "hint") {
+          $("alignText").textContent = "拖块吸附，松手从这句起播";
+          lyricPaint.align = "hint";
+        }
+        return;
+      }
+      const clock = playMs != null && !dragging ? fmtMs(playMs) : fmtMs(cue.start_ms);
+      if ($("alignTime").textContent !== clock) $("alignTime").textContent = clock;
+      paintLine($("alignText"), cue, playMs != null && !dragging ? playMs : -1, "align");
+    }
+    function renderAlignList() {
+      updateAlignNow();
+      ensureTimeline().render();
+    }
+    function paintPlayer() {
+      if ($("page-player").hidden) {
+        playerRaf = 0;
+        return;
+      }
+      const audio = $("playerAudio");
+      const t = Math.floor((audio.currentTime || 0) * 1000);
+      const cues = playerLyrics.cues || [];
+      const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
+      const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
+      if (idx >= 0) {
+        paintLine($("playerPrev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev");
+        paintLine($("playerCur"), cues[idx], t, "cur");
+        paintLine($("playerNext"), cues[idx + 1] || null, -1, "next");
+      } else if (upcomingIdx >= 0) {
+        const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
+        paintLine($("playerPrev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev");
+        paintLine($("playerCur"), held, held ? 1e12 : 0, "cur", "");
+        paintLine($("playerNext"), cues[upcomingIdx], -1, "next");
+      } else {
+        paintLine($("playerPrev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev");
+        paintLine($("playerCur"), null, 0, "cur", playerSong ? "" : "还没选歌");
+        paintLine($("playerNext"), null, 0, "next");
+      }
+      const dragging = !!(alignTl && alignTl.isDragging());
+      const nextSel = cueIndexAt(t);
+      if (nextSel !== selectedCue && !dragging) {
+        selectedCue = nextSel;
+      }
+      if (document.body.classList.contains("edit-on")) updateAlignNow(t);
+      drawPlayerBands(t);
+      const dur = (audio.duration || 0) * 1000;
+      $("playerNow").textContent = fmtClock(t);
+      $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
+      $("playerArt").classList.toggle("is-live", !audio.paused && !!audio.src);
+      syncGuide();
+      if (!$("playerAlign").hidden) {
+        ensureTimeline().sync(t, (audio.duration || 0) * 1000);
+      }
+      playerRaf = requestAnimationFrame(paintPlayer);
+    }
+    function shiftSelected(delta, rest) {
+      const cues = playerLyrics.cues || [];
+      if (selectedCue < 0 || selectedCue >= cues.length) return;
+      const last = rest ? cues.length : selectedCue + 1;
+      for (let i = selectedCue; i < last; i += 1) {
+        cues[i].start_ms += delta;
+        cues[i].end_ms += delta;
+        (cues[i].tokens || []).forEach((tok) => {
+          tok.start_ms += delta;
+          tok.end_ms += delta;
+        });
+      }
+      for (let i = 0; i < cues.length; i += 1) {
+        const prevEnd = i ? cues[i - 1].end_ms : 0;
+        const nxt = i + 1 < cues.length ? cues[i + 1].start_ms : null;
+        let start = Math.max(0, prevEnd, cues[i].start_ms);
+        let end = Math.max(start + 200, cues[i].end_ms);
+        if (nxt != null && end > nxt) {
+          end = nxt;
+          if (end < start + 200) {
+            start = Math.max(prevEnd, nxt - 200);
+            end = nxt;
+          }
+        }
+        cues[i].start_ms = start;
+        cues[i].end_ms = end;
+      }
+      lyricsDirty = true;
+      renderAlignList();
+    }
+    function waitMedia(el, gen) {
+      return new Promise((resolve) => {
+        if (!el || !el.getAttribute("src")) {
+          resolve(false);
+          return;
+        }
+        if (el.readyState >= 1) {
+          resolve(true);
+          return;
+        }
+        const finish = (ok) => {
+          el.removeEventListener("loadedmetadata", onOk);
+          el.removeEventListener("error", onErr);
+          resolve(ok);
+        };
+        const onOk = () => finish(gen === playerLoad);
+        const onErr = () => finish(false);
+        el.addEventListener("loadedmetadata", onOk, { once: true });
+        el.addEventListener("error", onErr, { once: true });
+      });
+    }
+    async function loadPlayerSong(songId, opts) {
+      const wantPlay = !!(opts && opts.play);
+      const gen = ++playerLoad;
+      const song = await fetch("/api/songs/" + songId).then((r) => r.json());
+      if (gen !== playerLoad) return;
+      if (!song.id || song.status !== "ready") {
+        $("playerMeta").textContent = "这首还不能播";
+        return;
+      }
+      stopPreview();
+      const audio = $("playerAudio");
+      const guide = $("playerGuide");
+      audio.pause();
+      if (guide) guide.pause();
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+      if (guide) {
+        guide.onloadedmetadata = null;
+        guide.onerror = null;
+      }
+      playerSong = song;
+      playerLyrics = await fetch(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
+      if (gen !== playerLoad) return;
+      lyricsDirty = false;
+      selectedCue = 0;
+      lyricPaint.prev = "";
+      lyricPaint.cur = "";
+      lyricPaint.next = "";
+      lyricPaint.align = "";
+      $("playerTitle").textContent = song.title;
+      $("playerMeta").textContent = song.artist && !String(song.title).includes(song.artist) ? song.artist : "";
+      setPlayerCover(song);
+      $("playerVocal").classList.toggle("on", !!playerVocal);
+      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
+      songMediaRev = Date.now();
+      const original = mediaUrl(song.id, "original.mp3");
+      audio.src = playerVocal ? original : mediaUrl(song.id, "karaoke.m4a");
+      audio.onerror = () => {
+        if (gen !== playerLoad) return;
+        if (!String(audio.currentSrc || audio.src).includes("original.mp3")) audio.src = original;
+      };
+      const guideUrl = mediaUrl(song.id, "guide.m4a");
+      guide.src = guideUrl;
+      guide.onerror = () => {
+        if (gen !== playerLoad) return;
+        guide.removeAttribute("src");
+        guide.load();
+      };
+      ensureTimeline().setVoiceUrl(guideUrl);
+      applyEditorTracks();
+      renderAlignList();
+      renderPlayerList();
+      const ready = await waitMedia(audio, gen);
+      if (gen !== playerLoad) return;
+      try { audio.currentTime = 0; } catch (err) {}
+      try { if (guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0; } catch (err) {}
+      hookPlayerAudio();
+      ensureTimeline().render();
+      if (ready && wantPlay) {
+        try {
+          await audio.play();
+          setPlayIcon(true);
+          syncGuide(0);
+        } catch (err) {
+          setPlayIcon(false);
+        }
+      } else {
+        setPlayIcon(false);
+      }
+      if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
+    }
+    function openPlayer(songId) {
+      showPage("player", songId);
+    }
+    async function bootPlayer() {
+      if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
+      if (playerSong) return;
+      const code = $("room").value.trim();
+      if (!code) return;
+      const room = await fetch("/api/rooms/" + code).then((r) => r.json()).catch(() => null);
+      if (room && room.now_playing && room.now_playing.status === "ready") {
+        await loadPlayerSong(room.now_playing.song_id);
+      }
+    }
+
+    $("playerPlay").onclick = () => togglePlayer();
+    $("editPlay").onclick = () => togglePlayer();
+    $("playerVocal").onclick = () => {
+      playerVocal = playerVocal ? 0 : 1;
+      localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
+      $("playerVocal").classList.toggle("on", !!playerVocal);
+      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
+      $("playerVocal").setAttribute("aria-label", playerVocal ? "原唱" : "伴唱");
+      if (!playerSong) return;
+      const audio = $("playerAudio");
+      const t = audio.currentTime || 0;
+      const playing = !audio.paused && !!audio.src;
+      const gen = playerLoad;
+      audio.onloadedmetadata = () => {
+        if (gen !== playerLoad) return;
+        try { audio.currentTime = t; } catch (err) {}
+        if (playing) audio.play().catch(() => {});
+        syncGuide(t);
+      };
+      audio.src = playerVocal ? mediaUrl(playerSong.id, "original.mp3") : mediaUrl(playerSong.id, "karaoke.m4a");
+    };
+    function seekPlayerArt(event) {
+      const audio = $("playerAudio");
+      if (!audio.duration) return;
+      const box = $("playerArt").getBoundingClientRect();
+      const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
+      audio.currentTime = x * audio.duration;
+      syncGuide(audio.currentTime);
+    }
+    $("playerArt").addEventListener("pointerdown", (event) => {
+      if (event.button && event.button !== 0) return;
+      $("playerArt").setPointerCapture(event.pointerId);
+      $("playerArt").classList.add("is-scrub");
+      seekPlayerArt(event);
+    });
+    $("playerArt").addEventListener("pointermove", (event) => {
+      if (!$("playerArt").classList.contains("is-scrub")) return;
+      seekPlayerArt(event);
+    });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => {
+      $("playerArt").addEventListener(name, () => $("playerArt").classList.remove("is-scrub"));
+    });
+    $("tlMixHead").onclick = () => {
+      mixTrackOn = !mixTrackOn;
+      applyEditorTracks();
+    };
+    $("tlVoiceHead").onclick = () => {
+      voiceTrackOn = !voiceTrackOn;
+      applyEditorTracks();
+      syncGuide();
+    };
+    $("nudgeBack").onclick = () => {
+      shiftSelected(-STEP_MS, chainRest);
+      ensureTimeline().render();
+    };
+    $("nudgeFwd").onclick = () => {
+      shiftSelected(STEP_MS, chainRest);
+      ensureTimeline().render();
+    };
+    $("tlZoomOut").onclick = () => ensureTimeline().zoom(-1);
+    $("tlZoomIn").onclick = () => ensureTimeline().zoom(1);
+    $("tlChain").onclick = () => {
+      chainRest = !chainRest;
+      $("tlChain").textContent = chainRest ? "后面一起" : "单句";
+      $("tlChain").classList.toggle("primary", chainRest);
+      ensureTimeline().setChain(chainRest);
+    };
+    $("saveAlign").onclick = async () => {
+      if (!playerSong || !(playerLyrics.cues || []).length) return;
+      const btn = $("saveAlign");
+      btn.disabled = true;
+      try {
+        const res = await fetch(`/api/songs/${playerSong.id}/lyrics`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(playerLyrics),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        lyricsDirty = false;
+        btn.classList.add("on");
+        btn.setAttribute("aria-label", "已保存");
+        btn.innerHTML = ICO.save;
+        setTimeout(() => {
+          btn.classList.remove("on");
+          btn.setAttribute("aria-label", "保存");
+        }, 1200);
+      } catch (err) {
+        btn.setAttribute("aria-label", "保存失败");
+        setTimeout(() => btn.setAttribute("aria-label", "保存"), 1600);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+    $("playerAudio").onended = () => {
+      playNextSong();
+    };
+
+    $("skip").onclick = async () => {
+      const code = $("room").value.trim().toUpperCase();
+      $("room").value = code;
+      if (!code) return alert("先填房间码并点进入");
+      $("skip").disabled = true;
+      try {
+        const room = await fetch(`/api/rooms/${code}/skip`, { method: "POST" }).then((r) => r.json());
+        const now = room.now_playing;
+        $("roomState").textContent = now
+          ? `房间 ${room.code} · 正在唱 ${now.title}`
+          : `房间 ${room.code} · 队列空`;
+        showPage("desk", null, false);
+        await loadRoom();
+      } finally {
+        $("skip").disabled = false;
+      }
+    };
+    $("vocalOff").onclick = () => fetch(`/api/rooms/${$("room").value}/mix`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vocal_mix: 0 }),
+    });
+    $("vocalOn").onclick = () => fetch(`/api/rooms/${$("room").value}/mix`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vocal_mix: 1 }),
+    });
+
+    $("openUpload").onclick = () => $("file").click();
+    $("file").onchange = async () => {
+      const file = $("file").files[0];
+      if (!file) return;
+      const btn = $("openUpload");
+      btn.disabled = true;
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("title", file.name);
+        fd.append("lyrics", "");
+        const res = await fetch("/api/songs", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.detail || "上传失败");
+        $("file").value = "";
+        showPage("desk");
+      } catch (err) {
+        alert(err.message || "上传失败");
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    $("playerEdit").onclick = () => enterEdit();
+    $("playerVocal").classList.toggle("on", !!playerVocal);
+    $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
+    $("playerVocal").setAttribute("aria-label", playerVocal ? "原唱" : "伴唱");
+    $("playerOrder").onclick = () => togglePlayOrder();
+    $("playerOrderEdit").onclick = () => togglePlayOrder();
+    $("playerNextBtn").onclick = () => playNextSong();
+    $("playerNextEdit").onclick = () => playNextSong();
+    updatePlayOrderBtns();
+    $("playerAlignBtn").onclick = () => enterEdit();
+    $("playerToDesk").onclick = () => showPage("desk");
+    $("editBack").onclick = () => exitEdit();
+
+    setInterval(() => {
+      if (!$("page-desk").hidden) {
+        loadRoom();
+        loadSongs();
+      }
+    }, 2000);
+
+    const bootPage = (location.hash || "").replace("#", "") || ($("room").value ? "desk" : "room");
+    showPage(bootPage, null, false);
+  </script>
+</body>
+</html>

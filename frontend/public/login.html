@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>lov-ktv 登录</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <link rel="stylesheet" href="/app.css?v=login1" />
+</head>
+<body>
+  <div class="wrap">
+    <p class="brand">lov-ktv</p>
+    <h1 id="heading">登录</h1>
+    <p class="muted" id="lead">微信登录后，手机和电视就能认出是你。</p>
+    <p class="err" id="err" hidden></p>
+
+    <div class="card who" id="meBox" hidden>
+      <img class="avatar" id="avatar" alt="" hidden />
+      <div>
+        <b id="nick"></b>
+        <p class="tiny" id="meHint"></p>
+      </div>
+      <button class="btn" id="logout" type="button">退出</button>
+    </div>
+
+    <div class="card" id="ticketBox" hidden>
+      <p>电视正在等你确认登录。</p>
+      <button class="btn primary" id="confirmTv" type="button">确认登录电视</button>
+      <p class="tiny" id="ticketState"></p>
+    </div>
+
+    <div class="card" id="loginBox">
+      <div class="row wrap-row">
+        <a class="btn wechat" id="wechat" href="#">微信登录</a>
+        <a class="btn wechat" id="wechatQuick" href="#">微信快捷登录</a>
+      </div>
+      <p class="tiny" id="wechatHint">微信扫码走开放平台；在微信里打开本页可用快捷登录。</p>
+      <hr class="rule" />
+      <label class="tiny" for="nickname">没有微信凭证时，用本机身份</label>
+      <div class="row">
+        <input id="nickname" placeholder="怎么称呼你" maxlength="24" />
+        <button class="btn primary" id="deviceLogin" type="button">本机登录</button>
+      </div>
+      <p class="tiny">家庭局域网可先用本机登录，配好 AppID 后再绑微信。</p>
+    </div>
+
+    <p class="row wrap-row">
+      <a class="btn" id="toMobile" href="/m.html">去点歌</a>
+      <a class="btn" id="toTv" href="/tv.html">打开电视</a>
+    </p>
+  </div>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const params = new URLSearchParams(location.search);
+    const ticket = params.get("login") || "";
+    const room = (params.get("room") || "").toUpperCase();
+    const next = params.get("next") || "";
+    const inWechat = /MicroMessenger/i.test(navigator.userAgent || "");
+    const deviceKey = "lovktv_device";
+
+    function deviceId() {
+      let id = localStorage.getItem(deviceKey);
+      if (!id) {
+        id = (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "")) || String(Date.now()) + Math.random().toString(16).slice(2);
+        localStorage.setItem(deviceKey, id);
+      }
+      return id;
+    }
+
+    function showError(text) {
+      $("err").hidden = !text;
+      $("err").textContent = text || "";
+    }
+
+    function wechatHref(quick) {
+      const q = new URLSearchParams();
+      if (quick) q.set("quick", "1");
+      if (ticket) q.set("ticket", ticket);
+      if (next) q.set("next", next);
+      else if (ticket) q.set("next", "/login.html?login=" + encodeURIComponent(ticket) + (room ? "&room=" + room : "") + "&ok=1");
+      else if (room) q.set("next", "/m.html?room=" + room);
+      return "/api/auth/wechat/login?" + q.toString();
+    }
+
+    function renderUser(user) {
+      const box = $("meBox");
+      box.hidden = !user;
+      $("loginBox").hidden = !!user;
+      if (!user) return;
+      $("nick").textContent = user.nickname || "已登录";
+      $("meHint").textContent = user.wechat ? "微信已绑定" : "本机身份";
+      if (user.avatar) {
+        $("avatar").hidden = false;
+        $("avatar").src = user.avatar;
+      } else {
+        $("avatar").hidden = true;
+      }
+    }
+
+    async function loadMe() {
+      const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json());
+      return data.user;
+    }
+
+    async function confirmTicket() {
+      if (!ticket) return;
+      $("ticketState").textContent = "正在确认…";
+      const res = await fetch("/api/auth/qr/" + ticket + "/confirm", { method: "POST", credentials: "same-origin" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        $("ticketState").textContent = data.detail || "确认失败，请刷新电视二维码";
+        return;
+      }
+      $("ticketState").textContent = "已确认，请看电视。";
+      $("confirmTv").disabled = true;
+    }
+
+    $("logout").onclick = async () => {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      renderUser(null);
+      $("ticketBox").hidden = !ticket;
+      $("confirmTv").disabled = false;
+      $("ticketState").textContent = ticket ? "请先登录，再确认电视。" : "";
+    };
+
+    $("deviceLogin").onclick = async () => {
+      showError("");
+      const res = await fetch("/api/auth/device", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId(), nickname: $("nickname").value.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showError(data.detail || "本机登录失败");
+        return;
+      }
+      renderUser(data.user);
+      if (ticket) await confirmTicket();
+      else if (next && next.startsWith("/")) location.replace(next);
+    };
+
+    $("confirmTv").onclick = () => confirmTicket();
+
+    (async function boot() {
+      if (params.get("error")) showError(params.get("error"));
+      const status = await fetch("/api/auth/status").then((r) => r.json()).catch(() => ({}));
+      $("wechat").href = wechatHref(false);
+      $("wechatQuick").href = wechatHref(true);
+      if (!status.wechat) {
+        $("wechat").classList.add("disabled");
+        $("wechat").addEventListener("click", (e) => {
+          e.preventDefault();
+          showError("还没配置 WECHAT_APP_ID / WECHAT_APP_SECRET，先用本机登录或扫电视码。");
+        });
+      }
+      if (!status.wechat_quick) {
+        $("wechatQuick").hidden = !inWechat;
+        $("wechatQuick").classList.add("disabled");
+        $("wechatQuick").addEventListener("click", (e) => {
+          e.preventDefault();
+          showError("快捷登录需要公众号 WECHAT_MP_APP_ID。微信外来宾请用「微信登录」扫码。");
+        });
+      }
+      if (inWechat) {
+        $("wechatQuick").hidden = false;
+        $("heading").textContent = "微信快捷登录";
+        $("lead").textContent = "在微信里打开，点快捷登录即可授权。";
+      }
+      if (ticket) {
+        $("ticketBox").hidden = false;
+        $("heading").textContent = "登录电视";
+        $("lead").textContent = "先用微信或本机身份登录，再确认这台电视。";
+        $("toTv").href = "/tv.html" + (room ? "?room=" + room : "");
+        $("toMobile").href = "/m.html" + (room ? "?room=" + room : "");
+      } else if (room) {
+        $("toMobile").href = "/m.html?room=" + room;
+        $("toTv").href = "/tv.html?room=" + room;
+      }
+      const user = await loadMe();
+      renderUser(user);
+      if (user && ticket) {
+        $("ticketState").textContent = "已登录，确认后电视会自动进入。";
+        if (params.get("ok") === "1") await confirmTicket();
+      }
+      $("nickname").value = localStorage.getItem("lovktv_nickname") || "";
+      $("nickname").addEventListener("change", () => {
+        localStorage.setItem("lovktv_nickname", $("nickname").value.trim());
+      });
+    })();
+  </script>
+</body>
+</html>
