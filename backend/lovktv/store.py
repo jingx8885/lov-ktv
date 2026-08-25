@@ -279,9 +279,11 @@ def _user_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if not row:
         return None
     data = dict(row)
+    user_id = str(data["id"])
     return {
-        "id": data["id"],
-        "nickname": data.get("nickname") or "KTV 用户",
+        "id": user_id,
+        "sid": user_id[:6].upper(),
+        "nickname": data.get("nickname") or f"ID {user_id[:6].upper()}",
         "avatar": data.get("avatar") or "",
         "wechat": bool(data.get("wechat_openid")),
     }
@@ -310,7 +312,7 @@ def upsert_wechat_user(openid: str, unionid: str = "", nickname: str = "", avata
             user_id = new_id()
             conn.execute(
                 "INSERT INTO users (id, wechat_openid, wechat_unionid, nickname, avatar, created_at) VALUES (?,?,?,?,?,?)",
-                (user_id, openid, unionid, nickname or "微信用户", avatar, now),
+                (user_id, openid, unionid, nickname or f"ID {user_id[:6].upper()}", avatar, now),
             )
     user = get_user(user_id)
     if not user:
@@ -333,7 +335,7 @@ def upsert_device_user(device_id: str, nickname: str = "") -> dict[str, Any]:
             user_id = new_id()
             conn.execute(
                 "INSERT INTO users (id, device_id, nickname, created_at) VALUES (?,?,?,?)",
-                (user_id, device_id, nickname or "手机用户", now),
+                (user_id, device_id, nickname or f"ID {user_id[:6].upper()}", now),
             )
     user = get_user(user_id)
     if not user:

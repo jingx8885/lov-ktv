@@ -23,9 +23,9 @@
         <img class="avatar" id="whoAvatar" alt="" hidden />
         <div>
           <b id="whoName">未登录</b>
-          <p class="tiny" id="whoHint">登录后可用微信确认电视扫码</p>
+          <p class="tiny" id="whoHint">微信扫一下就能认号</p>
         </div>
-        <a class="btn wechat" id="whoLogin" href="/login.html">登录</a>
+        <a class="btn wechat" id="whoLogin" href="/api/auth/scan">认号</a>
         <button class="btn" id="whoLogout" type="button" hidden>退出</button>
       </div>
       <div class="card">
@@ -247,14 +247,14 @@
       const q = new URLSearchParams();
       if ($("room").value) q.set("room", $("room").value.trim().toUpperCase());
       q.set("next", location.pathname + location.search);
-      return "/login.html?" + q.toString();
+      return "/api/auth/scan?" + q.toString();
     };
 
     async function loadWho() {
       const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ user: null }));
       const user = data.user;
-      $("whoName").textContent = user ? (user.nickname || "已登录") : "未登录";
-      $("whoHint").textContent = user ? (user.wechat ? "微信已绑定" : "本机身份") : "登录后可用微信确认电视扫码";
+      $("whoName").textContent = user ? (user.sid || user.nickname || "已登录") : "未登录";
+      $("whoHint").textContent = user ? (user.wechat ? "微信 ID 已锁定" : "本机 ID") : "微信扫一下就能认号";
       $("whoLogin").hidden = !!user;
       $("whoLogin").href = loginQs();
       $("whoLogout").hidden = !user;
@@ -264,7 +264,7 @@
         $("topWho").innerHTML = `<img alt="" src="${user.avatar}">`;
       } else {
         $("whoAvatar").hidden = true;
-        $("topWho").textContent = user ? (user.nickname || "我").slice(0, 1) : "我";
+        $("topWho").textContent = user ? (user.sid || "我").slice(0, 2) : "我";
       }
     }
     $("whoLogout").onclick = async () => {

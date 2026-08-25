@@ -59,6 +59,20 @@ input, textarea {
   position: fixed; inset: 0; z-index: 1; pointer-events: none !important;
   background: linear-gradient(180deg, rgba(11,16,32,.62) 0%, rgba(11,16,32,.22) 42%, rgba(11,16,32,.78) 100%);
 }
+.stage-fx,
+.party-fx {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none !important;
+  background: transparent;
+}
+.stage-fx { z-index: 2; }
+.party-fx { z-index: 11; }
+@media (prefers-reduced-motion: reduce) {
+  .stage-fx, .party-fx { display: none; }
+}
 .tv-ui {
   position: relative; z-index: 10; min-height: 100vh;
   display: grid; grid-template-rows: auto 1fr auto; padding: 24px 32px 28px;
@@ -408,6 +422,13 @@ button.tl-head {
 .tabs { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
 .tabs button.on { background: var(--accent); }
 .btn.wechat { background: #07c160; color: #fff; }
+.sid-display {
+  margin: 4px 0 8px;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+}
 .btn.disabled, a.btn.disabled { opacity: .45; pointer-events: auto; }
 .row.wrap-row { flex-wrap: wrap; }
 .rule { border: 0; border-top: 1px solid #243; margin: 16px 0; }

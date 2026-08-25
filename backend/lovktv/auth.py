@@ -35,10 +35,10 @@ def public_base(request_base: str = "") -> str:
     return PUBLIC_URL or request_base.rstrip("/")
 
 
-def wechat_authorize_url(redirect_uri: str, state: str, quick: bool = False) -> str:
-    if quick and wechat_ready("mp"):
+def wechat_authorize_url(redirect_uri: str, state: str, quick: bool = False, silent: bool = False) -> str:
+    if (quick or silent) and wechat_ready("mp"):
         app_id = WECHAT_MP_APP_ID
-        scope = "snsapi_userinfo"
+        scope = "snsapi_base" if silent else "snsapi_userinfo"
         host = "https://open.weixin.qq.com/connect/oauth2/authorize"
     elif wechat_ready("web"):
         app_id = WECHAT_APP_ID
@@ -58,9 +58,10 @@ def wechat_authorize_url(redirect_uri: str, state: str, quick: bool = False) -> 
     return f"{host}?{query}#wechat_redirect"
 
 
-def exchange_wechat_code(code: str, quick: bool = False) -> dict:
-    app_id = WECHAT_MP_APP_ID if quick and wechat_ready("mp") else WECHAT_APP_ID
-    secret = WECHAT_MP_APP_SECRET if quick and wechat_ready("mp") else WECHAT_APP_SECRET
+def exchange_wechat_code(code: str, quick: bool = False, silent: bool = False) -> dict:
+    use_mp = (quick or silent) and wechat_ready("mp")
+    app_id = WECHAT_MP_APP_ID if use_mp else WECHAT_APP_ID
+    secret = WECHAT_MP_APP_SECRET if use_mp else WECHAT_APP_SECRET
     if not app_id or not secret:
         raise ValueError("还没配置微信开放平台 AppID")
     token_url = (
@@ -78,6 +79,13 @@ def exchange_wechat_code(code: str, quick: bool = False) -> dict:
         token = client.get(token_url).json()
         if token.get("errcode") or not token.get("access_token"):
             raise ValueError(str(token.get("errmsg") or "微信授权失败"))
+        if silent:
+            return {
+                "openid": str(token.get("openid") or ""),
+                "unionid": str(token.get("unionid") or ""),
+                "nickname": "",
+                "avatar": "",
+            }
         info = client.get(
             "https://api.weixin.qq.com/sns/userinfo?"
             + urlencode(
@@ -96,6 +104,28 @@ def exchange_wechat_code(code: str, quick: bool = False) -> dict:
         "nickname": str(info.get("nickname") or "微信用户"),
         "avatar": str(info.get("headimgurl") or ""),
     }
+
+
+def in_wechat(user_agent: str) -> bool:
+    return "MicroMessenger" in (user_agent or "")
+
+
+def scan_login_url(base: str, ticket: str = "", room: str = "", next_path: str = "") -> str:
+    query = []
+    if ticket:
+        query.append(f"ticket={quote(ticket)}")
+    if room:
+        query.append(f"room={quote(room)}")
+    if next_path:
+        query.append(f"next={quote(next_path)}")
+    suffix = ("?" + "&".join(query)) if query else ""
+    return f"{base.rstrip('/')}/api/auth/scan{suffix}"
+
+
+def done_login_path(ticket: str = "", room: str = "", next_path: str = "") -> str:
+    if next_path.startswith("/"):
+        return next_path
+    return login_page_url("", ticket=ticket, room=room, ok=True)
 
 
 def encode_state(kind: str, ticket: str = "", next_path: str = "") -> str:

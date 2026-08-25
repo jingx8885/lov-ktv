@@ -4,10 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=phone5" />
+  <link rel="stylesheet" href="/app.css?v=fx1" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
+  <canvas id="stageFx" class="stage-fx" aria-hidden="true"></canvas>
+  <canvas id="partyFx" class="party-fx" aria-hidden="true"></canvas>
   <a class="qrbox" id="phoneLink" href="#">
     <div id="qr" class="qr"></div>
     <span class="qr-cap">扫码 · <b id="code"></b></span>
@@ -15,8 +17,8 @@
   <div class="login-gate" id="loginGate" hidden>
     <div class="login-card">
       <p class="brand">lov-ktv</p>
-      <h2>扫码登录电视</h2>
-      <p class="muted">手机微信扫一扫，或打开链接后点确认。</p>
+      <h2>微信扫一下</h2>
+      <p class="muted">扫码直接认号，不用点确认。</p>
       <div id="loginQr" class="qr"></div>
       <p class="tiny" id="loginHint">二维码约 3 分钟有效</p>
       <div class="row wrap-row" style="justify-content:center">
@@ -60,7 +62,9 @@
     </footer>
   </div>
   <script src="/vendor/qrcode.js"></script>
+  <script src="/vendor/canvas-confetti.min.js"></script>
   <script src="/bands.js?v=wave5"></script>
+  <script src="/stage-fx.js?v=fx1"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const STATUS = {
@@ -87,6 +91,10 @@
     let lastLyricsAt = 0;
     let audioHook = null;
     let bandsViz = null;
+    let stageFx = null;
+    let lastFxCue = -1;
+    let lastCelebrateAt = 0;
+    let hookLines = new Set();
 
     function escapeHtml(text) {
       return String(text || "")
@@ -137,7 +145,7 @@
     let loginTimer = 0;
 
     function renderUserChip(user) {
-      $("tvUser").textContent = user ? (user.nickname || "已登录") : "未登录";
+      $("tvUser").textContent = user ? (user.sid || user.nickname || "已登录") : "未登录";
       $("tvLoginBtn").textContent = user ? "换账号" : "登录";
       if (user && user.avatar) {
         $("tvAvatar").hidden = false;
@@ -164,7 +172,7 @@
       const data = await res.json();
       loginTicket = data.ticket;
       renderQr(data.url, "loginQr");
-      $("loginHint").textContent = "用手机微信扫一扫，约 3 分钟有效";
+      $("loginHint").textContent = "微信扫一下就行，约 3 分钟有效";
       if (loginTimer) clearInterval(loginTimer);
       loginTimer = setInterval(pollLogin, 2000);
     }
@@ -218,6 +226,49 @@
 
     function hookAudio() {
       audioHook = LovBands.hookAnalyser($("karaoke"), audioHook);
+    }
+
+    function ensureStageFx() {
+      if (stageFx || !window.LovStageFx) return stageFx;
+      stageFx = LovStageFx.create($("stageFx"));
+      LovStageFx.bindParty($("partyFx"));
+      return stageFx;
+    }
+
+    function liveBeat() {
+      if (!audioHook) return 0;
+      const freq = audioHook.freq;
+      const wave = audioHook.time;
+      let peak = 0;
+      let sum = 0;
+      if (wave && wave.length) {
+        const step = Math.max(1, Math.floor(wave.length / 160));
+        for (let i = 0; i < wave.length; i += step) {
+          const v = (wave[i] - 128) / 128;
+          sum += v * v;
+          peak = Math.max(peak, Math.abs(v));
+        }
+        const rms = Math.sqrt(sum / Math.max(1, Math.floor(wave.length / step)));
+        return Math.max(0, Math.min(1, rms * 0.7 + peak * 0.5));
+      }
+      if (freq && freq.length) {
+        for (let i = 2; i < Math.min(48, freq.length); i += 1) sum += freq[i];
+        return Math.max(0, Math.min(1, (sum / 46) / 255));
+      }
+      return 0;
+    }
+
+    function fireCueFx(cue, idx) {
+      if (!cue || idx < 0 || idx === lastFxCue) return;
+      lastFxCue = idx;
+      const fx = ensureStageFx();
+      if (fx) fx.spawn();
+      const text = String(cue.text || "").trim();
+      const now = Date.now();
+      if (text && hookLines.has(text) && now - lastCelebrateAt > 8000) {
+        lastCelebrateAt = now;
+        LovStageFx.celebrate(idx % 2 ? "side" : "center");
+      }
     }
 
     function drawBands(t) {
@@ -291,6 +342,9 @@
         mediaRev = Date.now();
         lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
         lastLyricsAt = Date.now();
+        lastFxCue = -1;
+        hookLines = window.LovStageFx ? LovStageFx.hookTexts(lyrics.cues) : new Set();
+        ensureStageFx();
         bindMtv(now.song_id);
         if (canPlay()) startPlayback();
         else {
@@ -337,6 +391,9 @@
       });
       $("mtv").hidden = true;
       document.body.classList.remove("has-mtv");
+      lastFxCue = -1;
+      hookLines = new Set();
+      if (stageFx) stageFx.clear();
     }
 
     function paint() {
@@ -359,6 +416,7 @@
         const cue = idx >= 0 ? cues[idx] : null;
         const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
         if (cue) {
+          fireCueFx(cue, idx);
           $("prev").innerHTML = idx > 0 ? renderCue(cues[idx - 1], 1e12) : "";
           $("cur").innerHTML = renderCue(cue, t);
           $("next").innerHTML = cues[idx + 1] ? renderCue(cues[idx + 1], -1) : "";
@@ -374,6 +432,12 @@
         }
       }
       drawBands(now && now.status === "ready" ? Math.floor(($("karaoke").currentTime || 0) * 1000) : 0);
+      if (stageFx) {
+        stageFx.draw({
+          beat: now && now.status === "ready" ? liveBeat() : 0,
+          now: performance.now() / 1000,
+        });
+      }
       requestAnimationFrame(paint);
     }
 
@@ -441,6 +505,8 @@
       applyMix();
       silenceMtv($("mtv"));
       hookAudio();
+      const fx = ensureStageFx();
+      if (fx && lastFxCue < 0) fx.spawn();
       const ready = () => {
         syncVocal(karaoke.currentTime || 0);
       };

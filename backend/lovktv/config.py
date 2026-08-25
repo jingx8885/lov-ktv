@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("LOVKTV_DATA", ROOT / "data")).resolve()
-MEDIA_DIR = DATA_DIR / "media"
+MEDIA_DIR = (DATA_DIR / "media").resolve()
 DB_PATH = DATA_DIR / "lovktv.sqlite"
 HOST = "0.0.0.0"
 PORT = 8787
