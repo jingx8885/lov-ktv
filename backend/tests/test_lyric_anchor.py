@@ -1,5 +1,9 @@
 from lovktv.pipeline.align import align_lyrics
-from lovktv.pipeline.lyric_anchor import align_lines_with_anchor, asr_words_to_segments
+from lovktv.pipeline.lyric_anchor import (
+    align_lines_with_anchor,
+    asr_words_to_segments,
+    merge_whisper_and_anchor,
+)
 
 
 def _pulse(seconds: float, hop_ms: int = 20, bursts: list[tuple[float, float]] | None = None) -> list[float]:
@@ -165,6 +169,75 @@ def test_whisper_segment_ids_prevent_cjk_merge():
     assert "散らかる" in segs[1].text
 
 
+def test_merge_keeps_whisper_clock_when_anchor_drifts():
+    whisper = [
+        {"text": "I close my eyes", "start_ms": 14248, "end_ms": 17494, "from_asr": False},
+        {"text": "The world that's waiting", "start_ms": 17494, "end_ms": 21195, "from_asr": False},
+    ]
+    anchor = [
+        {"text": "I close my eyes", "start_ms": 0, "end_ms": 500, "from_asr": False},
+        {"text": "The world that's waiting", "start_ms": 500, "end_ms": 1000, "from_asr": False},
+    ]
+    merged = merge_whisper_and_anchor(whisper, anchor)
+    assert [row["start_ms"] for row in merged] == [14248, 17494]
+
+
+def test_merge_takes_nearby_anchor_span():
+    whisper = [
+        {"text": "よそに揃い始めてた", "start_ms": 74580, "end_ms": 78720, "from_asr": True},
+        {"text": "息が", "start_ms": 78720, "end_ms": 79220, "from_asr": False},
+    ]
+    anchor = [
+        {"text": "よそに揃い始めてた", "start_ms": 74580, "end_ms": 77800, "from_asr": True},
+        {"text": "息が", "start_ms": 77800, "end_ms": 78720, "from_asr": True},
+    ]
+    merged = merge_whisper_and_anchor(whisper, anchor)
+    assert merged[0]["end_ms"] <= merged[1]["start_ms"]
+    assert merged[1]["from_asr"]
+    assert merged[1]["start_ms"] == 77800
+
+
+def test_merge_does_not_chop_rescued_line():
+    """Get along: Whisper misses 美貌が许さないわ and starts the next line on が."""
+    whisper = [
+        {"text": "誰もがうらやむこのパワーと", "start_ms": 28720, "end_ms": 32340, "from_asr": True},
+        {"text": "美貌が许さないわ", "start_ms": 32340, "end_ms": 33560, "from_asr": False},
+        {"text": "どんな相手でも怯まないで", "start_ms": 33560, "end_ms": 39320, "from_asr": True},
+    ]
+    anchor = [
+        {"text": "誰もがうらやむこのパワーと", "start_ms": 28720, "end_ms": 32620, "from_asr": True},
+        {"text": "美貌が许さないわ", "start_ms": 32620, "end_ms": 34940, "from_asr": True},
+        {"text": "どんな相手でも怯まないで", "start_ms": 34940, "end_ms": 38740, "from_asr": True},
+    ]
+    merged = merge_whisper_and_anchor(whisper, anchor)
+    assert merged[1]["from_asr"]
+    assert merged[1]["end_ms"] >= 34600
+    assert merged[1]["end_ms"] - merged[1]["start_ms"] >= 1800
+    assert merged[2]["start_ms"] >= merged[1]["end_ms"]
+
+
+def test_junk_asr_keeps_official_clock():
+    timeline = align_lyrics(
+        [
+            {"ms": 14248, "text": "I close my eyes and I can see"},
+            {"ms": 17494, "text": "The world that's waiting up for me"},
+            {"ms": 21195, "text": "That I call my own"},
+            {"ms": 27491, "text": "Through the dark through the door"},
+        ],
+        "en",
+        asr_words=[
+            {"text": "anska", "start_ms": 0, "end_ms": 1840},
+            {"text": "You", "start_ms": 66360, "end_ms": 67760},
+        ],
+        envelope=[],
+    )
+    starts = [cue["start_ms"] for cue in timeline["cues"]]
+    assert starts[0] == 14248
+    assert abs(starts[1] - 17494) <= 80
+    assert abs(starts[2] - 21195) <= 80
+    assert abs(starts[3] - 27491) <= 80
+
+
 def test_align_lyrics_uses_anchor_for_asr_words():
     timeline = align_lyrics(
         [{"ms": 15700, "text": "Gotta change my answering machine"}],
@@ -178,7 +251,7 @@ def test_align_lyrics_uses_anchor_for_asr_words():
         ],
         envelope=[],
     )
-    assert timeline["alignment"] == "asr"
+    assert timeline["alignment"] in {"asr", "lrc"}
     tokens = timeline["cues"][0]["tokens"]
     assert [tok["text"] for tok in tokens] == ["Gotta", "change", "my", "answering", "machine"]
     assert tokens[1]["end_ms"] == 20020

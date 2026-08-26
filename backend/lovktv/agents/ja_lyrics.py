@@ -284,7 +284,7 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
         if not specs:
             continue
         start_ms = int(cue["start_ms"])
-        end_ms = int(cue["end_ms"])
+        end_ms = int(cue.get("sing_end_ms") or cue["end_ms"])
         span = max(end_ms - start_ms, 200)
         unit = span / len(specs)
         tokens = []

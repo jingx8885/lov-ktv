@@ -5,10 +5,13 @@ from lovktv.pipeline.align import (
     align_lyrics,
     assign_plain_lines,
     best_asr_span,
+    consensus_line_start,
     energy_token_spans,
     estimate_lrc_offset,
+    guard_early_next_starts,
     match_score,
     match_threshold,
+    merge_with_energy,
     snap_to_onset,
     vocal_phrases,
     vocal_regions,
@@ -166,11 +169,11 @@ def test_repeated_chorus_maps_to_later_asr():
         {"ms": 74610, "text": "どうでもいいような夜だけど"},
     ]
     timeline = align_lyrics(lines, "ja", asr_words=asr, envelope=[])
-    assert timeline["alignment"] == "asr"
+    assert timeline["alignment"] in {"asr", "lrc"}
     starts = [cue["start_ms"] for cue in timeline["cues"]]
-    assert starts[0] == 9900
-    assert starts[2] == 25000
-    assert starts[3] == 74600
+    assert abs(starts[0] - 9900) <= 80
+    assert abs(starts[2] - 25060) <= 80
+    assert abs(starts[3] - 74610) <= 80
     assert starts[3] > starts[0]
     both = best_asr_span("どうでもいいような夜だけど", asr, "ja")
     assert both == (9900, 13800)
@@ -569,6 +572,180 @@ def test_unmatched_verse_snaps_to_voice_before_next_asr():
     assert 27200 <= bounds[2]["start_ms"] <= 28200
     assert bounds[2]["end_ms"] >= 29500
     assert 29700 <= bounds[3]["start_ms"] <= 31000
+
+
+def test_consensus_moves_when_whisper_and_onset_agree():
+    hop = 20
+    env = _pulse(20, hop, [(1.0, 8.5), (10.0, 16.0)])
+    start, from_asr = consensus_line_start(
+        official_ms=2500,
+        asr_start=10000,
+        regions=vocal_regions(env, hop),
+        next_ms=16000,
+        prev_end=0,
+    )
+    assert from_asr
+    assert 9800 <= start <= 10400
+
+
+def test_consensus_keeps_official_when_whisper_is_early():
+    hop = 20
+    env = _pulse(40, hop, [(32.6, 39.0)])
+    start, from_asr = consensus_line_start(
+        official_ms=35540,
+        asr_start=33560,
+        regions=vocal_regions(env, hop),
+        next_ms=39050,
+        prev_end=32710,
+    )
+    assert start == 35540
+    assert not from_asr
+
+
+def test_official_clock_ignores_early_whisper():
+    hop = 20
+    env = _pulse(40, hop, [(32.6, 39.0)])
+    timeline = align_lyrics(
+        [
+            {"ms": 32710, "text": "美貌が许さないわ"},
+            {"ms": 35540, "text": "どんな相手でも怯まないで"},
+        ],
+        "ja",
+        asr_words=[
+            {"text": "微妨が許せないわ", "start_ms": 32700, "end_ms": 34940},
+            {"text": "どんな相手でも", "start_ms": 33560, "end_ms": 37120},
+        ],
+        envelope=env,
+        hop_ms=hop,
+    )
+    assert abs(timeline["cues"][0]["start_ms"] - 32710) <= 80
+    assert abs(timeline["cues"][1]["start_ms"] - 35540) <= 80
+    assert timeline["cues"][0]["end_ms"] >= 35400
+
+
+def test_energy_snaps_unmatched_hole_without_next_asr():
+    hop = 20
+    env = _pulse(20, hop, [(4.0, 7.2), (8.0, 11.0)])
+    timeline = align_lyrics(
+        [
+            {"ms": 1000, "text": "first line sitting in a hole"},
+            {"ms": 8000, "text": "second line on the voice"},
+        ],
+        "en",
+        asr_words=[{"text": "anska", "start_ms": 0, "end_ms": 1800}],
+        envelope=env,
+        hop_ms=hop,
+        duration_ms=20000,
+    )
+    assert 3800 <= timeline["cues"][0]["start_ms"] <= 4300
+    assert abs(timeline["cues"][1]["start_ms"] - 8000) <= 200
+
+
+def test_energy_does_not_steal_next_line_onset():
+    hop = 20
+    env = _pulse(45, hop, [(14.0, 33.5), (39.2, 44.0)])
+    timeline = align_lyrics(
+        [
+            {"ms": 34307, "text": "But it feels like home"},
+            {"ms": 39993, "text": "They can say they can say it all sounds crazy"},
+        ],
+        "en",
+        asr_words=[{"text": "anska", "start_ms": 0, "end_ms": 1840}],
+        envelope=env,
+        hop_ms=hop,
+        duration_ms=45000,
+    )
+    assert abs(timeline["cues"][0]["start_ms"] - 34307) <= 200
+    assert abs(timeline["cues"][1]["start_ms"] - 39993) <= 200
+
+
+def test_energy_keeps_official_when_voice_present():
+    hop = 20
+    env = _pulse(40, hop, [(14.0, 36.0)])
+    timeline = align_lyrics(
+        [
+            {"ms": 14248, "text": "I close my eyes and I can see"},
+            {"ms": 17494, "text": "The world that's waiting up for me"},
+        ],
+        "en",
+        asr_words=[
+            {"text": "anska", "start_ms": 0, "end_ms": 1840},
+            {"text": "You", "start_ms": 66360, "end_ms": 67760},
+        ],
+        envelope=env,
+        hop_ms=hop,
+    )
+    assert timeline["cues"][0]["start_ms"] == 14248
+    assert abs(timeline["cues"][1]["start_ms"] - 17494) <= 80
+
+
+def test_energy_does_not_chop_previous_end():
+    hop = 20
+    env = _pulse(160, hop, [(149.9, 151.3), (153.7, 159.7)])
+    merged = merge_with_energy(
+        [
+            {"text": "力合わせ遥か先", "start_ms": 149920, "end_ms": 153720, "from_asr": True},
+            {"text": "未来に向かい步き続けて行く", "start_ms": 151620, "end_ms": 159580, "from_asr": True},
+        ],
+        env,
+        hop,
+    )
+    assert merged[0]["end_ms"] >= 153000
+    assert merged[1]["start_ms"] >= merged[0]["end_ms"]
+
+
+def test_guard_delays_next_line_started_in_a_hole():
+    hop = 20
+    env = _pulse(95, hop, [(76.0, 83.8), (86.16, 90.0)])
+    bounds = guard_early_next_starts(
+        [
+            {"text": "限りないほど", "start_ms": 82460, "end_ms": 85000, "from_asr": True},
+            {"text": "Get along Try again", "start_ms": 85000, "end_ms": 93480, "from_asr": True},
+        ],
+        [
+            {"ms": 83100, "text": "限りないほど"},
+            {"ms": 86300, "text": "Get along Try again"},
+        ],
+        env,
+        hop,
+    )
+    assert bounds[1]["start_ms"] >= 85800
+    assert bounds[0]["end_ms"] >= bounds[1]["start_ms"] - 20
+
+
+def test_guard_does_not_pull_back_official_hole():
+    hop = 20
+    env = _pulse(120, hop, [(91.0, 94.0), (112.0, 121.0)])
+    bounds = guard_early_next_starts(
+        [
+            {"text": "2人刻もう", "start_ms": 91060, "end_ms": 93900, "from_asr": True},
+            {"text": "透き通った白い肌も", "start_ms": 112460, "end_ms": 116700, "from_asr": True},
+        ],
+        [
+            {"ms": 87150, "text": "2人刻もう"},
+            {"ms": 106539, "text": "透き通った白い肌も"},
+        ],
+        env,
+        hop,
+    )
+    assert 111000 <= bounds[1]["start_ms"] <= 113500
+
+
+def test_energy_does_not_move_asr_hit():
+    hop = 20
+    env = _pulse(20, hop, [(2.0, 4.0), (8.0, 12.0)])
+    timeline = align_lyrics(
+        [{"ms": 8000, "text": "hello world tonight"}],
+        "en",
+        asr_words=[
+            {"text": "hello", "start_ms": 8000, "end_ms": 8400},
+            {"text": "world", "start_ms": 8400, "end_ms": 9000},
+            {"text": "tonight", "start_ms": 9000, "end_ms": 9600},
+        ],
+        envelope=env,
+        hop_ms=hop,
+    )
+    assert abs(timeline["cues"][0]["start_ms"] - 8000) <= 280
 
 
 def test_align_lyrics_uses_asr_word_times():

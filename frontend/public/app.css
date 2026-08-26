@@ -69,7 +69,7 @@ input, textarea {
   background: transparent;
 }
 .stage-fx { z-index: 2; }
-.party-fx { z-index: 11; }
+.party-fx { z-index: 9; }
 @media (prefers-reduced-motion: reduce) {
   .stage-fx, .party-fx { display: none; }
 }
@@ -84,7 +84,7 @@ input, textarea {
   display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
 }
 .start-gate {
-  position: fixed; inset: 0 0 110px 0; z-index: 12;
+  position: fixed; inset: 0; z-index: 12;
   display: grid; place-items: center;
   background: rgba(11,16,32,.55);
   pointer-events: none;
@@ -92,6 +92,19 @@ input, textarea {
 .start-gate[hidden] { display: none; }
 .start-gate .btn { min-width: 220px; min-height: 64px; font-size: 22px; pointer-events: auto; }
 .lyrics { text-align: center; min-height: 40vh; display: grid; place-items: center; }
+.tv .lyrics > .lyric-plate {
+  max-width: min(92vw, 1520px);
+  padding: 18px 40px 22px;
+  border-radius: 22px;
+  background: rgba(6, 10, 22, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.tv .lyrics .prev:empty,
+.tv .lyrics .next:empty,
+.tv .lyrics .line:empty { display: none; }
 .line, .next, .prev {
   display: flex;
   flex-wrap: wrap;
@@ -238,7 +251,7 @@ input, textarea {
   cursor: pointer;
   overflow: hidden;
 }
-body.tv .bands { height: 168px; }
+body.tv .bands { display: none; }
 .player-align {
   display: grid;
   gap: 8px;
@@ -577,6 +590,34 @@ body.phone .app {
 }
 .now-tools .icon-btn { background: transparent; }
 .now-tools .icon-btn.on { color: var(--accent); background: rgba(255, 77, 141, .14); }
+.now-tools .icon-btn.live {
+  color: #fff;
+  background: #e11d48;
+  box-shadow: 0 0 0 4px rgba(225, 29, 72, .22);
+}
+.now-mix { padding: 4px 6px 8px; }
+.mix-row {
+  display: grid;
+  grid-template-columns: 52px 1fr 36px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.mix-row[hidden] { display: none !important; }
+.mix-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+.mix-row em { font-style: normal; text-align: right; color: var(--text); }
+#micHint { min-height: 1.2em; margin: 6px 2px 0; }
+.mic-live {
+  margin: 8px 0 0;
+  color: #ff8aa8;
+  font-size: 14px;
+  font-weight: 650;
+}
 .desk-sheet {
   background: #121826;
   border-radius: 22px;

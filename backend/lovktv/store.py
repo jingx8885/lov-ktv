@@ -44,6 +44,7 @@ def init_db() -> None:
               created_at INTEGER NOT NULL,
               vocal_mix REAL NOT NULL DEFAULT 1,
               volume INTEGER NOT NULL DEFAULT 80,
+              mic_gain INTEGER NOT NULL DEFAULT 80,
               now_index INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS queue (
@@ -77,6 +78,9 @@ def init_db() -> None:
             );
             """
         )
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(rooms)")}
+        if "mic_gain" not in cols:
+            conn.execute("ALTER TABLE rooms ADD COLUMN mic_gain INTEGER NOT NULL DEFAULT 80")
 
 
 def now_ms() -> int:
@@ -258,12 +262,19 @@ def play_now(code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]:
     return room_snapshot(code)
 
 
-def set_mix(code: str, vocal_mix: float | None = None, volume: int | None = None) -> dict[str, Any]:
+def set_mix(
+    code: str,
+    vocal_mix: float | None = None,
+    volume: int | None = None,
+    mic_gain: int | None = None,
+) -> dict[str, Any]:
     fields = {}
     if vocal_mix is not None:
-        fields["vocal_mix"] = max(0.0, min(1.0, vocal_mix))
+        fields["vocal_mix"] = max(0.0, min(1.0, float(vocal_mix)))
     if volume is not None:
-        fields["volume"] = max(0, min(100, volume))
+        fields["volume"] = max(0, min(100, int(volume)))
+    if mic_gain is not None:
+        fields["mic_gain"] = max(0, min(100, int(mic_gain)))
     if fields:
         assignments = ", ".join(f"{key}=?" for key in fields)
         with _LOCK, connect() as conn:

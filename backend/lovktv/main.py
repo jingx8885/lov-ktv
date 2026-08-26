@@ -28,8 +28,9 @@ from lovktv.auth import (
 from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, search_songs
 from lovktv.catalog.index import query_library
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
+from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
-from lovktv.pipeline.lyrics import validate_timeline, write_subtitles
+from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.store import (
     bump,
     confirm_login_ticket,
@@ -77,6 +78,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 _rooms: dict[str, set[WebSocket]] = {}
+_peers: dict[WebSocket, dict] = {}
+_mics: dict[str, str] = {}
 
 
 def _request_base(request: Request) -> str:
@@ -106,6 +109,25 @@ def _set_session(response, token: str, request: Request) -> None:
 
 def _clear_session(response) -> None:
     response.delete_cookie(SESSION_COOKIE, path="/")
+
+
+def _room_view(code: str, snap: dict | None = None) -> dict:
+    room = dict(snap or room_snapshot(code))
+    room["mic_on"] = bool(_mics.get(code))
+    room["mic_peer"] = _mics.get(code) or ""
+    room.update(host_volume_meta())
+    return room
+
+
+async def _broadcast(code: str, payload: dict, skip: WebSocket | None = None) -> None:
+    for peer in list(_rooms.get(code, set())):
+        if peer is skip:
+            continue
+        try:
+            await peer.send_json(payload)
+        except Exception:
+            _rooms.get(code, set()).discard(peer)
+            _peers.pop(peer, None)
 
 
 @app.on_event("startup")
@@ -386,6 +408,7 @@ def api_save_lyrics(song_id: str, payload: dict = Body(default={})) -> dict:
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     write_subtitles(timeline, MEDIA_DIR / song_id)
+    write_manual_lrc(MEDIA_DIR / song_id, timeline["cues"])
     return {"ok": True, "song_id": song_id, "cues": len(timeline["cues"])}
 
 
@@ -448,7 +471,7 @@ def api_create_room() -> dict:
 
 @app.get("/api/rooms/{code}")
 def api_room(code: str) -> dict:
-    return room_snapshot(code.upper())
+    return _room_view(code.upper())
 
 
 @app.post("/api/rooms/{code}/queue")
@@ -481,8 +504,14 @@ def api_play(code: str, payload: dict) -> dict:
 
 
 @app.post("/api/rooms/{code}/mix")
-def api_mix(code: str, payload: dict) -> dict:
-    return set_mix(code.upper(), payload.get("vocal_mix"), payload.get("volume"))
+async def api_mix(code: str, payload: dict) -> dict:
+    code = code.upper()
+    snap = set_mix(code, payload.get("vocal_mix"), payload.get("volume"), payload.get("mic_gain"))
+    if payload.get("volume") is not None:
+        set_host_volume(int(payload.get("volume") or 0))
+    view = _room_view(code, snap)
+    await _broadcast(code, {"type": "snapshot", "room": view})
+    return view
 
 
 @app.websocket("/ws/rooms/{code}")
@@ -490,11 +519,55 @@ async def ws_room(ws: WebSocket, code: str) -> None:
     code = code.upper()
     await ws.accept()
     _rooms.setdefault(code, set()).add(ws)
-    await ws.send_json({"type": "snapshot", "room": room_snapshot(code)})
+    _peers[ws] = {"code": code, "peer": "", "role": ""}
+    await ws.send_json({"type": "snapshot", "room": _room_view(code)})
     try:
         while True:
             msg = await ws.receive_json()
             action = msg.get("action")
+            if action == "hello":
+                _peers[ws] = {
+                    "code": code,
+                    "peer": str(msg.get("peer") or ""),
+                    "role": str(msg.get("role") or ""),
+                }
+                await _broadcast(
+                    code,
+                    {
+                        "type": "peer",
+                        "event": "join",
+                        "peer": _peers[ws]["peer"],
+                        "role": _peers[ws]["role"],
+                    },
+                    skip=ws,
+                )
+                continue
+            if action == "rtc":
+                kind = str(msg.get("kind") or "")
+                peer = str(msg.get("from") or _peers.get(ws, {}).get("peer") or "")
+                if kind == "offer" and peer:
+                    _mics[code] = peer
+                if kind == "hangup" and _mics.get(code) == peer:
+                    _mics.pop(code, None)
+                await _broadcast(
+                    code,
+                    {"type": "rtc", **{k: v for k, v in msg.items() if k != "action"}},
+                    skip=ws,
+                )
+                if kind in {"offer", "hangup"}:
+                    await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+                continue
+            if action == "mic":
+                peer = str(msg.get("from") or _peers.get(ws, {}).get("peer") or "")
+                if msg.get("on"):
+                    if peer:
+                        _mics[code] = peer
+                elif _mics.get(code) == peer or not peer:
+                    _mics.pop(code, None)
+                if msg.get("mic_gain") is not None:
+                    set_mix(code, mic_gain=msg.get("mic_gain"))
+                await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+                continue
             if action == "skip":
                 snap = skip(code)
             elif action == "bump":
@@ -506,17 +579,25 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     await ws.send_json({"type": "error", "message": str(exc)})
                     continue
             elif action == "mix":
-                snap = set_mix(code, msg.get("vocal_mix"), msg.get("volume"))
+                snap = set_mix(code, msg.get("vocal_mix"), msg.get("volume"), msg.get("mic_gain"))
+                if msg.get("volume") is not None:
+                    set_host_volume(int(msg.get("volume") or 0))
             else:
                 await ws.send_json({"type": "error", "message": "未知命令"})
                 continue
-            for peer in list(_rooms.get(code, set())):
-                try:
-                    await peer.send_json({"type": "snapshot", "room": snap})
-                except Exception:
-                    _rooms.get(code, set()).discard(peer)
+            await _broadcast(code, {"type": "snapshot", "room": _room_view(code, snap)})
     except WebSocketDisconnect:
+        info = _peers.pop(ws, {})
         _rooms.get(code, set()).discard(ws)
+        peer = str(info.get("peer") or "")
+        if peer and _mics.get(code) == peer:
+            _mics.pop(code, None)
+            await _broadcast(code, {"type": "rtc", "kind": "hangup", "from": peer})
+            await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+        await _broadcast(
+            code,
+            {"type": "peer", "event": "leave", "peer": peer, "role": info.get("role") or ""},
+        )
 
 
 @app.get("/media/{song_id}/{name}")

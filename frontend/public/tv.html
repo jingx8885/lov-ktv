@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=fx1" />
+  <link rel="stylesheet" href="/app.css?v=mic1" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -44,7 +44,7 @@
       </div>
     </header>
     <section class="lyrics">
-      <div>
+      <div class="lyric-plate">
         <div class="prev" id="prev"></div>
         <div class="line" id="cur"></div>
         <div class="next" id="next"></div>
@@ -53,7 +53,9 @@
     <footer class="bar">
       <audio id="karaoke" crossorigin="anonymous"></audio>
       <audio id="vocal" crossorigin="anonymous" hidden></audio>
-      <canvas id="bands" class="bands" width="1920" height="120"></canvas>
+      <audio id="liveMic" autoplay playsinline hidden></audio>
+      <p class="mic-live" id="micLive" hidden>手机麦已接入</p>
+      <canvas id="bands" class="bands" width="1920" height="120" hidden></canvas>
       <div class="tv-controls">
         <button class="btn" id="skip" type="button">切歌</button>
         <button class="btn" id="toggle" type="button">原唱/伴唱</button>
@@ -65,6 +67,7 @@
   <script src="/vendor/canvas-confetti.min.js"></script>
   <script src="/bands.js?v=wave5"></script>
   <script src="/stage-fx.js?v=fx1"></script>
+  <script src="/rtc-mic.js?v=mic1"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const STATUS = {
@@ -90,11 +93,11 @@
     let isLeader = true;
     let lastLyricsAt = 0;
     let audioHook = null;
-    let bandsViz = null;
     let stageFx = null;
     let lastFxCue = -1;
     let lastCelebrateAt = 0;
     let hookLines = new Set();
+    let roomRtc = null;
 
     function escapeHtml(text) {
       return String(text || "")
@@ -219,9 +222,56 @@
         $("loginGate").hidden = true;
         if (loginTimer) clearInterval(loginTimer);
       };
+      bindRoomRtc(room.code);
       tick();
       setInterval(tick, 1500);
       requestAnimationFrame(paint);
+    }
+
+    function roomLine(state) {
+      const mix = Math.round(((state && state.vocal_mix) || 0) * 100);
+      const vol = (state && state.volume != null) ? state.volume : 80;
+      const mic = state && state.mic_on ? " · 手机麦开" : "";
+      return `队列 ${((state && state.queue) || []).length} · 原唱 ${mix}% · 音量 ${vol}%${mic}`;
+    }
+
+    function bindLiveMic(stream) {
+      const el = $("liveMic");
+      el.srcObject = stream;
+      el.muted = false;
+      applyMix();
+      el.play().catch(() => {});
+    }
+
+    function clearLiveMic() {
+      const el = $("liveMic");
+      el.pause();
+      el.srcObject = null;
+      $("micLive").hidden = true;
+    }
+
+    function bindRoomRtc(code) {
+      if (!window.LovMic || !code) return;
+      if (roomRtc) return;
+      roomRtc = LovMic.create({ role: "tv" });
+      roomRtc.connect(code, {
+        onSnapshot: (snap) => {
+          if (!snap) return;
+          room = snap;
+          applyMix();
+        },
+        onRtc: (msg) => {
+          if (msg.kind === "offer") roomRtc.handleOffer(msg);
+          else if (msg.kind === "ice") roomRtc.addIce(msg);
+          else if (msg.kind === "hangup") {
+            roomRtc.resetPc();
+            clearLiveMic();
+            if (room) room.mic_on = false;
+            applyMix();
+          }
+        },
+        onStream: bindLiveMic,
+      });
     }
 
     function hookAudio() {
@@ -271,21 +321,6 @@
       }
     }
 
-    function drawBands(t) {
-      if (!bandsViz) bandsViz = LovBands.create($("bands"));
-      const karaoke = $("karaoke");
-      if (karaoke && (karaoke.currentSrc || karaoke.src)) bandsViz.setSource(karaoke.currentSrc || karaoke.src);
-      const playing = !!(audioHook && karaoke && !karaoke.paused && karaoke.src);
-      if (playing) LovBands.pull(audioHook);
-      bandsViz.draw({
-        playing,
-        freq: audioHook && audioHook.freq,
-        wave: audioHook && audioHook.time,
-        playMs: t || 0,
-        duration: (karaoke && karaoke.duration || 0) * 1000,
-      });
-    }
-
     function silenceMtv(mtv) {
       mtv.muted = true;
       mtv.defaultMuted = true;
@@ -317,7 +352,7 @@
       room = await fetch("/api/rooms/" + code).then((r) => r.json());
       localStorage.setItem("tvRoom", room.code);
       const now = room.now_playing;
-      $("qinfo").textContent = `队列 ${room.queue.length} · 原唱 ${Math.round((room.vocal_mix || 0) * 100)}%`;
+      $("qinfo").textContent = roomLine(room);
       if (!now) {
         stopPlayback();
         $("gate").hidden = true;
@@ -431,7 +466,7 @@
           $("next").innerHTML = "";
         }
       }
-      drawBands(now && now.status === "ready" ? Math.floor(($("karaoke").currentTime || 0) * 1000) : 0);
+      if (audioHook) LovBands.pull(audioHook);
       if (stageFx) {
         stageFx.draw({
           beat: now && now.status === "ready" ? liveBeat() : 0,
@@ -467,14 +502,22 @@
 
     function applyMix() {
       const mix = room && room.vocal_mix != null ? room.vocal_mix : 1;
-      const vol = ((room && room.volume) || 80) / 100;
+      const hostMac = room && room.host_volume_kind === "mac";
+      const vol = hostMac ? 1 : (((room && room.volume) != null ? room.volume : 80) / 100);
+      const micGain = ((room && room.mic_gain) != null ? room.mic_gain : 80) / 100;
       const karaoke = $("karaoke");
       const vocal = $("vocal");
+      const live = $("liveMic");
       karaoke.muted = mix >= 0.99;
       vocal.muted = mix <= 0.01;
       karaoke.volume = karaoke.muted ? 0 : vol * (1 - mix);
       vocal.volume = vocal.muted ? 0 : vol * mix;
-      $("qinfo").textContent = `队列 ${(room && room.queue && room.queue.length) || 0} · 原唱 ${Math.round(mix * 100)}%`;
+      if (live) {
+        live.muted = false;
+        live.volume = Math.max(0, Math.min(1, vol * micGain));
+      }
+      $("micLive").hidden = !(room && room.mic_on) && !(live && live.srcObject);
+      $("qinfo").textContent = roomLine(room);
     }
 
     function pageVisible() {
@@ -533,13 +576,10 @@
       if (armed && room && room.now_playing) startPlayback();
     });
 
-    $("start").onclick = () => { hookAudio(); startPlayback(); };
-    $("bands").onclick = (event) => {
-      const karaoke = $("karaoke");
-      if (!karaoke.duration) return;
-      const box = event.currentTarget.getBoundingClientRect();
-      karaoke.currentTime = ((event.clientX - box.left) / box.width) * karaoke.duration;
-      syncVocal(karaoke.currentTime);
+    $("start").onclick = () => {
+      hookAudio();
+      startPlayback();
+      $("liveMic").play().catch(() => {});
     };
     $("skip").onclick = async () => {
       const code = roomCode() || (room && room.code);

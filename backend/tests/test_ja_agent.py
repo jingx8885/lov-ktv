@@ -158,3 +158,37 @@ def test_apply_annotation_replaces_tokens_and_keeps_line_time():
     assert tokens[0]["start_ms"] == 1000
     assert tokens[-1]["end_ms"] == 3000
     assert timeline["annotation"] == "ja-agent"
+
+
+def test_apply_annotation_uses_sing_end_not_hold():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "溢れるメモリー",
+                "start_ms": 1000,
+                "end_ms": 5000,
+                "sing_end_ms": 2200,
+                "tokens": [{"text": "溢", "start_ms": 1000, "end_ms": 5000, "reading": ""}],
+            }
+        ],
+    }
+    apply_ja_annotation(
+        timeline,
+        {
+            "model": "test-agent",
+            "lines": [
+                {
+                    "source": "溢れるメモリー",
+                    "units": [
+                        {"sing": "あふれる", "label": "溢"},
+                        {"sing": "メモリー", "label": "memory"},
+                    ],
+                }
+            ],
+        },
+    )
+    tokens = timeline["cues"][0]["tokens"]
+    assert tokens[0]["start_ms"] == 1000
+    assert tokens[-1]["end_ms"] == 2200
+    assert timeline["cues"][0]["end_ms"] == 5000

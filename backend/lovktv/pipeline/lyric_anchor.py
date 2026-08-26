@@ -1,7 +1,7 @@
-"""Anchor known lyrics onto ASR with lyric-align, then fill honest gaps.
+"""Refine Whisper line times with lyric-align word spans.
 
-Official LRC is a locality prior and a fallback, not the clock.
-Unmatched lines stay visible as from_asr=False instead of inventing a drift.
+Whisper `align_lines_to_asr` owns the clock (official LRC + ASR offset).
+lyric-align only tightens a line when its start agrees with that clock.
 """
 
 from __future__ import annotations
@@ -30,6 +30,8 @@ from lovktv.pipeline.align import (
 )
 from lovktv.pipeline.lyrics import drop_credit_lines
 
+ANCHOR_AGREE_MS = 800
+ANCHOR_RESCUE_MS = 2400
 OFFICIAL_ALIVE_AFTER_MS = 4500
 OFFICIAL_ALIVE_BEFORE_MS = 2500
 OFFICIAL_HOLE_BEFORE_MS = 1500
@@ -318,6 +320,55 @@ def _fill_unmatched(
         if 0 < nxt["start_ms"] - row["end_ms"] <= HOLD_GAP_MS:
             row["end_ms"] = nxt["start_ms"]
     return bounds
+
+
+def merge_whisper_and_anchor(
+    whisper_bounds: list[dict[str, Any]],
+    anchor_bounds: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep Whisper starts; take lyric-align spans only when they sit on the same line."""
+    if not whisper_bounds:
+        return list(whisper_bounds)
+    if not anchor_bounds:
+        return [dict(row) for row in whisper_bounds]
+    merged: list[dict[str, Any]] = []
+    for index, whisper in enumerate(whisper_bounds):
+        row = dict(whisper)
+        if index >= len(anchor_bounds):
+            merged.append(row)
+            continue
+        anchor = anchor_bounds[index]
+        if not anchor.get("from_asr"):
+            merged.append(row)
+            continue
+        delta = abs(int(anchor["start_ms"]) - int(whisper["start_ms"]))
+        adopt = delta <= ANCHOR_AGREE_MS or (
+            not whisper.get("from_asr") and delta <= ANCHOR_RESCUE_MS
+        )
+        if not adopt:
+            merged.append(row)
+            continue
+        nxt = int(whisper_bounds[index + 1]["start_ms"]) if index + 1 < len(whisper_bounds) else None
+        start_ms = int(anchor["start_ms"])
+        if nxt is not None and start_ms >= nxt and whisper.get("from_asr"):
+            merged.append(row)
+            continue
+        end_ms = int(anchor["end_ms"])
+        # Whisper often starts the next line on this line's tail. A rescued
+        # match must keep its words; push the next start later instead.
+        if nxt is not None and whisper.get("from_asr"):
+            end_ms = min(end_ms, nxt)
+        row["start_ms"] = max(0, start_ms)
+        row["end_ms"] = max(row["start_ms"] + MIN_LINE_MS, end_ms)
+        row["from_asr"] = True
+        merged.append(row)
+    for index in range(1, len(merged)):
+        prev = merged[index - 1]
+        row = merged[index]
+        if row["start_ms"] < prev["end_ms"]:
+            row["start_ms"] = int(prev["end_ms"])
+        row["end_ms"] = max(row["start_ms"] + MIN_LINE_MS, int(row["end_ms"]))
+    return hold_lines_until_next(merged)
 
 
 def align_lines_with_anchor(

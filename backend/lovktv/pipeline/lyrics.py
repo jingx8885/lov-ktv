@@ -385,6 +385,73 @@ def shift_cues(
     return repair_cue_order(out)
 
 
+def write_manual_lrc(out_dir: Path, cues: list[dict[str, Any]]) -> None:
+    """Lock line starts so auto-realign cannot overwrite editor timing."""
+    lines = []
+    for cue in cues:
+        text = str(cue.get("text") or "").strip()
+        if not text:
+            continue
+        lines.append(f"[{_lrc_time(int(cue['start_ms']))}]{text}")
+    if not lines:
+        return
+    (out_dir / "lyrics.manual.lrc").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def rebuild_manual_timeline(
+    rows: list[dict[str, Any]],
+    existing: dict[str, Any] | None = None,
+    duration_ms: int | None = None,
+) -> dict[str, Any]:
+    """Build a locked timeline: each line holds until the next line starts."""
+    old = list((existing or {}).get("cues") or [])
+    used: set[int] = set()
+    cues: list[dict[str, Any]] = []
+    language = str((existing or {}).get("language") or detect_language(
+        "".join(str(row.get("text") or "") for row in rows)
+    ))
+    for index, row in enumerate(rows):
+        text = str(row.get("text") or "").strip()
+        if not text:
+            continue
+        start_ms = int(row["ms"] if row.get("ms") is not None else row.get("start_ms") or 0)
+        if index + 1 < len(rows):
+            nxt = rows[index + 1]
+            end_ms = int(nxt["ms"] if nxt.get("ms") is not None else nxt.get("start_ms") or start_ms + 4000)
+        elif duration_ms:
+            end_ms = max(start_ms + 1200, min(int(duration_ms), start_ms + 8000))
+        else:
+            end_ms = start_ms + 4000
+        end_ms = max(start_ms + 400, end_ms)
+        matched = None
+        for cue_i, cue in enumerate(old):
+            if cue_i in used:
+                continue
+            if str(cue.get("text") or "").strip() == text:
+                matched = {
+                    "text": text,
+                    "start_ms": start_ms,
+                    "end_ms": end_ms,
+                    "tokens": [dict(token) for token in (cue.get("tokens") or [])],
+                }
+                used.add(cue_i)
+                break
+        if matched and matched["tokens"]:
+            _fit_tokens(matched, start_ms, end_ms)
+            cues.append(matched)
+        else:
+            cue = build_cue(text, start_ms, end_ms, language)
+            if cue:
+                cues.append(cue)
+    return validate_timeline(
+        {
+            "language": language,
+            "alignment": "manual",
+            "cues": cues,
+        }
+    )
+
+
 def validate_timeline(payload: dict[str, Any]) -> dict[str, Any]:
     raw = payload.get("cues")
     if not isinstance(raw, list) or not raw:

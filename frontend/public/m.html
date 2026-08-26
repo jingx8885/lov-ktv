@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone17" />
+  <link rel="stylesheet" href="/app.css?v=phone19" />
 </head>
 <body class="phone">
   <div class="app">
@@ -70,6 +70,22 @@
           <button class="icon-btn" id="vocalOn" type="button" aria-label="原唱">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
           </button>
+          <button class="icon-btn" id="micToggle" type="button" aria-label="开麦">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+          </button>
+        </div>
+        <div class="now-mix">
+          <label class="mix-row">
+            <span id="hostVolLabel">音量</span>
+            <input type="range" id="hostVol" min="0" max="100" value="80" />
+            <em id="hostVolVal">80</em>
+          </label>
+          <label class="mix-row" id="micGainRow" hidden>
+            <span>麦声</span>
+            <input type="range" id="micGain" min="0" max="100" value="80" />
+            <em id="micGainVal">80</em>
+          </label>
+          <p class="tiny" id="micHint"></p>
         </div>
       </div>
       <div class="desk-sheet">
@@ -224,6 +240,7 @@
   </div>
   <script src="/bands.js?v=wave5"></script>
   <script src="/timeline.js?v=tl7"></script>
+  <script src="/rtc-mic.js?v=mic1"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const STATUS = {
@@ -768,6 +785,8 @@
       const mix = room.vocal_mix || 0;
       $("vocalOff").classList.toggle("on", mix < 0.5);
       $("vocalOn").classList.toggle("on", mix >= 0.5);
+      paintMix(room);
+      connectRoomRtc(code);
       if ($("queueCount")) $("queueCount").textContent = room.queue.length ? String(room.queue.length) : "";
       $("nowCard").innerHTML = now
         ? `<button type="button" class="now-hit" id="nowToPlayer" ${now.status === "ready" ? "" : "disabled"}>
@@ -1412,6 +1431,113 @@
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vocal_mix: 1 }),
     });
+
+    let roomRtc = null;
+    let roomRtcCode = "";
+    let mixTimer = 0;
+    function mixEditing() {
+      return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
+    }
+    function paintMix(room) {
+      if (!room || mixEditing()) return;
+      const vol = room.host_volume != null ? room.host_volume : (room.volume != null ? room.volume : 80);
+      const gain = room.mic_gain != null ? room.mic_gain : 80;
+      $("hostVol").value = String(vol);
+      $("hostVolVal").textContent = String(vol);
+      $("hostVolLabel").textContent = room.host_volume_kind === "mac" ? "Mac" : "音量";
+      $("micGain").value = String(gain);
+      $("micGainVal").textContent = String(gain);
+      const live = !!(roomRtc && roomRtc.isLive());
+      $("micToggle").classList.toggle("live", live);
+      $("micToggle").classList.toggle("on", live || !!room.mic_on);
+      $("micToggle").setAttribute("aria-label", live ? "关麦" : "开麦");
+      $("micGainRow").hidden = !live;
+      if (!live && !room.mic_on) {
+        if (!$("micHint").dataset.hold) $("micHint").textContent = "";
+      } else if (live) {
+        $("micHint").textContent = room.mic_on ? "麦已接到电视" : "正在把麦接到电视…";
+      }
+    }
+    function postMix(body) {
+      const code = $("room").value.trim().toUpperCase();
+      if (!code) return;
+      return fetch(`/api/rooms/${code}/mix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }).then((r) => r.json()).then((room) => {
+        paintMix(room);
+        return room;
+      }).catch(() => {});
+    }
+    function bindMixSlider(id, key) {
+      const el = $(id);
+      const slide = () => {
+        $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
+        clearTimeout(mixTimer);
+        mixTimer = setTimeout(() => postMix({ [key]: Number(el.value) }), 80);
+      };
+      el.addEventListener("input", slide);
+      el.addEventListener("change", () => postMix({ [key]: Number(el.value) }));
+    }
+    bindMixSlider("hostVol", "volume");
+    bindMixSlider("micGain", "mic_gain");
+    function connectRoomRtc(code) {
+      code = String(code || "").trim().toUpperCase();
+      if (!code || !window.LovMic) return;
+      if (roomRtc && roomRtcCode === code) return;
+      if (roomRtc) {
+        roomRtc.stopMic().catch(() => {});
+        roomRtc.disconnect();
+      }
+      roomRtcCode = code;
+      roomRtc = LovMic.create({ role: "phone" });
+      roomRtc.connect(code, {
+        onSnapshot: (room) => paintMix(room),
+        onPeer: (msg) => {
+          if (msg.event === "join" && msg.role === "tv" && roomRtc.isLive()) {
+            roomRtc.makeOffer().catch(() => {});
+          }
+        },
+        onRtc: (msg) => {
+          if (msg.kind === "answer") roomRtc.handleAnswer(msg);
+          else if (msg.kind === "ice") roomRtc.addIce(msg);
+        },
+        onState: (state) => {
+          if (roomRtc.isLive()) {
+            $("micHint").textContent = state === "connected" ? "麦已接到电视" : "正在把麦接到电视…";
+          }
+        },
+      });
+    }
+    $("micToggle").onclick = async () => {
+      const code = $("room").value.trim().toUpperCase();
+      if (!code) return alert("先填房间码并点进入");
+      connectRoomRtc(code);
+      const btn = $("micToggle");
+      btn.disabled = true;
+      $("micHint").dataset.hold = "1";
+      try {
+        if (roomRtc && roomRtc.isLive()) {
+          await roomRtc.stopMic();
+          $("micHint").textContent = "";
+        } else {
+          $("micHint").textContent = "请允许使用麦克风";
+          await roomRtc.startMic();
+          $("micHint").textContent = "麦已打开，声音会从电视出来";
+        }
+      } catch (err) {
+        $("micHint").textContent = LovMic.micErrorText(err);
+      } finally {
+        delete $("micHint").dataset.hold;
+        btn.disabled = false;
+        const live = !!(roomRtc && roomRtc.isLive());
+        btn.classList.toggle("live", live);
+        btn.classList.toggle("on", live);
+        $("micGainRow").hidden = !live;
+        btn.setAttribute("aria-label", live ? "关麦" : "开麦");
+      }
+    };
 
     $("openUpload").onclick = () => $("file").click();
     $("file").onchange = async () => {

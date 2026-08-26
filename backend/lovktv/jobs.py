@@ -9,9 +9,15 @@ from pathlib import Path
 from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation
 from lovktv.catalog.fetch import import_song, parse_lrc
 from lovktv.config import MEDIA_DIR
-from lovktv.pipeline.align import align_lyrics, probe_duration_ms
+from lovktv.pipeline.align import align_lyrics, extract_envelope, pack_tokens_to_singing, probe_duration_ms
 from lovktv.pipeline.language import detect_language
-from lovktv.pipeline.lyrics import parse_plain_lines, prepare_lyric_lines, write_subtitles
+from lovktv.pipeline.lyrics import (
+    parse_plain_lines,
+    prepare_lyric_lines,
+    rebuild_manual_timeline,
+    write_manual_lrc,
+    write_subtitles,
+)
 from lovktv.pipeline.mtv import compose_mtv
 from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
@@ -123,6 +129,49 @@ def _ensure_vocals(out_dir: Path, src: Path) -> Path:
     return _voice_audio(out_dir, src)
 
 
+def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
+    """Rebuild lyrics.json from a frozen manual LRC. Do not run Whisper."""
+    import json
+
+    out_dir = MEDIA_DIR / song_id
+    raw = (out_dir / "lyrics.manual.lrc").read_text(encoding="utf-8")
+    rows = parse_lrc(raw) or parse_plain_lines(raw)
+    existing: dict = {}
+    lyrics_path = out_dir / "lyrics.json"
+    if lyrics_path.exists():
+        existing = json.loads(lyrics_path.read_text(encoding="utf-8"))
+    lang = detect_language("".join(str(item.get("text") or "") for item in rows), existing.get("language"))
+    rows = prepare_lyric_lines(rows, lang)
+    src = out_dir / "original.mp3"
+    timeline = rebuild_manual_timeline(rows, existing, probe_duration_ms(src) if src.exists() else None)
+    notes_path = out_dir / "ja-annotate.json"
+    if lang == "ja" and notes_path.exists():
+        apply_ja_annotation(timeline, json.loads(notes_path.read_text(encoding="utf-8")))
+    voice = out_dir / "vocals.wav"
+    if not voice.exists():
+        voice = src
+    if voice.exists():
+        envelope, hop_ms = extract_envelope(voice)
+        pack_tokens_to_singing(timeline["cues"], envelope, hop_ms)
+    write_subtitles(timeline, out_dir)
+    write_manual_lrc(out_dir, timeline["cues"])
+    update_song(song_id, language=lang, status="ready")
+    if rebuild_mtv:
+        song = get_song(song_id) or {}
+        audio = out_dir / "karaoke.m4a"
+        if not audio.exists():
+            audio = src
+        cover = out_dir / "cover.jpg"
+        compose_mtv(
+            out_dir,
+            audio_path=audio,
+            title=str(song.get("title") or "lov-ktv"),
+            artist=str(song.get("artist") or ""),
+            timeline=timeline,
+            cover_path=cover if cover.exists() else None,
+        )
+
+
 def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool = False) -> None:
     """Re-run the same ASR + lyric pipeline used by import/upload."""
     out_dir = MEDIA_DIR / song_id
@@ -132,6 +181,9 @@ def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool
     try:
         if not src.exists():
             raise RuntimeError("没有可对齐的音频")
+        if (out_dir / "lyrics.manual.lrc").exists():
+            apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
+            return
         _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=rebuild_mtv)
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))
