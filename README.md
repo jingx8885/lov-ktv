@@ -40,6 +40,17 @@ docker compose up --build -d
 `/api/host` 的 `models.separator` 应为 true（镜像已烤入 UVR ONNX，走 onnxruntime，不装 Torch）。歌词对齐优先用官方 LRC。  
 电视 App 填：`http://电脑或 NAS 的局域网IP:8787`
 
+公网（`ktv.lovbrowser.com`，43 上只绑 `127.0.0.1:8790`）：
+
+```bash
+cp .env.example .env
+# LOVKTV_PUBLIC_URL=https://ktv.lovbrowser.com
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+sudo cp deploy/nginx/ktv.lovbrowser.com.conf /etc/nginx/sites-available/
+sudo ln -sf /etc/nginx/sites-available/ktv.lovbrowser.com.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
 对照仓库：
 
 ```bash

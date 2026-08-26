@@ -1,0 +1,6 @@
+services:
+  lov-ktv:
+    ports: !override
+      - "127.0.0.1:8790:8787"
+    environment:
+      LOVKTV_PUBLIC_URL: ${LOVKTV_PUBLIC_URL:-https://ktv.lovbrowser.com}

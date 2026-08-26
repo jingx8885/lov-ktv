@@ -31,6 +31,16 @@ def test_compose_exposes_port_and_data_volume():
     assert "restart:" in text
 
 
+def test_prod_compose_binds_localhost_and_reuses_origin_cert():
+    compose = (ROOT / "docker-compose.prod.yml").read_text(encoding="utf-8")
+    nginx = (ROOT / "deploy" / "nginx" / "ktv.lovbrowser.com.conf").read_text(encoding="utf-8")
+    assert "127.0.0.1:8790:8787" in compose
+    assert "ktv.lovbrowser.com" in compose
+    assert "ktv.lovbrowser.com" in nginx
+    assert "/etc/ssl/lovbrowser/lovbrowser.com.pem" in nginx
+    assert "127.0.0.1:8790" in nginx
+
+
 def test_dockerignore_keeps_vendor_and_media_out():
     text = (ROOT / ".dockerignore").read_text(encoding="utf-8")
     assert "vendor" in text
