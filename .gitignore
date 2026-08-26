@@ -10,6 +10,7 @@ data/
 *.m4a
 .env
 .env.*
+!.env.example
 node_modules/
 dist/
 .DS_Store

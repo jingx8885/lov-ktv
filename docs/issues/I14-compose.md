@@ -5,9 +5,12 @@ depends_on: I05, I08, I11, I12
 
 ## 合同
 
-`docker-compose.yml` 启动 api+worker+web，挂载 `data/`。  
-镜像不含 vendor GPL 全量源码。
+`docker compose up --build` 启动处理端（API + 任务线程 + 静态页），挂载 `data/`。  
+镜像只打 `backend` / `frontend`，不含 `vendor`、`android-tv`、本地曲库。
+
+电视盒子填 `http://宿主机局域网IP:8787` 作为处理服务器。
 
 ## 验收
 
-- compose 文档中的端口与默认房间流程一致。
+- 端口 `8787`，健康检查 `GET /api/host`。
+- `docker compose up --build` 后可打开 `/tv.html` 与 `/m.html`。

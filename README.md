@@ -29,11 +29,15 @@ PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787
 
 Android TV：用 Android Studio 打开 `android-tv/`。安装后 App 在电视上开局域网服务，手机扫电视二维码进房；首次填处理服务器 `http://电脑IP:8787`。说明见 `android-tv/README.md`。
 
-Docker：
+Docker（处理端发版）：
 
 ```bash
-docker compose up --build
+cp .env.example .env   # 可选：微信 / 日语注音
+docker compose up --build -d
 ```
+
+健康检查：http://本机:8787/api/host  
+电视 App 填：`http://电脑或 NAS 的局域网IP:8787`
 
 对照仓库：
 

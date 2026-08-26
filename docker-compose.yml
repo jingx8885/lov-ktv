@@ -1,9 +1,25 @@
 services:
   lov-ktv:
     build: .
+    image: lovktv:latest
     ports:
       - "8787:8787"
     volumes:
       - ./data:/app/data
     environment:
       LOVKTV_DATA: /app/data
+      LOVKTV_PUBLIC_URL: ${LOVKTV_PUBLIC_URL:-}
+      WECHAT_APP_ID: ${WECHAT_APP_ID:-}
+      WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}
+      WECHAT_MP_APP_ID: ${WECHAT_MP_APP_ID:-}
+      WECHAT_MP_APP_SECRET: ${WECHAT_MP_APP_SECRET:-}
+      LOVKTV_AGENT_URL: ${LOVKTV_AGENT_URL:-}
+      LOVKTV_AGENT_KEY: ${LOVKTV_AGENT_KEY:-}
+      LOVKTV_AGENT_MODEL: ${LOVKTV_AGENT_MODEL:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/api/host"]
+      interval: 20s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
