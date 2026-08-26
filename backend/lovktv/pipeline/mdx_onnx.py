@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from lovktv.config import DATA_DIR
+from lovktv.config import DATA_DIR, IMAGE_MODELS_DIR, WHISPER_DIR
 
 MODEL_NAME = "UVR_MDXNET_KARA_2.onnx"
 MODEL_URL = "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR_MDXNET_KARA_2.onnx"
@@ -39,8 +39,70 @@ MODEL_PARAMS = {
 }
 
 
+def model_dirs() -> list[Path]:
+    import os
+
+    found: list[Path] = []
+    env = (os.environ.get("LOVKTV_MODELS") or "").strip()
+    if env:
+        found.append(Path(env))
+    found.append(IMAGE_MODELS_DIR)
+    data = Path(os.environ.get("LOVKTV_DATA") or DATA_DIR)
+    found.append(data / "models")
+    unique: list[Path] = []
+    for item in found:
+        resolved = item.expanduser()
+        if resolved not in unique:
+            unique.append(resolved)
+    return unique
+
+
 def model_path() -> Path:
-    return DATA_DIR / "models" / MODEL_NAME
+    for folder in model_dirs():
+        candidate = folder / MODEL_NAME
+        if candidate.exists() and candidate.stat().st_size > 0:
+            return candidate.resolve()
+    return (model_dirs()[0] / MODEL_NAME).resolve()
+
+
+def download_file(url: str, dest: Path) -> None:
+    import urllib.request
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_suffix(dest.suffix + ".part")
+    urllib.request.urlretrieve(url, part)
+    part.replace(dest)
+
+
+def ensure_separator_model() -> Path:
+    current = model_path()
+    if current.exists() and current.stat().st_size > 0:
+        return current
+    dest = (model_dirs()[0] / MODEL_NAME).resolve()
+    download_file(MODEL_URL, dest)
+    return dest
+
+
+def whisper_ready() -> bool:
+    import os
+    import shutil
+
+    if not shutil.which("whisper"):
+        return False
+    root = Path(os.environ.get("LOVKTV_WHISPER_DIR") or WHISPER_DIR)
+    if not root.exists():
+        return False
+    return any(root.glob("*.pt")) or any(root.glob("small*"))
+
+
+def model_status() -> dict[str, object]:
+    path = model_path()
+    ready = path.exists() and path.stat().st_size > 0
+    return {
+        "separator": ready,
+        "separator_path": str(path) if ready else "",
+        "whisper": whisper_ready(),
+    }
 
 
 def _md5(path: Path) -> str:

@@ -8,6 +8,7 @@ services:
       - ./data:/app/data
     environment:
       LOVKTV_DATA: /app/data
+      LOVKTV_MODELS: /opt/lovktv/models
       LOVKTV_PUBLIC_URL: ${LOVKTV_PUBLIC_URL:-}
       WECHAT_APP_ID: ${WECHAT_APP_ID:-}
       WECHAT_APP_SECRET: ${WECHAT_APP_SECRET:-}

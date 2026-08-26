@@ -31,6 +31,7 @@ from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
+from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.store import (
     bump,
     confirm_login_ticket,
@@ -145,6 +146,7 @@ def api_host(request: Request) -> dict:
         "mode": "server",
         "phone_path": "/m.html?room=",
         "cache_ready": 0,
+        "models": model_status(),
     }
 
 

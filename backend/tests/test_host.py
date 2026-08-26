@@ -20,6 +20,8 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["mode"] == "server"
     assert data["phone_path"].startswith("/m.html?room=")
     assert data["cache_ready"] == 0
+    assert "separator" in data["models"]
+    assert "whisper" in data["models"]
 
 
 def test_tv_page_builds_phone_url_from_host_origin():

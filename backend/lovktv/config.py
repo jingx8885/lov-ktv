@@ -4,6 +4,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("LOVKTV_DATA", ROOT / "data")).resolve()
 MEDIA_DIR = (DATA_DIR / "media").resolve()
+MODELS_DIR = Path(os.environ.get("LOVKTV_MODELS", DATA_DIR / "models")).resolve()
+WHISPER_DIR = Path(os.environ.get("LOVKTV_WHISPER_DIR", Path.home() / ".cache" / "whisper")).resolve()
+IMAGE_MODELS_DIR = Path("/opt/lovktv/models")
 DB_PATH = DATA_DIR / "lovktv.sqlite"
 HOST = "0.0.0.0"
 PORT = 8787

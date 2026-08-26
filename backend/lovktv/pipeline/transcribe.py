@@ -9,6 +9,9 @@ import time
 from pathlib import Path
 from typing import Any
 
+import os
+
+from lovktv.config import WHISPER_DIR
 from lovktv.pipeline.language import whisper_language
 
 WHISPER_BIN = shutil.which("whisper")
@@ -148,6 +151,8 @@ def transcribe_words(
         str(out_dir),
         "--verbose",
         "False",
+        "--model_dir",
+        str(os.environ.get("LOVKTV_WHISPER_DIR") or WHISPER_DIR),
     ]
     if prompt.strip():
         cmd.extend(["--initial_prompt", prompt.strip()[:400]])

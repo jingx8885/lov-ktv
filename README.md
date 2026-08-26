@@ -37,6 +37,7 @@ docker compose up --build -d
 ```
 
 健康检查：http://本机:8787/api/host  
+`/api/host` 的 `models.separator` 应为 true（镜像已烤入 UVR ONNX，走 onnxruntime，不装 Torch）。歌词对齐优先用官方 LRC。  
 电视 App 填：`http://电脑或 NAS 的局域网IP:8787`
 
 对照仓库：
