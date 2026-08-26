@@ -15,6 +15,7 @@ def test_dockerfile_is_release_ready():
     assert "lovktv.main:app" in text
     assert "UVR_MDXNET_KARA_2.onnx" in text
     assert "/opt/lovktv/models" in text
+    assert text.index("UVR_MDXNET_KARA_2.onnx") < text.index("COPY frontend")
     assert "onnxruntime" in (ROOT / "backend" / "pyproject.toml").read_text(encoding="utf-8")
     assert "openai-whisper" not in text
     assert "pytorch.org" not in text

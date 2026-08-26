@@ -3,19 +3,304 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>lov-ktv</title>
-  <link rel="stylesheet" href="/app.css" />
+  <title>lov-ktv · 客厅就是包厢</title>
+  <meta name="description" content="手机搜歌入库，电视开唱。人声分离、中日英扫色歌词，家庭和包厢都能用的自托管 KTV。" />
+  <meta name="theme-color" content="#07040a" />
+  <meta property="og:title" content="lov-ktv · 客厅就是包厢" />
+  <meta property="og:description" content="搜歌名就能唱。电视当舞台，手机当点歌台。" />
+  <meta property="og:type" content="website" />
+  <link rel="stylesheet" href="/landing.css?v=2" />
 </head>
-<body class="gate">
-  <main>
-    <p class="brand">lov-ktv</p>
-    <h1>家庭 KTV</h1>
-    <p class="lead">手机搜歌入库，电视唱。人声对齐歌词，MTV 背景 + 中日英扫色。</p>
-    <div class="row">
-      <a class="btn primary" href="/m.html">手机点歌</a>
-      <a class="btn" href="/tv.html">电视播放</a>
-      <a class="btn wechat" href="/api/auth/scan">认号</a>
+<body class="lp">
+  <div class="lp-grain" aria-hidden="true"></div>
+  <aside class="lp-toc" aria-label="目录">
+    <p>Contents</p>
+    <a href="#opening"><em>01</em> Opening</a>
+    <a href="#ritual"><em>02</em> Ritual</a>
+    <a href="#house"><em>03</em> House</a>
+    <a href="#notes"><em>04</em> Notes</a>
+  </aside>
+
+  <header class="lp-nav">
+    <a class="lp-logo" href="#opening">lov-ktv</a>
+    <nav>
+      <a href="#ritual">怎么唱</a>
+      <a href="#house">给谁</a>
+      <a href="#notes">问答</a>
+    </nav>
+    <div class="lp-nav-end">
+      <a class="ghost" href="/m.html">点歌</a>
+      <a class="pill" href="/tv.html">开电视</a>
     </div>
+  </header>
+
+  <main>
+    <section class="lp-hero" id="opening">
+      <div class="lp-lights" aria-hidden="true">
+        <i class="beam a"></i>
+        <i class="beam b"></i>
+        <i class="beam c"></i>
+      </div>
+      <div class="lp-copy">
+        <p class="eye">Issue 01 · Private Room</p>
+        <h1>
+          <span>把夜店灯光</span>
+          <span class="gold">搬进客厅。</span>
+        </h1>
+        <p class="lead">手机搜歌名入库，电视当舞台。伴奏当场拆出来，歌词按字扫色。家庭聚会、朋友包厢，扫一下就能唱。</p>
+        <p class="price">自托管 · 不运营公网曲库 · 已下好的歌断网也能唱</p>
+        <div class="cta">
+          <a class="pill" href="/tv.html">打开电视</a>
+          <a class="ghost" href="/m.html">手机点歌</a>
+        </div>
+        <p class="fine">浏览器电视或 Android TV 都能开。先让电视出码，手机再进房。</p>
+      </div>
+      <div class="lp-stage" aria-hidden="true">
+        <div class="tv-frame">
+          <div class="tv-bar"><i></i><i></i><i></i><span>ROOM 1842</span></div>
+          <p class="now">NOW SINGING</p>
+          <p class="lyric wait">夜风吹过这条街</p>
+          <p class="lyric sing"><span>把心事唱给谁听</span></p>
+          <p class="lyric next">下一句已经在灯里</p>
+        </div>
+        <div class="phone-frame">
+          <b>点歌台</b>
+          <ul>
+            <li><em>夜曲</em><small>周杰伦</small></li>
+            <li class="on"><em>NIGHT DANCER</em><small>imase</small></li>
+            <li><em>告白气球</em><small>周杰伦</small></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-promises" aria-label="承诺">
+      <article>
+        <strong>不用找文件</strong>
+        <p>搜歌名就能入库。网易外链、SoundCloud、YouTube 依次回落，上传只是后备。</p>
+      </article>
+      <article>
+        <strong>歌词跟着嘴</strong>
+        <p>官方 LRC 优先，中日按字扫色，英文按词。日语带假名，不像漂字幕。</p>
+      </article>
+      <article>
+        <strong>灯还在自己家里</strong>
+        <p>处理在你的服务器或盒子上。曲库不下公网，下好的歌断网也能唱。</p>
+      </article>
+    </section>
+
+    <section class="lp-block" id="ritual">
+      <header class="lp-head">
+        <p class="eye">02 · Ritual</p>
+        <h2>三步，房间就亮了</h2>
+      </header>
+      <ol class="lp-steps">
+        <li>
+          <span>01</span>
+          <div>
+            <strong>电视开房</strong>
+            <p>盒子或浏览器打开电视页，墙上出现房间码和二维码。</p>
+          </div>
+        </li>
+        <li>
+          <span>02</span>
+          <div>
+            <strong>手机搜歌</strong>
+            <p>扫码进同一间房。先试听确认，再丢进曲库排队。</p>
+          </div>
+        </li>
+        <li>
+          <span>03</span>
+          <div>
+            <strong>扫色开唱</strong>
+            <p>伴奏、人声、MTV 就位。原唱伴唱随时切，下一句已经等在灯里。</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="lp-block" id="features" aria-label="能力">
+      <header class="lp-head">
+        <p class="eye">Lookbook</p>
+        <h2>舞台上真正用得到的东西</h2>
+      </header>
+      <div class="lp-features">
+        <article>
+          <div>
+            <p class="eye">Search</p>
+            <h3>搜歌名，不是传文件</h3>
+            <p>大部分人手机里没有母带。所以主路是搜歌下载：歌名进曲库，处理自动跑完。</p>
+          </div>
+          <ul>
+            <li>歌名 / 歌手直接搜</li>
+            <li>先试听，再入库</li>
+            <li>队列、顶歌、切歌</li>
+            <li>原唱 / 伴唱不中断</li>
+          </ul>
+        </article>
+        <article class="flip">
+          <div>
+            <p class="eye">Split</p>
+            <h3>伴奏是拆出来的，不是将就的</h3>
+            <p>UVR ONNX 做人声分离。卡拉 OK 轨留给你，导唱轨在需要时再叠回去。</p>
+          </div>
+          <ul>
+            <li>onnxruntime，不背 Torch</li>
+            <li>伴奏 + 人声双轨</li>
+            <li>处理完缓存在盒子上</li>
+            <li>可挂 MTV 当背景</li>
+          </ul>
+        </article>
+        <article>
+          <div>
+            <p class="eye">Color</p>
+            <h3>中日英，三种扫色语法</h3>
+            <p>官方时间轴优先。中日走到字，英文走到词，日语注音贴在字头上。</p>
+          </div>
+          <ul>
+            <li>当前句 + 下一句</li>
+            <li>十尺电视也能看清</li>
+            <li>ASS / LRC / JSON 都留</li>
+            <li>字幕外挂，不烧录</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-block" id="house">
+      <header class="lp-head">
+        <p class="eye">03 · House</p>
+        <h2>谁会把灯打开</h2>
+      </header>
+      <div class="lp-grid3">
+        <article>
+          <strong>家里来人</strong>
+          <p>电视当舞台，沙发当卡座。不用再把手机凑到蓝牙音箱前轮流点。</p>
+        </article>
+        <article>
+          <strong>朋友包厢</strong>
+          <p>局域网扫码进房。谁来谁点，队列在电视上，麦声也可以从手机混进去。</p>
+        </article>
+        <article>
+          <strong>自己练</strong>
+          <p>日语假名、英文词级扫色，练完一句再下一句。已处理的歌，断网也在。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-block" aria-label="对比">
+      <header class="lp-head">
+        <p class="eye">Versus</p>
+        <h2>不是再下一个点歌 App</h2>
+      </header>
+      <div class="lp-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              <th>自己找文件</th>
+              <th>在线 K 歌</th>
+              <th>lov-ktv</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th>进曲</th>
+              <td>翻硬盘</td>
+              <td>平台曲库</td>
+              <td>搜歌名入库</td>
+            </tr>
+            <tr>
+              <th>歌词</th>
+              <td>经常没有</td>
+              <td>有时会飘</td>
+              <td>官方轴扫色</td>
+            </tr>
+            <tr>
+              <th>数据</th>
+              <td>散落各处</td>
+              <td>上云</td>
+              <td>自托管</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="lp-block" aria-label="更多">
+      <header class="lp-head">
+        <p class="eye">Extras</p>
+        <h2>灯还亮着的细节</h2>
+      </header>
+      <div class="lp-grid4">
+        <article>
+          <strong>Android TV</strong>
+          <p>盒子装上就当局域网宿主，手机扫电视码进房。</p>
+        </article>
+        <article>
+          <strong>本机缓存</strong>
+          <p>处理完成的歌落在盒子上，处理端掉线也能唱。</p>
+        </article>
+        <article>
+          <strong>微信认号</strong>
+          <p>扫一下就认出人。没配微信时，本机身份也能先唱。</p>
+        </article>
+        <article>
+          <strong>开麦混音</strong>
+          <p>手机麦可以混到电视。音量滑条直接管现场。</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-block" id="notes">
+      <header class="lp-head">
+        <p class="eye">04 · Notes</p>
+        <h2>上场前会问的</h2>
+      </header>
+      <dl class="lp-faq">
+        <div>
+          <dt>一定要 Android 电视吗？</dt>
+          <dd>不用。浏览器打开电视页就能唱。Android TV 是把宿主和缓存装进盒子里。</dd>
+        </div>
+        <div>
+          <dt>歌从哪来？</dt>
+          <dd>按歌名搜：网易外链，再到 SoundCloud、YouTube。只给自己的房间用，不二次分发。</dd>
+        </div>
+        <div>
+          <dt>没有官方歌词怎么办？</dt>
+          <dd>可以粘贴歌词。再没有就走转写。有官方 LRC 时，以官方轴为准。</dd>
+        </div>
+        <div>
+          <dt>要不要本机装 Torch？</dt>
+          <dd>不要。人声分离是 ONNX。镜像里已经烤好模型。</dd>
+        </div>
+        <div>
+          <dt>断网能唱吗？</dt>
+          <dd>已经处理好并缓存在盒子上的歌可以。新歌还是要处理端在线。</dd>
+        </div>
+        <div>
+          <dt>能当公开曲库网站吗？</dt>
+          <dd>不能。这是家庭 / 包厢自托管。不要公开发布媒体文件。</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="lp-closer">
+      <p class="eye">Encore</p>
+      <h2>灯一开，今晚就有歌。</h2>
+      <p>先把电视打开，再让手机进房。第一首歌进队列的时候，客厅就不只是客厅了。</p>
+      <div class="cta">
+        <a class="pill" href="/tv.html">打开电视</a>
+        <a class="ghost" href="/m.html">手机点歌</a>
+      </div>
+    </section>
   </main>
+
+  <footer class="lp-foot">
+    <a class="lp-logo" href="#opening">lov-ktv</a>
+    <p>仅供个人或家庭局域网。不要公开发布曲库。</p>
+    <p><a href="/tv.html">电视</a> · <a href="/m.html">点歌</a> · <a href="/login.html">认号</a></p>
+  </footer>
+  <script src="/landing.js?v=2"></script>
 </body>
 </html>
