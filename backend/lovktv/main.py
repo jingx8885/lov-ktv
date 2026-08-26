@@ -136,6 +136,18 @@ def _startup() -> None:
     resume_stuck_jobs()
 
 
+@app.get("/api/host")
+def api_host(request: Request) -> dict:
+    origin = _request_base(request)
+    return {
+        "origin": origin,
+        "process_origin": origin,
+        "mode": "server",
+        "phone_path": "/m.html?room=",
+        "cache_ready": 0,
+    }
+
+
 @app.get("/api/auth/status")
 def api_auth_status() -> dict:
     return auth_status()

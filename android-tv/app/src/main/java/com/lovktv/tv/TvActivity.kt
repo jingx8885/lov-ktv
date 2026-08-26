@@ -55,13 +55,25 @@ class TvActivity : Activity() {
                 }
             }
         }
-        loadServer()
+        HostService.ensureStarted(this)
+        loadWhenReady()
         webView.requestFocus()
     }
 
-    private fun loadServer() {
-        val server = Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER }
-        webView.loadUrl("$server/tv.html?androidtv=1")
+    private fun loadWhenReady() {
+        webView.post(object : Runnable {
+            private var tries = 0
+
+            override fun run() {
+                if (HostRuntime.ready || tries >= 40) {
+                    val port = HostRuntime.port
+                    webView.loadUrl("http://127.0.0.1:$port/tv.html?androidtv=1")
+                    return
+                }
+                tries += 1
+                webView.postDelayed(this, 100)
+            }
+        })
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {

@@ -3,6 +3,13 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val generatedAssets = layout.buildDirectory.dir("generated/assets")
+val copyWebAssets = tasks.register<Copy>("copyWebAssets") {
+    from(rootProject.projectDir.resolve("../frontend/public"))
+    into(generatedAssets.map { it.dir("web") })
+    exclude("**/.DS_Store")
+}
+
 android {
     namespace = "com.lovktv.tv"
     compileSdk = 34
@@ -29,8 +36,26 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    sourceSets.getByName("main").assets.srcDir(generatedAssets)
+
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/INDEX.LIST"
+            excludes += "/META-INF/io.netty.versions.properties"
+        }
+    }
 }
+
+tasks.named("preBuild").configure { dependsOn(copyWebAssets) }
 
 dependencies {
     implementation("androidx.leanback:leanback:1.0.0")
+    implementation("io.ktor:ktor-server-cio:2.3.12")
+    implementation("io.ktor:ktor-server-websockets:2.3.12")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

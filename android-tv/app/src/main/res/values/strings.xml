@@ -2,9 +2,10 @@
 <resources>
     <string name="app_name">lov-ktv</string>
     <string name="brand">lov-ktv</string>
-    <string name="setup_title">连接家庭 KTV</string>
-    <string name="setup_hint">填电脑或 NAS 上的服务器地址，遥控器方向键可移动焦点。</string>
+    <string name="setup_title">处理服务器</string>
+    <string name="setup_hint">歌曲下载、人声分离、歌词对齐在这台电脑或云端跑。电视会在本机开局域网服务，手机扫码进房。</string>
     <string name="server_hint">http://192.168.1.8:8787</string>
-    <string name="open_tv">打开电视</string>
-    <string name="server_error">打不开服务器。按菜单键改地址。</string>
+    <string name="open_tv">开启电视</string>
+    <string name="server_error">本机服务还没就绪。按菜单键检查处理服务器地址。</string>
+    <string name="host_channel">局域网服务</string>
 </resources>

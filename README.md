@@ -27,7 +27,7 @@ PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787
 
 微信登录（可选）环境变量：`WECHAT_APP_ID`、`WECHAT_APP_SECRET`；微信内快捷登录再配 `WECHAT_MP_APP_ID`、`WECHAT_MP_APP_SECRET`；公网回调 `LOVKTV_PUBLIC_URL`。没配微信时，手机可用本机身份，电视出二维码给手机确认。
 
-Android TV：用 Android Studio 打开 `android-tv/`，首次填 `http://电脑IP:8787`。说明见 `android-tv/README.md`。
+Android TV：用 Android Studio 打开 `android-tv/`。安装后 App 在电视上开局域网服务，手机扫电视二维码进房；首次填处理服务器 `http://电脑IP:8787`。说明见 `android-tv/README.md`。
 
 Docker：
 

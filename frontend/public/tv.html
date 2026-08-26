@@ -144,6 +144,14 @@
       return (new URLSearchParams(location.search).get("room") || localStorage.getItem("tvRoom") || "").toUpperCase();
     }
 
+    async function hostOrigin() {
+      try {
+        const data = await fetch("/api/host").then((r) => r.json());
+        if (data && data.origin) return String(data.origin).replace(/\/$/, "");
+      } catch (err) {}
+      return location.origin;
+    }
+
     let loginTicket = "";
     let loginTimer = 0;
 
@@ -207,7 +215,7 @@
         : await fetch("/api/rooms", { method: "POST" }).then((r) => r.json());
       localStorage.setItem("tvRoom", room.code);
       $("code").textContent = room.code;
-      const url = location.origin + "/m.html?room=" + room.code + "&v=queue3";
+      const url = (await hostOrigin()) + "/m.html?room=" + room.code + "&v=queue3";
       $("phoneLink").href = url;
       renderQr(url);
       const user = await currentUser();

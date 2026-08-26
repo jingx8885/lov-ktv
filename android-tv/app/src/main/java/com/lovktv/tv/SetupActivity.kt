@@ -21,11 +21,13 @@ class SetupActivity : Activity() {
         input.requestFocus()
         findViewById<Button>(R.id.open).setOnClickListener {
             Prefs.saveServer(this, input.text.toString())
+            HostService.ensureStarted(this)
             openTv()
         }
     }
 
     private fun openTv() {
+        HostService.ensureStarted(this)
         startActivity(Intent(this, TvActivity::class.java))
         finish()
     }
