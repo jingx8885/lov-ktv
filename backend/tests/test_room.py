@@ -86,7 +86,7 @@ def test_catalog_enqueue_does_not_cut_in(tmp_path, monkeypatch):
     store.update_song(extra["id"], status="ready")
     ensure_room("Q1")
     waiting = enqueue("Q1", first["id"])
-    assert waiting["now_playing"] is None
+    assert waiting["now_playing"]["song_id"] == first["id"]
     assert [item["song_id"] for item in waiting["queue"]] == [first["id"]]
     started = play_now("Q1", item_id=waiting["queue"][0]["id"])
     assert started["now_playing"]["song_id"] == first["id"]
@@ -95,6 +95,48 @@ def test_catalog_enqueue_does_not_cut_in(tmp_path, monkeypatch):
     assert [item["song_id"] for item in queued["queue"]] == [first["id"], extra["id"]]
     jumped = play_now("Q1", song_id=extra["id"])
     assert jumped["now_playing"]["song_id"] == first["id"]
+
+
+def test_enqueue_after_empty_queue_starts_song(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv import store
+
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    store.init_db()
+    first = store.create_song("第一首", "a", "zh")
+    extra = store.create_song("再点一首", "b", "zh")
+    store.update_song(first["id"], status="ready")
+    store.update_song(extra["id"], status="ready")
+    ensure_room("EMPTY1")
+    started = enqueue("EMPTY1", first["id"])
+    assert started["now_index"] == 0
+    assert started["now_playing"]["song_id"] == first["id"]
+    skip("EMPTY1")
+    idle = store.room_snapshot("EMPTY1")
+    assert idle["queue"] == []
+    assert idle["now_playing"] is None
+    again = enqueue("EMPTY1", extra["id"])
+    assert again["now_playing"]["song_id"] == extra["id"]
+
+
+def test_stuck_negative_index_heals_when_queue_has_songs(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv import store
+    import sqlite3
+
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    store.init_db()
+    song = store.create_song("卡住的歌", "a", "zh")
+    store.update_song(song["id"], status="ready")
+    ensure_room("STUCK1")
+    enqueue("STUCK1", song["id"])
+    with sqlite3.connect(store.DB_PATH) as conn:
+        conn.execute("UPDATE rooms SET now_index=-1 WHERE code=?", ("STUCK1",))
+    snap = store.room_snapshot("STUCK1")
+    assert snap["now_index"] == 0
+    assert snap["now_playing"]["song_id"] == song["id"]
 
 
 def test_retry_query_uses_title_and_artist():

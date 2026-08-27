@@ -177,6 +177,8 @@ def _clamp_room_indexes(conn: sqlite3.Connection) -> None:
         count = conn.execute("SELECT COUNT(*) FROM queue WHERE room=?", (room["code"],)).fetchone()[0]
         if count <= 0:
             conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
+        elif int(room["now_index"]) < 0:
+            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
         elif int(room["now_index"]) >= count:
             conn.execute("UPDATE rooms SET now_index=? WHERE code=?", (count - 1, room["code"]))
 
@@ -229,7 +231,13 @@ def room_snapshot(code: str) -> dict[str, Any]:
             (code,),
         ).fetchall()
     queue = [dict(row) for row in rows]
-    now = queue[room["now_index"]] if queue and 0 <= room["now_index"] < len(queue) else None
+    index = int(room["now_index"])
+    if queue and index < 0:
+        with _LOCK, connect() as conn:
+            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (code,))
+        index = 0
+        room["now_index"] = 0
+    now = queue[index] if queue and 0 <= index < len(queue) else None
     return {**room, "queue": queue, "now_playing": now}
 
 
@@ -250,7 +258,7 @@ def enqueue(code: str, song_id: str) -> dict[str, Any]:
             (new_id(), code, song_id, pos, now_ms()),
         )
         if not had_playing:
-            conn.execute("UPDATE rooms SET now_index=-1 WHERE code=?", (code,))
+            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (code,))
     return room_snapshot(code)
 
 

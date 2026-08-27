@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=native10" />
+  <link rel="stylesheet" href="/app.css?v=native11" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -268,6 +268,10 @@
           if (!snap) return;
           room = snap;
           applyMix();
+          const now = snap.now_playing;
+          if (now && now.status === "ready" && lastItem !== (now.id || now.song_id)) {
+            tick();
+          }
         },
         onRtc: (msg) => {
           if (msg.kind === "offer") roomRtc.handleOffer(msg);
@@ -417,11 +421,7 @@
         hookLines = nativeMv() ? new Set() : (window.LovStageFx ? LovStageFx.hookTexts(lyrics.cues) : new Set());
         if (!nativeMv()) ensureStageFx();
         bindMtv(now.song_id);
-        if (canPlay()) startPlayback();
-        else {
-          stopAudioOnly();
-          $("gate").hidden = false;
-        }
+        startPlayback();
       } else {
         applyMix();
         if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
@@ -434,10 +434,7 @@
             .then((data) => { if (data && data.cues) lyrics = data; })
             .catch(() => {});
         }
-        if (!canPlay()) {
-          stopAudioOnly();
-          $("gate").hidden = false;
-        }
+        if (pageVisible() && isLeader) startPlayback();
       }
     }
 
@@ -566,7 +563,7 @@
 
     function startPlayback() {
       if (!pageVisible()) {
-        stopAudioOnly();
+        pauseAudio();
         $("gate").hidden = false;
         return;
       }
@@ -577,6 +574,15 @@
       if (!songId) return;
       const karaoke = $("karaoke");
       const vocal = $("vocal");
+      const sameSong = String(karaoke.getAttribute("src") || karaoke.src || "").includes(`/media/${songId}/`);
+      if (sameSong) {
+        applyMix();
+        silenceMtv($("mtv"));
+        karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
+        vocal.play().catch(() => {});
+        $("mtv").play().catch(() => {});
+        return;
+      }
       karaoke.src = mediaUrl(songId, "karaoke.m4a");
       karaoke.onerror = () => { karaoke.src = mediaUrl(songId, "original.mp3"); };
       vocal.src = mediaUrl(songId, "original.mp3");
@@ -617,6 +623,12 @@
       startPlayback();
       $("liveMic").play().catch(() => {});
     };
+    document.addEventListener("pointerdown", () => {
+      if (room && room.now_playing && room.now_playing.status === "ready") startPlayback();
+    });
+    document.addEventListener("keydown", () => {
+      if (room && room.now_playing && room.now_playing.status === "ready") startPlayback();
+    });
     $("skip").onclick = async () => {
       const code = roomCode() || (room && room.code);
       if (!code) return;

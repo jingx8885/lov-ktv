@@ -499,14 +499,18 @@ def api_room(code: str) -> dict:
 
 
 @app.post("/api/rooms/{code}/queue")
-def api_enqueue(code: str, payload: dict) -> dict:
+async def api_enqueue(code: str, payload: dict) -> dict:
+    code = code.upper()
     song_id = str(payload.get("song_id") or "")
     if not get_song(song_id):
         raise HTTPException(404, "歌曲不存在")
     try:
-        return enqueue(code.upper(), song_id)
+        snap = enqueue(code, song_id)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    view = _room_view(code, snap)
+    await _broadcast(code, {"type": "snapshot", "room": view})
+    return view
 
 
 @app.post("/api/rooms/{code}/bump")
@@ -515,16 +519,23 @@ def api_bump(code: str, payload: dict) -> dict:
 
 
 @app.post("/api/rooms/{code}/skip")
-def api_skip(code: str) -> dict:
-    return skip(code.upper())
+async def api_skip(code: str) -> dict:
+    code = code.upper()
+    view = _room_view(code, skip(code))
+    await _broadcast(code, {"type": "snapshot", "room": view})
+    return view
 
 
 @app.post("/api/rooms/{code}/play")
-def api_play(code: str, payload: dict) -> dict:
+async def api_play(code: str, payload: dict) -> dict:
+    code = code.upper()
     try:
-        return play_now(code.upper(), str(payload.get("id") or ""), str(payload.get("song_id") or ""))
+        snap = play_now(code, str(payload.get("id") or ""), str(payload.get("song_id") or ""))
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
+    view = _room_view(code, snap)
+    await _broadcast(code, {"type": "snapshot", "room": view})
+    return view
 
 
 @app.post("/api/rooms/{code}/mix")
