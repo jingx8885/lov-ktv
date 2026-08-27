@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone28" />
+  <link rel="stylesheet" href="/app.css?v=phone29" />
 </head>
 <body class="phone">
   <div class="app">
@@ -314,8 +314,8 @@
     const PAGES = ["room", "search", "desk", "player"];
     const PAGE_TITLE = { room: "房间", search: "搜歌", desk: "点歌台", player: "播放" };
     const ICO = {
-      play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>',
-      pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>',
+      play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.2v11.6L18.8 12z"/></svg>',
+      pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v14H5zm9 0h5v14h-5z"/></svg>',
       listen: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 0114 0v6a2 2 0 01-2 2h-2v-7h3a6 6 0 00-12 0h3v7H7a2 2 0 01-2-2v-6z"/></svg>',
       plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
       trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM8 9h2v9H8V9z"/></svg>',
@@ -329,25 +329,50 @@
       ["playerPlay", "editPlay"].forEach((id) => {
         const btn = $(id);
         if (!btn) return;
-        btn.innerHTML = icon;
+        if (btn.getAttribute("aria-label") !== label) btn.innerHTML = icon;
         btn.setAttribute("aria-label", label);
+        btn.classList.toggle("is-playing", !!playing);
       });
+    }
+    function playerIsPlaying() {
+      const audio = $("playerAudio");
+      return !!(audio && audio.src && !audio.paused);
+    }
+    function refreshPlayIcon() {
+      setPlayIcon(playerIsPlaying());
+    }
+    function pausePlayerTracks() {
+      playerHeld = true;
+      const audio = $("playerAudio");
+      const orig = $("playerOriginal");
+      const guide = $("playerGuide");
+      if (audio) audio.pause();
+      if (orig) orig.pause();
+      if (guide) guide.pause();
+      refreshPlayIcon();
     }
     function togglePlayer() {
       if (!playerSong) return alert("先从点歌台听一首");
       const audio = $("playerAudio");
+      const orig = $("playerOriginal");
       hookPlayerAudio();
-      if (audio.paused) {
-        audio.play().catch(() => alert("点一下播放，手机才允许出声"));
-        setPlayIcon(true);
-        syncGuide();
+      if (playerIsPlaying()) {
+        pausePlayerTracks();
         applyPlayerVocalMix();
-      } else {
-        audio.pause();
-        setPlayIcon(false);
-        syncGuide();
-        applyPlayerVocalMix();
+        return;
       }
+      playerHeld = false;
+      const startOrig = !!(playerVocal && orig && orig.getAttribute("src"));
+      setPlayIcon(true);
+      audio.play().then(() => {
+        if (startOrig) return orig.play().catch(() => {});
+      }).then(() => {
+        applyPlayerVocalMix();
+        refreshPlayIcon();
+      }).catch(() => {
+        pausePlayerTracks();
+        alert("点一下播放，手机才允许出声");
+      });
     }
     function playFromMs(ms) {
       if (!playerSong) return;
@@ -356,11 +381,14 @@
         hookPlayerAudio();
         try { audio.currentTime = Math.max(0, ms) / 1000; } catch (err) {}
         syncGuide(Math.max(0, ms) / 1000);
-        applyPlayerVocalMix();
+        playerHeld = false;
+        const orig = $("playerOriginal");
         audio.play().then(() => {
-          setPlayIcon(true);
+          if (playerVocal && orig && orig.getAttribute("src")) return orig.play().catch(() => {});
+        }).then(() => {
           applyPlayerVocalMix();
-        }).catch(() => setPlayIcon(false));
+          refreshPlayIcon();
+        }).catch(() => refreshPlayIcon());
         if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
       };
       if (audio.readyState >= 1) start();
@@ -895,6 +923,7 @@
       return `/media/${songId}/${name}?v=${songMediaRev || Date.now()}`;
     }
     let playerRaf = 0;
+    let playerHeld = true;
     let playerHook = null;
     let playerViz = null;
     let alignTl = null;
@@ -1068,13 +1097,7 @@
       return upcoming >= 0 ? upcoming : (cues.length ? cues.length - 1 : -1);
     }
     function pausePlayer() {
-      const audio = $("playerAudio");
-      audio.pause();
-      const guide = $("playerGuide");
-      if (guide) guide.pause();
-      const orig = $("playerOriginal");
-      if (orig) orig.pause();
-      setPlayIcon(false);
+      pausePlayerTracks();
       if (playerRaf) {
         cancelAnimationFrame(playerRaf);
         playerRaf = 0;
@@ -1132,7 +1155,7 @@
         } catch (err) {}
       }
       const editing = document.body.classList.contains("edit-on");
-      const want = !editing && !!playerVocal && !!(audio && !audio.paused && audio.src);
+      const want = !playerHeld && !editing && !!playerVocal && !!(audio && !audio.paused && audio.src);
       orig.muted = !want;
       if (want) orig.play().catch(() => {});
       else orig.pause();
@@ -1255,6 +1278,7 @@
       $("playerNow").textContent = fmtClock(t);
       $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
       $("playerArt").classList.toggle("is-live", !audio.paused && !!audio.src);
+      refreshPlayIcon();
       if (hold != null) {
         syncGuide(hold);
         syncOriginal(hold);
@@ -1417,15 +1441,21 @@
       hookPlayerAudio();
       ensureTimeline().render();
       if (ready && wantPlay) {
+        playerHeld = false;
         try {
           await audio.play();
+          if (playerVocal && orig && orig.getAttribute("src")) {
+            await orig.play().catch(() => {});
+          }
           setPlayIcon(true);
           syncGuide(0);
           applyPlayerVocalMix();
         } catch (err) {
+          playerHeld = true;
           setPlayIcon(false);
         }
       } else {
+        playerHeld = true;
         setPlayIcon(false);
         applyPlayerVocalMix();
       }
@@ -1447,6 +1477,9 @@
 
     $("playerPlay").onclick = () => togglePlayer();
     $("editPlay").onclick = () => togglePlayer();
+    ["play", "pause", "ended"].forEach((name) => {
+      $("playerAudio").addEventListener(name, refreshPlayIcon);
+    });
     $("playerVocal").onclick = () => {
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");

@@ -1289,6 +1289,10 @@ body.phone[data-page="player"] .topbar { display: none; }
   cursor: pointer;
 }
 .play-btn svg { width: 34px; height: 34px; fill: currentColor; }
+.play-btn.is-playing {
+  background: #171e30;
+  box-shadow: inset 0 0 0 2px var(--accent), 0 8px 20px rgba(255, 77, 141, .22);
+}
 
 body.phone.edit-on { overflow: hidden; }
 body.phone.edit-on .topbar,
