@@ -1,6 +1,8 @@
 services:
   lov-ktv:
-    build: .
+    build:
+      context: .
+      target: app
     image: lovktv:latest
     ports:
       - "8787:8787"

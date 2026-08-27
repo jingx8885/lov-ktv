@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone23" />
+  <link rel="stylesheet" href="/app.css?v=phone24" />
 </head>
 <body class="phone">
   <div class="app">
@@ -64,11 +64,9 @@
           <button class="icon-btn" id="skip" type="button" aria-label="切歌">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
           </button>
-          <button class="icon-btn" id="vocalOff" type="button" aria-label="伴唱">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
-          </button>
-          <button class="icon-btn" id="vocalOn" type="button" aria-label="原唱">
+          <button class="icon-btn labeled" id="vocalMix" type="button" aria-label="当前伴奏，点按切到原唱">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
+            <em id="vocalMixLabel">伴奏</em>
           </button>
           <button class="icon-btn" id="micToggle" type="button" aria-label="开麦">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
@@ -802,8 +800,7 @@
       $("topRoom").textContent = room.code;
       const now = room.now_playing;
       const mix = room.vocal_mix || 0;
-      $("vocalOff").classList.toggle("on", mix < 0.5);
-      $("vocalOn").classList.toggle("on", mix >= 0.5);
+      paintVocalMix(mix);
       paintMix(room);
       connectRoomRtc(code);
       if ($("queueCount")) $("queueCount").textContent = room.queue.length ? String(room.queue.length) : "";
@@ -1276,7 +1273,7 @@
       $("playerMeta").textContent = song.artist && !String(song.title).includes(song.artist) ? song.artist : "";
       setPlayerCover(song);
       $("playerVocal").classList.toggle("on", !!playerVocal);
-      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
+      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       songMediaRev = Date.now();
       const original = mediaUrl(song.id, "original.mp3");
       audio.src = playerVocal ? original : mediaUrl(song.id, "karaoke.m4a");
@@ -1334,8 +1331,8 @@
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
       $("playerVocal").classList.toggle("on", !!playerVocal);
-      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
-      $("playerVocal").setAttribute("aria-label", playerVocal ? "原唱" : "伴唱");
+      $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
+      $("playerVocal").setAttribute("aria-label", playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
       if (!playerSong) return;
       const audio = $("playerAudio");
       const t = audio.currentTime || 0;
@@ -1442,14 +1439,21 @@
         $("skip").disabled = false;
       }
     };
-    $("vocalOff").onclick = () => fetch(`/api/rooms/${$("room").value}/mix`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vocal_mix: 0 }),
-    });
-    $("vocalOn").onclick = () => fetch(`/api/rooms/${$("room").value}/mix`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vocal_mix: 1 }),
-    });
+    function paintVocalMix(mix) {
+      const on = Number(mix) >= 0.5;
+      $("vocalMix").classList.toggle("on", on);
+      $("vocalMixLabel").textContent = on ? "原唱" : "伴奏";
+      $("vocalMix").setAttribute("aria-label", on ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
+    }
+    $("vocalMix").onclick = () => {
+      const next = $("vocalMix").classList.contains("on") ? 0 : 1;
+      paintVocalMix(next);
+      fetch(`/api/rooms/${$("room").value}/mix`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vocal_mix: next }),
+      });
+    };
 
     let roomRtc = null;
     let roomRtcCode = "";
@@ -1583,8 +1587,8 @@
 
     $("playerEdit").onclick = () => enterEdit();
     $("playerVocal").classList.toggle("on", !!playerVocal);
-    $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴唱";
-    $("playerVocal").setAttribute("aria-label", playerVocal ? "原唱" : "伴唱");
+    $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
+    $("playerVocal").setAttribute("aria-label", playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
     $("playerOrder").onclick = () => togglePlayOrder();
     $("playerOrderEdit").onclick = () => togglePlayOrder();
     $("playerNextBtn").onclick = () => playNextSong();

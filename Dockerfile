@@ -1,11 +1,10 @@
-FROM python:3.12-slim
+FROM python:3.12-slim AS base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg curl libsndfile1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY backend /app/backend
 
 ENV PYTHONPATH=/app/backend \
     LOVKTV_DATA=/app/data \
@@ -13,16 +12,19 @@ ENV PYTHONPATH=/app/backend \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
-# Separator is UVR ONNX + onnxruntime. Keep it under /opt so ./data cannot hide it.
-# Official LRC interpolation works without a local ASR stack.
-# Copy frontend after the model layer so landing/static edits do not re-download ONNX.
-RUN pip install --no-cache-dir -e /app/backend yt-dlp \
-    && mkdir -p /app/data /opt/lovktv/models \
+COPY backend/pyproject.toml /app/backend/pyproject.toml
+RUN mkdir -p /app/backend/lovktv /app/data /opt/lovktv/models \
+    && printf '%s\n' '__version__ = "0"' > /app/backend/lovktv/__init__.py \
+    && pip install --no-cache-dir -e /app/backend yt-dlp \
     && curl -fsSL --retry 3 -o /opt/lovktv/models/UVR_MDXNET_KARA_2.onnx \
         https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR_MDXNET_KARA_2.onnx \
     && test -s /opt/lovktv/models/UVR_MDXNET_KARA_2.onnx
 
+FROM base AS app
+
+COPY backend /app/backend
 COPY frontend /app/frontend
+RUN pip install --no-deps --no-cache-dir -e /app/backend
 
 EXPOSE 8787
 HEALTHCHECK --interval=20s --timeout=5s --start-period=40s --retries=6 \

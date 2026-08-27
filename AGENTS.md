@@ -7,6 +7,8 @@
 - 公网：`https://ktv.lovbrowser.com`
 - 机器：`ubuntu@43.134.133.185`，目录 `~/lov-ktv`
 - 发版来源：先提交并 `git push origin HEAD`，再在 43 上 `git pull`。仓库默认分支是 `master`；`main` 与 `master` 应对同一发版 commit，不要两边各写各的。
+- 不要把应用代码挂进容器。运行中的内容必须来自当前 git commit 打出来的镜像。
+- 镜像分两段：`base`（系统包 / Python 依赖 / ONNX）和 `app`（backend + frontend）。日常 `--build` 会复用 `base`，只重烤应用层。
 - 上线命令：
 
 ```bash
@@ -16,7 +18,7 @@ git pull --ff-only origin master
 sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build
 ```
 
-- 只改 `frontend/public` 时，可先把静态文件拷进运行中的容器立刻见效，再 rebuild 让镜像与 git 一致：
+- 只改 `frontend/public`、要立刻看效果时，可先拷进运行中的容器，再按上面 `--build` 让镜像与 git 一致：
 
 ```bash
 sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/public/

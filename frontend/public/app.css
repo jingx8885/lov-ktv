@@ -101,7 +101,13 @@ input, textarea {
 .tv-ui header,
 .tv .user-chip,
 .tv .tv-controls,
-.tv #qinfo { display: none !important; }
+.tv #qinfo,
+.tv #micLive,
+.tv .login-gate { display: none !important; }
+.tv #title,
+.tv #meta,
+.tv #skip,
+.tv #toggle { display: none !important; }
 .tv-ui footer.bar {
   position: absolute;
   width: 1px;
@@ -123,6 +129,15 @@ input, textarea {
 }
 .start-gate[hidden] { display: none; }
 .start-gate .btn { min-width: 220px; min-height: 64px; font-size: 22px; pointer-events: auto; }
+.tv .start-gate { background: transparent; }
+.tv .start-gate .btn {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: auto;
+}
 .lyrics { text-align: center; min-height: 40vh; display: grid; place-items: center; }
 .tv .lyrics > .lyric-plate {
   max-width: min(92vw, 1520px);
@@ -137,6 +152,13 @@ input, textarea {
 .tv .lyrics .prev:empty,
 .tv .lyrics .next:empty,
 .tv .lyrics .line:empty { display: none; }
+.tv .lyric-plate:not(:has(.line:not(:empty))) {
+  display: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
 .line, .next, .prev {
   display: flex;
   flex-wrap: wrap;
@@ -644,7 +666,9 @@ body.phone .app {
   border-top: 1px solid #243049;
 }
 .now-tools .icon-btn { background: transparent; }
+.now-tools .icon-btn.labeled { width: 64px; min-height: 52px; }
 .now-tools .icon-btn.on { color: var(--accent); background: rgba(255, 77, 141, .14); }
+.now-tools .icon-btn.labeled.on em { color: var(--accent); }
 .now-tools .icon-btn.live {
   color: #fff;
   background: #e11d48;

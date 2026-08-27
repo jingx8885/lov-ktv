@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=native7" />
+  <link rel="stylesheet" href="/app.css?v=native9" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -220,9 +220,8 @@
       renderQr(url);
       const user = await currentUser();
       renderUserChip(user);
-      if (!user && !sessionStorage.getItem("tvSkipLogin")) {
-        startLoginQr();
-      }
+      sessionStorage.setItem("tvSkipLogin", "1");
+      $("loginGate").hidden = true;
       $("tvLoginBtn").onclick = () => startLoginQr();
       $("refreshLogin").onclick = () => startLoginQr();
       $("skipLogin").onclick = () => {
@@ -390,10 +389,10 @@
       if (!now) {
         stopPlayback();
         $("gate").hidden = true;
-        $("title").textContent = "等待点歌";
+        $("title").textContent = "";
         $("meta").textContent = "";
         $("prev").innerHTML = "";
-        $("cur").textContent = "用手机扫右上角二维码搜歌";
+        $("cur").textContent = "";
         $("next").innerHTML = "";
         return;
       }
@@ -401,7 +400,7 @@
       $("meta").textContent = `${now.artist || ""} · ${STATUS[now.status] || now.status}`;
       if (now.status !== "ready") {
         $("prev").innerHTML = "";
-        $("cur").textContent = "正在做 KTV：" + (STATUS[now.status] || now.status);
+        $("cur").textContent = "";
         $("next").textContent = "";
         return;
       }
