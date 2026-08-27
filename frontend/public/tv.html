@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=native11" />
+  <link rel="stylesheet" href="/app.css?v=native12" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -92,6 +92,7 @@
     const audioBus = "BroadcastChannel" in window ? new BroadcastChannel("lovktv-audio") : null;
     let isLeader = true;
     let lastLyricsAt = 0;
+    const lyricPaint = { prev: "", cur: "", next: "" };
     let audioHook = null;
     let stageFx = null;
     let lastFxCue = -1;
@@ -106,15 +107,43 @@
         .replace(/>/g, "&gt;");
     }
 
+    function tokenProgress(tok, t) {
+      if (t >= tok.end_ms) return 100;
+      if (t >= tok.start_ms) return ((t - tok.start_ms) / Math.max(tok.end_ms - tok.start_ms, 1)) * 100;
+      return 0;
+    }
+    function cueKey(cue) {
+      return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}` : "";
+    }
+    function paintLine(el, cue, t, slot) {
+      if (!el) return;
+      if (!cue) {
+        if (lyricPaint[slot] !== "empty") {
+          el.innerHTML = "";
+          lyricPaint[slot] = "empty";
+        }
+        return;
+      }
+      const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
+      const id = cueKey(cue) + ":" + skin;
+      if (lyricPaint[slot] !== id) {
+        el.innerHTML = renderCue(cue, t);
+        lyricPaint[slot] = id;
+        return;
+      }
+      if (skin !== "live") return;
+      const toks = cue.tokens || [];
+      el.querySelectorAll(".rb").forEach((node, i) => {
+        if (!toks[i]) return;
+        const next = Math.round(tokenProgress(toks[i], t)) + "%";
+        if (node.style.getPropertyValue("--p") !== next) node.style.setProperty("--p", next);
+      });
+    }
     function renderCue(cue, t) {
       const tokens = cue.tokens || [];
       if (!tokens.length) return escapeHtml(cue.text);
       return tokens.map((tok, i) => {
-        let p = 0;
-        if (t >= tok.end_ms) p = 100;
-        else if (t >= tok.start_ms) {
-          p = ((t - tok.start_ms) / Math.max(tok.end_ms - tok.start_ms, 1)) * 100;
-        }
+        const p = Math.round(tokenProgress(tok, t));
         const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
         const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
         const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
@@ -414,6 +443,9 @@
       if (lastItem !== itemKey) {
         lastItem = itemKey;
         mediaRev = Date.now();
+        lyricPaint.prev = "";
+        lyricPaint.cur = "";
+        lyricPaint.next = "";
         lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
         lastLyricsAt = Date.now();
         lastFxCue = -1;
@@ -434,7 +466,10 @@
             .then((data) => { if (data && data.cues) lyrics = data; })
             .catch(() => {});
         }
-        if (pageVisible() && isLeader) startPlayback();
+        const karaoke = $("karaoke");
+        if (pageVisible() && isLeader && karaoke && (karaoke.paused || !karaoke.getAttribute("src"))) {
+          startPlayback();
+        }
       }
     }
 
@@ -451,6 +486,9 @@
     function stopPlayback() {
       lyrics = { cues: [] };
       lastItem = "";
+      lyricPaint.prev = "";
+      lyricPaint.cur = "";
+      lyricPaint.next = "";
       ["karaoke", "vocal", "mtv"].forEach((id) => {
         const el = $(id);
         el.pause();
@@ -472,12 +510,13 @@
         silenceMtv(mtv);
         const t = Math.floor((karaoke.currentTime || 0) * 1000);
         syncVocal();
-        if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration)) {
-          if (Math.abs(mtv.currentTime - karaoke.currentTime) > 0.28) {
-            mtv.currentTime = karaoke.currentTime;
+        const audioLive = !karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.05;
+        if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration) && !mtv.seeking && !karaoke.seeking) {
+          if (audioLive && Math.abs(mtv.currentTime - karaoke.currentTime) > 1) {
+            try { mtv.currentTime = karaoke.currentTime; } catch (err) {}
           }
           if (karaoke.paused) mtv.pause();
-          else if (mtv.paused) mtv.play().catch(() => {});
+          else if (audioLive && mtv.paused) mtv.play().catch(() => {});
         }
         const cues = lyrics.cues || [];
         const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
@@ -485,18 +524,18 @@
         const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
         if (cue) {
           fireCueFx(cue, idx);
-          $("prev").innerHTML = idx > 0 ? renderCue(cues[idx - 1], 1e12) : "";
-          $("cur").innerHTML = renderCue(cue, t);
-          $("next").innerHTML = cues[idx + 1] ? renderCue(cues[idx + 1], -1) : "";
+          paintLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev");
+          paintLine($("cur"), cue, t, "cur");
+          paintLine($("next"), cues[idx + 1] || null, -1, "next");
         } else if (upcomingIdx >= 0) {
           const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
-          $("prev").innerHTML = upcomingIdx > 1 ? renderCue(cues[upcomingIdx - 2], 1e12) : "";
-          $("cur").innerHTML = held ? renderCue(held, 1e12) : "";
-          $("next").innerHTML = renderCue(cues[upcomingIdx], -1);
+          paintLine($("prev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev");
+          paintLine($("cur"), held, 1e12, "cur");
+          paintLine($("next"), cues[upcomingIdx], -1, "next");
         } else {
-          $("prev").innerHTML = cues.length ? renderCue(cues[cues.length - 1], 1e12) : "";
-          $("cur").innerHTML = "";
-          $("next").innerHTML = "";
+          paintLine($("prev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev");
+          paintLine($("cur"), null, t, "cur");
+          paintLine($("next"), null, -1, "next");
         }
       }
       if (audioHook && !nativeMv()) LovBands.pull(audioHook);
@@ -510,6 +549,7 @@
     }
 
     function claimLeader() {
+      if (isLeader) return;
       isLeader = true;
       if (audioBus) audioBus.postMessage({ type: "claim", tabId });
     }
@@ -574,13 +614,18 @@
       if (!songId) return;
       const karaoke = $("karaoke");
       const vocal = $("vocal");
-      const sameSong = String(karaoke.getAttribute("src") || karaoke.src || "").includes(`/media/${songId}/`);
+      const sameSong = String(karaoke.getAttribute("src") || karaoke.src || "").includes(songId);
       if (sameSong) {
         applyMix();
         silenceMtv($("mtv"));
-        karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
-        vocal.play().catch(() => {});
-        $("mtv").play().catch(() => {});
+        if (karaoke.paused) {
+          karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
+        } else {
+          $("gate").hidden = true;
+        }
+        if (vocal.paused) vocal.play().catch(() => {});
+        const mtv = $("mtv");
+        if (mtv && mtv.paused && karaoke.currentTime > 0.05) mtv.play().catch(() => {});
         return;
       }
       karaoke.src = mediaUrl(songId, "karaoke.m4a");
@@ -624,10 +669,16 @@
       $("liveMic").play().catch(() => {});
     };
     document.addEventListener("pointerdown", () => {
-      if (room && room.now_playing && room.now_playing.status === "ready") startPlayback();
+      const karaoke = $("karaoke");
+      if (room && room.now_playing && room.now_playing.status === "ready" && karaoke && karaoke.paused) {
+        startPlayback();
+      }
     });
     document.addEventListener("keydown", () => {
-      if (room && room.now_playing && room.now_playing.status === "ready") startPlayback();
+      const karaoke = $("karaoke");
+      if (room && room.now_playing && room.now_playing.status === "ready" && karaoke && karaoke.paused) {
+        startPlayback();
+      }
     });
     $("skip").onclick = async () => {
       const code = roomCode() || (room && room.code);
