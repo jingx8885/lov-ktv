@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone25" />
+  <link rel="stylesheet" href="/app.css?v=phone28" />
 </head>
 <body class="phone">
   <div class="app">
@@ -41,20 +41,25 @@
       </div>
     </section>
 
-    <section class="page" id="page-search" hidden>
-      <div class="search-bar">
-        <input id="q" placeholder="歌名 / 歌手" />
-        <button class="btn primary icon-text" id="goSearch" type="button" aria-label="搜索">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
-        </button>
-        <button class="btn icon-text" id="openUpload" type="button" aria-label="本地入库">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5 5h-3v8h-4V8H7l5-5zM5 19h14v2H5z"/></svg>
-        </button>
+    <section class="page page-search" id="page-search" hidden>
+      <div class="search-hero">
+        <div class="search-bar">
+          <span class="search-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
+          </span>
+          <input id="q" placeholder="歌名 / 歌手" autocomplete="off" enterkeyhint="search" />
+          <button class="search-go" id="goSearch" type="button">搜索</button>
+        </div>
+        <div class="search-meta">
+          <p class="search-hint">先找 Karaoke Mugen，华语再走网易。</p>
+          <button class="search-upload" id="openUpload" type="button">本地入库</button>
+        </div>
       </div>
-      <p class="page-lead">先搜 Karaoke Mugen。华语走网易搜歌，歌词优先用酷狗逐字。</p>
       <audio id="preview" preload="none"></audio>
       <input type="file" id="file" accept="audio/*,video/*" hidden />
-      <div id="hits"></div>
+      <div class="hits" id="hits">
+        <p class="search-empty">搜歌名或歌手，先听再加入曲库</p>
+      </div>
     </section>
 
     <section class="page page-desk" id="page-desk">
@@ -126,6 +131,7 @@
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
         <audio id="playerGuide" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
+        <audio id="phoneIemVoice" autoplay playsinline hidden></audio>
         <div class="player-stage">
           <div class="player-art" id="playerArt">
             <img class="player-cover" id="playerCover" alt="" hidden />
@@ -143,6 +149,22 @@
           <div class="line" id="playerCur"></div>
           <div class="next" id="playerNext"></div>
         </section>
+        <div class="player-ktv" id="playerKtv">
+          <button class="icon-btn labeled" id="playerMic" type="button" aria-label="开麦唱歌">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+            <em id="playerMicLabel">开麦</em>
+          </button>
+          <button class="icon-btn labeled on" id="playerIem" type="button" aria-label="耳机耳返">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 00-7 7v4a3 3 0 003 3h1v-6H7a5 5 0 1110 0h-2v6h1a3 3 0 003-3v-4a7 7 0 00-7-7z"/></svg>
+            <em>耳返</em>
+          </button>
+          <label class="mix-row" id="playerMicRow" hidden>
+            <span>麦声</span>
+            <input type="range" id="playerMicGain" min="0" max="100" value="80" />
+            <em id="playerMicVal">80</em>
+          </label>
+          <p class="tiny" id="playerMicHint">B方案：戴上耳机。伴奏和人声只在耳机里，不当外放，所以没有回音。</p>
+        </div>
         <div class="player-transport">
           <button class="icon-btn labeled on" id="playerVocal" type="button" aria-label="原唱">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
@@ -236,9 +258,9 @@
       </button>
     </nav>
   </div>
-  <script src="/bands.js?v=wave5"></script>
+  <script src="/bands.js?v=wave7"></script>
   <script src="/timeline.js?v=tl7"></script>
-  <script src="/rtc-mic.js?v=mic1"></script>
+  <script src="/rtc-mic.js?v=mic8"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const STATUS = {
@@ -471,7 +493,14 @@
       previewId = "";
       $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
         btn.textContent = "试听";
+        btn.classList.remove("on", "busy");
       });
+    }
+
+    function previewParams(hit) {
+      const params = new URLSearchParams({ title: hit.title || "", artist: hit.artist || "" });
+      if (hit.media) params.set("media", hit.media);
+      return params;
     }
 
     async function togglePreview(hit, btn) {
@@ -480,21 +509,23 @@
         return;
       }
       stopPreview();
-      btn.textContent = "准备中";
-      const params = new URLSearchParams({ title: hit.title || "", artist: hit.artist || "" });
-      const infoRes = await fetch(`/api/preview/${hit.id}/resolve?` + params.toString());
+      btn.textContent = "…";
+      btn.classList.add("busy");
+      const params = previewParams(hit);
+      const infoRes = await fetch(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());
       const info = await infoRes.json().catch(() => ({}));
       if (!infoRes.ok) {
         btn.textContent = "试听";
+        btn.classList.remove("busy");
         alert(info.detail || "这首暂时不能试听，换一条再听");
         return;
       }
-      const note = btn.closest(".hit").querySelector(".tiny");
-      if (note && info.title) note.textContent = `试听：${info.title}`;
       previewId = hit.id;
       btn.textContent = "停止";
+      btn.classList.add("on");
+      btn.classList.remove("busy");
       const audio = $("preview");
-      audio.src = `/api/preview/${hit.id}?` + params.toString();
+      audio.src = `/api/preview/${encodeURIComponent(hit.id)}?` + params.toString();
       audio.play().catch(() => {
         stopPreview();
         alert("这首暂时不能试听，换一条再听");
@@ -548,48 +579,50 @@
       if (!q) return;
       searchPage = Math.max(1, page);
       stopPreview();
-      $("hits").innerHTML = "<p class='muted'>搜索中…</p>";
+      $("hits").innerHTML = "<p class='search-empty'>搜索中…</p>";
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${searchPage}&count=10`);
       const data = await res.json();
       if (!res.ok) {
-        $("hits").innerHTML = `<p>${data.detail || "搜索失败"}</p>`;
+        $("hits").innerHTML = `<p class="search-empty">${data.detail || "搜索失败"}</p>`;
         return;
       }
       const hits = data.hits || [];
       const cards = hits.map((hit) => {
-        const source = hit.source === "mugen" ? "Karaoke Mugen" : "网易";
-        const extra = [
-          hit.artist || "",
-          hit.album || "",
+        const mugen = hit.source === "mugen";
+        const source = mugen ? "Karaoke Mugen" : "网易";
+        const tags = [
           hit.lyrics_ready ? "成品歌词" : "",
           hit.off_vocal ? "无原唱/伴奏" : (hit.clean ? "" : "可能是伴奏/翻唱"),
-        ].filter(Boolean).join(" · ");
-        const preview = hit.preview_url
-          ? `<button class="btn" data-preview="${hit.id}">试听</button>`
-          : "";
+          hit.album || "",
+        ].filter(Boolean);
+        const canPreview = !!(hit.preview_url || mugen);
         return `
-        <div class="card hit">
-          <div>
-            <b>${hit.title}</b>
-            <div class="tiny"><span class="source-tag ${hit.source === "mugen" ? "mugen" : ""}">${source}</span> ${extra}</div>
+        <article class="hit-card">
+          <span class="hit-cover ${mugen ? "mugen" : ""}">${escapeHtml(songInitial(hit.title))}</span>
+          <div class="hit-copy">
+            <b>${escapeHtml(hit.title)}</b>
+            <p class="hit-artist">${escapeHtml(hit.artist || "未知歌手")}</p>
+            <div class="hit-tags">
+              <span class="source-tag ${mugen ? "mugen" : ""}">${source}</span>
+              ${tags.map((tag) => `<span class="hit-tag">${escapeHtml(tag)}</span>`).join("")}
+            </div>
           </div>
           <div class="hit-actions">
-            ${preview}
-            <button class="btn primary" data-import='${JSON.stringify(hit)}'>加入曲库</button>
+            ${canPreview ? `<button type="button" class="hit-btn" data-preview="${escapeHtml(hit.id)}">试听</button>` : ""}
+            <button type="button" class="hit-btn primary" data-import='${JSON.stringify(hit)}'>加入曲库</button>
           </div>
-        </div>`;
-      }).join("") || "<p class='muted'>没有结果</p>";
+        </article>`;
+      }).join("") || "<p class='search-empty'>没有这首，换个关键字再搜</p>";
       const canPrev = searchPage > 1;
       const canNext = !!data.has_more && hits.length > 0;
-      const pager = `
+      const pager = hits.length ? `
         <div class="pager">
-          <button class="btn" data-page="${searchPage - 1}" ${canPrev ? "" : "disabled"}>上一页</button>
-          <span class="tiny">第 ${searchPage} 页</span>
-          <button class="btn" data-page="${searchPage + 1}" ${canNext ? "" : "disabled"}>下一页</button>
-        </div>`;
-      $("hits").innerHTML = pager + cards + pager;
+          <button type="button" class="hit-btn" data-page="${searchPage - 1}" ${canPrev ? "" : "disabled"}>上一页</button>
+          <span>${searchPage}</span>
+          <button type="button" class="hit-btn" data-page="${searchPage + 1}" ${canNext ? "" : "disabled"}>下一页</button>
+        </div>` : "";
+      $("hits").innerHTML = cards + pager;
       bindSearchHits(q);
-      $("hits").scrollIntoView({ block: "start", behavior: "smooth" });
     }
 
     $("goSearch").onclick = () => runSearch(1);
@@ -690,7 +723,7 @@
         const mv = song.native_video ? `<em class="desk-pill mv">官方MV</em>` : "";
         const mark = song.letter || songInitial(song.title);
         return `
-        <div class="desk-row ${canPlay ? "" : "busy"}" ${canPlay ? `data-player="${song.id}"` : ""}>
+        <div class="desk-row ${canPlay ? "" : "busy"}">
           <span class="desk-avatar">${escapeHtml(mark)}</span>
           <div class="desk-copy">
             <b>${escapeHtml(song.title)}</b>
@@ -704,12 +737,6 @@
           </div>
         </div>`;
       }).join("") || emptyHint;
-      $("songs").querySelectorAll("[data-player]").forEach((row) => {
-        row.onclick = (event) => {
-          if (event.target.closest("button")) return;
-          openPlayer(row.dataset.player);
-        };
-      });
       $("songs").querySelectorAll("[data-queue]").forEach((btn) => {
         btn.onclick = async (event) => {
           event.stopPropagation();
@@ -729,7 +756,6 @@
             return;
           }
           btn.classList.add("on");
-          showDeskPane("queue");
           loadRoom();
         };
       });
@@ -871,6 +897,8 @@
     let playOrder = localStorage.getItem("playOrder") === "shuffle" ? "shuffle" : "seq";
     let playerCatalog = [];
     let playerLoad = 0;
+    let playerClockHold = null;
+    let playerHoldDur = 0;
     const lyricPaint = { prev: "", cur: "", next: "", align: "" };
 
     function updatePlayOrderBtns() {
@@ -1077,10 +1105,12 @@
       }
     }
     function hookPlayerAudio() {
-      playerHook = LovBands.hookAnalyser($("playerAudio"), playerHook);
+      const ctx = ensurePhoneCtx();
+      playerHook = LovBands.hookAnalyser($("playerAudio"), playerHook, ctx ? { ctx } : null);
       if (playerHook && playerHook.ctx && playerHook.ctx.state === "suspended") {
         playerHook.ctx.resume().catch(() => {});
       }
+      if (playerHook && playerHook.ctx) phoneCtx = playerHook.ctx;
     }
     function drawPlayerBands(t) {
       if (!playerViz) playerViz = LovBands.create($("playerBands"));
@@ -1156,7 +1186,8 @@
         return;
       }
       const audio = $("playerAudio");
-      const t = Math.floor((audio.currentTime || 0) * 1000);
+      const hold = playerClockHold;
+      const t = Math.floor(((hold != null ? hold : (audio.currentTime || 0)) * 1000));
       const cues = playerLyrics.cues || [];
       const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
       const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
@@ -1181,13 +1212,15 @@
       }
       if (document.body.classList.contains("edit-on")) updateAlignNow(t);
       drawPlayerBands(t);
-      const dur = (audio.duration || 0) * 1000;
+      const durSec = (Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : playerHoldDur;
+      const dur = (durSec || 0) * 1000;
       $("playerNow").textContent = fmtClock(t);
       $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
       $("playerArt").classList.toggle("is-live", !audio.paused && !!audio.src);
-      syncGuide();
+      if (hold != null) syncGuide(hold);
+      else syncGuide();
       if (!$("playerAlign").hidden) {
-        ensureTimeline().sync(t, (audio.duration || 0) * 1000);
+        ensureTimeline().sync(t, dur);
       }
       playerRaf = requestAnimationFrame(paintPlayer);
     }
@@ -1221,13 +1254,33 @@
       lyricsDirty = true;
       renderAlignList();
     }
-    function waitMedia(el, gen) {
+    function mediaPath(src) {
+      try { return new URL(src, location.href).pathname; } catch (err) { return String(src || "").split("?")[0]; }
+    }
+    function resetPlayerFace() {
+      playerClockHold = null;
+      playerHoldDur = 0;
+      selectedCue = 0;
+      lyricPaint.prev = "";
+      lyricPaint.cur = "";
+      lyricPaint.next = "";
+      lyricPaint.align = "";
+      $("playerPrev").textContent = "";
+      $("playerCur").textContent = "";
+      $("playerNext").textContent = "";
+      $("playerNow").textContent = "0:00";
+      $("playerLeft").textContent = "−0:00";
+      if (playerViz) playerViz.draw({ playing: false, playMs: 0, duration: 0, cues: [], selected: 0 });
+    }
+    function waitMedia(el, gen, wantSrc) {
       return new Promise((resolve) => {
         if (!el || !el.getAttribute("src")) {
           resolve(false);
           return;
         }
-        if (el.readyState >= 1) {
+        const want = mediaPath(wantSrc || el.getAttribute("src"));
+        const isNew = () => el.readyState >= 1 && mediaPath(el.currentSrc || el.src) === want;
+        if (isNew()) {
           resolve(true);
           return;
         }
@@ -1236,10 +1289,12 @@
           el.removeEventListener("error", onErr);
           resolve(ok);
         };
-        const onOk = () => finish(gen === playerLoad);
+        const onOk = () => finish(gen === playerLoad && isNew());
         const onErr = () => finish(false);
-        el.addEventListener("loadedmetadata", onOk, { once: true });
+        el.addEventListener("loadedmetadata", onOk);
         el.addEventListener("error", onErr, { once: true });
+        if (isNew()) finish(true);
+        else setTimeout(() => { if (isNew()) finish(true); }, 0);
       });
     }
     async function loadPlayerSong(songId, opts) {
@@ -1263,14 +1318,14 @@
         guide.onerror = null;
       }
       playerSong = song;
+      playerLyrics = { cues: [] };
+      resetPlayerFace();
+      try { audio.currentTime = 0; } catch (err) {}
+      try { if (guide) guide.currentTime = 0; } catch (err) {}
       playerLyrics = await fetch(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
       if (gen !== playerLoad) return;
       lyricsDirty = false;
-      selectedCue = 0;
-      lyricPaint.prev = "";
-      lyricPaint.cur = "";
-      lyricPaint.next = "";
-      lyricPaint.align = "";
+      resetPlayerFace();
       $("playerTitle").textContent = song.title;
       $("playerMeta").textContent = song.artist && !String(song.title).includes(song.artist) ? song.artist : "";
       setPlayerCover(song);
@@ -1278,13 +1333,19 @@
       $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       songMediaRev = Date.now();
       const original = mediaUrl(song.id, "original.mp3");
-      audio.src = playerVocal ? original : mediaUrl(song.id, "karaoke.m4a");
+      const nextSrc = playerVocal ? original : mediaUrl(song.id, "karaoke.m4a");
+      audio.src = nextSrc;
+      audio.load();
       audio.onerror = () => {
         if (gen !== playerLoad) return;
-        if (!String(audio.currentSrc || audio.src).includes("original.mp3")) audio.src = original;
+        if (!String(audio.currentSrc || audio.src).includes("original.mp3")) {
+          audio.src = original;
+          audio.load();
+        }
       };
       const guideUrl = mediaUrl(song.id, "guide.m4a");
       guide.src = guideUrl;
+      guide.load();
       guide.onerror = () => {
         if (gen !== playerLoad) return;
         guide.removeAttribute("src");
@@ -1294,7 +1355,7 @@
       applyEditorTracks();
       renderAlignList();
       renderPlayerList();
-      const ready = await waitMedia(audio, gen);
+      const ready = await waitMedia(audio, gen, nextSrc);
       if (gen !== playerLoad) return;
       try { audio.currentTime = 0; } catch (err) {}
       try { if (guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0; } catch (err) {}
@@ -1329,24 +1390,59 @@
 
     $("playerPlay").onclick = () => togglePlayer();
     $("editPlay").onclick = () => togglePlayer();
+    async function applyPlayerVocalSrc() {
+      const audio = $("playerAudio");
+      if (!playerSong) return;
+      const t = playerClockHold != null ? playerClockHold : (audio.currentTime || 0);
+      const playing = !audio.paused && !!audio.src;
+      const durNow = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : playerHoldDur;
+      playerClockHold = t;
+      playerHoldDur = durNow || 0;
+      const gen = ++playerLoad;
+      const original = mediaUrl(playerSong.id, "original.mp3");
+      let nextSrc = playerVocal ? original : mediaUrl(playerSong.id, "karaoke.m4a");
+      audio.pause();
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+      audio.src = nextSrc;
+      audio.load();
+      audio.onerror = () => {
+        if (gen !== playerLoad) return;
+        if (!String(audio.currentSrc || audio.src).includes("original.mp3")) {
+          audio.src = original;
+          audio.load();
+        }
+      };
+      let ready = await waitMedia(audio, gen, nextSrc);
+      if (gen !== playerLoad) return;
+      if (!ready && !playerVocal) {
+        nextSrc = original;
+        ready = await waitMedia(audio, gen, nextSrc);
+        if (gen !== playerLoad) return;
+      }
+      const dur = Number.isFinite(audio.duration) ? audio.duration : t;
+      const seek = Math.max(0, Math.min(t, Math.max(0, dur - 0.05)));
+      try { audio.currentTime = seek; } catch (err) {}
+      syncGuide(seek);
+      hookPlayerAudio();
+      if (playing && ready) {
+        try {
+          await audio.play();
+          setPlayIcon(true);
+        } catch (err) {
+          setPlayIcon(false);
+        }
+      }
+      if (Number.isFinite(audio.duration) && audio.duration > 0) playerHoldDur = audio.duration;
+      playerClockHold = null;
+    }
     $("playerVocal").onclick = () => {
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
       $("playerVocal").classList.toggle("on", !!playerVocal);
       $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       $("playerVocal").setAttribute("aria-label", playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
-      if (!playerSong) return;
-      const audio = $("playerAudio");
-      const t = audio.currentTime || 0;
-      const playing = !audio.paused && !!audio.src;
-      const gen = playerLoad;
-      audio.onloadedmetadata = () => {
-        if (gen !== playerLoad) return;
-        try { audio.currentTime = t; } catch (err) {}
-        if (playing) audio.play().catch(() => {});
-        syncGuide(t);
-      };
-      audio.src = playerVocal ? mediaUrl(playerSong.id, "original.mp3") : mediaUrl(playerSong.id, "karaoke.m4a");
+      applyPlayerVocalSrc();
     };
     function seekPlayerArt(event) {
       const audio = $("playerAudio");
@@ -1421,6 +1517,12 @@
       }
     };
     $("playerAudio").onended = () => {
+      if (playerClockHold != null) return;
+      const audio = $("playerAudio");
+      const dur = audio.duration;
+      const t = audio.currentTime || 0;
+      if (!Number.isFinite(dur) || dur < 0.5) return;
+      if (t < dur * 0.95 && t < dur - 0.35) return;
       playNextSong();
     };
 
@@ -1529,9 +1631,9 @@
           else if (msg.kind === "ice") roomRtc.addIce(msg);
         },
         onState: (state) => {
-          if (roomRtc.isLive()) {
-            $("micHint").textContent = state === "connected" ? "麦已接到电视" : "正在把麦接到电视…";
-          }
+          if (!roomRtc.isLive()) return;
+          if (state === "connected") $("micHint").textContent = "麦已接到电视";
+          else if (state === "failed") $("micHint").textContent = "电视没接上，再点一次开麦";
         },
       });
     }
@@ -1547,6 +1649,7 @@
           await roomRtc.stopMic();
           $("micHint").textContent = "";
         } else {
+          if (typeof stopPhoneMic === "function") stopPhoneMic();
           $("micHint").textContent = "请允许使用麦克风";
           await roomRtc.startMic();
           $("micHint").textContent = "麦已打开，声音会从电视出来";
@@ -1587,6 +1690,210 @@
       }
     };
 
+    let phoneMic = null;
+    let phoneMicSrc = null;
+    let phoneMicGain = null;
+    let phoneCtx = null;
+    let phoneMicLevel = Number(localStorage.getItem("phoneMicGain") || 80);
+    let phoneIem = localStorage.getItem("phoneIem") !== "0";
+    function phoneMicHintIdle() {
+      return phoneIem
+        ? "戴有线耳机。耳返会关掉回声消除，自己的声音才会快。蓝牙耳机会再慢一截。"
+        : "本机唱歌，伴奏和人声一起从手机喇叭出来。回音大就打开耳返。";
+    }
+    function ensurePhoneCtx() {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      if (phoneCtx && phoneCtx.state !== "closed") return phoneCtx;
+      if (playerHook && playerHook.ctx && playerHook.ctx.state !== "closed") {
+        phoneCtx = playerHook.ctx;
+        return phoneCtx;
+      }
+      phoneCtx = new AC({ latencyHint: "interactive" });
+      return phoneCtx;
+    }
+    function phoneMicAudioConstraints() {
+      if (phoneIem) {
+        return [
+          { echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0.01, channelCount: 1 },
+          { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+        ];
+      }
+      return [{ echoCancellation: true, noiseSuppression: true, autoGainControl: true }];
+    }
+    async function acquirePhoneMic() {
+      let last = null;
+      for (const audio of phoneMicAudioConstraints()) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ audio, video: false });
+        } catch (err) {
+          last = err;
+        }
+      }
+      throw last || new Error("开麦失败");
+    }
+    function disconnectPhoneMicGraph() {
+      if (phoneMicSrc) try { phoneMicSrc.disconnect(); } catch (err) {}
+      if (phoneMicGain) try { phoneMicGain.disconnect(); } catch (err) {}
+      phoneMicSrc = phoneMicGain = null;
+      const el = $("phoneIemVoice");
+      if (el) {
+        el.pause();
+        el.srcObject = null;
+      }
+    }
+    function applyPhoneMonitor() {
+      disconnectPhoneMicGraph();
+      if (!phoneMic) return;
+      const el = $("phoneIemVoice");
+      if (phoneIem && el) {
+        el.srcObject = phoneMic;
+        el.muted = false;
+        el.volume = Math.max(0, Math.min(1, phoneMicLevel / 100));
+        el.play().catch(() => {});
+        return;
+      }
+      if (!phoneCtx) return;
+      phoneMicSrc = phoneCtx.createMediaStreamSource(phoneMic);
+      phoneMicGain = phoneCtx.createGain();
+      phoneMicGain.gain.value = phoneMicLevel / 100;
+      phoneMicSrc.connect(phoneMicGain);
+      phoneMicGain.connect(phoneCtx.destination);
+    }
+    function paintPhoneMic() {
+      const on = !!(phoneMic && phoneMic.getTracks().some((track) => track.readyState === "live"));
+      $("playerMic").classList.toggle("on", on);
+      $("playerMic").classList.toggle("live", on);
+      $("playerMic").setAttribute("aria-label", on ? "关麦" : "开麦唱歌");
+      $("playerMicLabel").textContent = on ? "开麦中" : "开麦";
+      $("playerMicRow").hidden = !on;
+      $("playerKtv").classList.toggle("live", on);
+      $("playerIem").classList.toggle("on", phoneIem);
+      $("playerIem").setAttribute("aria-pressed", phoneIem ? "true" : "false");
+      $("playerArt").classList.toggle("is-sing", on);
+      if (!on && !$("playerMicHint").dataset.hold) {
+        $("playerMicHint").textContent = phoneMicHintIdle();
+      }
+    }
+    function setPhoneMicGain(value) {
+      phoneMicLevel = Math.max(0, Math.min(100, Number(value) || 0));
+      localStorage.setItem("phoneMicGain", String(phoneMicLevel));
+      $("playerMicGain").value = String(phoneMicLevel);
+      $("playerMicVal").textContent = String(phoneMicLevel);
+      if (phoneMicGain) phoneMicGain.gain.value = phoneMicLevel / 100;
+      const el = $("phoneIemVoice");
+      if (el) el.volume = Math.max(0, Math.min(1, phoneMicLevel / 100));
+    }
+    function stopPhoneMic() {
+      disconnectPhoneMicGraph();
+      if (phoneMic) {
+        phoneMic.getTracks().forEach((track) => track.stop());
+        phoneMic = null;
+      }
+      paintPhoneMic();
+    }
+    async function headphoneState() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return { kind: "unknown", sink: "" };
+      const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+      const outs = devices.filter((item) => item.kind === "audiooutput");
+      const hp = outs.find((item) => /headphone|headset|airpod|earbud|earphone|usb audio|lightning|耳机|耳麦/i.test(item.label || ""));
+      if (hp) return { kind: "headphones", sink: hp.deviceId || "" };
+      const text = outs.map((item) => item.label || "").join(" ").toLowerCase();
+      if (outs.length && /speaker|扬声器/.test(text) && !/head|ear|耳机/.test(text)) {
+        return { kind: "speaker", sink: "" };
+      }
+      return { kind: "unknown", sink: "" };
+    }
+    async function routePhoneSink(sink) {
+      if (!sink) return false;
+      const audio = $("playerAudio");
+      const guide = $("playerGuide");
+      try {
+        if (audio && audio.setSinkId) await audio.setSinkId(sink);
+        if (guide && guide.setSinkId) await guide.setSinkId(sink);
+        const iem = $("phoneIemVoice");
+        if (iem && iem.setSinkId) await iem.setSinkId(sink);
+        if (phoneCtx && phoneCtx.setSinkId) await phoneCtx.setSinkId(sink);
+        return true;
+      } catch (err) {
+        return false;
+      }
+    }
+    async function startPhoneMic(opts) {
+      const restart = !!(opts && opts.restart);
+      if (!restart && roomRtc && roomRtc.isLive()) {
+        await roomRtc.stopMic();
+        $("micHint").textContent = "";
+        $("micToggle").classList.remove("live", "on");
+        $("micGainRow").hidden = true;
+      }
+      const jack = await headphoneState();
+      if (!restart && phoneIem && jack.kind === "speaker") {
+        const go = confirm("耳返请先戴上耳机。喇叭外放会把伴奏灌回麦克风。还没戴也要开麦？");
+        if (!go) throw new Error("先戴上耳机再开麦");
+      }
+      hookPlayerAudio();
+      phoneCtx = ensurePhoneCtx();
+      if (phoneCtx && phoneCtx.state === "suspended") await phoneCtx.resume();
+      if (phoneMic) {
+        phoneMic.getTracks().forEach((track) => track.stop());
+        phoneMic = null;
+      }
+      disconnectPhoneMicGraph();
+      phoneMic = await acquirePhoneMic();
+      applyPhoneMonitor();
+      if (phoneIem && jack.sink) await routePhoneSink(jack.sink);
+      if (!restart && playerVocal && playerSong) $("playerVocal").click();
+      paintPhoneMic();
+      if (phoneIem && jack.kind === "headphones") {
+        $("playerMicHint").textContent = "耳返已开：回声消除已关，有线耳机听自己会快很多。麦声拉到 0 就只听伴奏";
+      } else if (phoneIem) {
+        $("playerMicHint").textContent = "耳返已开。请用有线耳机；蓝牙还会慢一截。麦声拉到 0 就只听伴奏";
+      } else {
+        $("playerMicHint").textContent = "麦已打开，人声和伴奏从这只手机出来";
+      }
+    }
+    $("playerIem").onclick = async () => {
+      phoneIem = !phoneIem;
+      localStorage.setItem("phoneIem", phoneIem ? "1" : "0");
+      paintPhoneMic();
+      if (!phoneMic) return;
+      $("playerMicHint").dataset.hold = "1";
+      try {
+        await startPhoneMic({ restart: true });
+      } catch (err) {
+        stopPhoneMic();
+        $("playerMicHint").textContent = (err && err.message) || "耳返切换失败";
+      } finally {
+        delete $("playerMicHint").dataset.hold;
+        paintPhoneMic();
+      }
+    };
+    paintPhoneMic();
+    $("playerMicGain").value = String(phoneMicLevel);
+    $("playerMicVal").textContent = String(phoneMicLevel);
+    $("playerMicGain").oninput = () => setPhoneMicGain($("playerMicGain").value);
+    $("playerMic").onclick = async () => {
+      const btn = $("playerMic");
+      btn.disabled = true;
+      $("playerMicHint").dataset.hold = "1";
+      try {
+        if (phoneMic) {
+          stopPhoneMic();
+          $("playerMicHint").textContent = phoneMicHintIdle();
+        } else {
+          $("playerMicHint").textContent = phoneIem ? "戴上耳机，并允许使用麦克风" : "请允许使用麦克风";
+          await startPhoneMic();
+        }
+      } catch (err) {
+        stopPhoneMic();
+        $("playerMicHint").textContent = (window.LovMic && LovMic.micErrorText(err)) || (err && err.message) || "开麦失败";
+      } finally {
+        delete $("playerMicHint").dataset.hold;
+        btn.disabled = false;
+        paintPhoneMic();
+      }
+    };
     $("playerEdit").onclick = () => enterEdit();
     $("playerVocal").classList.toggle("on", !!playerVocal);
     $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";

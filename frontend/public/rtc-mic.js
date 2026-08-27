@@ -14,9 +14,24 @@
     let handlers = {};
     let code = "";
     let closed = false;
+    let pendingIce = [];
+    let outbox = [];
 
     function send(msg) {
-      if (ws && ws.readyState === 1) ws.send(JSON.stringify(msg));
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify(msg));
+        return;
+      }
+      outbox.push(msg);
+    }
+
+    function flushOutbox() {
+      const queued = outbox.splice(0);
+      queued.forEach((msg) => send(msg));
+    }
+
+    function emitState(state) {
+      if (handlers.onState) handlers.onState(state);
     }
 
     function connect(roomCode, next) {
@@ -31,6 +46,7 @@
       ws = new WebSocket(url);
       ws.onopen = () => {
         send({ action: "hello", role, peer: peerId });
+        flushOutbox();
         if (handlers.onOpen) handlers.onOpen();
       };
       ws.onmessage = (event) => {
@@ -52,17 +68,59 @@
 
     function disconnect() {
       closed = true;
+      outbox = [];
       if (ws) {
         try { ws.close(); } catch (err) {}
         ws = null;
       }
     }
 
+    function waitOpen() {
+      if (ws && ws.readyState === 1) return Promise.resolve();
+      return new Promise((resolve, reject) => {
+        const started = Date.now();
+        const tick = setInterval(() => {
+          if (ws && ws.readyState === 1) {
+            clearInterval(tick);
+            resolve();
+          } else if (Date.now() - started > 5000) {
+            clearInterval(tick);
+            reject(new Error("房间连接还没好，再点一次开麦"));
+          }
+        }, 80);
+      });
+    }
+
     async function resetPc() {
+      pendingIce = [];
       if (pc) {
-        try { pc.ontrack = null; pc.onicecandidate = null; pc.close(); } catch (err) {}
+        try {
+          pc.ontrack = null;
+          pc.onicecandidate = null;
+          pc.onconnectionstatechange = null;
+          pc.oniceconnectionstatechange = null;
+          pc.close();
+        } catch (err) {}
         pc = null;
       }
+    }
+
+    function flushIce() {
+      if (!pc || !pc.remoteDescription) return;
+      const batch = pendingIce.splice(0);
+      batch.forEach((candidate) => {
+        pc.addIceCandidate(candidate).catch(() => {});
+      });
+    }
+
+    function liveLabel() {
+      if (!pc) return "closed";
+      const ice = pc.iceConnectionState;
+      const conn = pc.connectionState;
+      if (conn === "connected" || ice === "connected" || ice === "completed") return "connected";
+      if (conn === "failed" || ice === "failed") return "failed";
+      if (conn === "disconnected" || ice === "disconnected") return "disconnected";
+      return conn || ice || "connecting";
     }
 
     function bindIce() {
@@ -71,13 +129,16 @@
           send({ action: "rtc", kind: "ice", from: peerId, candidate: event.candidate });
         }
       };
-      pc.onconnectionstatechange = () => {
-        if (handlers.onState) handlers.onState(pc ? pc.connectionState : "closed");
-      };
+      pc.onconnectionstatechange = () => emitState(liveLabel());
+      pc.oniceconnectionstatechange = () => emitState(liveLabel());
     }
 
     async function addIce(msg) {
-      if (!pc || !msg || !msg.candidate) return;
+      if (!msg || !msg.candidate) return;
+      if (!pc || !pc.remoteDescription) {
+        pendingIce.push(msg.candidate);
+        return;
+      }
       try { await pc.addIceCandidate(msg.candidate); } catch (err) {}
     }
 
@@ -96,6 +157,7 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("这台手机不能开麦");
       }
+      await waitOpen();
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -114,11 +176,14 @@
       if (!pc || !msg || !msg.sdp) return;
       if (pc.signalingState === "stable") return;
       await pc.setRemoteDescription(msg.sdp);
+      flushIce();
     }
 
     async function handleOffer(msg) {
       if (!msg || !msg.sdp) return;
+      const kept = pendingIce.splice(0);
       await resetPc();
+      pendingIce = kept;
       pc = new RTCPeerConnection({ iceServers: ICE });
       bindIce();
       pc.ontrack = (event) => {
@@ -128,6 +193,7 @@
         if (handlers.onStream) handlers.onStream(stream);
       };
       await pc.setRemoteDescription(msg.sdp);
+      flushIce();
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       send({ action: "rtc", kind: "answer", from: peerId, sdp: pc.localDescription });

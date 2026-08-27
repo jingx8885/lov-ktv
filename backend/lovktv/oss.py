@@ -9,6 +9,7 @@ from email.utils import formatdate
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
+from xml.etree import ElementTree as ET
 
 import httpx
 
@@ -41,6 +42,20 @@ PUBLISH_NAMES = (
 )
 
 _REMOTE_CACHE: dict[str, bool] = {}
+
+MEDIA_CORS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<CORSConfiguration>
+  <CORSRule>
+    <AllowedOrigin>*</AllowedOrigin>
+    <AllowedMethod>GET</AllowedMethod>
+    <AllowedMethod>HEAD</AllowedMethod>
+    <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>ETag</ExposeHeader>
+    <ExposeHeader>x-oss-request-id</ExposeHeader>
+    <MaxAgeSeconds>3600</MaxAgeSeconds>
+  </CORSRule>
+</CORSConfiguration>
+"""
 
 
 def oss_ready() -> bool:
@@ -85,9 +100,18 @@ def _endpoint_host() -> str:
     return host
 
 
-def _sign(method: str, key: str, content_type: str = "", extra: dict[str, str] | None = None) -> dict[str, str]:
+def _sign(
+    method: str,
+    key: str,
+    content_type: str = "",
+    extra: dict[str, str] | None = None,
+    content_md5: str = "",
+    subresource: str = "",
+) -> dict[str, str]:
     date = formatdate(usegmt=True)
     headers = {"Date": date}
+    if content_md5:
+        headers["Content-MD5"] = content_md5
     canonical = ""
     if extra:
         for name in sorted(extra):
@@ -95,8 +119,10 @@ def _sign(method: str, key: str, content_type: str = "", extra: dict[str, str] |
             canonical += f"{name.lower()}:{extra[name]}\n"
     if content_type:
         headers["Content-Type"] = content_type
-    resource = f"/{ALIYUN_OSS_BUCKET_NAME}/{key}"
-    string = f"{method}\n\n{content_type}\n{date}\n{canonical}{resource}"
+    resource = f"/{ALIYUN_OSS_BUCKET_NAME}/{key}" if key else f"/{ALIYUN_OSS_BUCKET_NAME}/"
+    if subresource:
+        resource = f"/{ALIYUN_OSS_BUCKET_NAME}/{key}?{subresource}" if key else f"/{ALIYUN_OSS_BUCKET_NAME}/?{subresource}"
+    string = f"{method}\n{content_md5}\n{content_type}\n{date}\n{canonical}{resource}"
     digest = hmac.new(
         ALIYUN_OSS_ACCESS_KEY_SECRET.encode("utf-8"),
         string.encode("utf-8"),
@@ -107,8 +133,77 @@ def _sign(method: str, key: str, content_type: str = "", extra: dict[str, str] |
     return headers
 
 
-def _object_url(key: str) -> str:
-    return f"https://{ALIYUN_OSS_BUCKET_NAME}.{_endpoint_host()}/{quote(key)}"
+def _object_url(key: str, subresource: str = "") -> str:
+    path = quote(key) if key else ""
+    url = f"https://{ALIYUN_OSS_BUCKET_NAME}.{_endpoint_host()}/{path}"
+    if subresource:
+        return f"{url}?{subresource}"
+    return url
+
+
+def _local_name(tag: str) -> str:
+    return tag.split("}", 1)[-1]
+
+
+def cors_allows_media(xml: str) -> bool:
+    if not xml:
+        return False
+    try:
+        root = ET.fromstring(xml)
+    except ET.ParseError:
+        return False
+    for rule in list(root):
+        if _local_name(rule.tag) != "CORSRule":
+            continue
+        origins = set()
+        methods = set()
+        for el in list(rule):
+            name = _local_name(el.tag)
+            value = (el.text or "").strip()
+            if name == "AllowedOrigin":
+                origins.add(value)
+            elif name == "AllowedMethod":
+                methods.add(value.upper())
+        if origins.intersection({"*", "https://ktv.lovbrowser.com"}) and "GET" in methods:
+            return True
+    return False
+
+
+def merge_cors_xml(existing: str | None) -> str:
+    if existing and cors_allows_media(existing):
+        return existing
+    if not existing:
+        return MEDIA_CORS_XML
+    try:
+        root = ET.fromstring(existing)
+    except ET.ParseError:
+        return MEDIA_CORS_XML
+    extra = ET.fromstring(MEDIA_CORS_XML)
+    for rule in list(extra):
+        if _local_name(rule.tag) == "CORSRule":
+            root.append(rule)
+    return ET.tostring(root, encoding="unicode")
+
+
+def ensure_bucket_cors() -> str:
+    if not oss_ready():
+        return "disabled"
+    get_headers = _sign("GET", "", subresource="cors")
+    with httpx.Client(timeout=20.0) as client:
+        current = client.get(_object_url("", "cors"), headers=get_headers)
+        existing = current.text if current.status_code == 200 else None
+        if current.status_code not in {200, 404}:
+            current.raise_for_status()
+        body = merge_cors_xml(existing)
+        if existing and body == existing:
+            return "already"
+        raw = body.encode("utf-8")
+        digest = base64.b64encode(hashlib.md5(raw).digest()).decode("ascii")
+        put_headers = _sign("PUT", "", "application/xml", content_md5=digest, subresource="cors")
+        put_headers["Content-Length"] = str(len(raw))
+        res = client.put(_object_url("", "cors"), headers=put_headers, content=raw)
+        res.raise_for_status()
+    return "applied"
 
 
 def put_file(song_id: str, path: Path) -> str:
@@ -152,11 +247,11 @@ def write_marker(song_id: str, names: list[str]) -> Path:
     if lyrics.exists():
         try:
             data = json.loads(lyrics.read_text(encoding="utf-8"))
-            native = bool(data.get("native_video") or data.get("alignment_source") == "karaoke-mugen")
+            native = data.get("native_video") is True
         except (OSError, json.JSONDecodeError):
             native = False
     if not native:
-        native = "mtv.mp4" in names
+        native = (MEDIA_DIR / song_id / "mugen.mp4").exists() or (MEDIA_DIR / song_id / "mugen.webm").exists()
     payload = {"files": names, "native_video": native}
     dest = folder / "oss.json"
     dest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")

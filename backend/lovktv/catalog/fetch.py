@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from lovktv.catalog.kugou import fetch_kugou_lyrics
-from lovktv.catalog.mugen import import_mugen_song, is_mugen_kid, pick_vocal_hit, search_mugen
+from lovktv.catalog.mugen import import_mugen_song, is_mugen_kid, open_mugen_preview, pick_vocal_hit, search_mugen
 
 TONZHON_API = "https://tonzhon.com/api.php"
 NETEASE_OUTER = "https://music.163.com/song/media/outer/url?id={id}.mp3"
@@ -386,7 +386,10 @@ def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dic
     return {}
 
 
-def open_preview_stream(song_id: str, title: str = "", artist: str = ""):
+def open_preview_stream(song_id: str, title: str = "", artist: str = "", media: str = ""):
+    if is_mugen_kid(song_id):
+        resp = open_mugen_preview(song_id, media_name=media)
+        return resp, {"kind": "mugen", "title": title}
     source = resolve_audio_source(song_id, title, artist)
     if source.get("kind") == "netease":
         return open_netease_audio(song_id), source

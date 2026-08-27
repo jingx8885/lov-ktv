@@ -314,7 +314,7 @@
     return { draw, resize, setSource };
   }
 
-  function hookAnalyser(audio, prev) {
+  function hookAnalyser(audio, prev, opts) {
     if (prev && prev.audio === audio && prev.analyser) {
       if (prev.ctx && prev.ctx.state === "suspended") prev.ctx.resume().catch(() => {});
       return prev;
@@ -322,13 +322,18 @@
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx || !audio) return prev || null;
     if (!audio.crossOrigin) audio.crossOrigin = "anonymous";
-    const ctx = new Ctx();
+    const ctx = (opts && opts.ctx) || new Ctx({ latencyHint: (opts && opts.latencyHint) || "interactive" });
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;
     analyser.smoothingTimeConstant = 0.55;
     analyser.minDecibels = -90;
     analyser.maxDecibels = -20;
-    const source = ctx.createMediaElementSource(audio);
+    let source = null;
+    try {
+      source = ctx.createMediaElementSource(audio);
+    } catch (err) {
+      return prev || { audio, ctx, analyser, freq: new Uint8Array(analyser.frequencyBinCount), time: new Uint8Array(analyser.fftSize) };
+    }
     source.connect(ctx.destination);
     const splitter = ctx.createChannelSplitter(2);
     source.connect(splitter);
@@ -337,6 +342,7 @@
     return {
       audio,
       ctx,
+      source,
       analyser,
       freq: new Uint8Array(analyser.frequencyBinCount),
       time: new Uint8Array(analyser.fftSize),

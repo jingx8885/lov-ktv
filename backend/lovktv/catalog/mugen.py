@@ -176,7 +176,7 @@ def map_hit(item: dict[str, Any]) -> dict[str, Any]:
         "language": pick_language(item) or "ja",
         "clean": not off_vocal,
         "off_vocal": off_vocal,
-        "preview_url": "",
+        "preview_url": f"/api/preview/{kid}" if kid else "",
         "lyrics_ready": lyrics,
         "duration": int(item.get("duration") or 0),
         "media": str(item.get("mediafile") or ""),
@@ -206,6 +206,27 @@ def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
         "hits": hits,
         "total": total,
     }
+
+
+def open_mugen_preview(kid: str, media_name: str = ""):
+    if not is_mugen_kid(kid):
+        return None
+    name = str(media_name or "").strip()
+    if not name:
+        try:
+            kara = fetch_kara(kid)
+        except Exception:
+            kara = {}
+        name = str((kara or {}).get("mediafile") or "")
+    urls = [f"{MUGEN_HOST}/previews/{kid}.mp3"]
+    if name:
+        urls.append(MUGEN_MEDIA.format(name=urllib.parse.quote(name)))
+    for url in urls:
+        try:
+            return urllib.request.urlopen(_request(url), timeout=30)
+        except Exception:
+            continue
+    return None
 
 
 def fetch_kara(kid: str) -> dict[str, Any]:

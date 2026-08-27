@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=native12" />
+  <link rel="stylesheet" href="/app.css?v=native17" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -54,6 +54,7 @@
       <audio id="karaoke" crossorigin="anonymous"></audio>
       <audio id="vocal" crossorigin="anonymous" hidden></audio>
       <audio id="liveMic" autoplay playsinline hidden></audio>
+      <audio id="keepAlive" loop playsinline hidden></audio>
       <p class="mic-live" id="micLive" hidden>手机麦已接入</p>
       <canvas id="bands" class="bands" width="1920" height="120" hidden></canvas>
       <div class="tv-controls">
@@ -65,9 +66,10 @@
   </div>
   <script src="/vendor/qrcode.js"></script>
   <script src="/vendor/canvas-confetti.min.js"></script>
-  <script src="/bands.js?v=wave5"></script>
+  <script src="/bands.js?v=wave7"></script>
   <script src="/stage-fx.js?v=fx1"></script>
-  <script src="/rtc-mic.js?v=mic1"></script>
+  <script src="/aec.js?v=aec4"></script>
+  <script src="/rtc-mic.js?v=mic8"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const STATUS = {
@@ -83,9 +85,65 @@
     let room = null;
     let lyrics = { cues: [] };
     let lastItem = "";
-    let mediaRev = 0;
     function mediaUrl(songId, name) {
-      return `/media/${songId}/${name}?v=${mediaRev || Date.now()}`;
+      if (name === "lyrics.json") return `/media/${songId}/${name}?v=ja-kanji`;
+      if (name === "karaoke.m4a" || name === "guide.m4a") return `/media/${songId}/${name}?v=stem2`;
+      return `/media/${songId}/${name}`;
+    }
+    const prefetched = new Set();
+    let prefetchBusy = 0;
+    const prefetchWait = [];
+    function prefetchUrl(url) {
+      if (!url || prefetched.has(url)) return;
+      if (prefetchBusy >= 2) {
+        if (!prefetchWait.includes(url)) prefetchWait.push(url);
+        return;
+      }
+      prefetched.add(url);
+      prefetchBusy += 1;
+      fetch(url, { cache: "force-cache", credentials: "same-origin" })
+        .then(async (res) => {
+          if (!res.ok || !res.body) {
+            prefetched.delete(url);
+            return;
+          }
+          const reader = res.body.getReader();
+          while (true) {
+            const step = await reader.read();
+            if (step.done) break;
+          }
+        })
+        .catch(() => { prefetched.delete(url); })
+        .finally(() => {
+          prefetchBusy = Math.max(0, prefetchBusy - 1);
+          const next = prefetchWait.shift();
+          if (next) prefetchUrl(next);
+        });
+    }
+    function prefetchQueue(state) {
+      const seen = new Set();
+      const urls = [];
+      const add = (songId) => {
+        if (!songId || seen.has(songId)) return;
+        seen.add(songId);
+        urls.push(mediaUrl(songId, "karaoke.m4a"));
+        urls.push(mediaUrl(songId, "mtv.mp4"));
+        urls.push(mediaUrl(songId, "original.mp3"));
+        urls.push(mediaUrl(songId, "lyrics.json"));
+        urls.push(`/media/${songId}/skeleton.json`);
+      };
+      const now = state && state.now_playing;
+      if (now && now.status === "ready") add(now.song_id);
+      ((state && state.queue) || []).forEach((item) => {
+        if (item && item.status === "ready") add(item.song_id);
+      });
+      urls.slice(0, 12).forEach(prefetchUrl);
+    }
+    function micGainValue() {
+      const hostMac = room && room.host_volume_kind === "mac";
+      const vol = hostMac ? 1 : (((room && room.volume) != null ? room.volume : 80) / 100);
+      const micGain = ((room && room.mic_gain) != null ? room.mic_gain : 80) / 100;
+      return Math.max(0, Math.min(1, vol * micGain));
     }
     let armed = false;
     const tabId = Math.random().toString(36).slice(2);
@@ -99,6 +157,10 @@
     let lastCelebrateAt = 0;
     let hookLines = new Set();
     let roomRtc = null;
+    let lastMtvSeek = 0;
+    let lastVocalSync = 0;
+    let boundMtvSong = "";
+    let skeleton = null;
 
     function escapeHtml(text) {
       return String(text || "")
@@ -273,15 +335,40 @@
       return `队列 ${((state && state.queue) || []).length} · 原唱 ${mix}% · 音量 ${vol}%${mic}`;
     }
 
-    function bindLiveMic(stream) {
+    let pendingMic = null;
+    function playRawMic(stream) {
       const el = $("liveMic");
-      el.srcObject = stream;
+      if (!el || !stream) return;
+      if (el.srcObject !== stream) el.srcObject = stream;
       el.muted = false;
-      applyMix();
+      el.volume = micGainValue();
       el.play().catch(() => {});
+    }
+    async function bindLiveMic(stream) {
+      pendingMic = stream;
+      playRawMic(stream);
+      applyMix();
+      if (!window.LovAec) return;
+      try {
+        await LovAec.ensureCtx();
+        const ctx = LovAec.getCtx();
+        if (ctx && ctx.state === "suspended") await ctx.resume();
+        const ok = await LovAec.attach(stream, {
+          karaoke: $("karaoke"),
+          vocal: $("vocal"),
+          hook: audioHook,
+          gain: micGainValue(),
+        });
+        applyMix();
+        if (!ok) playRawMic(stream);
+      } catch (err) {
+        playRawMic(stream);
+      }
     }
 
     function clearLiveMic() {
+      pendingMic = null;
+      if (window.LovAec) LovAec.detach();
       const el = $("liveMic");
       el.pause();
       el.srcObject = null;
@@ -296,10 +383,15 @@
         onSnapshot: (snap) => {
           if (!snap) return;
           room = snap;
+          prefetchQueue(snap);
           applyMix();
           const now = snap.now_playing;
-          if (now && now.status === "ready" && lastItem !== (now.id || now.song_id)) {
-            tick();
+          if (now && now.status === "ready") {
+            if (lastItem !== (now.id || now.song_id)) tick();
+            else if (pageVisible() && isLeader) {
+              const karaoke = $("karaoke");
+              if (karaoke && karaoke.paused) startPlayback();
+            }
           }
         },
         onRtc: (msg) => {
@@ -316,8 +408,161 @@
       });
     }
 
+    let audioUnlocked = false;
+    let keepAliveTimer = 0;
+    let keepAliveSrc = "";
+    let keepAliveTone = null;
+    let playRetryTimer = 0;
+
+    function makeQuietLoop() {
+      const sr = 44100;
+      const n = Math.floor(sr * 0.5);
+      const dataSize = n * 2;
+      const buf = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buf);
+      const write = (offset, text) => {
+        for (let i = 0; i < text.length; i += 1) view.setUint8(offset + i, text.charCodeAt(i));
+      };
+      write(0, "RIFF");
+      view.setUint32(4, 36 + dataSize, true);
+      write(8, "WAVE");
+      write(12, "fmt ");
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, 1, true);
+      view.setUint32(24, sr, true);
+      view.setUint32(28, sr * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      write(36, "data");
+      view.setUint32(40, dataSize, true);
+      for (let i = 0; i < n; i += 1) {
+        view.setInt16(44 + i * 2, Math.sin((2 * Math.PI * 17000 * i) / sr) * 900, true);
+      }
+      return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+    }
+
+    function liveCtxs() {
+      const out = [];
+      const aec = window.LovAec && LovAec.getCtx();
+      if (aec) out.push(aec);
+      if (audioHook && audioHook.ctx && out.indexOf(audioHook.ctx) < 0) out.push(audioHook.ctx);
+      return out;
+    }
+
+    function resumeCtxs() {
+      return Promise.all(liveCtxs().map((ctx) => (
+        ctx.state === "suspended" ? ctx.resume().catch(() => {}) : Promise.resolve()
+      )));
+    }
+
+    function startKeepAliveTone() {
+      const ctx = liveCtxs()[0];
+      if (!ctx || keepAliveTone) return;
+      try {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = 20;
+        gain.gain.value = 0.00003;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        keepAliveTone = { osc, gain };
+      } catch (_) {}
+    }
+
+    function pumpKeepAlive() {
+      const el = $("keepAlive");
+      if (el) {
+        if (!keepAliveSrc) keepAliveSrc = makeQuietLoop();
+        if (!el.getAttribute("src")) {
+          el.src = keepAliveSrc;
+          el.loop = true;
+          el.muted = false;
+          el.volume = 0.04;
+        }
+        if (el.paused) el.play().catch(() => {});
+      }
+      resumeCtxs();
+      startKeepAliveTone();
+    }
+
+    function startKeepAlive() {
+      pumpKeepAlive();
+      if (keepAliveTimer) return;
+      keepAliveTimer = setInterval(() => {
+        if (!audioUnlocked) return;
+        pumpKeepAlive();
+        const now = room && room.now_playing;
+        const karaoke = $("karaoke");
+        if (now && now.status === "ready" && karaoke && karaoke.paused && pageVisible() && isLeader) {
+          startPlayback();
+        }
+      }, 1500);
+    }
+
+    function schedulePlayRetries() {
+      if (playRetryTimer) return;
+      const delays = [250, 600, 1200, 2500, 5000];
+      let n = 0;
+      const step = () => {
+        const now = room && room.now_playing;
+        const karaoke = $("karaoke");
+        if (!now || now.status !== "ready") {
+          playRetryTimer = 0;
+          return;
+        }
+        if (karaoke && !karaoke.paused && karaoke.getAttribute("src")) {
+          $("gate").hidden = true;
+          playRetryTimer = 0;
+          return;
+        }
+        if (pageVisible() && isLeader) startPlayback();
+        if (n < delays.length) {
+          playRetryTimer = setTimeout(step, delays[n]);
+          n += 1;
+        } else {
+          playRetryTimer = 0;
+          if (karaoke && karaoke.paused) $("gate").hidden = false;
+        }
+      };
+      playRetryTimer = setTimeout(step, delays[n]);
+      n += 1;
+    }
+
+    function playEl(el) {
+      if (!el) return Promise.resolve();
+      startKeepAlive();
+      return resumeCtxs()
+        .then(() => {
+          const keep = $("keepAlive");
+          return keep && keep.paused ? keep.play().catch(() => {}) : null;
+        })
+        .then(() => el.play())
+        .catch(() => resumeCtxs().then(() => el.play()));
+    }
     function hookAudio() {
-      audioHook = LovBands.hookAnalyser($("karaoke"), audioHook);
+      if (audioHook && audioHook.ctx) {
+        if (audioHook.ctx.state === "suspended") audioHook.ctx.resume().catch(() => {});
+        if (window.LovAec) LovAec.retap(audioHook);
+        return;
+      }
+      if (!audioUnlocked) return;
+      const shared = window.LovAec && LovAec.getCtx();
+      audioHook = LovBands.hookAnalyser($("karaoke"), audioHook, shared ? { ctx: shared } : null);
+      if (window.LovAec) LovAec.retap(audioHook);
+    }
+    function unlockAudio() {
+      audioUnlocked = true;
+      startKeepAlive();
+      if (window.LovAec) {
+        LovAec.ensureCtx().then(() => {
+          hookAudio();
+          if (pendingMic) bindLiveMic(pendingMic);
+        });
+        return;
+      }
+      hookAudio();
     }
 
     function ensureStageFx() {
@@ -370,10 +615,9 @@
     }
 
     function nativeMv() {
-      const now = room && room.now_playing;
       return !!(
-        (now && now.native_video)
-        || (lyrics && (lyrics.native_video || lyrics.alignment_source === "karaoke-mugen"))
+        (skeleton && skeleton.has_video)
+        || (lyrics && lyrics.native_video === true)
       );
     }
 
@@ -383,24 +627,42 @@
       const plate = $("lyricPlate");
       if (!plate) return;
       plate.classList.toggle("bare", on);
-      plate.style.background = on ? "transparent" : "";
-      plate.style.backgroundImage = on ? "none" : "";
-      plate.style.border = on ? "0" : "";
-      plate.style.borderRadius = on ? "0" : "";
-      plate.style.boxShadow = on ? "none" : "";
-      plate.style.backdropFilter = on ? "none" : "";
-      plate.style.webkitBackdropFilter = on ? "none" : "";
-      plate.style.padding = on ? "0 12px 4px" : "";
+      ["background", "backgroundImage", "border", "borderRadius", "boxShadow", "backdropFilter", "webkitBackdropFilter", "padding"].forEach((key) => {
+        plate.style[key] = "";
+      });
+      if (on) {
+        plate.style.background = "transparent";
+        plate.style.backgroundImage = "none";
+        plate.style.border = "0";
+        plate.style.borderRadius = "0";
+        plate.style.boxShadow = "none";
+        plate.style.backdropFilter = "none";
+        plate.style.webkitBackdropFilter = "none";
+        plate.style.padding = "0 12px 4px";
+      }
+      if (!on) ensureStageFx();
+    }
+
+    function lyricsFingerprint(data) {
+      const cues = (data && data.cues) || [];
+      if (!cues.length) return "0";
+      const first = cues[0];
+      const last = cues[cues.length - 1];
+      return [cues.length, first.start_ms, first.text, last.start_ms, last.text].join("|");
     }
 
     function bindMtv(songId) {
       const mtv = $("mtv");
+      if (!songId) return;
+      if (boundMtvSong === songId && (mtv.getAttribute("src") || mtv.src)) return;
+      boundMtvSong = songId;
       syncNativeMv();
       silenceMtv(mtv);
       mtv.onerror = () => {
-        mtv.removeAttribute("src");
+        if (document.body.classList.contains("has-mtv")) return;
         mtv.hidden = true;
         document.body.classList.remove("has-mtv", "has-native-mv");
+        boundMtvSong = "";
       };
       mtv.onloadeddata = () => {
         silenceMtv(mtv);
@@ -409,8 +671,7 @@
         syncNativeMv();
         if (canPlay()) mtv.play().catch(() => {});
       };
-      mtv.src = `/media/${songId}/mtv.mp4`;
-      mtv.load();
+      mtv.src = mediaUrl(songId, "mtv.mp4");
       silenceMtv(mtv);
     }
 
@@ -419,6 +680,7 @@
       if (!code) return;
       room = await fetch("/api/rooms/" + code).then((r) => r.json());
       localStorage.setItem("tvRoom", room.code);
+      prefetchQueue(room);
       const now = room.now_playing;
       $("qinfo").textContent = roomLine(room);
       if (!now) {
@@ -442,13 +704,16 @@
       const itemKey = now.id || now.song_id;
       if (lastItem !== itemKey) {
         lastItem = itemKey;
-        mediaRev = Date.now();
         lyricPaint.prev = "";
         lyricPaint.cur = "";
         lyricPaint.next = "";
         lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
+        skeleton = await fetch(`/media/${now.song_id}/skeleton.json`).then((r) => r.ok ? r.json() : null).catch(() => null);
         lastLyricsAt = Date.now();
         lastFxCue = -1;
+        lastMtvSeek = 0;
+        lastVocalSync = 0;
+        boundMtvSong = "";
         syncNativeMv();
         hookLines = nativeMv() ? new Set() : (window.LovStageFx ? LovStageFx.hookTexts(lyrics.cues) : new Set());
         if (!nativeMv()) ensureStageFx();
@@ -461,9 +726,13 @@
         }
         if (Date.now() - lastLyricsAt > 8000) {
           lastLyricsAt = Date.now();
+          const prev = lyricsFingerprint(lyrics);
           fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${lastLyricsAt}`)
             .then((r) => r.ok ? r.json() : null)
-            .then((data) => { if (data && data.cues) lyrics = data; })
+            .then((data) => {
+              if (!data || !data.cues || lyricsFingerprint(data) === prev) return;
+              lyrics = data;
+            })
             .catch(() => {});
         }
         const karaoke = $("karaoke");
@@ -485,6 +754,7 @@
 
     function stopPlayback() {
       lyrics = { cues: [] };
+      skeleton = null;
       lastItem = "";
       lyricPaint.prev = "";
       lyricPaint.cur = "";
@@ -496,6 +766,7 @@
         el.load();
       });
       $("mtv").hidden = true;
+      boundMtvSong = "";
       document.body.classList.remove("has-mtv", "has-native-mv");
       lastFxCue = -1;
       hookLines = new Set();
@@ -511,12 +782,14 @@
         const t = Math.floor((karaoke.currentTime || 0) * 1000);
         syncVocal();
         const audioLive = !karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.05;
-        if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration) && !mtv.seeking && !karaoke.seeking) {
-          if (audioLive && Math.abs(mtv.currentTime - karaoke.currentTime) > 1) {
-            try { mtv.currentTime = karaoke.currentTime; } catch (err) {}
+        if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration) && mtv.readyState >= 2 && !mtv.seeking && !karaoke.seeking) {
+          const target = Math.min(karaoke.currentTime || 0, Math.max(0, mtv.duration - 0.05));
+          if (audioLive && Math.abs(mtv.currentTime - target) > 2 && Date.now() - lastMtvSeek > 1500) {
+            lastMtvSeek = Date.now();
+            try { mtv.currentTime = target; } catch (err) {}
           }
           if (karaoke.paused) mtv.pause();
-          else if (audioLive && mtv.paused) mtv.play().catch(() => {});
+          else if (audioLive && mtv.paused && !mtv.ended) mtv.play().catch(() => {});
         }
         const cues = lyrics.cues || [];
         const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
@@ -561,10 +834,19 @@
     function syncVocal(forceTime) {
       const karaoke = $("karaoke");
       const vocal = $("vocal");
+      const mix = room && room.vocal_mix != null ? room.vocal_mix : 1;
       if (!vocal || !vocal.getAttribute("src")) return;
+      if (mix <= 0.01 && forceTime == null) {
+        if (!vocal.paused) vocal.pause();
+        return;
+      }
+      if (vocal.readyState < 1) return;
       const t = forceTime != null ? forceTime : (karaoke.currentTime || 0);
+      const now = Date.now();
+      if (forceTime == null && now - lastVocalSync < 400) return;
+      lastVocalSync = now;
       try {
-        if (Math.abs((vocal.currentTime || 0) - t) > 0.08) vocal.currentTime = t;
+        if (Math.abs((vocal.currentTime || 0) - t) > 0.35) vocal.currentTime = t;
       } catch (err) {}
       if (karaoke && !karaoke.paused && karaoke.src) {
         vocal.play().catch(() => {});
@@ -585,11 +867,15 @@
       vocal.muted = mix <= 0.01;
       karaoke.volume = karaoke.muted ? 0 : vol * (1 - mix);
       vocal.volume = vocal.muted ? 0 : vol * mix;
+      const g = Math.max(0, Math.min(1, vol * micGain));
+      const filtered = !!(window.LovAec && LovAec.isActive());
+      if (filtered) LovAec.setGain(g);
       if (live) {
-        live.muted = false;
-        live.volume = Math.max(0, Math.min(1, vol * micGain));
+        live.muted = filtered;
+        live.volume = filtered ? 0 : g;
+        if (!filtered && live.srcObject && live.paused) live.play().catch(() => {});
       }
-      $("micLive").hidden = !(room && room.mic_on) && !(live && live.srcObject);
+      $("micLive").hidden = !(room && room.mic_on) && !pendingMic;
       $("qinfo").textContent = roomLine(room);
     }
 
@@ -614,18 +900,22 @@
       if (!songId) return;
       const karaoke = $("karaoke");
       const vocal = $("vocal");
-      const sameSong = String(karaoke.getAttribute("src") || karaoke.src || "").includes(songId);
+      const playingSrc = String(karaoke.getAttribute("src") || karaoke.src || "");
+      const sameSong = playingSrc.includes(songId);
       if (sameSong) {
         applyMix();
         silenceMtv($("mtv"));
         if (karaoke.paused) {
-          karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
+          playEl(karaoke).then(() => { $("gate").hidden = true; }).catch(() => {
+            if (audioUnlocked) schedulePlayRetries();
+            else $("gate").hidden = false;
+          });
         } else {
           $("gate").hidden = true;
         }
-        if (vocal.paused) vocal.play().catch(() => {});
+        if (vocal.paused) playEl(vocal).catch(() => {});
         const mtv = $("mtv");
-        if (mtv && mtv.paused && karaoke.currentTime > 0.05) mtv.play().catch(() => {});
+        if (mtv && mtv.paused && karaoke.currentTime > 0.05) playEl(mtv).catch(() => {});
         return;
       }
       karaoke.src = mediaUrl(songId, "karaoke.m4a");
@@ -634,7 +924,7 @@
       vocal.onerror = () => { vocal.src = mediaUrl(songId, "guide.m4a"); };
       applyMix();
       silenceMtv($("mtv"));
-      hookAudio();
+      if (audioUnlocked) hookAudio();
       const fx = ensureStageFx();
       if (fx && lastFxCue < 0) fx.spawn();
       const ready = () => {
@@ -642,9 +932,12 @@
       };
       karaoke.onloadedmetadata = ready;
       vocal.onloadedmetadata = ready;
-      karaoke.play().then(() => { $("gate").hidden = true; }).catch(() => { $("gate").hidden = false; });
-      vocal.play().catch(() => {});
-      $("mtv").play().catch(() => {});
+      playEl(karaoke).then(() => { $("gate").hidden = true; }).catch(() => {
+        if (audioUnlocked) schedulePlayRetries();
+        else $("gate").hidden = false;
+      });
+      playEl(vocal).catch(() => {});
+      playEl($("mtv")).catch(() => {});
     }
 
     if (audioBus) {
@@ -664,17 +957,18 @@
     });
 
     $("start").onclick = () => {
-      hookAudio();
+      unlockAudio();
       startPlayback();
-      $("liveMic").play().catch(() => {});
     };
     document.addEventListener("pointerdown", () => {
+      unlockAudio();
       const karaoke = $("karaoke");
       if (room && room.now_playing && room.now_playing.status === "ready" && karaoke && karaoke.paused) {
         startPlayback();
       }
     });
     document.addEventListener("keydown", () => {
+      unlockAudio();
       const karaoke = $("karaoke");
       if (room && room.now_playing && room.now_playing.status === "ready" && karaoke && karaoke.paused) {
         startPlayback();

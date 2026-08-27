@@ -70,6 +70,33 @@ def test_publish_files_includes_every_json(tmp_path, monkeypatch):
     assert names == {"karaoke.m4a", "asr.json", "visual_config.json", "timeline.json"}
 
 
+def test_cors_allows_media_from_star_or_ktv():
+    from lovktv.oss import MEDIA_CORS_XML, cors_allows_media, merge_cors_xml
+
+    assert cors_allows_media(MEDIA_CORS_XML)
+    assert cors_allows_media(
+        "<CORSConfiguration><CORSRule>"
+        "<AllowedOrigin>https://ktv.lovbrowser.com</AllowedOrigin>"
+        "<AllowedMethod>GET</AllowedMethod>"
+        "</CORSRule></CORSConfiguration>"
+    )
+    assert not cors_allows_media(
+        "<CORSConfiguration><CORSRule>"
+        "<AllowedOrigin>https://stock.lovbrowser.com</AllowedOrigin>"
+        "<AllowedMethod>GET</AllowedMethod>"
+        "</CORSRule></CORSConfiguration>"
+    )
+    merged = merge_cors_xml(
+        "<CORSConfiguration><CORSRule>"
+        "<AllowedOrigin>https://stock.lovbrowser.com</AllowedOrigin>"
+        "<AllowedMethod>PUT</AllowedMethod>"
+        "</CORSRule></CORSConfiguration>"
+    )
+    assert cors_allows_media(merged)
+    assert "stock.lovbrowser.com" in merged
+    assert merge_cors_xml(MEDIA_CORS_XML) == MEDIA_CORS_XML
+
+
 def test_publish_noop_without_oss(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)

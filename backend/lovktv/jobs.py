@@ -156,7 +156,7 @@ def _finish_ready_lyrics(
     official = not rebuild_mtv and (
         (out_dir / "mugen.mp4").exists()
         or (out_dir / "mugen.webm").exists()
-        or str(timeline.get("alignment_source") or "") == "karaoke-mugen"
+        or bool(timeline.get("native_video"))
     )
     if official:
         timeline["native_video"] = True

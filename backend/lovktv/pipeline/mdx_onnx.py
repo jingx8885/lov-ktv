@@ -206,10 +206,12 @@ def _corr(left: np.ndarray, right: np.ndarray) -> float:
 def assign_stems(mix: np.ndarray, primary: np.ndarray, compensate: float, hint: str = "instrumental") -> tuple[np.ndarray, np.ndarray]:
     """Return (vocals, instrumental). Karaoke models emit the backing track as primary."""
     residual = mix - primary * compensate
+    if hint == "instrumental":
+        return residual, primary
     primary_like = _corr(primary, mix)
     residual_like = _corr(residual, mix)
     if abs(primary_like - residual_like) < 0.05:
-        primary_is_mix = hint == "instrumental"
+        primary_is_mix = False
     else:
         primary_is_mix = primary_like > residual_like
     if primary_is_mix:

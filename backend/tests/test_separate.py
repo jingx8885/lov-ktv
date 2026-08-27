@@ -16,6 +16,16 @@ def test_assign_stems_keeps_karaoke_primary_as_instrumental():
     assert float(np.mean((vocals - voice) ** 2)) < 1e-6
 
 
+def test_assign_stems_loud_vocal_keeps_karaoke_primary():
+    rng = np.random.default_rng(2)
+    inst = rng.normal(0, 0.18, (2, 8000)).astype(np.float32)
+    voice = rng.normal(0, 0.55, (2, 8000)).astype(np.float32)
+    mix = inst + voice
+    vocals, instrumental = assign_stems(mix, inst, 1.0, "instrumental")
+    assert float(np.mean((instrumental - inst) ** 2)) < 1e-6
+    assert float(np.mean((vocals - voice) ** 2)) < 1e-6
+
+
 def test_assign_stems_flips_wrong_vocal_hint():
     rng = np.random.default_rng(1)
     inst = rng.normal(0, 0.4, (2, 8000)).astype(np.float32)

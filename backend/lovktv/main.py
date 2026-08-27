@@ -29,7 +29,7 @@ from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, sear
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.index import prefer_native_library, query_library
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
-from lovktv.oss import oss_ready, oss_status, public_url
+from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
@@ -141,6 +141,11 @@ async def _broadcast(code: str, payload: dict, skip: WebSocket | None = None) ->
 def _startup() -> None:
     init_db()
     resume_stuck_jobs()
+    if oss_ready():
+        try:
+            print(f"[lovktv] oss cors {ensure_bucket_cors()}", flush=True)
+        except Exception as exc:
+            print(f"[lovktv] oss cors skipped: {exc}", flush=True)
 
 
 @app.get("/api/host")
@@ -320,21 +325,23 @@ def api_search(q: str, count: int = 10, page: int = 1) -> dict:
         raise HTTPException(502, f"搜索失败：{exc}") from exc
 
 
-@app.get("/api/preview/{netease_id}/resolve")
-def api_preview_resolve(netease_id: str, title: str = "", artist: str = "") -> dict:
-    if not netease_id.isdigit():
+@app.get("/api/preview/{song_id}/resolve")
+def api_preview_resolve(song_id: str, title: str = "", artist: str = "", media: str = "") -> dict:
+    if is_mugen_kid(song_id):
+        return {"ok": True, "id": song_id, "kind": "mugen", "title": title}
+    if not song_id.isdigit():
         raise HTTPException(400, "无效的试听 id")
-    source = resolve_audio_source(netease_id, title, artist)
+    source = resolve_audio_source(song_id, title, artist)
     if not source:
         raise HTTPException(404, "这首暂时不能试听")
-    return {"ok": True, "id": netease_id, "kind": source.get("kind"), "title": source.get("title") or title}
+    return {"ok": True, "id": song_id, "kind": source.get("kind"), "title": source.get("title") or title}
 
 
-@app.get("/api/preview/{netease_id}")
-def api_preview(netease_id: str, title: str = "", artist: str = ""):
-    if not netease_id.isdigit():
+@app.get("/api/preview/{song_id}")
+def api_preview(song_id: str, title: str = "", artist: str = "", media: str = ""):
+    if not is_mugen_kid(song_id) and not song_id.isdigit():
         raise HTTPException(400, "无效的试听 id")
-    resp, source = open_preview_stream(netease_id, title, artist)
+    resp, source = open_preview_stream(song_id, title, artist, media=media)
     if resp is None:
         raise HTTPException(404, "这首暂时不能试听")
     ctype = str(resp.headers.get("Content-Type") or "audio/mpeg")

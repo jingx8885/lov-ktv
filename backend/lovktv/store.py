@@ -123,10 +123,7 @@ def media_flags(song_id: str) -> dict[str, Any]:
     if lyrics_path.exists():
         try:
             lyrics = json.loads(lyrics_path.read_text(encoding="utf-8"))
-            native = bool(
-                lyrics.get("native_video")
-                or lyrics.get("alignment_source") == "karaoke-mugen"
-            )
+            native = lyrics.get("native_video") is True
         except (OSError, json.JSONDecodeError):
             native = False
     if not native:
@@ -139,20 +136,6 @@ def media_flags(song_id: str) -> dict[str, Any]:
                 native = False
     if not native:
         native = (folder / "mugen.mp4").exists() or (folder / "mugen.webm").exists()
-    if not native:
-        marker = folder / "oss.json"
-        if marker.exists():
-            try:
-                native = bool(json.loads(marker.read_text(encoding="utf-8")).get("native_video"))
-            except (OSError, json.JSONDecodeError):
-                native = False
-        else:
-            try:
-                from lovktv.oss import remote_native
-
-                native = remote_native(song_id)
-            except Exception:
-                native = False
     return {"native_video": native}
 
 

@@ -67,6 +67,22 @@ def test_finish_ready_lyrics_marks_native_video(tmp_path, monkeypatch):
     assert timeline["native_video"] is True
 
 
+def test_finish_ready_lyrics_keeps_composed_mtv_off_native(tmp_path, monkeypatch):
+    out_dir = tmp_path / "s2"
+    out_dir.mkdir()
+    (out_dir / "mtv.mp4").write_bytes(b"v" * 2000)
+    (out_dir / "lyrics.json").write_text(
+        '{"language":"en","alignment_source":"karaoke-mugen","cues":[]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
+    monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "x", "artist": "y"})
+    monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: None)
+    jobs._finish_ready_lyrics("s2", out_dir, out_dir / "mtv.mp4", "en", rebuild_mtv=False)
+    timeline = __import__("json").loads((out_dir / "lyrics.json").read_text(encoding="utf-8"))
+    assert timeline.get("native_video") is not True
+
+
 def test_parse_ass_uses_dialogue_karaoke_timing():
     cues = mugen.parse_ass(ASS)
     assert [cue["text"] for cue in cues] == ["dou demo ii", "furatsu"]
@@ -133,6 +149,69 @@ def test_map_hit_marks_off_vocal():
     assert hit["off_vocal"] is True
     assert hit["clean"] is False
     assert hit["title"] == "群青"
+    assert hit["preview_url"] == "/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f"
+    assert hit["media"] == "x.mp4"
+
+
+def test_open_mugen_preview_uses_mediafile(monkeypatch):
+    opened = []
+
+    class FakeResp:
+        headers = {"Content-Type": "video/mp4"}
+
+        def read(self, _n):
+            return b""
+
+        def close(self):
+            pass
+
+    def fake_urlopen(req, timeout=30):
+        opened.append(req.full_url)
+        if "/previews/" in req.full_url:
+            raise OSError("no short preview")
+        return FakeResp()
+
+    monkeypatch.setattr(mugen.urllib.request, "urlopen", fake_urlopen)
+    resp = mugen.open_mugen_preview("2e626891-5435-4333-b9bc-90e270f74e8f", media_name="song.mp4")
+    assert resp is not None
+    assert any(url.startswith("https://kara.moe/downloads/medias/") and "song.mp4" in url for url in opened)
+
+
+def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from fastapi.testclient import TestClient
+    from lovktv import host_volume, main, store
+
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    store.init_db()
+    host_volume._cached = None
+
+    class FakeResp:
+        headers = {"Content-Type": "video/mp4"}
+        _sent = False
+
+        def read(self, _n):
+            if self._sent:
+                return b""
+            self._sent = True
+            return b"abc"
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(
+        main,
+        "open_preview_stream",
+        lambda *args, **kwargs: (FakeResp(), {"kind": "mugen", "title": "群青"}),
+    )
+    with TestClient(main.app) as client:
+        info = client.get("/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f/resolve")
+        assert info.status_code == 200
+        assert info.json()["kind"] == "mugen"
+        stream = client.get("/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f?media=song.mp4")
+        assert stream.status_code == 200
+        assert stream.content == b"abc"
 
 
 def test_search_songs_puts_mugen_first(monkeypatch):
