@@ -334,7 +334,10 @@
     } catch (err) {
       return prev || { audio, ctx, analyser, freq: new Uint8Array(analyser.frequencyBinCount), time: new Uint8Array(analyser.fftSize) };
     }
-    source.connect(ctx.destination);
+    const gain = ctx.createGain();
+    gain.gain.value = 1;
+    source.connect(gain);
+    gain.connect(ctx.destination);
     const splitter = ctx.createChannelSplitter(2);
     source.connect(splitter);
     splitter.connect(analyser, 0);
@@ -343,6 +346,7 @@
       audio,
       ctx,
       source,
+      gain,
       analyser,
       freq: new Uint8Array(analyser.frequencyBinCount),
       time: new Uint8Array(analyser.fftSize),

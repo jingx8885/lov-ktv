@@ -130,6 +130,7 @@
           </button>
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
+        <audio id="playerOriginal" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
         <audio id="playerGuide" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
         <audio id="phoneIemVoice" autoplay playsinline hidden></audio>
         <div class="player-stage">
@@ -258,7 +259,7 @@
       </button>
     </nav>
   </div>
-  <script src="/bands.js?v=wave7"></script>
+  <script src="/bands.js?v=wave8"></script>
   <script src="/timeline.js?v=tl7"></script>
   <script src="/rtc-mic.js?v=mic8"></script>
   <script>
@@ -340,10 +341,12 @@
         audio.play().catch(() => alert("点一下播放，手机才允许出声"));
         setPlayIcon(true);
         syncGuide();
+        applyPlayerVocalMix();
       } else {
         audio.pause();
         setPlayIcon(false);
         syncGuide();
+        applyPlayerVocalMix();
       }
     }
     function playFromMs(ms) {
@@ -353,7 +356,11 @@
         hookPlayerAudio();
         try { audio.currentTime = Math.max(0, ms) / 1000; } catch (err) {}
         syncGuide(Math.max(0, ms) / 1000);
-        audio.play().then(() => setPlayIcon(true)).catch(() => setPlayIcon(false));
+        applyPlayerVocalMix();
+        audio.play().then(() => {
+          setPlayIcon(true);
+          applyPlayerVocalMix();
+        }).catch(() => setPlayIcon(false));
         if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
       };
       if (audio.readyState >= 1) start();
@@ -1065,6 +1072,8 @@
       audio.pause();
       const guide = $("playerGuide");
       if (guide) guide.pause();
+      const orig = $("playerOriginal");
+      if (orig) orig.pause();
       setPlayIcon(false);
       if (playerRaf) {
         cancelAnimationFrame(playerRaf);
@@ -1084,6 +1093,7 @@
         alignTl.setMixOn(mixTrackOn);
         alignTl.setVoiceOn(voiceTrackOn);
       }
+      applyKaraokeGain();
     }
     function syncGuide(forceTime) {
       const audio = $("playerAudio");
@@ -1104,6 +1114,33 @@
         guide.pause();
       }
     }
+    function applyKaraokeGain() {
+      const editing = document.body.classList.contains("edit-on");
+      let value = 1;
+      if (editing && !mixTrackOn) value = 0;
+      else if (!editing && playerVocal) value = 0;
+      if (playerHook && playerHook.gain) playerHook.gain.gain.value = value;
+    }
+    function syncOriginal(forceTime) {
+      const audio = $("playerAudio");
+      const orig = $("playerOriginal");
+      if (!orig || !orig.getAttribute("src")) return;
+      const t = forceTime != null ? forceTime : (audio.currentTime || 0);
+      if (orig.readyState >= 1) {
+        try {
+          if (Math.abs((orig.currentTime || 0) - t) > 0.08) orig.currentTime = t;
+        } catch (err) {}
+      }
+      const editing = document.body.classList.contains("edit-on");
+      const want = !editing && !!playerVocal && !!(audio && !audio.paused && audio.src);
+      orig.muted = !want;
+      if (want) orig.play().catch(() => {});
+      else orig.pause();
+    }
+    function applyPlayerVocalMix() {
+      applyKaraokeGain();
+      syncOriginal();
+    }
     function hookPlayerAudio() {
       const ctx = ensurePhoneCtx();
       playerHook = LovBands.hookAnalyser($("playerAudio"), playerHook, ctx ? { ctx } : null);
@@ -1111,6 +1148,7 @@
         playerHook.ctx.resume().catch(() => {});
       }
       if (playerHook && playerHook.ctx) phoneCtx = playerHook.ctx;
+      applyKaraokeGain();
     }
     function drawPlayerBands(t) {
       if (!playerViz) playerViz = LovBands.create($("playerBands"));
@@ -1217,8 +1255,13 @@
       $("playerNow").textContent = fmtClock(t);
       $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
       $("playerArt").classList.toggle("is-live", !audio.paused && !!audio.src);
-      if (hold != null) syncGuide(hold);
-      else syncGuide();
+      if (hold != null) {
+        syncGuide(hold);
+        syncOriginal(hold);
+      } else {
+        syncGuide();
+        syncOriginal();
+      }
       if (!$("playerAlign").hidden) {
         ensureTimeline().sync(t, dur);
       }
@@ -1308,11 +1351,17 @@
       }
       stopPreview();
       const audio = $("playerAudio");
+      const orig = $("playerOriginal");
       const guide = $("playerGuide");
       audio.pause();
+      if (orig) orig.pause();
       if (guide) guide.pause();
       audio.onloadedmetadata = null;
       audio.onerror = null;
+      if (orig) {
+        orig.onloadedmetadata = null;
+        orig.onerror = null;
+      }
       if (guide) {
         guide.onloadedmetadata = null;
         guide.onerror = null;
@@ -1321,6 +1370,7 @@
       playerLyrics = { cues: [] };
       resetPlayerFace();
       try { audio.currentTime = 0; } catch (err) {}
+      try { if (orig) orig.currentTime = 0; } catch (err) {}
       try { if (guide) guide.currentTime = 0; } catch (err) {}
       playerLyrics = await fetch(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
       if (gen !== playerLoad) return;
@@ -1332,9 +1382,9 @@
       $("playerVocal").classList.toggle("on", !!playerVocal);
       $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       songMediaRev = Date.now();
+      const karaoke = mediaUrl(song.id, "karaoke.m4a");
       const original = mediaUrl(song.id, "original.mp3");
-      const nextSrc = playerVocal ? original : mediaUrl(song.id, "karaoke.m4a");
-      audio.src = nextSrc;
+      audio.src = karaoke;
       audio.load();
       audio.onerror = () => {
         if (gen !== playerLoad) return;
@@ -1343,6 +1393,10 @@
           audio.load();
         }
       };
+      if (orig) {
+        orig.src = original;
+        orig.load();
+      }
       const guideUrl = mediaUrl(song.id, "guide.m4a");
       guide.src = guideUrl;
       guide.load();
@@ -1355,9 +1409,10 @@
       applyEditorTracks();
       renderAlignList();
       renderPlayerList();
-      const ready = await waitMedia(audio, gen, nextSrc);
+      const ready = await waitMedia(audio, gen, karaoke);
       if (gen !== playerLoad) return;
       try { audio.currentTime = 0; } catch (err) {}
+      try { if (orig && orig.getAttribute("src") && orig.readyState >= 1) orig.currentTime = 0; } catch (err) {}
       try { if (guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0; } catch (err) {}
       hookPlayerAudio();
       ensureTimeline().render();
@@ -1366,11 +1421,13 @@
           await audio.play();
           setPlayIcon(true);
           syncGuide(0);
+          applyPlayerVocalMix();
         } catch (err) {
           setPlayIcon(false);
         }
       } else {
         setPlayIcon(false);
+        applyPlayerVocalMix();
       }
       if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
     }
@@ -1390,59 +1447,14 @@
 
     $("playerPlay").onclick = () => togglePlayer();
     $("editPlay").onclick = () => togglePlayer();
-    async function applyPlayerVocalSrc() {
-      const audio = $("playerAudio");
-      if (!playerSong) return;
-      const t = playerClockHold != null ? playerClockHold : (audio.currentTime || 0);
-      const playing = !audio.paused && !!audio.src;
-      const durNow = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : playerHoldDur;
-      playerClockHold = t;
-      playerHoldDur = durNow || 0;
-      const gen = ++playerLoad;
-      const original = mediaUrl(playerSong.id, "original.mp3");
-      let nextSrc = playerVocal ? original : mediaUrl(playerSong.id, "karaoke.m4a");
-      audio.pause();
-      audio.onloadedmetadata = null;
-      audio.onerror = null;
-      audio.src = nextSrc;
-      audio.load();
-      audio.onerror = () => {
-        if (gen !== playerLoad) return;
-        if (!String(audio.currentSrc || audio.src).includes("original.mp3")) {
-          audio.src = original;
-          audio.load();
-        }
-      };
-      let ready = await waitMedia(audio, gen, nextSrc);
-      if (gen !== playerLoad) return;
-      if (!ready && !playerVocal) {
-        nextSrc = original;
-        ready = await waitMedia(audio, gen, nextSrc);
-        if (gen !== playerLoad) return;
-      }
-      const dur = Number.isFinite(audio.duration) ? audio.duration : t;
-      const seek = Math.max(0, Math.min(t, Math.max(0, dur - 0.05)));
-      try { audio.currentTime = seek; } catch (err) {}
-      syncGuide(seek);
-      hookPlayerAudio();
-      if (playing && ready) {
-        try {
-          await audio.play();
-          setPlayIcon(true);
-        } catch (err) {
-          setPlayIcon(false);
-        }
-      }
-      if (Number.isFinite(audio.duration) && audio.duration > 0) playerHoldDur = audio.duration;
-      playerClockHold = null;
-    }
     $("playerVocal").onclick = () => {
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
       $("playerVocal").classList.toggle("on", !!playerVocal);
       $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       $("playerVocal").setAttribute("aria-label", playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
-      applyPlayerVocalSrc();
+      playerClockHold = null;
+      applyPlayerVocalMix();
     };
     function seekPlayerArt(event) {
       const audio = $("playerAudio");
@@ -1451,6 +1463,7 @@
       const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
       audio.currentTime = x * audio.duration;
       syncGuide(audio.currentTime);
+      syncOriginal(audio.currentTime);
     }
     $("playerArt").addEventListener("pointerdown", (event) => {
       if (event.button && event.button !== 0) return;
@@ -1810,6 +1823,8 @@
       const guide = $("playerGuide");
       try {
         if (audio && audio.setSinkId) await audio.setSinkId(sink);
+        const orig = $("playerOriginal");
+        if (orig && orig.setSinkId) await orig.setSinkId(sink);
         if (guide && guide.setSinkId) await guide.setSinkId(sink);
         const iem = $("phoneIemVoice");
         if (iem && iem.setSinkId) await iem.setSinkId(sink);
@@ -1843,7 +1858,7 @@
       phoneMic = await acquirePhoneMic();
       applyPhoneMonitor();
       if (phoneIem && jack.sink) await routePhoneSink(jack.sink);
-      if (!restart && playerVocal && playerSong) $("playerVocal").click();
+      applyPlayerVocalMix();
       paintPhoneMic();
       if (phoneIem && jack.kind === "headphones") {
         $("playerMicHint").textContent = "耳返已开：回声消除已关，有线耳机听自己会快很多。麦声拉到 0 就只听伴奏";
