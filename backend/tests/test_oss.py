@@ -53,6 +53,23 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     assert res.headers["location"] == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4"
 
 
+def test_publish_files_includes_every_json(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from importlib import reload
+    from lovktv import config, oss
+
+    reload(config)
+    reload(oss)
+    folder = tmp_path / "song"
+    folder.mkdir()
+    (folder / "karaoke.m4a").write_bytes(b"a")
+    (folder / "asr.json").write_text("{}", encoding="utf-8")
+    (folder / "visual_config.json").write_text("{}", encoding="utf-8")
+    (folder / "timeline.json").write_text("{}", encoding="utf-8")
+    names = {p.name for p in oss.publish_files(folder)}
+    assert names == {"karaoke.m4a", "asr.json", "visual_config.json", "timeline.json"}
+
+
 def test_publish_noop_without_oss(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)

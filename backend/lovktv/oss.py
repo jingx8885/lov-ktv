@@ -163,6 +163,17 @@ def write_marker(song_id: str, names: list[str]) -> Path:
     return dest
 
 
+def publish_files(folder: Path) -> list[Path]:
+    names = set(PUBLISH_NAMES)
+    files: list[Path] = []
+    for path in sorted(folder.iterdir()):
+        if not path.is_file() or path.name == "oss.json":
+            continue
+        if path.name in names or path.suffix.lower() == ".json":
+            files.append(path)
+    return files
+
+
 def publish_song(song_id: str) -> list[str]:
     if not oss_ready():
         return []
@@ -170,15 +181,10 @@ def publish_song(song_id: str) -> list[str]:
     if not folder.exists():
         return []
     uploaded: list[str] = []
-    for name in PUBLISH_NAMES:
-        if name == "oss.json":
-            continue
-        path = folder / name
-        if not path.is_file():
-            continue
+    for path in publish_files(folder):
         put_file(song_id, path)
-        uploaded.append(name)
-        _REMOTE_CACHE[f"{song_id}/{name}"] = True
+        uploaded.append(path.name)
+        _REMOTE_CACHE[f"{song_id}/{path.name}"] = True
     marker = write_marker(song_id, uploaded)
     put_file(song_id, marker)
     uploaded.append("oss.json")
