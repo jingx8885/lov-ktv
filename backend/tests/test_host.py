@@ -12,6 +12,10 @@ def _boot(tmp_path, monkeypatch):
 
 
 def test_host_info_uses_request_origin(tmp_path, monkeypatch):
+    monkeypatch.delenv("LOVKTV_AGENT_URL", raising=False)
+    monkeypatch.delenv("LOVKTV_AGENT_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     main = _boot(tmp_path, monkeypatch)
     with TestClient(main.app, base_url="http://192.168.1.8:8787") as client:
         data = client.get("/api/host").json()
@@ -22,6 +26,8 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["cache_ready"] == 0
     assert "separator" in data["models"]
     assert "whisper" in data["models"]
+    assert data["agent"]["enabled"] is False
+    assert data["agent"]["model"] == ""
 
 
 def test_tv_page_builds_phone_url_from_host_origin():

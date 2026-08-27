@@ -24,18 +24,21 @@ _JSON_BLOCK = re.compile(r"\{.*\}", re.S)
 _LINE_NO = re.compile(r"^\d+\.\s*")
 _INDEX_UNIT = re.compile(r"^\d+\.$")
 _LATIN_PART = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
+ANNOTATION_SCHEMA = "restore-ja-v1"
 
-SYSTEM = """You are a Japanese karaoke lyric annotator.
+SYSTEM = """You restore Japanese karaoke lyrics and annotate them.
 Return JSON only:
-{"lines":[{"source":"<exact original line>","units":[{"sing":"...","label":"..."}]}]}
+{"lines":[{"source":"<exact original line>","units":[{"sing":"...","label":"...","romaji":"..."}]}]}
 
 Rules:
-1. `source` must equal the input line exactly.
-2. Units cover the whole line in order. Do not drop or invent words.
-3. Kanji / kanji+okurigana: `sing` is the correct hiragana reading in THIS song; `label` is only the kanji (止, 君, 溢). Use lyric context (君 as you → きみ, not くん; 煌めき → きらめき).
-4. Katakana loanwords (メモリー, コーヒー, ダンサー, カフェ): keep the katakana in `sing`; `label` is the original English/French/etc word (memory, coffee, dancer, café). Never write romaji like memorii or koohii.
-5. Japanese katakana (ズレ, フリ, ダメ, ヤバ): keep katakana in `sing`; `label` is empty.
-6. Hiragana, punctuation, numbers, already-Latin text: `sing` as written; `label` empty.
+1. `source` must equal the input line exactly, even when the input is romaji.
+2. If the line is Hepburn romaji, restore Japanese in `sing` (ひらがな / カタカナ). Example: "itsumo no you ni" → いつもの / ように. Do not leave romaji in `sing`.
+3. Units cover the sung Japanese in order. Do not drop or invent words.
+4. Kanji / kanji+okurigana: `sing` is the hiragana reading in THIS song; `label` is only the kanji (止, 君, 溢); `romaji` is Hepburn (kimi, tomatta). Context: 君 as you → きみ, not くん.
+5. Katakana loanwords (メモリー, コーヒー, ダンサー): `sing` is katakana; `label` is the original English/French word (memory, coffee, dancer); `romaji` is empty. Never write memorii or koohii.
+6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
+7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
+8. Already-English words in the lyric (Give a reason, Here we go): keep them in `sing`; `label` and `romaji` empty.
 """
 
 
@@ -64,13 +67,43 @@ def agent_enabled() -> bool:
     return bool(agent_base_url() and agent_api_key())
 
 
+def agent_status() -> dict[str, Any]:
+    return {
+        "enabled": agent_enabled(),
+        "model": agent_model() if agent_enabled() else "",
+    }
+
+
+def line_is_romaji(text: str) -> bool:
+    source = lyric_source_key(text)
+    if _KANA.search(source) or _KANJI.search(source):
+        return False
+    letters = [char for char in source if char.isalpha()]
+    return bool(letters) and all(char.isascii() for char in letters)
+
+
+def japanese_from_units(units: list[dict[str, str]]) -> str:
+    parts: list[str] = []
+    for unit in units:
+        sing = lyric_source_key(unit.get("sing") or "")
+        if not sing:
+            continue
+        if parts and re.match(r"[A-Za-z0-9']", sing) and re.search(r"[A-Za-z0-9']$", parts[-1] or ""):
+            parts.append(" ")
+        parts.append(sing)
+    return "".join(parts)
+
+
 def _is_katakana(text: str) -> bool:
     body = [char for char in text if not char.isspace()]
     return bool(body) and all(_KATAKANA.match(char) or char in _KATA_MARK for char in body)
 
 
 def _source_hash(lines: list[str], title: str, artist: str) -> str:
-    payload = json.dumps({"title": title, "artist": artist, "lines": lines}, ensure_ascii=False)
+    payload = json.dumps(
+        {"schema": ANNOTATION_SCHEMA, "title": title, "artist": artist, "lines": lines},
+        ensure_ascii=False,
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -99,7 +132,13 @@ def _parse_payload(raw: str) -> dict[str, Any]:
             sing = lyric_source_key(str(unit.get("sing") or "").strip())
             if not sing or _INDEX_UNIT.fullmatch(sing):
                 continue
-            units.append({"sing": sing, "label": str(unit.get("label") or "").strip()})
+            units.append(
+                {
+                    "sing": sing,
+                    "label": str(unit.get("label") or "").strip(),
+                    "romaji": str(unit.get("romaji") or "").strip(),
+                }
+            )
         if source and units:
             cleaned.append({"source": source, "units": units})
     if not cleaned:
@@ -166,15 +205,20 @@ def annotate_ja_lines(
     artist: str = "",
     cache_path: Path | None = None,
     chunk_size: int = 24,
+    force: bool = False,
 ) -> dict[str, Any]:
     texts = [str(line or "") for line in lines]
     digest = _source_hash(texts, title, artist)
-    if cache_path and cache_path.exists():
+    if cache_path and cache_path.exists() and not force:
         try:
             cached = json.loads(cache_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             cached = {}
-        if cached.get("source_hash") == digest and cached.get("lines"):
+        if (
+            cached.get("source_hash") == digest
+            and cached.get("schema") == ANNOTATION_SCHEMA
+            and cached.get("lines")
+        ):
             return cached
     if not agent_enabled():
         raise RuntimeError("日语注音 agent 未启用")
@@ -188,6 +232,7 @@ def annotate_ja_lines(
     for start in range(0, len(unique), chunk_size):
         collected.extend(_request_chunk(unique[start : start + chunk_size], title, artist))
     result = {
+        "schema": ANNOTATION_SCHEMA,
         "source_hash": digest,
         "model": agent_model(),
         "title": title,
@@ -260,7 +305,7 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
                 specs.append((piece, label if label and fallback else (label or fallback)))
             continue
         surface = "".join(char for char in sing if not char.isspace())
-        if label or _is_katakana(surface):
+        if label or _is_katakana(surface) or str(unit.get("romaji") or "").strip():
             specs.append((surface, label))
             continue
         for char in surface:
@@ -277,26 +322,37 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
             by_source[source] = units
     for cue in timeline.get("cues") or []:
         text = lyric_source_key(cue.get("text") or "")
-        units = by_source.get(text)
+        original = lyric_source_key(cue.get("source_text") or text)
+        units = by_source.get(original) or by_source.get(text)
         if not units:
             continue
-        specs = expand_units(units, source=text)
+        specs: list[tuple[str, str, str]] = []
+        for unit in units:
+            roma = str(unit.get("romaji") or "").strip()
+            pieces = expand_units([unit], source=original)
+            for index, (piece, label) in enumerate(pieces):
+                specs.append((piece, label, roma if index == 0 else ""))
         if not specs:
             continue
+        japanese = japanese_from_units(units)
+        if japanese and line_is_romaji(original):
+            cue["source_text"] = original
+            cue["text"] = japanese
         start_ms = int(cue["start_ms"])
         end_ms = int(cue.get("sing_end_ms") or cue["end_ms"])
         span = max(end_ms - start_ms, 200)
-        unit = span / len(specs)
+        unit_ms = span / len(specs)
         tokens = []
         cursor = start_ms
-        for index, (piece, label) in enumerate(specs):
-            token_end = end_ms if index == len(specs) - 1 else int(cursor + unit)
+        for index, (piece, label, roma) in enumerate(specs):
+            token_end = end_ms if index == len(specs) - 1 else int(cursor + unit_ms)
             tokens.append(
                 {
                     "text": piece,
                     "start_ms": int(cursor),
                     "end_ms": int(max(cursor + 40, token_end)),
                     "reading": label,
+                    "romaji": roma,
                 }
             )
             cursor = token_end

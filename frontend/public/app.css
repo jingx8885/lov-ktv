@@ -206,6 +206,19 @@ input, textarea {
   font-style: normal;
   font-weight: 700;
 }
+.lyrics .anno .roma {
+  min-height: 0.34em;
+  font-size: .28em;
+  color: rgba(255, 255, 255, .58);
+  letter-spacing: 0.02em;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.prev .roma,
+.next .roma {
+  display: none;
+}
 .line .rb {
   background: linear-gradient(90deg, var(--gold) var(--p, 0%), #fff var(--p, 0%));
   -webkit-background-clip: text;
@@ -341,7 +354,8 @@ body.tv .bands { display: none; }
 }
 .align-text .tok { display: inline; }
 .align-text .tok.latin { padding-inline: 0; }
-.align-text .rt { display: none; }
+.align-text .rt,
+.align-text .roma { display: none; }
 .align-text .rb {
   background: linear-gradient(90deg, var(--gold) var(--p, 0%), #fff var(--p, 0%));
   -webkit-background-clip: text;
@@ -1096,7 +1110,9 @@ body.phone[data-page="player"] .topbar { display: none; }
   align-content: center;
 }
 .page-player .player-lyrics .prev .rt,
-.page-player .player-lyrics .next .rt { display: none; }
+.page-player .player-lyrics .next .rt,
+.page-player .player-lyrics .prev .roma,
+.page-player .player-lyrics .next .roma { display: none; }
 .page-player .player-lyrics .prev .tok,
 .page-player .player-lyrics .next .tok,
 .page-player .player-lyrics .prev .anno,

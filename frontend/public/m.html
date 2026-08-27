@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone24" />
+  <link rel="stylesheet" href="/app.css?v=phone25" />
 </head>
 <body class="phone">
   <div class="app">
@@ -991,12 +991,14 @@
         const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
         const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
         const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+        const roma = tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
+        const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : `<span class="roma"></span>`;
         const latin = /^[A-Za-z0-9']/.test(tok.text || "");
         const next = tokens[i + 1];
         const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
           ? `<span class="tok-space"> </span>`
           : "";
-        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}</span></span>${space}`;
+        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}${romaHtml}</span></span>${space}`;
       }).join("");
     }
     function paintLine(el, cue, t, slot, empty) {

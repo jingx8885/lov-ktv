@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=native9" />
+  <link rel="stylesheet" href="/app.css?v=native10" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -118,12 +118,14 @@
         const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
         const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
         const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+        const roma = tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
+        const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : `<span class="roma"></span>`;
         const latin = /^[A-Za-z0-9']/.test(tok.text || "");
         const next = tokens[i + 1];
         const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
           ? `<span class="tok-space"> </span>`
           : "";
-        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}</span></span>${space}`;
+        return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}${romaHtml}</span></span>${space}`;
       }).join("");
     }
 

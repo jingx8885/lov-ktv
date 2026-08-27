@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from lovktv.agents.ja_lyrics import annotate_ja_lines
+from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
 from lovktv.auth import (
     SESSION_COOKIE,
     auth_status,
@@ -154,6 +154,7 @@ def api_host(request: Request) -> dict:
         "cache_ready": 0,
         "models": model_status(),
         "oss": oss_status(),
+        "agent": agent_status(),
     }
 
 
