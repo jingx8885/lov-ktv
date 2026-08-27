@@ -29,6 +29,7 @@ from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, sear
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.index import prefer_native_library, query_library
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
+from lovktv.oss import oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
@@ -152,6 +153,7 @@ def api_host(request: Request) -> dict:
         "phone_path": "/m.html?room=",
         "cache_ready": 0,
         "models": model_status(),
+        "oss": oss_status(),
     }
 
 
@@ -625,12 +627,16 @@ async def ws_room(ws: WebSocket, code: str) -> None:
 def media(song_id: str, name: str):
     root = MEDIA_DIR.resolve()
     path = (root / song_id / name).resolve()
-    if root not in path.parents or not path.exists():
+    if root not in path.parents:
         raise HTTPException(404)
-    return FileResponse(
-        path,
-        headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, must-revalidate"},
-    )
+    if path.exists():
+        return FileResponse(
+            path,
+            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, must-revalidate"},
+        )
+    if oss_ready():
+        return RedirectResponse(public_url(song_id, name), status_code=302)
+    raise HTTPException(404)
 
 
 @app.get("/m.html")

@@ -27,6 +27,8 @@ def test_compose_exposes_port_and_data_volume():
     assert "./data:/app/data" in text
     assert "LOVKTV_DATA" in text
     assert "LOVKTV_MODELS" in text
+    assert "ALIYUN_OSS_ACCESS_KEY_ID" in text
+    assert "LOVKTV_OSS_PREFIX" in text
     assert "healthcheck" in text
     assert "/api/host" in text
     assert "restart:" in text

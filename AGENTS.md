@@ -35,8 +35,9 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 - 证书复用 `/etc/ssl/lovbrowser/lovbrowser.com.pem`（和 `stock.lovbrowser.com` 一样）。浏览器看到的是 Cloudflare `*.lovbrowser.com`；源站这张是 CF 回源证书。
 - DNS 在 Cloudflare 加 `CNAME ktv → lovbrowser.com`（橙云）。没有解析就不要当“部署失败”去改 Nginx。
 - `LOVKTV_PUBLIC_URL=https://ktv.lovbrowser.com` 必须在 43 的 `~/lov-ktv/.env`。改 env 后要 recreate 容器。
-- 上线后不要打印微信密钥、Agent Key。检查只用 key 是否存在、长度。
-- 曲库仅供个人/家庭局域网。不要把 `data/media` 公开发布。
+- 上线后不要打印微信密钥、Agent Key、OSS 密钥。检查只用 key 是否存在、长度。
+- 成品媒体上阿里云 OSS（`lovktv/` 前缀），没配 OSS 就回退读本地 `data/media`。不要把曲库打进镜像或提交进 git。
+- 43 的 `~/lov-ktv/.env` 复用 `/etc/lovbrowser/production.env` 里的 `ALIYUN_OSS_*`，并设 `LOVKTV_OSS_PREFIX=lovktv`，不要用 lovbrowser 的 `installPackage`。
 
 ## 产品边界
 

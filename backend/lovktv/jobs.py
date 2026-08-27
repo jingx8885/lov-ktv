@@ -24,6 +24,15 @@ from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
 from lovktv.store import get_song, list_songs, retry_query, update_song
 
+
+def _publish_ready(song_id: str) -> None:
+    try:
+        from lovktv.oss import publish_song
+
+        publish_song(song_id)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[lovktv] oss publish {song_id} skipped: {exc}", flush=True)
+
 _JOBS: queue.Queue = queue.Queue()
 _QUEUED: set[str] = set()
 _QUEUE_LOCK = threading.Lock()
@@ -151,7 +160,11 @@ def _finish_ready_lyrics(
     )
     if official:
         timeline["native_video"] = True
-    update_song(song_id, language=lang, status="annotating" if lang == "ja" and not burned else "ready")
+    if lang == "ja" and not burned:
+        update_song(song_id, language=lang, status="annotating")
+    else:
+        update_song(song_id, language=lang, status="ready")
+        _publish_ready(song_id)
     wrote = False
     if lang == "ja" and timeline.get("cues") and not burned:
         song = get_song(song_id) or {}
@@ -174,6 +187,7 @@ def _finish_ready_lyrics(
     if timeline.get("native_video") and not wrote:
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
+    _publish_ready(song_id)
     if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
         return
     song = get_song(song_id) or {}
@@ -190,6 +204,7 @@ def _finish_ready_lyrics(
             timeline=timeline,
             cover_path=cover if cover.exists() else None,
         )
+        _publish_ready(song_id)
     except Exception as mtv_exc:
         previous = str(song.get("error") or "").strip()
         update_song(song_id, error=f"{previous} MTV降级：{mtv_exc}".strip())
@@ -279,6 +294,7 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
     write_subtitles(timeline, out_dir)
     write_manual_lrc(out_dir, timeline["cues"])
     update_song(song_id, language=lang, status="ready")
+    _publish_ready(song_id)
     if rebuild_mtv:
         song = get_song(song_id) or {}
         audio = out_dir / "karaoke.m4a"
@@ -293,6 +309,7 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
             timeline=timeline,
             cover_path=cover if cover.exists() else None,
         )
+        _publish_ready(song_id)
 
 
 def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool = False) -> None:
@@ -357,6 +374,7 @@ def _align_and_mtv(
     if timeline.get("cues"):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
+    _publish_ready(song_id)
     if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
         return
     song = get_song(song_id) or {}
@@ -373,6 +391,7 @@ def _align_and_mtv(
             timeline=timeline,
             cover_path=cover if cover.exists() else None,
         )
+        _publish_ready(song_id)
     except Exception as mtv_exc:
         previous = str(song.get("error") or "").strip()
         note = f"MTV降级：{mtv_exc}"
