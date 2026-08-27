@@ -26,7 +26,8 @@ from lovktv.auth import (
     wechat_ready,
 )
 from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, search_songs
-from lovktv.catalog.index import query_library
+from lovktv.catalog.mugen import is_mugen_kid
+from lovktv.catalog.index import prefer_native_library, query_library
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
@@ -53,6 +54,7 @@ from lovktv.store import (
     set_mix,
     skip,
     update_song,
+    with_media_flags,
     upsert_device_user,
     upsert_wechat_user,
     user_from_session,
@@ -117,6 +119,9 @@ def _room_view(code: str, snap: dict | None = None) -> dict:
     room["mic_on"] = bool(_mics.get(code))
     room["mic_peer"] = _mics.get(code) or ""
     room.update(host_volume_meta())
+    if room.get("now_playing"):
+        room["now_playing"] = with_media_flags(room["now_playing"])
+    room["queue"] = [with_media_flags(item) or item for item in room.get("queue") or []]
     return room
 
 
@@ -349,11 +354,13 @@ def api_import(payload: dict) -> dict:
     query = str(payload.get("query") or payload.get("title") or "").strip()
     if not query:
         raise HTTPException(400, "缺少 query")
+    raw_id = str(payload.get("id") or "")
+    language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
     song = create_song(
         title=str(payload.get("title") or query),
         artist=str(payload.get("artist") or ""),
-        language=str(payload.get("language") or "zh"),
-        netease_id=str(payload.get("id") or ""),
+        language=language,
+        netease_id=raw_id,
     )
     spawn(
         process_import,
@@ -462,7 +469,7 @@ def api_songs(
     page: int | None = None,
     count: int = 12,
 ) -> dict:
-    songs = list_songs()
+    songs = prefer_native_library([with_media_flags(song) or song for song in list_songs()])
     if page is None and not q and not letter:
         return {"songs": songs, "total": len(songs)}
     return query_library(songs, q=q, by=by, letter=letter, page=page or 1, count=count)
@@ -470,7 +477,7 @@ def api_songs(
 
 @app.get("/api/songs/{song_id}")
 def api_song(song_id: str) -> dict:
-    song = get_song(song_id)
+    song = with_media_flags(get_song(song_id))
     if not song:
         raise HTTPException(404, "歌曲不存在")
     folder = MEDIA_DIR / song_id

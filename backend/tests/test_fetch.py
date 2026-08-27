@@ -1,7 +1,18 @@
 from lovktv.catalog import fetch
 
 
+def _no_mugen(monkeypatch):
+    monkeypatch.setattr(
+        fetch,
+        "search_mugen",
+        lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
+    )
+    monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
+    monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+
+
 def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
+    _no_mugen(monkeypatch)
     monkeypatch.setattr(
         fetch,
         "search_tonzhon",
@@ -24,6 +35,7 @@ def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
 
 
 def test_import_uses_previewed_ytdlp_page(tmp_path, monkeypatch):
+    _no_mugen(monkeypatch)
     fetch._AUDIO_CACHE.clear()
     monkeypatch.setattr(fetch, "search_tonzhon", lambda *args, **kwargs: [])
     monkeypatch.setattr(fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]Give a reason")
@@ -40,6 +52,7 @@ def test_import_uses_previewed_ytdlp_page(tmp_path, monkeypatch):
 
 
 def test_search_hits_include_preview_url(monkeypatch):
+    _no_mugen(monkeypatch)
     seen = {}
 
     def fake_search(query, count=10, source="netease", page=1):
@@ -56,6 +69,7 @@ def test_search_hits_include_preview_url(monkeypatch):
 
 
 def test_search_has_more_when_page_is_full(monkeypatch):
+    _no_mugen(monkeypatch)
     monkeypatch.setattr(
         fetch,
         "search_tonzhon",

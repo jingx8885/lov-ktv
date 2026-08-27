@@ -8,6 +8,7 @@ from pathlib import Path
 
 from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation
 from lovktv.catalog.fetch import import_song, parse_lrc
+from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
 from lovktv.config import MEDIA_DIR
 from lovktv.pipeline.align import align_lyrics, extract_envelope, pack_tokens_to_singing, probe_duration_ms
 from lovktv.pipeline.language import detect_language
@@ -48,28 +49,150 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
         shutil.copy2(src, out_dir / "guide.m4a")
 
 
+def _is_mugen_skeleton(skeleton: dict) -> bool:
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
+    return source.get("provider") == "karaoke-mugen" or str(audio.get("source") or "").startswith("mugen")
+
+
+def _is_mugen_dual(skeleton: dict) -> bool:
+    audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
+    return bool(audio.get("dual_audio")) or audio.get("source") == "mugen-dual"
+
+
+def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
+    """Make 伴奏 karaoke.m4a and 原唱 original.mp3 after a Karaoke Mugen MP4.
+
+    Dual-track files already have both. Off-vocal files keep the official
+    karaoke and fetch the vocal sibling. Everything else runs ONNX.
+    """
+    karaoke = out_dir / "karaoke.m4a"
+    original = out_dir / "original.mp3"
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    if _is_mugen_dual(skeleton):
+        if karaoke.exists() and original.exists():
+            return "dual"
+        _fallback_media(src, out_dir)
+        return "dual-fallback"
+    off = is_off_vocal(str(source.get("songname") or ""), str(skeleton.get("title") or ""))
+    if off:
+        if src.exists() and not karaoke.exists():
+            _fallback_media(src, out_dir)
+        if attach_vocal_audio(out_dir, skeleton) and karaoke.exists() and original.exists():
+            return "off-vocal+vocal"
+    separate_vocals(original if original.exists() else src, out_dir)
+    return "onnx"
+
+
 def process_import(song_id: str, query: str, netease_id: str = "", language: str | None = None) -> None:
     out_dir = MEDIA_DIR / song_id
     try:
         update_song(song_id, status="fetching")
         skeleton = import_song(query=query, out_dir=out_dir, song_id=netease_id or None)
-        update_song(
-            song_id,
-            title=skeleton.get("title") or query,
-            audio_source=(skeleton.get("audio") or {}).get("source") or "",
-            status="separating",
-        )
+        lang = str(language or skeleton.get("language") or "")
+        fields = {
+            "title": skeleton.get("title") or query,
+            "audio_source": (skeleton.get("audio") or {}).get("source") or "",
+            "status": "separating",
+        }
+        if skeleton.get("artist"):
+            fields["artist"] = str(skeleton["artist"])
+        if lang:
+            fields["language"] = lang
+        mugen_kid = str(netease_id or (skeleton.get("source") or {}).get("kid") or "")
+        if is_mugen_kid(mugen_kid):
+            fields["netease_id"] = mugen_kid
+        update_song(song_id, **fields)
         src = out_dir / "original.mp3"
         if not src.exists():
             raise RuntimeError("音频下载失败，没有 original.mp3")
-        try:
-            separate_vocals(src, out_dir)
-        except Exception as sep_exc:
-            update_song(song_id, error=f"分离降级：{sep_exc}")
+        if _is_mugen_skeleton(skeleton):
+            try:
+                ensure_karaoke_stems(out_dir, src, skeleton)
+            except Exception as sep_exc:
+                update_song(song_id, error=f"分离降级：{sep_exc}")
+                _fallback_media(src, out_dir)
+        elif skeleton.get("needs_separate", True):
+            try:
+                separate_vocals(src, out_dir)
+            except Exception as sep_exc:
+                update_song(song_id, error=f"分离降级：{sep_exc}")
+                _fallback_media(src, out_dir)
+        elif not (out_dir / "karaoke.m4a").exists():
             _fallback_media(src, out_dir)
-        _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=True)
+        if skeleton.get("needs_align", True) or not (out_dir / "lyrics.json").exists():
+            _align_and_mtv(song_id, out_dir, src, lang or language, rebuild_mtv=not skeleton.get("has_video"))
+            return
+        _finish_ready_lyrics(song_id, out_dir, src, lang or language, rebuild_mtv=not skeleton.get("has_video"))
     except Exception as exc:  # noqa: BLE001 — job must record any failure
         update_song(song_id, status="failed", error=str(exc))
+
+
+def _finish_ready_lyrics(
+    song_id: str,
+    out_dir: Path,
+    src: Path,
+    language: str | None,
+    rebuild_mtv: bool = True,
+) -> None:
+    """Keep Karaoke Mugen (or other pre-timed) lyrics; skip Whisper."""
+    import json
+
+    lyrics_path = out_dir / "lyrics.json"
+    timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
+    lang = str(timeline.get("language") or language or detect_language(
+        "".join(str(cue.get("text") or "") for cue in timeline.get("cues") or [])
+    ))
+    burned = bool(timeline.get("burned_lyrics"))
+    official = not rebuild_mtv and (
+        (out_dir / "mugen.mp4").exists()
+        or (out_dir / "mugen.webm").exists()
+        or str(timeline.get("alignment_source") or "") == "karaoke-mugen"
+    )
+    if official:
+        timeline["native_video"] = True
+    update_song(song_id, language=lang, status="annotating" if lang == "ja" and not burned else "ready")
+    wrote = False
+    if lang == "ja" and timeline.get("cues") and not burned:
+        song = get_song(song_id) or {}
+        try:
+            notes = annotate_ja_lines(
+                [str(cue.get("text") or "") for cue in timeline["cues"]],
+                title=str(song.get("title") or ""),
+                artist=str(song.get("artist") or ""),
+                cache_path=out_dir / "ja-annotate.json",
+            )
+            apply_ja_annotation(timeline, notes)
+            write_subtitles(timeline, out_dir)
+            wrote = True
+            previous = str((get_song(song_id) or {}).get("error") or "")
+            if "注音降级" in previous:
+                update_song(song_id, error="")
+        except Exception as ann_exc:
+            previous = str((get_song(song_id) or {}).get("error") or "").strip()
+            update_song(song_id, error=f"{previous} 注音降级：{ann_exc}".strip())
+    if timeline.get("native_video") and not wrote:
+        write_subtitles(timeline, out_dir)
+    update_song(song_id, status="ready")
+    if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
+        return
+    song = get_song(song_id) or {}
+    audio = out_dir / "karaoke.m4a"
+    if not audio.exists():
+        audio = src
+    cover = out_dir / "cover.jpg"
+    try:
+        compose_mtv(
+            out_dir,
+            audio_path=audio,
+            title=str(song.get("title") or "lov-ktv"),
+            artist=str(song.get("artist") or ""),
+            timeline=timeline,
+            cover_path=cover if cover.exists() else None,
+        )
+    except Exception as mtv_exc:
+        previous = str(song.get("error") or "").strip()
+        update_song(song_id, error=f"{previous} MTV降级：{mtv_exc}".strip())
 
 
 def process_upload(song_id: str, src: Path, language: str | None = None) -> None:
@@ -291,9 +414,24 @@ def spawn(fn, *args, **kwargs) -> None:
         _JOBS.put((fn, args, kwargs, key))
 
 
+def _has_ready_lyrics(out_dir: Path) -> bool:
+    path = out_dir / "lyrics.json"
+    if not path.exists():
+        return False
+    try:
+        import json
+
+        meta = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    source = str(meta.get("alignment_source") or "")
+    return source in {"karaoke-mugen", "kugou"} or meta.get("needs_align") is False
+
+
 def resume_stuck_jobs() -> int:
     """Continue songs left queued/aligning after a reload killed the worker."""
     resumed = 0
+    pending_finish: list[tuple] = []
     pending_align: list[tuple] = []
     pending_import: list[tuple] = []
     for song in reversed(list_songs()):
@@ -302,12 +440,26 @@ def resume_stuck_jobs() -> int:
         out_dir = MEDIA_DIR / song_id
         has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
         if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
-            pending_align.append((song_id, song.get("language")))
+            if _has_ready_lyrics(out_dir):
+                pending_finish.append((song_id, out_dir, song.get("language")))
+            else:
+                pending_align.append((song_id, song.get("language")))
             continue
         if status in {"queued", "fetching"}:
             pending_import.append(
                 (song_id, retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
             )
+    for song_id, out_dir, language in pending_finish:
+        src = out_dir / "original.mp3"
+        if not src.exists():
+            src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
+        if src.exists() and not (out_dir / "karaoke.m4a").exists():
+            try:
+                _fallback_media(src, out_dir)
+            except Exception:
+                pass
+        spawn(_finish_ready_lyrics, song_id, out_dir, src, language, False)
+        resumed += 1
     for song_id, language in pending_align:
         spawn(process_realign, song_id, language, True)
         resumed += 1

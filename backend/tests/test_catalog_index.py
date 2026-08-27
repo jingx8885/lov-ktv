@@ -1,4 +1,4 @@
-from lovktv.catalog.index import first_letter, query_library, song_letter, song_matches
+from lovktv.catalog.index import first_letter, prefer_native_library, query_library, song_letter, song_matches
 
 
 def test_first_letter_latin_han_kana():
@@ -22,6 +22,16 @@ def test_song_matches_title_and_artist():
     assert song_matches(song, "ne-yo", "artist")
     assert not song_matches(song, "ne-yo", "title")
     assert song_matches(song, "ne-yo", "all")
+
+
+def test_prefer_native_library_hides_composed_duplicates():
+    songs = [
+        {"id": "old", "title": "群青 · YOASOBI", "artist": "YOASOBI", "audio_source": "soundcloud"},
+        {"id": "mv", "title": "群青 · YOASOBI", "artist": "YOASOBI", "audio_source": "mugen", "native_video": True},
+        {"id": "keep", "title": "So Sick · Ne-Yo", "artist": "Ne-Yo", "audio_source": "netease"},
+    ]
+    kept = prefer_native_library(songs)
+    assert [song["id"] for song in kept] == ["mv", "keep"]
 
 
 def test_query_library_filters_letter_and_pages():

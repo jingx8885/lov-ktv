@@ -116,6 +116,41 @@ def get_song(song_id: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def media_flags(song_id: str) -> dict[str, Any]:
+    folder = MEDIA_DIR / str(song_id)
+    native = False
+    lyrics_path = folder / "lyrics.json"
+    if lyrics_path.exists():
+        try:
+            lyrics = json.loads(lyrics_path.read_text(encoding="utf-8"))
+            native = bool(
+                lyrics.get("native_video")
+                or lyrics.get("alignment_source") == "karaoke-mugen"
+            )
+        except (OSError, json.JSONDecodeError):
+            native = False
+    if not native:
+        skeleton_path = folder / "skeleton.json"
+        if skeleton_path.exists():
+            try:
+                skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
+                native = bool(skeleton.get("has_video"))
+            except (OSError, json.JSONDecodeError):
+                native = False
+    if not native:
+        native = (folder / "mugen.mp4").exists() or (folder / "mugen.webm").exists()
+    return {"native_video": native}
+
+
+def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not song:
+        return song
+    song_id = str(song.get("song_id") or song.get("id") or "")
+    if not song_id:
+        return song
+    return {**song, **media_flags(song_id)}
+
+
 def list_songs() -> list[dict[str, Any]]:
     with connect() as conn:
         rows = conn.execute("SELECT * FROM songs ORDER BY created_at DESC").fetchall()

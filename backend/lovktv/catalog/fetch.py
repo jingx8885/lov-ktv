@@ -14,6 +14,9 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from lovktv.catalog.kugou import fetch_kugou_lyrics
+from lovktv.catalog.mugen import import_mugen_song, is_mugen_kid, pick_vocal_hit, search_mugen
+
 TONZHON_API = "https://tonzhon.com/api.php"
 NETEASE_OUTER = "https://music.163.com/song/media/outer/url?id={id}.mp3"
 BROWSER_UA = (
@@ -122,28 +125,38 @@ def flatten_artists(song: dict[str, Any]) -> str:
 def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
     page = max(1, int(page))
     count = max(1, min(int(count), 30))
-    hits = []
-    for song in search_tonzhon(query, count=count, page=page):
-        title = str(song.get("name") or "")
-        song_id = str(song.get("id") or "")
-        hits.append(
-            {
-                "id": song_id,
-                "title": title,
-                "artist": flatten_artists(song),
-                "album": (song.get("album") or [""])[0] if isinstance(song.get("album"), list) else song.get("album") or "",
-                "pic": song.get("pic") or "",
-                "source": "netease",
-                "clean": is_clean_title(title),
-                "preview_url": f"/api/preview/{song_id}" if song_id else "",
-            }
-        )
+    mugen = search_mugen(query, count=count, page=page)
+    hits = list(mugen.get("hits") or [])
+    used_netease = False
+    netease_full = False
+    if len(hits) < count:
+        tonzhon = search_tonzhon(query, count=count, page=page)
+        used_netease = True
+        netease_full = len(tonzhon) >= count
+        for song in tonzhon:
+            title = str(song.get("name") or "")
+            song_id = str(song.get("id") or "")
+            hits.append(
+                {
+                    "id": song_id,
+                    "title": title,
+                    "artist": flatten_artists(song),
+                    "album": (song.get("album") or [""])[0] if isinstance(song.get("album"), list) else song.get("album") or "",
+                    "pic": song.get("pic") or "",
+                    "source": "netease",
+                    "clean": is_clean_title(title),
+                    "preview_url": f"/api/preview/{song_id}" if song_id else "",
+                }
+            )
+            if len(hits) >= count:
+                break
     return {
         "query": query,
         "page": page,
         "count": count,
-        "has_more": len(hits) >= count,
-        "hits": hits,
+        "has_more": bool(mugen.get("has_more")) or (used_netease and netease_full),
+        "hits": hits[:count],
+        "sources": ["mugen", "netease"],
     }
 
 
@@ -399,6 +412,12 @@ def import_song(
 ) -> dict[str, Any]:
     """Search (or use pinned id), write lyrics.lrc + original.mp3 + skeleton.json."""
     out_dir.mkdir(parents=True, exist_ok=True)
+    if song_id and is_mugen_kid(song_id):
+        return import_mugen_song(song_id, out_dir, query=query)
+    if not song_id:
+        chosen = pick_vocal_hit(search_mugen(query, count=8).get("hits") or [])
+        if chosen and chosen.get("id"):
+            return import_mugen_song(str(chosen["id"]), out_dir, query=query)
     results = search_tonzhon(query)
     chosen: dict[str, Any] | None = None
     if song_id:
@@ -416,11 +435,33 @@ def import_song(
                     chosen = item
                     break
 
-    lrc = fetch_lyric(str(chosen.get("id")))
-    if not lrc.strip():
+    title_name = str(chosen.get("name") or query)
+    artist_name = flatten_artists(chosen)
+    kugou = fetch_kugou_lyrics(title_name, artist_name)
+    lyric_source = "netease"
+    needs_align = True
+    language = ""
+    if kugou and kugou.get("timeline"):
+        from lovktv.pipeline.lyrics import write_subtitles
+
+        timeline = kugou["timeline"]
+        write_subtitles(timeline, out_dir)
+        (out_dir / "lyrics.lrc").write_text(str(kugou.get("lrc") or ""), encoding="utf-8")
+        lines = [
+            {"ms": int(cue["start_ms"]), "text": str(cue.get("text") or "")}
+            for cue in timeline.get("cues") or []
+        ]
+        lyric_source = "kugou"
+        needs_align = False
+        language = str(timeline.get("language") or "")
+    else:
+        lrc = fetch_lyric(str(chosen.get("id")))
+        if not lrc.strip():
+            raise RuntimeError("歌词为空")
+        (out_dir / "lyrics.lrc").write_text(lrc, encoding="utf-8")
+        lines = parse_lrc(lrc)
+    if not lines:
         raise RuntimeError("歌词为空")
-    (out_dir / "lyrics.lrc").write_text(lrc, encoding="utf-8")
-    lines = parse_lrc(lrc)
 
     audio_file = None
     audio_source = "none"
@@ -463,10 +504,15 @@ def import_song(
     title = f"{chosen.get('name')} · {flatten_artists(chosen)}"
     skeleton = {
         "title": title,
+        "artist": artist_name,
+        "language": language,
+        "needs_align": needs_align,
         "source": {
             "provider": "tonzhon.com / netease",
             "netease_id": str(chosen.get("id")),
             "query": query,
+            "lyrics": lyric_source,
+            "kugou_id": str((kugou or {}).get("candidate", {}).get("id") or ""),
         },
         "audio": {"file": audio_file, "source": audio_source, "title": audio_title},
         "cover": cover_file,

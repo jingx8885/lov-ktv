@@ -130,6 +130,22 @@ def song_matches(song: dict[str, Any], query: str, by: str = "all") -> bool:
     return needle in title or needle in artist or needle in full
 
 
+def prefer_native_library(songs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Hide composed-MTV copies once the same title has an official MV."""
+    native_keys = {
+        display_title(song).casefold()
+        for song in songs
+        if song.get("native_video") or str(song.get("audio_source") or "").startswith("mugen")
+    }
+    return [
+        song
+        for song in songs
+        if song.get("native_video")
+        or str(song.get("audio_source") or "").startswith("mugen")
+        or display_title(song).casefold() not in native_keys
+    ]
+
+
 def query_library(
     songs: list[dict[str, Any]],
     q: str = "",

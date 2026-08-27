@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="theme-color" content="#0b1020" />
   <meta http-equiv="Cache-Control" content="no-store" />
-  <link rel="stylesheet" href="/app.css?v=phone19" />
+  <link rel="stylesheet" href="/app.css?v=phone23" />
 </head>
 <body class="phone">
   <div class="app">
@@ -51,7 +51,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5 5h-3v8h-4V8H7l5-5zM5 19h14v2H5z"/></svg>
         </button>
       </div>
-      <p class="page-lead">先试听确认是这首，再加入曲库。</p>
+      <p class="page-lead">先搜 Karaoke Mugen。华语走网易搜歌，歌词优先用酷狗逐字。</p>
       <audio id="preview" preload="none"></audio>
       <input type="file" id="file" accept="audio/*,video/*" hidden />
       <div id="hits"></div>
@@ -517,7 +517,14 @@
           stopPreview();
           btn.disabled = true;
           btn.textContent = "入库中";
-          const body = { query: q, id: hit.id, title: hit.title, artist: hit.artist };
+          const body = {
+            query: q,
+            id: hit.id,
+            title: hit.title,
+            artist: hit.artist,
+            language: hit.language || "",
+            source: hit.source || "",
+          };
           const created = await fetch("/api/songs/import", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -551,18 +558,29 @@
         return;
       }
       const hits = data.hits || [];
-      const cards = hits.map((hit) => `
+      const cards = hits.map((hit) => {
+        const source = hit.source === "mugen" ? "Karaoke Mugen" : "网易";
+        const extra = [
+          hit.artist || "",
+          hit.album || "",
+          hit.lyrics_ready ? "成品歌词" : "",
+          hit.off_vocal ? "无原唱/伴奏" : (hit.clean ? "" : "可能是伴奏/翻唱"),
+        ].filter(Boolean).join(" · ");
+        const preview = hit.preview_url
+          ? `<button class="btn" data-preview="${hit.id}">试听</button>`
+          : "";
+        return `
         <div class="card hit">
           <div>
             <b>${hit.title}</b>
-            <div class="tiny">${hit.artist || ""} ${hit.album ? "· " + hit.album : ""} ${hit.clean ? "" : "· 可能是伴奏/翻唱"}</div>
+            <div class="tiny"><span class="source-tag ${hit.source === "mugen" ? "mugen" : ""}">${source}</span> ${extra}</div>
           </div>
           <div class="hit-actions">
-            <button class="btn" data-preview="${hit.id}">试听</button>
+            ${preview}
             <button class="btn primary" data-import='${JSON.stringify(hit)}'>加入曲库</button>
           </div>
-        </div>
-      `).join("") || "<p class='muted'>没有结果</p>";
+        </div>`;
+      }).join("") || "<p class='muted'>没有结果</p>";
       const canPrev = searchPage > 1;
       const canNext = !!data.has_more && hits.length > 0;
       const pager = `
@@ -671,13 +689,14 @@
         const canRetry = song.status === "failed";
         const canDelete = song.status !== "fetching" && song.status !== "separating";
         const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
+        const mv = song.native_video ? `<em class="desk-pill mv">官方MV</em>` : "";
         const mark = song.letter || songInitial(song.title);
         return `
         <div class="desk-row ${canPlay ? "" : "busy"}" ${canPlay ? `data-player="${song.id}"` : ""}>
           <span class="desk-avatar">${escapeHtml(mark)}</span>
           <div class="desk-copy">
             <b>${escapeHtml(song.title)}</b>
-            <span class="tiny">${escapeHtml(song.artist || "未知歌手")} ${pill}</span>
+            <span class="tiny">${escapeHtml(song.artist || "未知歌手")} ${mv}${pill}</span>
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">

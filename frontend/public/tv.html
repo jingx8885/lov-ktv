@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>lov-ktv 电视</title>
-  <link rel="stylesheet" href="/app.css?v=mic1" />
+  <link rel="stylesheet" href="/app.css?v=native7" />
 </head>
 <body class="tv">
   <video id="mtv" muted playsinline></video>
@@ -44,7 +44,7 @@
       </div>
     </header>
     <section class="lyrics">
-      <div class="lyric-plate">
+      <div class="lyric-plate" id="lyricPlate">
         <div class="prev" id="prev"></div>
         <div class="line" id="cur"></div>
         <div class="next" id="next"></div>
@@ -317,7 +317,7 @@
     }
 
     function fireCueFx(cue, idx) {
-      if (!cue || idx < 0 || idx === lastFxCue) return;
+      if (nativeMv() || !cue || idx < 0 || idx === lastFxCue) return;
       lastFxCue = idx;
       const fx = ensureStageFx();
       if (fx) fx.spawn();
@@ -335,18 +335,44 @@
       mtv.volume = 0;
     }
 
+    function nativeMv() {
+      const now = room && room.now_playing;
+      return !!(
+        (now && now.native_video)
+        || (lyrics && (lyrics.native_video || lyrics.alignment_source === "karaoke-mugen"))
+      );
+    }
+
+    function syncNativeMv() {
+      const on = nativeMv();
+      document.body.classList.toggle("has-native-mv", on);
+      const plate = $("lyricPlate");
+      if (!plate) return;
+      plate.classList.toggle("bare", on);
+      plate.style.background = on ? "transparent" : "";
+      plate.style.backgroundImage = on ? "none" : "";
+      plate.style.border = on ? "0" : "";
+      plate.style.borderRadius = on ? "0" : "";
+      plate.style.boxShadow = on ? "none" : "";
+      plate.style.backdropFilter = on ? "none" : "";
+      plate.style.webkitBackdropFilter = on ? "none" : "";
+      plate.style.padding = on ? "0 12px 4px" : "";
+    }
+
     function bindMtv(songId) {
       const mtv = $("mtv");
+      syncNativeMv();
       silenceMtv(mtv);
       mtv.onerror = () => {
         mtv.removeAttribute("src");
         mtv.hidden = true;
-        document.body.classList.remove("has-mtv");
+        document.body.classList.remove("has-mtv", "has-native-mv");
       };
       mtv.onloadeddata = () => {
         silenceMtv(mtv);
         mtv.hidden = false;
         document.body.classList.add("has-mtv");
+        syncNativeMv();
         if (canPlay()) mtv.play().catch(() => {});
       };
       mtv.src = `/media/${songId}/mtv.mp4`;
@@ -386,8 +412,9 @@
         lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
         lastLyricsAt = Date.now();
         lastFxCue = -1;
-        hookLines = window.LovStageFx ? LovStageFx.hookTexts(lyrics.cues) : new Set();
-        ensureStageFx();
+        syncNativeMv();
+        hookLines = nativeMv() ? new Set() : (window.LovStageFx ? LovStageFx.hookTexts(lyrics.cues) : new Set());
+        if (!nativeMv()) ensureStageFx();
         bindMtv(now.song_id);
         if (canPlay()) startPlayback();
         else {
@@ -433,7 +460,7 @@
         el.load();
       });
       $("mtv").hidden = true;
-      document.body.classList.remove("has-mtv");
+      document.body.classList.remove("has-mtv", "has-native-mv");
       lastFxCue = -1;
       hookLines = new Set();
       if (stageFx) stageFx.clear();
@@ -474,8 +501,8 @@
           $("next").innerHTML = "";
         }
       }
-      if (audioHook) LovBands.pull(audioHook);
-      if (stageFx) {
+      if (audioHook && !nativeMv()) LovBands.pull(audioHook);
+      if (stageFx && !nativeMv()) {
         stageFx.draw({
           beat: now && now.status === "ready" ? liveBeat() : 0,
           now: performance.now() / 1000,
