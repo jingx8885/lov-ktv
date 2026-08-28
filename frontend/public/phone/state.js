@@ -33,6 +33,8 @@ export const state = guardState({
   roomRtc: null,
   roomRtcCode: "",
   mixTimer: 0,
+  lyricMode: "all",
+  nowLanguage: "",
   phoneMic: null,
   phoneMicSrc: null,
   phoneMicGain: null,

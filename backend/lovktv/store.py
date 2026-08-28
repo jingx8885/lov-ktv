@@ -12,6 +12,12 @@ from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 
 READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
+LYRIC_MODES = ("ja", "zh", "roma", "all")
+
+
+def normalize_lyric_mode(value: Any) -> str:
+    mode = str(value or "").strip().lower()
+    return mode if mode in LYRIC_MODES else "all"
 
 _LOCK = threading.Lock()
 
@@ -45,6 +51,7 @@ def init_db() -> None:
               vocal_mix REAL NOT NULL DEFAULT 1,
               volume INTEGER NOT NULL DEFAULT 80,
               mic_gain INTEGER NOT NULL DEFAULT 80,
+              lyric_mode TEXT NOT NULL DEFAULT 'all',
               now_index INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS queue (
@@ -81,6 +88,8 @@ def init_db() -> None:
         cols = {row[1] for row in conn.execute("PRAGMA table_info(rooms)")}
         if "mic_gain" not in cols:
             conn.execute("ALTER TABLE rooms ADD COLUMN mic_gain INTEGER NOT NULL DEFAULT 80")
+        if "lyric_mode" not in cols:
+            conn.execute("ALTER TABLE rooms ADD COLUMN lyric_mode TEXT NOT NULL DEFAULT 'all'")
 
 
 def now_ms() -> int:
@@ -307,6 +316,7 @@ def set_mix(
     vocal_mix: float | None = None,
     volume: int | None = None,
     mic_gain: int | None = None,
+    lyric_mode: str | None = None,
 ) -> dict[str, Any]:
     fields = {}
     if vocal_mix is not None:
@@ -315,6 +325,8 @@ def set_mix(
         fields["volume"] = max(0, min(100, int(volume)))
     if mic_gain is not None:
         fields["mic_gain"] = max(0, min(100, int(mic_gain)))
+    if lyric_mode is not None:
+        fields["lyric_mode"] = normalize_lyric_mode(lyric_mode)
     if fields:
         assignments = ", ".join(f"{key}=?" for key in fields)
         with _LOCK, connect() as conn:

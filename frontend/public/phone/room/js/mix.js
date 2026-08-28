@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { applyLyricMode, normLyricMode } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -16,8 +17,21 @@ export function paintVocalMix(mix) {
   $("vocalMix").setAttribute("aria-label", on ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
 }
 
+export function paintLyricMode(mode, language) {
+  const next = normLyricMode(mode);
+  state.lyricMode = next;
+  if (language != null) state.nowLanguage = String(language || "");
+  applyLyricMode(document.body, next);
+  const jaLabel = state.nowLanguage === "ja" ? "日语" : "原文";
+  document.querySelectorAll("[data-lyric-mode]").forEach((btn) => {
+    btn.classList.toggle("on", btn.dataset.lyricMode === next);
+    if (btn.dataset.lyricMode === "ja") btn.textContent = jaLabel;
+  });
+}
+
 export function paintMix(room) {
   if (!room || mixEditing()) return;
+  paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
   const vol = room.host_volume != null ? room.host_volume : (room.volume != null ? room.volume : 80);
   const gain = room.mic_gain != null ? room.mic_gain : 80;
   $("hostVol").value = String(vol);
@@ -65,6 +79,12 @@ export function bindMixSlider(id, key) {
 export function bindMix() {
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
+  document.querySelectorAll("[data-lyric-mode]").forEach((btn) => {
+    btn.onclick = () => {
+      paintLyricMode(btn.dataset.lyricMode);
+      postMix({ lyric_mode: btn.dataset.lyricMode });
+    };
+  });
   $("vocalMix").onclick = () => {
     const next = $("vocalMix").classList.contains("on") ? 0 : 1;
     paintVocalMix(next);

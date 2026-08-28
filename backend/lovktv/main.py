@@ -381,7 +381,7 @@ def api_import(payload: dict) -> dict:
         song["id"],
         query,
         str(payload.get("id") or ""),
-        payload.get("language"),
+        language,
     )
     return song
 
@@ -553,7 +553,13 @@ async def api_play(code: str, payload: dict) -> dict:
 @app.post("/api/rooms/{code}/mix")
 async def api_mix(code: str, payload: dict) -> dict:
     code = code.upper()
-    snap = set_mix(code, payload.get("vocal_mix"), payload.get("volume"), payload.get("mic_gain"))
+    snap = set_mix(
+        code,
+        payload.get("vocal_mix"),
+        payload.get("volume"),
+        payload.get("mic_gain"),
+        payload.get("lyric_mode"),
+    )
     if payload.get("volume") is not None:
         set_host_volume(int(payload.get("volume") or 0))
     view = _room_view(code, snap)
@@ -626,7 +632,13 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     await ws.send_json({"type": "error", "message": str(exc)})
                     continue
             elif action == "mix":
-                snap = set_mix(code, msg.get("vocal_mix"), msg.get("volume"), msg.get("mic_gain"))
+                snap = set_mix(
+                    code,
+                    msg.get("vocal_mix"),
+                    msg.get("volume"),
+                    msg.get("mic_gain"),
+                    msg.get("lyric_mode"),
+                )
                 if msg.get("volume") is not None:
                     set_host_volume(int(msg.get("volume") or 0))
             else:

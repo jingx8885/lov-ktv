@@ -39,6 +39,8 @@ Rules:
 6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
 7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
 8. Already-English words in the lyric (Give a reason, Here we go): keep them in `sing`; `label` and `romaji` empty.
+9. Every line MUST include `zh`: a natural Simplified Chinese translation of the whole sung line. No notes, no brackets.
+10. Every unit MUST include `zh`: a short Chinese gloss (usually 1–6 characters). の→的, に→在, メモリー→记忆.
 """
 
 
@@ -137,10 +139,18 @@ def _parse_payload(raw: str) -> dict[str, Any]:
                     "sing": sing,
                     "label": str(unit.get("label") or "").strip(),
                     "romaji": str(unit.get("romaji") or "").strip(),
+                    "zh": str(unit.get("zh") or "").strip(),
                 }
             )
-        if source and units:
-            cleaned.append({"source": source, "units": units})
+        line_zh = str(item.get("zh") or "").strip()
+        if source and (units or line_zh):
+            cleaned.append(
+                {
+                    "source": source,
+                    "zh": line_zh,
+                    "units": units,
+                }
+            )
     if not cleaned:
         raise ValueError("agent 没有可用的注音行")
     return {"lines": cleaned}
@@ -314,24 +324,29 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
 
 
 def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict[str, Any]:
-    by_source: dict[str, list[dict[str, str]]] = {}
+    by_source: dict[str, dict[str, Any]] = {}
     for item in notes.get("lines") or []:
         source = lyric_source_key(item.get("source") or "")
         units = [unit for unit in item.get("units") or [] if unit.get("sing")]
         if source and units:
-            by_source[source] = units
+            by_source[source] = item
     for cue in timeline.get("cues") or []:
         text = lyric_source_key(cue.get("text") or "")
         original = lyric_source_key(cue.get("source_text") or text)
-        units = by_source.get(original) or by_source.get(text)
-        if not units:
+        item = by_source.get(original) or by_source.get(text)
+        if not item:
             continue
-        specs: list[tuple[str, str, str]] = []
+        units = [unit for unit in item.get("units") or [] if unit.get("sing")]
+        line_zh = str(item.get("zh") or "").strip()
+        if line_zh:
+            cue["zh"] = line_zh
+        specs: list[tuple[str, str, str, str]] = []
         for unit in units:
             roma = str(unit.get("romaji") or "").strip()
+            gloss = str(unit.get("zh") or "").strip()
             pieces = expand_units([unit], source=original)
             for index, (piece, label) in enumerate(pieces):
-                specs.append((piece, label, roma if index == 0 else ""))
+                specs.append((piece, label, roma if index == 0 else "", gloss if index == 0 else ""))
         if not specs:
             continue
         japanese = japanese_from_units(units)
@@ -344,17 +359,18 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
         unit_ms = span / len(specs)
         tokens = []
         cursor = start_ms
-        for index, (piece, label, roma) in enumerate(specs):
+        for index, (piece, label, roma, gloss) in enumerate(specs):
             token_end = end_ms if index == len(specs) - 1 else int(cursor + unit_ms)
-            tokens.append(
-                {
-                    "text": piece,
-                    "start_ms": int(cursor),
-                    "end_ms": int(max(cursor + 40, token_end)),
-                    "reading": label,
-                    "romaji": roma,
-                }
-            )
+            token = {
+                "text": piece,
+                "start_ms": int(cursor),
+                "end_ms": int(max(cursor + 40, token_end)),
+                "reading": label,
+                "romaji": roma,
+            }
+            if gloss:
+                token["zh"] = gloss
+            tokens.append(token)
             cursor = token_end
         tokens[-1]["end_ms"] = end_ms
         cue["tokens"] = tokens

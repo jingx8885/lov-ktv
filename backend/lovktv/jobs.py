@@ -6,12 +6,13 @@ import subprocess
 import threading
 from pathlib import Path
 
-from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation
+from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation, line_is_romaji
+from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, translate_lines
 from lovktv.catalog.fetch import import_song, parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
 from lovktv.config import MEDIA_DIR
 from lovktv.pipeline.align import align_lyrics, extract_envelope, pack_tokens_to_singing, probe_duration_ms
-from lovktv.pipeline.language import detect_language
+from lovktv.pipeline.language import resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,
     prepare_lyric_lines,
@@ -130,11 +131,106 @@ def process_import(song_id: str, query: str, netease_id: str = "", language: str
         elif not (out_dir / "karaoke.m4a").exists():
             _fallback_media(src, out_dir)
         if skeleton.get("needs_align", True) or not (out_dir / "lyrics.json").exists():
-            _align_and_mtv(song_id, out_dir, src, lang or language, rebuild_mtv=not skeleton.get("has_video"))
+            _align_and_mtv(
+                song_id,
+                out_dir,
+                src,
+                lang or language,
+                rebuild_mtv=not (skeleton.get("has_video") or _has_native_mtv(out_dir)),
+            )
             return
-        _finish_ready_lyrics(song_id, out_dir, src, lang or language, rebuild_mtv=not skeleton.get("has_video"))
+        _finish_ready_lyrics(
+            song_id,
+            out_dir,
+            src,
+            lang or language,
+            rebuild_mtv=not (skeleton.get("has_video") or _has_native_mtv(out_dir)),
+        )
     except Exception as exc:  # noqa: BLE001 — job must record any failure
         update_song(song_id, status="failed", error=str(exc))
+
+
+def _cue_source(cue: dict) -> str:
+    return str(cue.get("source_text") or cue.get("text") or "")
+
+
+def _has_native_mtv(out_dir: Path) -> bool:
+    """True when the folder already has an official / Bilibili MV we must not overwrite."""
+    import json
+
+    if (out_dir / "mugen.mp4").exists() or (out_dir / "mugen.webm").exists():
+        return True
+    for name, key in (("skeleton.json", "has_video"), ("lyrics.json", "native_video")):
+        path = out_dir / name
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict) and data.get(key):
+            return True
+    return False
+
+
+def _stamp_native_video(timeline: dict, out_dir: Path) -> bool:
+    if timeline.get("native_video") or _has_native_mtv(out_dir):
+        timeline["native_video"] = True
+        return True
+    return False
+
+
+def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
+    cues = timeline.get("cues") or []
+    if not cues:
+        return False
+    song = get_song(song_id) or {}
+    lines = [_cue_source(cue) for cue in cues]
+    force = any(line_is_romaji(line) for line in lines)
+    try:
+        notes = annotate_ja_lines(
+            lines,
+            title=str(song.get("title") or ""),
+            artist=str(song.get("artist") or ""),
+            cache_path=out_dir / "ja-annotate.json",
+            force=force,
+        )
+        apply_ja_annotation(timeline, notes)
+        previous = str((get_song(song_id) or {}).get("error") or "")
+        if "注音降级" in previous:
+            update_song(song_id, error="")
+        return True
+    except Exception as ann_exc:
+        previous = str((get_song(song_id) or {}).get("error") or "").strip()
+        update_song(song_id, error=f"{previous} 注音降级：{ann_exc}".strip())
+        return False
+
+
+def _translate_foreign_timeline(song_id: str, out_dir: Path, timeline: dict, language: str | None) -> bool:
+    cues = timeline.get("cues") or []
+    if not cues or is_chinese_lang(language or timeline.get("language")):
+        return False
+    if all(str(cue.get("zh") or "").strip() for cue in cues):
+        return False
+    song = get_song(song_id) or {}
+    lines = [str(cue.get("text") or _cue_source(cue)) for cue in cues]
+    try:
+        notes = translate_lines(
+            lines,
+            title=str(song.get("title") or ""),
+            artist=str(song.get("artist") or ""),
+            language=str(language or timeline.get("language") or ""),
+            cache_path=out_dir / "zh-translate.json",
+        )
+        apply_zh_translation(timeline, notes)
+        previous = str((get_song(song_id) or {}).get("error") or "")
+        if "翻译降级" in previous:
+            update_song(song_id, error="")
+        return True
+    except Exception as tr_exc:
+        previous = str((get_song(song_id) or {}).get("error") or "").strip()
+        update_song(song_id, error=f"{previous} 翻译降级：{tr_exc}".strip())
+        return False
 
 
 def _finish_ready_lyrics(
@@ -149,17 +245,12 @@ def _finish_ready_lyrics(
 
     lyrics_path = out_dir / "lyrics.json"
     timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
-    lang = str(timeline.get("language") or language or detect_language(
-        "".join(str(cue.get("text") or "") for cue in timeline.get("cues") or [])
-    ))
+    song = get_song(song_id) or {}
+    blob = "".join(_cue_source(cue) for cue in timeline.get("cues") or [])
+    lang = resolve_language(blob, language, timeline.get("language"), song.get("language"))
+    timeline["language"] = lang
     burned = bool(timeline.get("burned_lyrics"))
-    official = not rebuild_mtv and (
-        (out_dir / "mugen.mp4").exists()
-        or (out_dir / "mugen.webm").exists()
-        or bool(timeline.get("native_video"))
-    )
-    if official:
-        timeline["native_video"] = True
+    official = _stamp_native_video(timeline, out_dir)
     if lang == "ja" and not burned:
         update_song(song_id, language=lang, status="annotating")
     else:
@@ -167,28 +258,14 @@ def _finish_ready_lyrics(
         _publish_ready(song_id)
     wrote = False
     if lang == "ja" and timeline.get("cues") and not burned:
-        song = get_song(song_id) or {}
-        try:
-            notes = annotate_ja_lines(
-                [str(cue.get("text") or "") for cue in timeline["cues"]],
-                title=str(song.get("title") or ""),
-                artist=str(song.get("artist") or ""),
-                cache_path=out_dir / "ja-annotate.json",
-            )
-            apply_ja_annotation(timeline, notes)
-            write_subtitles(timeline, out_dir)
-            wrote = True
-            previous = str((get_song(song_id) or {}).get("error") or "")
-            if "注音降级" in previous:
-                update_song(song_id, error="")
-        except Exception as ann_exc:
-            previous = str((get_song(song_id) or {}).get("error") or "").strip()
-            update_song(song_id, error=f"{previous} 注音降级：{ann_exc}".strip())
-    if timeline.get("native_video") and not wrote:
+        wrote = _annotate_ja_timeline(song_id, out_dir, timeline)
+    if timeline.get("cues") and not burned:
+        wrote = _translate_foreign_timeline(song_id, out_dir, timeline, lang) or wrote
+    if wrote or (timeline.get("native_video") and not burned):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
     _publish_ready(song_id)
-    if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
+    if official or (not rebuild_mtv and (out_dir / "mtv.mp4").exists()):
         return
     song = get_song(song_id) or {}
     audio = out_dir / "karaoke.m4a"
@@ -226,13 +303,13 @@ def process_upload(song_id: str, src: Path, language: str | None = None) -> None
         update_song(song_id, status="failed", error=str(exc))
 
 
-def load_lyric_lines(out_dir: Path) -> list[dict]:
+def load_lyric_lines(out_dir: Path, language: str | None = None) -> list[dict]:
     path = out_dir / "lyrics.lrc"
     if not path.exists():
         return []
     raw = path.read_text(encoding="utf-8")
     lines = parse_lrc(raw) or parse_plain_lines(raw)
-    lang = detect_language("".join(item.get("text") or "" for item in lines))
+    lang = resolve_language("".join(item.get("text") or "" for item in lines), language)
     return prepare_lyric_lines(lines, lang)
 
 
@@ -278,19 +355,27 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
     lyrics_path = out_dir / "lyrics.json"
     if lyrics_path.exists():
         existing = json.loads(lyrics_path.read_text(encoding="utf-8"))
-    lang = detect_language("".join(str(item.get("text") or "") for item in rows), existing.get("language"))
+    lang = resolve_language(
+        "".join(str(item.get("text") or "") for item in rows),
+        existing.get("language"),
+        (get_song(song_id) or {}).get("language"),
+    )
     rows = prepare_lyric_lines(rows, lang)
     src = out_dir / "original.mp3"
     timeline = rebuild_manual_timeline(rows, existing, probe_duration_ms(src) if src.exists() else None)
     notes_path = out_dir / "ja-annotate.json"
-    if lang == "ja" and notes_path.exists():
-        apply_ja_annotation(timeline, json.loads(notes_path.read_text(encoding="utf-8")))
+    if lang == "ja":
+        if notes_path.exists() and not any(line_is_romaji(_cue_source(cue)) for cue in timeline.get("cues") or []):
+            apply_ja_annotation(timeline, json.loads(notes_path.read_text(encoding="utf-8")))
+        else:
+            _annotate_ja_timeline(song_id, out_dir, timeline)
     voice = out_dir / "vocals.wav"
     if not voice.exists():
         voice = src
     if voice.exists():
         envelope, hop_ms = extract_envelope(voice)
         pack_tokens_to_singing(timeline["cues"], envelope, hop_ms)
+    _translate_foreign_timeline(song_id, out_dir, timeline, lang)
     write_subtitles(timeline, out_dir)
     write_manual_lrc(out_dir, timeline["cues"])
     update_song(song_id, language=lang, status="ready")
@@ -336,8 +421,8 @@ def _align_and_mtv(
     language: str | None,
     rebuild_mtv: bool = True,
 ) -> None:
-    lines = load_lyric_lines(out_dir)
-    lang = detect_language("".join(item.get("text") or "" for item in lines), language)
+    lines = load_lyric_lines(out_dir, language)
+    lang = resolve_language("".join(item.get("text") or "" for item in lines), language)
     update_song(song_id, language=lang, status="aligning")
     voice = _ensure_vocals(out_dir, src)
     prompt = "\n".join(str(item.get("text") or "") for item in lines[:10])
@@ -354,28 +439,22 @@ def _align_and_mtv(
         duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
         asr_words=asr_words or None,
     )
+    keep_native = _stamp_native_video(timeline, out_dir)
     if lang == "ja" and timeline.get("cues"):
         update_song(song_id, status="annotating")
-        song = get_song(song_id) or {}
-        try:
-            notes = annotate_ja_lines(
-                [str(cue.get("text") or "") for cue in timeline["cues"]],
-                title=str(song.get("title") or ""),
-                artist=str(song.get("artist") or ""),
-                cache_path=out_dir / "ja-annotate.json",
-            )
-            apply_ja_annotation(timeline, notes)
-            previous = str((get_song(song_id) or {}).get("error") or "")
-            if "注音降级" in previous:
-                update_song(song_id, error="")
-        except Exception as ann_exc:
-            previous = str((get_song(song_id) or {}).get("error") or "").strip()
-            update_song(song_id, error=f"{previous} 注音降级：{ann_exc}".strip())
+        _annotate_ja_timeline(song_id, out_dir, timeline)
+        if keep_native:
+            timeline["native_video"] = True
+    if timeline.get("cues") and not is_chinese_lang(lang):
+        update_song(song_id, status="annotating")
+        _translate_foreign_timeline(song_id, out_dir, timeline, lang)
+        if keep_native:
+            timeline["native_video"] = True
     if timeline.get("cues"):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
     _publish_ready(song_id)
-    if not rebuild_mtv and (out_dir / "mtv.mp4").exists():
+    if keep_native or (not rebuild_mtv and (out_dir / "mtv.mp4").exists()):
         return
     song = get_song(song_id) or {}
     audio = out_dir / "karaoke.m4a"
@@ -480,7 +559,7 @@ def resume_stuck_jobs() -> int:
         spawn(_finish_ready_lyrics, song_id, out_dir, src, language, False)
         resumed += 1
     for song_id, language in pending_align:
-        spawn(process_realign, song_id, language, True)
+        spawn(process_realign, song_id, language, not _has_native_mtv(MEDIA_DIR / song_id))
         resumed += 1
     for song_id, query, netease_id, language in pending_import:
         spawn(process_import, song_id, query, netease_id, language)

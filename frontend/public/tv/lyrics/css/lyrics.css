@@ -40,3 +40,39 @@ body.tv .lyric-plate.bare {
   -webkit-backdrop-filter: none !important;
   padding: 0 12px 4px !important;
 }
+body.tv.has-native-mv .lyrics .line,
+body.tv .lyric-plate.bare .line {
+  padding: 10px 22px 12px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.58);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+body.tv.has-native-mv .lyrics .prev,
+body.tv.has-native-mv .lyrics .next,
+body.tv .lyric-plate.bare .prev,
+body.tv .lyric-plate.bare .next {
+  text-shadow:
+    0 0 3px #000,
+    0 1px 0 #000,
+    0 -1px 0 #000,
+    1px 0 0 #000,
+    -1px 0 0 #000,
+    0 4px 12px rgba(0, 0, 0, 0.7);
+}
+body.tv.has-native-mv .lyrics .line .rb,
+body.tv.has-native-mv .lyrics .line .rt,
+body.tv.has-native-mv .lyrics .line .roma,
+body.tv.has-native-mv .lyrics .line .gloss,
+body.tv.has-native-mv .lyrics .line .lyric-zh,
+body.tv .lyric-plate.bare .line .rb,
+body.tv .lyric-plate.bare .line .rt,
+body.tv .lyric-plate.bare .line .roma,
+body.tv .lyric-plate.bare .line .gloss,
+body.tv .lyric-plate.bare .line .lyric-zh {
+  filter:
+    drop-shadow(0 1px 0 #000)
+    drop-shadow(0 -1px 0 #000)
+    drop-shadow(1px 0 0 #000)
+    drop-shadow(-1px 0 0 #000)
+    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
+}

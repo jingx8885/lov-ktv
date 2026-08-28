@@ -118,6 +118,7 @@ export async function tick() {
         .then(({ ok, data }) => {
           if (!ok || !data || !data.cues || lyricsFingerprint(data) === prev) return;
           state.lyrics = data;
+          syncNativeMv();
         })
         .catch(() => {});
     }
@@ -166,8 +167,10 @@ export function startPlayback() {
   applyMix();
   silenceMtv($("mtv"));
   if (state.audioUnlocked) api.hookAudio();
-  const fx = ensureStageFx();
-  if (fx && state.lastFxCue < 0) fx.spawn();
+  if (!nativeMv()) {
+    const fx = ensureStageFx();
+    if (fx && state.lastFxCue < 0) fx.spawn();
+  }
   const ready = () => {
     syncVocal(karaoke.currentTime || 0);
   };

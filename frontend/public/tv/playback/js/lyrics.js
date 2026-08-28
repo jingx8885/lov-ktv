@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { paintLine } from "../../../shared/lyrics/js/paint.js";
+import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js";
@@ -57,6 +57,7 @@ export function lyricsFingerprint(data) {
 
 export function paint() {
   const now = state.room && state.room.now_playing;
+  const mode = applyLyricMode(document.body, state.room && state.room.lyric_mode);
   if (now && now.status === "ready") {
     const karaoke = $("karaoke");
     const mtv = $("mtv");
@@ -79,18 +80,18 @@ export function paint() {
     const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
     if (cue) {
       fireCueFx(cue, idx);
-      paintLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint);
-      paintLine($("cur"), cue, t, "cur", state.lyricPaint);
-      paintLine($("next"), cues[idx + 1] || null, -1, "next", state.lyricPaint);
+      paintLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
+      paintLine($("cur"), cue, t, "cur", state.lyricPaint, "", mode);
+      paintLine($("next"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
     } else if (upcomingIdx >= 0) {
       const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
-      paintLine($("prev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint);
-      paintLine($("cur"), held, 1e12, "cur", state.lyricPaint);
-      paintLine($("next"), cues[upcomingIdx], -1, "next", state.lyricPaint);
+      paintLine($("prev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint, "", mode);
+      paintLine($("cur"), held, 1e12, "cur", state.lyricPaint, "", mode);
+      paintLine($("next"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
     } else {
-      paintLine($("prev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint);
-      paintLine($("cur"), null, t, "cur", state.lyricPaint);
-      paintLine($("next"), null, -1, "next", state.lyricPaint);
+      paintLine($("prev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
+      paintLine($("cur"), null, t, "cur", state.lyricPaint, "", mode);
+      paintLine($("next"), null, -1, "next", state.lyricPaint, "", mode);
     }
   }
   if (state.audioHook && !nativeMv()) LovBands.pull(state.audioHook);

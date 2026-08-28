@@ -1,6 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
+import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
@@ -296,21 +296,22 @@ export function paintPlayer() {
   const hold = state.playerClockHold;
   const t = Math.floor(((hold != null ? hold : (audio.currentTime || 0)) * 1000));
   const cues = state.playerLyrics.cues || [];
+  const mode = applyLyricMode(document.body, state.lyricMode);
   const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
   const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
   if (idx >= 0) {
-    paintLine($("playerPrev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint);
-    paintLine($("playerCur"), cues[idx], t, "cur", state.lyricPaint);
-    paintLine($("playerNext"), cues[idx + 1] || null, -1, "next", state.lyricPaint);
+    paintLine($("playerPrev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
+    paintLine($("playerCur"), cues[idx], t, "cur", state.lyricPaint, "", mode);
+    paintLine($("playerNext"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
   } else if (upcomingIdx >= 0) {
     const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
-    paintLine($("playerPrev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint);
-    paintLine($("playerCur"), held, held ? 1e12 : 0, "cur", state.lyricPaint, "");
-    paintLine($("playerNext"), cues[upcomingIdx], -1, "next", state.lyricPaint);
+    paintLine($("playerPrev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint, "", mode);
+    paintLine($("playerCur"), held, held ? 1e12 : 0, "cur", state.lyricPaint, "", mode);
+    paintLine($("playerNext"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
   } else {
-    paintLine($("playerPrev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint);
-    paintLine($("playerCur"), null, 0, "cur", state.lyricPaint, state.playerSong ? "" : "还没选歌");
-    paintLine($("playerNext"), null, 0, "next", state.lyricPaint);
+    paintLine($("playerPrev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
+    paintLine($("playerCur"), null, 0, "cur", state.lyricPaint, state.playerSong ? "" : "还没选歌", mode);
+    paintLine($("playerNext"), null, 0, "next", state.lyricPaint, "", mode);
   }
   const dragging = !!(state.alignTl && state.alignTl.isDragging());
   const nextSel = cueIndexAt(t);

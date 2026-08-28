@@ -121,6 +121,8 @@
   background: rgba(120, 120, 128, .24);
 }
 .seg-sm { margin-top: 8px; }
+.lyric-seg { margin: 0 0 12px; }
+.lyric-seg .seg-btn { font-size: 12px; min-height: 30px; }
 .seg-btn {
   min-height: 32px;
   border: 0;

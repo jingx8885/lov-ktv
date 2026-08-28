@@ -10,11 +10,11 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
   <link rel="stylesheet" href="/shared/ui/css/base.css?v=split1" />
-  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split1" />
+  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split2" />
   <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split4" />
   <link rel="stylesheet" href="/phone/search/css/search.css?v=split5" />
-  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split5" />
-  <link rel="stylesheet" href="/phone/player/css/player.css?v=split3" />
+  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split6" />
+  <link rel="stylesheet" href="/phone/player/css/player.css?v=split4" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css?v=split1" />
 </head>
 <body class="phone">
@@ -85,6 +85,12 @@
           <em id="micToggleLabel">开麦</em>
         </button>
       </div>
+      <div class="seg seg-sm lyric-seg" id="deskLyricMode" role="tablist" aria-label="歌词显示">
+        <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
+        <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
+        <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
+        <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
+      </div>
       <div class="desk-sheet">
         <div class="seg" role="tablist">
           <button type="button" class="seg-btn on" data-desk="queue">已点<em id="queueCount"></em></button>
@@ -151,6 +157,12 @@
             <input type="range" id="playerSeek" min="0" max="1000" value="0" aria-label="进度" />
             <em id="playerLeft">−0:00</em>
           </div>
+        </div>
+        <div class="seg seg-sm lyric-seg" id="playerLyricMode" role="tablist" aria-label="歌词显示">
+          <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
+          <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
+          <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
+          <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
         </div>
         <section class="lyrics player-lyrics">
           <div class="prev" id="playerPrev"></div>
@@ -336,6 +348,6 @@
   <script src="/shared/audio/js/bands.js?v=wave8"></script>
   <script src="/phone/player/js/timeline.js?v=tl7"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/phone/app.js?v=split7"></script>
+  <script type="module" src="/phone/app.js?v=split8"></script>
 </body>
 </html>

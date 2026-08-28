@@ -41,6 +41,8 @@ def detect_language(text: str, hint: str | None = None) -> str:
     if has_han and not has_latin:
         return "zh"
     if has_latin and not has_han:
+        if hint_key == "ja":
+            return "ja"
         return "en"
     if hint_key in WHISPER_LANGS:
         return hint_key
@@ -49,3 +51,11 @@ def detect_language(text: str, hint: str | None = None) -> str:
     if has_latin:
         return "en"
     return "zh"
+
+
+def resolve_language(text: str, *hints: str | None) -> str:
+    """Prefer an explicit ja hint so Mugen romaji is not classified as English."""
+    values = [str(hint).strip() for hint in hints if hint]
+    if any(hint.lower() == "ja" for hint in values):
+        return detect_language(text, "ja")
+    return detect_language(text, values[0] if values else None)

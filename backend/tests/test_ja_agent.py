@@ -309,6 +309,38 @@ def test_parse_payload_keeps_romaji():
     assert notes["lines"][0]["units"][0]["romaji"] == "kimi"
 
 
+def test_apply_annotation_keeps_line_and_word_zh():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "溢れるメモリー",
+                "start_ms": 0,
+                "end_ms": 1000,
+                "tokens": [],
+            }
+        ],
+    }
+    apply_ja_annotation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "溢れるメモリー",
+                    "zh": "满溢的记忆",
+                    "units": [
+                        {"sing": "あふれる", "label": "溢", "romaji": "afureru", "zh": "满溢"},
+                        {"sing": "メモリー", "label": "memory", "zh": "记忆"},
+                    ],
+                }
+            ],
+        },
+    )
+    cue = timeline["cues"][0]
+    assert cue["zh"] == "满溢的记忆"
+    assert [tok.get("zh") for tok in cue["tokens"]] == ["满溢", "记忆"]
+
+
 def test_needs_romaji_restore():
     from lovktv.restore_ja import already_restored, needs_romaji_restore
 

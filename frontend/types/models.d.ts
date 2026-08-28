@@ -10,6 +10,7 @@ type SongStatus =
 
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
+type LyricMode = "ja" | "zh" | "roma" | "all";
 
 interface SearchHit {
   id: string;
@@ -46,6 +47,7 @@ interface Room {
   mic_gain?: number;
   mic_on?: boolean;
   host_volume_kind?: string;
+  lyric_mode?: LyricMode | string;
   detail?: string;
 }
 
@@ -55,6 +57,7 @@ interface LyricToken {
   end_ms: number;
   reading?: string;
   romaji?: string;
+  zh?: string;
 }
 
 interface LyricCue {
@@ -62,6 +65,9 @@ interface LyricCue {
   start_ms: number;
   end_ms: number;
   tokens?: LyricToken[];
+  zh?: string;
+  romaji?: string;
+  source_text?: string;
 }
 
 interface LyricsDoc {

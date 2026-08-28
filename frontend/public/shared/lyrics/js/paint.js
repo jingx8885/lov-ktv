@@ -1,5 +1,22 @@
 import { escapeHtml } from "../../ui/js/dom.js";
 
+/** @type {readonly LyricMode[]} */
+export const LYRIC_MODES = ["ja", "zh", "roma", "all"];
+
+/** @param {unknown} value @returns {LyricMode} */
+export function normLyricMode(value) {
+  const mode = String(value || "").trim();
+  return LYRIC_MODES.includes(/** @type {LyricMode} */ (mode)) ? /** @type {LyricMode} */ (mode) : "all";
+}
+
+/** @param {HTMLElement | Document} [root] @param {unknown} value */
+export function applyLyricMode(root, value) {
+  const mode = normLyricMode(value);
+  const el = root && "dataset" in root ? root : document.body;
+  el.dataset.lyricMode = mode;
+  return mode;
+}
+
 /** @param {LyricToken} tok @param {number} t */
 export function tokenProgress(tok, t) {
   if (t >= tok.end_ms) return 100;
@@ -9,7 +26,7 @@ export function tokenProgress(tok, t) {
 
 /** @param {LyricCue | null | undefined} cue */
 export function cueKey(cue) {
-  return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}` : "";
+  return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}:${cue.zh || ""}` : "";
 }
 
 /** @param {LyricCue} cue */
@@ -23,24 +40,44 @@ export function cueLine(cue) {
   return text;
 }
 
-/** @param {LyricCue} cue @param {number} t */
-export function renderCue(cue, t) {
+/** @param {LyricCue} cue */
+export function cueRomaji(cue) {
+  const bits = (cue.tokens || []).map((tok) => String(tok.romaji || "").trim()).filter(Boolean);
+  return bits.join(" ") || String(cue.romaji || "").trim();
+}
+
+/** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
+export function renderCue(cue, t, mode) {
+  const view = normLyricMode(mode);
+  if (view === "zh") return escapeHtml(String(cue.zh || cueLine(cue)));
+  if (view === "roma") return escapeHtml(cueRomaji(cue) || cueLine(cue));
   const tokens = cue.tokens || [];
-  if (!tokens.length) return escapeHtml(cueLine(cue));
-  return tokens.map((tok, i) => {
+  if (!tokens.length) {
+    const body = escapeHtml(cueLine(cue));
+    return view === "all" && cue.zh
+      ? `${body}<span class="lyric-zh">${escapeHtml(cue.zh)}</span>`
+      : body;
+  }
+  const showExtra = view === "all";
+  const html = tokens.map((tok, i) => {
     const p = Math.round(tokenProgress(tok, t));
     const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
     const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
     const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
-    const roma = tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
+    const roma = showExtra && tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
     const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : `<span class="roma"></span>`;
+    const gloss = showExtra && tok.zh ? String(tok.zh) : "";
+    const glossHtml = gloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : `<span class="gloss"></span>`;
     const latin = /^[A-Za-z0-9']/.test(tok.text || "");
     const next = tokens[i + 1];
     const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
       ? `<span class="tok-space"> </span>`
       : "";
-    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}${romaHtml}</span></span>${space}`;
+    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}${romaHtml}${glossHtml}</span></span>${space}`;
   }).join("");
+  return showExtra && cue.zh
+    ? `${html}<span class="lyric-zh">${escapeHtml(cue.zh)}</span>`
+    : html;
 }
 
 /**
@@ -50,20 +87,23 @@ export function renderCue(cue, t) {
  * @param {keyof LyricPaintSlots | string} slot
  * @param {LyricPaintSlots} paint
  * @param {string} [empty]
+ * @param {LyricMode | string} [mode]
  */
-export function paintLine(el, cue, t, slot, paint, empty) {
+export function paintLine(el, cue, t, slot, paint, empty, mode) {
   if (!el) return;
+  const view = normLyricMode(mode);
   if (!cue) {
-    if (paint[slot] !== "empty") {
+    const blank = `empty:${view}`;
+    if (paint[slot] !== blank) {
       el.textContent = empty || "";
-      paint[slot] = "empty";
+      paint[slot] = blank;
     }
     return;
   }
   const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
-  const id = cueKey(cue) + ":" + skin;
+  const id = cueKey(cue) + ":" + skin + ":" + view;
   if (paint[slot] !== id) {
-    el.innerHTML = renderCue(cue, t);
+    el.innerHTML = renderCue(cue, t, view);
     paint[slot] = id;
     return;
   }

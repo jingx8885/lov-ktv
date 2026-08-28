@@ -79,6 +79,8 @@ interface PhoneState {
   roomRtc: LovMicSession | null;
   roomRtcCode: string;
   mixTimer: number;
+  lyricMode: LyricMode | string;
+  nowLanguage: string;
   phoneMic: MediaStream | null;
   phoneMicSrc: MediaStreamAudioSourceNode | null;
   phoneMicGain: GainNode | null;

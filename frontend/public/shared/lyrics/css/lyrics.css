@@ -76,16 +76,41 @@
 .lyrics .anno .roma {
   min-height: 0.34em;
   font-size: .28em;
-  color: rgba(255, 255, 255, .58);
+  color: rgba(255, 255, 255, .72);
   letter-spacing: 0.02em;
   text-align: center;
   font-weight: 600;
   line-height: 1.15;
 }
+.lyrics .anno .gloss {
+  min-height: 0.3em;
+  font-size: .26em;
+  color: rgba(255, 214, 160, .92);
+  text-align: center;
+  font-weight: 650;
+  line-height: 1.15;
+}
+.lyrics .lyric-zh {
+  flex-basis: 100%;
+  width: 100%;
+  margin-top: 0.18em;
+  font-size: 0.42em;
+  font-weight: 650;
+  color: rgba(255, 255, 255, .88);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
 .prev .roma,
-.next .roma {
+.next .roma,
+.prev .gloss,
+.next .gloss,
+.prev .lyric-zh,
+.next .lyric-zh {
   display: none;
 }
+body[data-lyric-mode="ja"] .lyrics .roma,
+body[data-lyric-mode="ja"] .lyrics .gloss,
+body[data-lyric-mode="ja"] .lyrics .lyric-zh { display: none; }
 .line .rb {
   background: linear-gradient(90deg, var(--gold) var(--p, 0%), #fff var(--p, 0%));
   -webkit-background-clip: text;

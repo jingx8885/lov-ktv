@@ -36,6 +36,7 @@ PUBLISH_NAMES = (
     "lyrics.ass",
     "lyrics.manual.lrc",
     "ja-annotate.json",
+    "zh-translate.json",
     "skeleton.json",
     "mugen.ass",
     "oss.json",
