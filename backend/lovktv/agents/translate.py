@@ -124,25 +124,34 @@ def apply_zh_translation(timeline: dict[str, Any], notes: dict[str, Any]) -> dic
         if not item:
             continue
         line_zh = str(item.get("zh") or "").strip()
-        if line_zh:
+        if line_zh and not str(cue.get("zh") or "").strip():
             cue["zh"] = line_zh
-        glosses: list[str] = []
-        for unit in item.get("units") or []:
-            if not isinstance(unit, dict):
-                continue
-            glosses.append(str(unit.get("zh") or "").strip())
+        units = [unit for unit in item.get("units") or [] if isinstance(unit, dict)]
+        glosses = [str(unit.get("zh") or "").strip() for unit in units]
         tokens = list(cue.get("tokens") or [])
-        if tokens and glosses:
-            for index, token in enumerate(tokens):
-                gloss = glosses[index] if index < len(glosses) else ""
-                if not gloss:
-                    sing = lyric_source_key(token.get("text") or "")
-                    for unit in item.get("units") or []:
-                        if lyric_source_key(unit.get("sing") or "") == sing and unit.get("zh"):
-                            gloss = str(unit.get("zh")).strip()
-                            break
+        if not tokens or not glosses:
+            continue
+        missing = [token for token in tokens if not str(token.get("zh") or "").strip()]
+        if not missing:
+            continue
+        if len(missing) == len(tokens) and len(glosses) == len(tokens):
+            for token, gloss in zip(tokens, glosses):
                 if gloss:
                     token["zh"] = gloss
+            continue
+        used: set[int] = set()
+        for token in missing:
+            sing = lyric_source_key(token.get("text") or "")
+            gloss = ""
+            for index, unit in enumerate(units):
+                if index in used:
+                    continue
+                if lyric_source_key(unit.get("sing") or "") == sing and unit.get("zh"):
+                    gloss = str(unit.get("zh")).strip()
+                    used.add(index)
+                    break
+            if gloss:
+                token["zh"] = gloss
     timeline["translation"] = "lovjpn-zh"
     timeline["translation_model"] = str(notes.get("model") or agent_model())
     return timeline

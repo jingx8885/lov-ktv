@@ -35,6 +35,22 @@ def test_expand_splits_multi_kanji_okurigana():
     assert specs == [("はしり", "走"), ("つづけ", "続"), ("る", "")]
 
 
+def test_expand_keeps_etymology_kanji_on_sung_kana():
+    assert expand_units([{"sing": "もがいてる", "label": "藻掻", "romaji": "mogaiteru"}]) == [
+        ("もがいてる", "藻掻")
+    ]
+
+
+def test_expand_merges_okurigana_leftover_after_compound():
+    specs = expand_units(
+        [{"sing": "だいじにしていた", "label": "大事にしていた", "romaji": "daiji ni shite ita"}],
+        source="まだ忘れず 大事にしていた",
+    )
+    assert specs[0] == ("だいじ", "大事")
+    assert specs[1] == ("にしていた", "")
+    assert "に" not in [piece for piece, _label in specs]
+
+
 def test_expand_keeps_katakana_as_one_token():
     specs = expand_units(
         [
@@ -339,6 +355,39 @@ def test_apply_annotation_keeps_line_and_word_zh():
     cue = timeline["cues"][0]
     assert cue["zh"] == "满溢的记忆"
     assert [tok.get("zh") for tok in cue["tokens"]] == ["满溢", "记忆"]
+
+
+def test_apply_skips_truncated_romaji_restore():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "me magurushii jikan no mure ga",
+                "source_text": "me magurushii jikan no mure ga",
+                "start_ms": 0,
+                "end_ms": 1000,
+                "tokens": [{"text": "me", "start_ms": 0, "end_ms": 1000, "reading": ""}],
+            }
+        ],
+    }
+    apply_ja_annotation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "me magurushii jikan no mure ga",
+                    "zh": "纷乱的时间群涌而来",
+                    "units": [
+                        {"sing": "め", "label": "", "romaji": "me", "zh": "我"},
+                        {"sing": "まぐるしい", "label": "", "romaji": "magurushii", "zh": "纷乱"},
+                    ],
+                }
+            ],
+        },
+    )
+    cue = timeline["cues"][0]
+    assert cue["text"] == "me magurushii jikan no mure ga"
+    assert cue["tokens"][0]["text"] == "me"
 
 
 def test_needs_romaji_restore():

@@ -47,6 +47,62 @@ def test_apply_zh_translation_fills_line_and_tokens():
     assert timeline["translation"] == "lovjpn-zh"
 
 
+def test_apply_zh_keeps_existing_gloss_when_unit_count_differs():
+    timeline = {
+        "language": "ja",
+        "annotation": "ja-agent",
+        "cues": [
+            {
+                "text": "Stay with me まよなかのドアをたたき",
+                "source_text": "Stay with me 真夜中のドアをたたき",
+                "start_ms": 0,
+                "end_ms": 2000,
+                "tokens": [
+                    {"text": "Stay", "start_ms": 0, "end_ms": 200, "zh": "留在我身边"},
+                    {"text": "with", "start_ms": 200, "end_ms": 400},
+                    {"text": "me", "start_ms": 400, "end_ms": 600},
+                    {"text": "まよなか", "start_ms": 600, "end_ms": 1000, "reading": "真夜中", "zh": "深夜"},
+                    {"text": "の", "start_ms": 1000, "end_ms": 1100, "zh": "的"},
+                    {"text": "ドア", "start_ms": 1100, "end_ms": 1400, "reading": "door", "zh": "门"},
+                    {"text": "を", "start_ms": 1400, "end_ms": 1500, "zh": "把"},
+                    {"text": "たたき", "start_ms": 1500, "end_ms": 2000, "reading": "叩", "zh": "敲着"},
+                ],
+            }
+        ],
+    }
+    apply_zh_translation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "Stay with me 真夜中のドアをたたき",
+                    "zh": "陪着我 敲响午夜的门",
+                    "units": [
+                        {"sing": "Stay with me", "zh": "陪着我"},
+                        {"sing": "真夜中", "zh": "午夜"},
+                        {"sing": "の", "zh": "的"},
+                        {"sing": "ドア", "zh": "门"},
+                        {"sing": "を", "zh": "把"},
+                        {"sing": "たたき", "zh": "敲响"},
+                    ],
+                }
+            ],
+        },
+    )
+    cue = timeline["cues"][0]
+    assert cue["zh"] == "陪着我 敲响午夜的门"
+    assert [tok.get("zh") for tok in cue["tokens"]] == [
+        "留在我身边",
+        None,
+        None,
+        "深夜",
+        "的",
+        "门",
+        "把",
+        "敲着",
+    ]
+
+
 def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv import store
