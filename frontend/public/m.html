@@ -14,7 +14,8 @@
   <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split4" />
   <link rel="stylesheet" href="/phone/search/css/search.css?v=split5" />
   <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split6" />
-  <link rel="stylesheet" href="/phone/player/css/player.css?v=split4" />
+  <link rel="stylesheet" href="/phone/player/css/player.css?v=split6" />
+  <link rel="stylesheet" href="/phone/player/css/learn.css?v=learn1" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css?v=split1" />
 </head>
 <body class="phone">
@@ -132,16 +133,23 @@
     <section class="page page-player" id="page-player" hidden>
       <div class="player-main" id="playerMain">
         <div class="player-head">
-          <button class="icon-btn ghost" id="playerToDesk" type="button" aria-label="返回点歌台">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
-          </button>
+          <div class="player-head-side">
+            <button class="icon-btn ghost" id="playerToDesk" type="button" aria-label="返回点歌台">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
+            </button>
+          </div>
           <div class="player-titles">
             <b id="playerTitle">还没选歌</b>
             <p class="tiny" id="playerMeta">从点歌台听一首</p>
           </div>
-          <button class="icon-btn ghost" id="playerEdit" type="button" aria-label="横屏对齐">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
-          </button>
+          <div class="player-head-side end">
+            <button class="icon-btn ghost" id="playerLearnBtn" type="button" aria-label="学习">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
+            </button>
+            <button class="icon-btn ghost" id="playerEdit" type="button" aria-label="横屏对齐">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
+            </button>
+          </div>
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
         <audio id="playerGuide" preload="auto" playsinline crossorigin="anonymous" hidden></audio>
@@ -158,20 +166,33 @@
             <em id="playerLeft">−0:00</em>
           </div>
         </div>
-        <div class="seg seg-sm lyric-seg" id="playerLyricMode" role="tablist" aria-label="歌词显示">
-          <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
-          <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
-          <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
-          <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
+        <div class="player-lyric-stack">
+          <div class="seg seg-sm lyric-seg" id="playerLyricMode" role="tablist" aria-label="歌词显示">
+            <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
+            <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
+            <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
+            <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
+          </div>
+          <section class="lyrics player-lyrics">
+            <div class="prev" id="playerPrev"></div>
+            <div class="line" id="playerCur"></div>
+            <div class="next" id="playerNext"></div>
+          </section>
         </div>
-        <section class="lyrics player-lyrics">
-          <div class="prev" id="playerPrev"></div>
-          <div class="line" id="playerCur"></div>
-          <div class="next" id="playerNext"></div>
-        </section>
-        <div class="player-body">
-          <div class="player-list inset-list" id="playerList"></div>
-          <nav class="lib-index" id="playerIndex" aria-label="字母索引"></nav>
+        <button type="button" class="player-sheet-scrim" id="playerSheetScrim" hidden aria-label="收起曲库"></button>
+        <div class="player-sheet" id="playerSheet" data-snap="peek">
+          <button type="button" class="player-sheet-grab" id="playerSheetGrab" aria-expanded="false" aria-controls="playerSheetBody">
+            <i class="player-sheet-grip" aria-hidden="true"></i>
+            <span class="player-sheet-copy">
+              <b id="playerSheetTitle">曲库</b>
+              <em id="playerSheetMeta">上拉选歌</em>
+            </span>
+            <svg class="player-sheet-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.4 14.6L12 10l4.6 4.6 1.4-1.4L12 7.2 6 13.2z"/></svg>
+          </button>
+          <div class="player-sheet-body" id="playerSheetBody">
+            <div class="player-list inset-list" id="playerList"></div>
+            <nav class="lib-index" id="playerIndex" aria-label="字母索引"></nav>
+          </div>
         </div>
       </div>
       <div class="player-dock" id="playerKtv">
@@ -255,6 +276,66 @@
               <canvas class="tl-wave tl-voice" id="tlVoiceWave"></canvas>
               <div class="tl-track" id="tlTrack"></div>
             </div>
+          </div>
+        </div>
+      </div>
+      <div class="learn" id="playerLearn" hidden>
+        <header class="learn-bar">
+          <button class="icon-btn ghost" id="learnBack" type="button" aria-label="退出学习">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
+          </button>
+          <div class="learn-titles">
+            <b id="learnTitle">学习</b>
+            <p class="tiny" id="learnMeta"></p>
+          </div>
+          <span></span>
+        </header>
+        <div class="learn-body" id="learnHome">
+          <p class="learn-lead">选一种学法。测验把句意和单词混在一起考。</p>
+          <button type="button" class="learn-mode" data-learn-mode="quiz">
+            <em>歌词测验</em>
+            <span>每句四道选择题：有的问整句意思，有的挑词考翻译。一首歌下来看得分。</span>
+          </button>
+          <button type="button" class="learn-mode" data-learn-mode="echo">
+            <em>跟唱合成</em>
+            <span>播一句，唱一句。最后把你唱的叠回伴奏，整首听一遍并打分。</span>
+          </button>
+        </div>
+        <div class="learn-body" id="learnQuiz" hidden>
+          <div class="learn-progress" aria-hidden="true"><i id="learnQuizBar"></i></div>
+          <div class="learn-line">
+            <p class="learn-src" id="learnQuizSrc"></p>
+            <p class="learn-roma" id="learnQuizRoma"></p>
+          </div>
+          <div class="learn-qs" id="learnQuizQs"></div>
+          <div class="learn-dock">
+            <button class="btn" id="learnReplay" type="button">重听</button>
+            <button class="btn primary" id="learnQuizNext" type="button" disabled>下一句</button>
+          </div>
+        </div>
+        <div class="learn-body" id="learnEcho" hidden>
+          <div class="learn-progress" aria-hidden="true"><i id="learnEchoBar"></i></div>
+          <div class="learn-line">
+            <p class="learn-src" id="learnEchoSrc"></p>
+            <p class="learn-roma" id="learnEchoRoma"></p>
+            <p class="learn-zh" id="learnEchoZh"></p>
+          </div>
+          <p class="learn-phase" id="learnEchoPhase">听原唱</p>
+          <div class="learn-echo-pulse" id="learnEchoPulse"></div>
+          <div class="learn-dock">
+            <button class="btn" id="learnEchoSkip" type="button">跳过这句</button>
+            <button class="btn primary" id="learnEchoGo" type="button">开始跟唱</button>
+          </div>
+        </div>
+        <div class="learn-body" id="learnScore" hidden>
+          <p class="learn-score-num" id="learnScoreNum">0</p>
+          <p class="learn-score-sub" id="learnScoreSub"></p>
+          <p class="tiny" id="learnScoreDetail"></p>
+          <audio id="learnMix" controls playsinline hidden></audio>
+          <div class="learn-dock learn-dock-col">
+            <button class="btn primary" id="learnAgain" type="button">再来一次</button>
+            <button class="btn" id="learnOther" type="button">换一种</button>
+            <button class="btn" id="learnDone" type="button">回到听歌</button>
           </div>
         </div>
       </div>
@@ -348,6 +429,6 @@
   <script src="/shared/audio/js/bands.js?v=wave8"></script>
   <script src="/phone/player/js/timeline.js?v=tl7"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/phone/app.js?v=split8"></script>
+  <script type="module" src="/phone/app.js?v=split10"></script>
 </body>
 </html>

@@ -5,11 +5,9 @@
 }
 .player-align[hidden] { display: none; }
 .player-lyrics {
-  min-height: 16vh;
-  padding: 6px 0 10px;
+  min-height: 0;
+  padding: 0;
 }
-.player-lyrics .line { font-size: clamp(18px, 5.6vw, 26px); }
-.player-lyrics .prev, .player-lyrics .next { font-size: 13px; margin: 6px 0; }
 .align-now {
   display: flex;
   gap: 12px;
@@ -185,6 +183,8 @@ button.tl-head {
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   padding-bottom: 4px;
 }
 .player-list.inset-list { overflow: auto; }
@@ -200,6 +200,97 @@ button.tl-head {
 .player-pick.on { background: rgba(255, 55, 95, .1); }
 .player-pick b { font-size: 15px; font-weight: 400; }
 .player-pick .tiny { font-size: 12px; }
+.player-sheet-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  border: 0;
+  background: rgba(0, 0, 0, .28);
+  cursor: pointer;
+}
+.player-sheet-scrim[hidden] { display: none; }
+.player-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  min-height: var(--sheet-peek, 58px);
+  max-height: 92%;
+  transform: translate3d(0, calc(100% - var(--sheet-peek, 58px)), 0);
+  border-radius: 16px 16px 0 0;
+  background: rgba(28, 28, 30, .92);
+  backdrop-filter: saturate(180%) blur(22px);
+  -webkit-backdrop-filter: saturate(180%) blur(22px);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, .28);
+  will-change: transform;
+}
+.player-sheet.is-anim {
+  transition: transform .38s cubic-bezier(.32, .72, 0, 1);
+}
+.player-sheet.is-drag { transition: none; }
+.player-sheet-grab {
+  position: relative;
+  flex: 0 0 var(--sheet-peek, 58px);
+  width: 100%;
+  min-height: var(--sheet-peek, 58px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+.player-sheet-grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 36px;
+  height: 5px;
+  border-radius: 99px;
+  background: rgba(235, 235, 245, .32);
+  transform: translateX(-50%);
+}
+.player-sheet-copy {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.player-sheet-copy b {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -.02em;
+}
+.player-sheet-copy em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 13px;
+}
+.player-sheet-chevron {
+  width: 18px;
+  height: 18px;
+  fill: var(--muted);
+  transition: transform .32s cubic-bezier(.32, .72, 0, 1);
+}
+.player-sheet.is-open .player-sheet-chevron { transform: rotate(180deg); }
+.player-sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding: 0 0 8px;
+}
+.player-sheet-grab:active { opacity: .82; }
 .icon-btn {
   width: 44px;
   height: 44px;
@@ -236,6 +327,7 @@ body.phone[data-page="player"] .topbar { display: none; }
   padding-bottom: 0;
 }
 .player-main {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -243,19 +335,27 @@ body.phone[data-page="player"] .topbar { display: none; }
   flex-direction: column;
   gap: 8px;
 }
-.player-body {
+.player-lyric-stack {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  align-items: stretch;
-  gap: 2px;
+  flex-direction: column;
+  padding-bottom: calc(var(--sheet-peek, 58px) + 4px);
+  container-type: size;
+  container-name: lyricstage;
 }
 .player-head {
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 88px 1fr 88px;
   align-items: center;
   gap: 8px;
 }
+.player-head-side {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.player-head-side.end { justify-content: flex-end; }
 .player-titles { min-width: 0; text-align: center; }
 .player-titles b {
   display: block;
@@ -360,30 +460,25 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   margin: 0 0 8px;
 }
 .page-player .player-lyrics {
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 76px;
   display: grid;
-  grid-template-rows: 16px minmax(28px, 36px) 16px;
+  grid-template-rows: minmax(16px, 1fr) auto minmax(16px, 1fr);
   align-items: center;
-  padding: 0;
+  justify-items: center;
+  padding: 0 4px;
   overflow: hidden;
-}
-body.phone[data-lyric-mode="all"] .page-player .player-lyrics {
-  max-height: 128px;
-  grid-template-rows: 16px minmax(52px, 88px) 16px;
-}
-body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
-  font-size: clamp(14px, 3.8vw, 17px);
 }
 .page-player .player-lyrics .prev,
 .page-player .player-lyrics .next {
   margin: 0;
-  max-height: 16px;
+  max-width: 96%;
+  max-height: 100%;
   overflow: hidden;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-content: center;
-  font-size: 12px;
+  font-size: clamp(12px, min(3.6cqi, 4.2cqh), 18px);
+  opacity: .72;
 }
 .page-player .player-lyrics .prev .rt,
 .page-player .player-lyrics .next .rt,
@@ -401,11 +496,22 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
 }
 .page-player .player-lyrics .line {
   margin: 0;
+  max-width: 96%;
   max-height: 100%;
   overflow: hidden;
   align-content: center;
-  font-size: clamp(15px, 4vw, 18px);
+  font-size: clamp(20px, min(9cqi, 14cqh), 44px);
+  line-height: 1.22;
+  letter-spacing: -.02em;
   row-gap: 0.08em;
+}
+body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
+  font-size: clamp(16px, min(6.2cqi, 9.2cqh), 30px);
+  line-height: 1.18;
+}
+@container lyricstage (max-height: 100px) {
+  .page-player .player-lyrics .prev,
+  .page-player .player-lyrics .next { display: none; }
 }
 .player-dock {
   flex: 0 0 auto;
@@ -460,6 +566,71 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
 .player-transport .icon-btn.live {
   color: #fff;
   background: var(--accent);
+}
+@media (orientation: landscape) {
+  body.phone[data-page="player"] .tabbar { display: none; }
+  body.phone[data-page="player"] .page-player {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  body.phone[data-page="player"] .player-dock {
+    margin-left: calc(-1 * max(16px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * max(16px, env(safe-area-inset-right)));
+    padding: 4px max(10px, env(safe-area-inset-left)) calc(8px + var(--safe-b)) max(10px, env(safe-area-inset-right));
+  }
+  .page-player .player-art {
+    height: 0;
+    max-height: 0;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .page-player .player-stage { gap: 0; }
+  .player-lyric-stack { position: relative; padding-bottom: calc(var(--sheet-peek, 48px) + 2px); }
+  .page-player .lyric-seg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 2;
+    width: min(320px, 46%);
+    margin: 0;
+    opacity: .88;
+  }
+  .page-player .lyric-seg .seg-btn { min-height: 26px; font-size: 11px; }
+  .page-player .player-lyrics {
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: center;
+    padding: 0 8px;
+  }
+  .page-player .player-lyrics .line {
+    font-size: clamp(24px, min(6.8cqi, 28cqh), 58px);
+    letter-spacing: -.03em;
+    line-height: 1.1;
+    max-width: 100%;
+  }
+  body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
+    font-size: clamp(16px, min(4.6cqi, 16cqh), 36px);
+  }
+  .page-player .player-lyrics .prev,
+  .page-player .player-lyrics .next {
+    max-width: 100%;
+    font-size: clamp(12px, min(2.4cqi, 8cqh), 18px);
+  }
+  .page-player .player-lyrics .prev { justify-self: end; }
+  .page-player .player-lyrics .next { justify-self: start; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .player-sheet,
+  .player-sheet-chevron { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .player-sheet {
+    background: #1c1c1e;
+    backdrop-filter: none;
+  }
+  .player-sheet-scrim { background: rgba(0, 0, 0, .55); }
 }
 body.phone.edit-on { overflow: hidden; }
 body.phone.edit-on .topbar,

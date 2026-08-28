@@ -18,6 +18,8 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert 'src="/tv/app.js' in tv
     assert 'src="/login/js/login.js' in login
     assert (ROOT / "phone" / "player" / "js" / "playback.js").is_file()
+    assert (ROOT / "phone" / "player" / "js" / "learn.js").is_file()
+    assert (ROOT / "phone" / "player" / "css" / "learn.css").is_file()
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()
     assert (ROOT / "shared" / "audio" / "js" / "aec-worklet.js").is_file()
     assert (ROOT / "landing" / "css" / "landing.css").is_file()
@@ -41,6 +43,8 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/tv/install.js",
             "/shared/ui/js/http.js",
             "/phone/shell/css/shell.css",
+            "/phone/player/css/learn.css",
+            "/phone/player/js/learn.js",
             "/tv/stage/css/stage.css",
             "/shared/audio/js/aec.js",
             "/shared/audio/js/aec-worklet.js",

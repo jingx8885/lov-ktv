@@ -41,6 +41,8 @@ export const state = guardState({
   phoneCtx: null,
   phoneMicLevel: Number(localStorage.getItem("phoneMicGain") || 80),
   phoneIem: localStorage.getItem("phoneIem") !== "0",
+  learnOpen: false,
+  learnVocalWas: 1,
 }, "phone");
 
 export const STEP_MS = 100;

@@ -147,6 +147,7 @@ interface KeepAliveTone {
 
 interface Window {
   webkitAudioContext?: typeof AudioContext;
+  webkitOfflineAudioContext?: typeof OfflineAudioContext;
   LovBands?: LovBandsApi;
   LovMic?: LovMicApi;
   LovAec?: LovAecApi;

@@ -11,6 +11,7 @@ export const ICO = {
   save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>',
   seq: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3h4v4h-2V6.4l-3.2 3.2-1.4-1.4L17.6 5H17V3zM3 7h6.6l7 7H21v2h-5.6l-7-7H3V7zm14 8.6l3.2 3.2V17h2v4h-4v-2h1.6L14.6 15l1.4-1.4 1 1zM3 15h4.6l2.2-2.2 1.4 1.4L8.4 17H3v-2z"/></svg>',
+  learn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>',
 };
 
 export function songInitial(text) {

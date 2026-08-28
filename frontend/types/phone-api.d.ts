@@ -45,6 +45,9 @@ interface PhoneApi {
   bootPlayer(): Promise<void>;
   playNextSong(): void;
   cueIndexAt(t: number): number;
+  setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
+  enterLearn(): Promise<void> | void;
+  exitLearn(): void;
 }
 
 interface PhoneState {
@@ -87,4 +90,6 @@ interface PhoneState {
   phoneCtx: AudioContext | null;
   phoneMicLevel: number;
   phoneIem: boolean;
+  learnOpen: boolean;
+  learnVocalWas: number;
 }

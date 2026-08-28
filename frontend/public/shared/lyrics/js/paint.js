@@ -9,7 +9,7 @@ export function normLyricMode(value) {
   return LYRIC_MODES.includes(/** @type {LyricMode} */ (mode)) ? /** @type {LyricMode} */ (mode) : "all";
 }
 
-/** @param {HTMLElement | Document} [root] @param {unknown} value */
+/** @param {HTMLElement | Document} [root] @param {unknown} [value] */
 export function applyLyricMode(root, value) {
   const mode = normLyricMode(value);
   const el = root && "dataset" in root ? root : document.body;

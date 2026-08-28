@@ -12,8 +12,10 @@ import { bindJoin } from "./room/js/join.js";
 import { bindMix } from "./room/js/mix.js";
 import { bindRoomRtc } from "./room/js/rtc.js";
 import { bindPlayback } from "./player/js/playback.js";
+import { bindPlayerSheet } from "./player/js/sheet.js";
 import { bindAlign } from "./player/js/align.js";
 import { bindPhoneMic } from "./player/js/mic.js";
+import { bindLearn } from "./player/js/learn.js";
 
 const params = new URLSearchParams(location.search);
 if (params.get("login")) {
@@ -30,8 +32,10 @@ bindJoin();
 bindMix();
 bindRoomRtc();
 bindPlayback();
+bindPlayerSheet();
 bindAlign();
 bindPhoneMic();
+bindLearn();
 
 setInterval(() => {
   if (!$must("page-desk").hidden) {

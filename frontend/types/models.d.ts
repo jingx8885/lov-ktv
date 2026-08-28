@@ -11,6 +11,8 @@ type SongStatus =
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
 type LyricMode = "ja" | "zh" | "roma" | "all";
+type LearnMode = "quiz" | "echo";
+type LearnQuestionKind = "meaning" | "word" | "listen";
 
 interface SearchHit {
   id: string;
@@ -126,6 +128,62 @@ interface LoadPlayerOpts {
   play?: boolean;
 }
 
+interface LearnChoice {
+  id: number;
+  text: string;
+}
+
+interface LearnQuestion {
+  id: string;
+  kind: LearnQuestionKind | string;
+  prompt: string;
+  stem: string;
+  choices: LearnChoice[];
+  answer: number;
+}
+
+interface LearnLine {
+  index: number;
+  start_ms: number;
+  end_ms: number;
+  text: string;
+  zh?: string;
+  romaji?: string;
+  questions: LearnQuestion[];
+}
+
+interface LearnQuiz {
+  schema?: string;
+  song_id: string;
+  title?: string;
+  artist?: string;
+  language?: string;
+  modes?: LearnMode[];
+  questions_per_line?: number;
+  lines: LearnLine[];
+  total_questions: number;
+}
+
+interface LearnSession {
+  quiz: LearnQuiz | null;
+  line: number;
+  answers: Record<string, number>;
+}
+
+interface LearnEchoClip {
+  start_ms: number;
+  end_ms: number;
+  blob: Blob | null;
+}
+
+interface LearnEchoSession {
+  lines: LearnLine[];
+  index: number;
+  clips: LearnEchoClip[];
+  mixUrl: string;
+  running: boolean;
+}
+
 interface PhoneIcons {
   play: string;
   pause: string;
@@ -135,4 +193,5 @@ interface PhoneIcons {
   save: string;
   seq: string;
   shuffle: string;
+  learn: string;
 }

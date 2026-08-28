@@ -5,6 +5,7 @@ import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
+import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
 
 export function mediaUrl(songId, name) {
   return `/media/${songId}/${name}?v=${state.songMediaRev || Date.now()}`;
@@ -246,9 +247,11 @@ export function renderPlayerList() {
   box.querySelectorAll("[data-pick]").forEach((btn) => {
     btn.onclick = () => {
       unlockPlayerGesture();
+      setPlayerSheet("peek", true);
       loadPlayerSong(btn.dataset.pick, { play: true });
     };
   });
+  syncPlayerSheetMeta();
   renderPlayerIndex();
   const on = box.querySelector(".player-pick.on");
   if (on) on.scrollIntoView({ block: "nearest" });
@@ -512,6 +515,7 @@ export function bindPlayback() {
     seekPlayerRatio(Number($("playerSeek").value) / 1000);
   });
   $("playerAudio").onended = () => {
+    if (state.learnOpen) return;
     if (state.playerClockHold != null) return;
     const audio = $("playerAudio");
     const dur = audio.duration;

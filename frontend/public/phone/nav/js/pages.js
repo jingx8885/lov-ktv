@@ -12,8 +12,10 @@ export function showPage(name, songId, push) {
   }
   if (!PAGES.includes(name)) name = "desk";
   if (name !== "player") {
+    api.exitLearn();
     api.exitEdit();
     api.pausePlayer();
+    if (api.setPlayerSheet) api.setPlayerSheet("peek", false);
   }
   state.currentPage = name;
   document.body.dataset.page = name;
@@ -31,6 +33,7 @@ export function showPage(name, songId, push) {
     api.loadRoom();
   }
   if (name === "player") {
+    api.setPlayerSheet("peek", false);
     api.loadPlayerList();
     if (songId) api.loadPlayerSong(songId, { play: true });
     else api.bootPlayer();

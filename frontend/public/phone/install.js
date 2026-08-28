@@ -39,6 +39,8 @@ import {
   playNextSong,
   cueIndexAt,
 } from "./player/js/playback.js";
+import { setPlayerSheet } from "./player/js/sheet.js";
+import { enterLearn, exitLearn } from "./player/js/learn.js";
 
 installApi({
   ICO,
@@ -87,4 +89,7 @@ installApi({
   bootPlayer,
   playNextSong,
   cueIndexAt,
+  setPlayerSheet,
+  enterLearn,
+  exitLearn,
 });

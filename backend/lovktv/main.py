@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
 from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
+from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.store import (
@@ -498,6 +500,26 @@ def api_song(song_id: str) -> dict:
     folder = MEDIA_DIR / song_id
     song["files"] = sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     return song
+
+
+@app.get("/api/songs/{song_id}/learn")
+def api_learn(song_id: str) -> dict:
+    song = get_song(song_id)
+    if not song:
+        raise HTTPException(404, "歌曲不存在")
+    path = MEDIA_DIR / song_id / "lyrics.json"
+    if not path.exists():
+        raise HTTPException(409, "这首还没有歌词")
+    try:
+        timeline = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise HTTPException(409, "歌词还不能用来学习") from exc
+    if not isinstance(timeline, dict):
+        raise HTTPException(409, "歌词还不能用来学习")
+    quiz = build_learn_quiz(timeline, song)
+    if not quiz["lines"]:
+        raise HTTPException(409, "这首没有可学的句子")
+    return quiz
 
 
 @app.post("/api/rooms")
