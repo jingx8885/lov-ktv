@@ -4,3 +4,12 @@ services:
       - "127.0.0.1:8790:8787"
     environment:
       LOVKTV_PUBLIC_URL: ${LOVKTV_PUBLIC_URL:-https://ktv.lovbrowser.com}
+      LOVKTV_HTTPS_PROXY: ${LOVKTV_HTTPS_PROXY:-http://lov-stock-clash:7890}
+    networks:
+      - default
+      - stock-proxy
+
+networks:
+  stock-proxy:
+    external: true
+    name: lov-stock_default

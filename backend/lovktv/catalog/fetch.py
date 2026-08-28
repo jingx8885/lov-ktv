@@ -1,6 +1,7 @@
 """Song search + download, following vendor/lovjpn/scripts/fetch_song.py.
 
-tonzhon.com search/lyric → NetEase outer URL → yt-dlp SoundCloud → YouTube.
+Search lists Karaoke Mugen first, then NetEase titles.
+Audio: Mugen → SoundCloud → NetEase eapi → YouTube.
 """
 
 from __future__ import annotations
@@ -14,11 +15,12 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from lovktv.catalog.http import curl_proxy_args, urlopen, ytdlp_proxy_args
 from lovktv.catalog.kugou import fetch_kugou_lyrics
 from lovktv.catalog.mugen import import_mugen_song, is_mugen_kid, open_mugen_preview, pick_vocal_hit, search_mugen
+from lovktv.catalog.netease import eapi_play_url, media_request
 
 TONZHON_API = "https://tonzhon.com/api.php"
-NETEASE_OUTER = "https://music.163.com/song/media/outer/url?id={id}.mp3"
 BROWSER_UA = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -90,7 +92,7 @@ def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
             "Referer": "https://tonzhon.com/",
         },
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    with urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
 
@@ -199,27 +201,16 @@ def parse_lrc(lrc: str) -> list[dict[str, Any]]:
 
 
 def probe_netease_url(song_id: str) -> bool:
-    url = NETEASE_OUTER.format(id=song_id)
-    cmd = ["curl", "-sI", "-o", "/dev/null", "-w", "%{http_code}\n%{redirect_url}\n", "--max-redirs", "0", url]
-    try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        return False
-    info = (result.stdout or "").strip().splitlines()
-    status = info[0] if info else ""
-    redirect = info[1] if len(info) > 1 else ""
-    return status.startswith("3") and "/404" not in redirect
+    return bool(eapi_play_url(song_id))
 
 
 def open_netease_audio(song_id: str, timeout: float = 20):
-    """Follow the NetEase outer URL. None if it is a 404/HTML stub."""
-    url = NETEASE_OUTER.format(id=song_id)
-    req = urllib.request.Request(
-        url,
-        headers={"User-Agent": BROWSER_UA, "Referer": "https://music.163.com/"},
-    )
+    """Open the eapi CDN URL. None if NetEase has no playable copy."""
+    url = eapi_play_url(song_id)
+    if not url:
+        return None
     try:
-        resp = urllib.request.urlopen(req, timeout=timeout)
+        resp = urlopen(media_request(url), timeout=timeout, via_proxy=True)
     except Exception:
         return None
     final = str(resp.geturl() or "")
@@ -234,8 +225,23 @@ def open_netease_audio(song_id: str, timeout: float = 20):
 
 
 def try_netease_download(song_id: str, out_path: Path) -> bool:
-    url = NETEASE_OUTER.format(id=song_id)
-    cmd = ["curl", "-sL", "-o", str(out_path), "-w", "%{http_code}\n%{url_effective}\n", url]
+    url = eapi_play_url(song_id)
+    if not url:
+        return False
+    cmd = [
+        "curl",
+        "-sL",
+        "-o",
+        str(out_path),
+        "-w",
+        "%{http_code}\n%{url_effective}\n",
+        "-A",
+        "Mozilla/5.0",
+        "-e",
+        "https://music.163.com/",
+        *curl_proxy_args(),
+        url,
+    ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -261,6 +267,7 @@ def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15) -> list[
         "%(webpage_url)s\t%(duration)s\t%(title)s",
         "--quiet",
         "--no-warnings",
+        *ytdlp_proxy_args(),
     ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
@@ -305,6 +312,7 @@ def _ytdlp_download(page_url: str, out_path: Path) -> bool:
         "--quiet",
         "--no-warnings",
         "--force-overwrites",
+        *ytdlp_proxy_args(),
         page_url,
     ]
     try:
@@ -342,6 +350,10 @@ def remember_audio_source(song_id: str, payload: dict[str, Any]) -> dict[str, An
     return payload
 
 
+def forget_audio_source(song_id: str) -> None:
+    _AUDIO_CACHE.pop(str(song_id) or "", None)
+
+
 def peek_audio_source(song_id: str) -> dict[str, Any]:
     return dict(_AUDIO_CACHE.get(str(song_id) or "") or {})
 
@@ -350,7 +362,17 @@ def _ytdlp_direct_url(page_url: str) -> str:
     ytdlp = shutil.which("yt-dlp")
     if not ytdlp or not page_url:
         return ""
-    cmd = [ytdlp, "-f", "bestaudio/best", "--get-url", "--no-playlist", "--quiet", "--no-warnings", page_url]
+    cmd = [
+        ytdlp,
+        "-f",
+        "bestaudio/best",
+        "--get-url",
+        "--no-playlist",
+        "--quiet",
+        "--no-warnings",
+        *ytdlp_proxy_args(),
+        page_url,
+    ]
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=90, check=False)
     except (subprocess.TimeoutExpired, FileNotFoundError):
@@ -359,26 +381,28 @@ def _ytdlp_direct_url(page_url: str) -> str:
     return line[0] if line and result.returncode == 0 else ""
 
 
-def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
-    """Pick the same audio the user will import: NetEase, else a cached yt-dlp page."""
-    cached = peek_audio_source(song_id)
-    if cached.get("kind") in {"netease", "ytdlp"}:
-        return cached
-    if song_id and probe_netease_url(song_id):
-        return remember_audio_source(song_id, {"kind": "netease", "id": song_id, "title": title})
+def _resolve_ytdlp_source(
+    song_id: str,
+    title: str = "",
+    artist: str = "",
+    providers: tuple[str, ...] = ("soundcloud", "youtube"),
+) -> dict[str, Any]:
     query = " ".join(part for part in (title, artist) if part).strip()
     ytdlp = shutil.which("yt-dlp")
     if not ytdlp or not query:
         return {}
-    for provider in ("youtube", "soundcloud"):
+    for provider in providers:
         best = _pick_best_match(_list_ytdlp(query, ytdlp, provider, count=8))
         if not best:
+            continue
+        page = str(best["url"] or "")
+        if not page or not _ytdlp_direct_url(page):
             continue
         return remember_audio_source(
             song_id,
             {
                 "kind": "ytdlp",
-                "page": best["url"],
+                "page": page,
                 "title": str(best.get("title") or title),
                 "provider": provider,
             },
@@ -386,24 +410,61 @@ def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dic
     return {}
 
 
+def _resolve_netease_source(song_id: str, title: str = "") -> dict[str, Any]:
+    if song_id and probe_netease_url(song_id):
+        return remember_audio_source(song_id, {"kind": "netease", "id": song_id, "title": title})
+    return {}
+
+
+def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
+    """Mugen is handled by the caller. Then SoundCloud → NetEase → YouTube."""
+    cached = peek_audio_source(song_id)
+    if cached.get("kind") in {"netease", "ytdlp"}:
+        return cached
+    return (
+        _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
+        or _resolve_netease_source(song_id, title)
+        or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+    )
+
+
+def _open_ytdlp_stream(page: str):
+    direct = _ytdlp_direct_url(page)
+    if not direct:
+        return None
+    req = urllib.request.Request(direct, headers={"User-Agent": BROWSER_UA})
+    try:
+        return urlopen(req, timeout=30, via_proxy=True)
+    except Exception:
+        return None
+
+
 def open_preview_stream(song_id: str, title: str = "", artist: str = "", media: str = ""):
     if is_mugen_kid(song_id):
         resp = open_mugen_preview(song_id, media_name=media)
         return resp, {"kind": "mugen", "title": title}
     source = resolve_audio_source(song_id, title, artist)
+    if source.get("kind") == "ytdlp" and source.get("provider") == "soundcloud":
+        resp = _open_ytdlp_stream(str(source.get("page") or ""))
+        if resp is not None:
+            return resp, source
+        forget_audio_source(song_id)
+        source = _resolve_netease_source(song_id, title) or _resolve_ytdlp_source(
+            song_id, title, artist, ("youtube",)
+        )
     if source.get("kind") == "netease":
-        return open_netease_audio(song_id), source
-    page = str(source.get("page") or "")
-    if not page:
+        resp = open_netease_audio(song_id)
+        if resp is not None:
+            return resp, source
+        forget_audio_source(song_id)
+        source = _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+    if source.get("kind") == "ytdlp":
+        resp = _open_ytdlp_stream(str(source.get("page") or ""))
+        if resp is not None:
+            return resp, source
+        forget_audio_source(song_id)
         return None, source
-    direct = _ytdlp_direct_url(page)
-    if not direct:
-        return None, source
-    req = urllib.request.Request(direct, headers={"User-Agent": BROWSER_UA})
-    try:
-        return urllib.request.urlopen(req, timeout=30), source
-    except Exception:
-        return None, source
+    return None, source
 
 
 def import_song(
@@ -431,12 +492,10 @@ def import_song(
         raise RuntimeError(f"tonzhon 没有搜到：{query}")
     else:
         chosen = results[0]
-        if not prefer_ytdlp:
-            for item in results:
-                item_id = str(item.get("id") or "")
-                if item_id and is_clean_title(str(item.get("name") or "")) and probe_netease_url(item_id):
-                    chosen = item
-                    break
+        for item in results:
+            if is_clean_title(str(item.get("name") or "")):
+                chosen = item
+                break
 
     title_name = str(chosen.get("name") or query)
     artist_name = flatten_artists(chosen)
@@ -472,23 +531,27 @@ def import_song(
     mp3_path = out_dir / "original.mp3"
     chosen_id = str(chosen.get("id") or "")
     cached = peek_audio_source(chosen_id)
-    if not prefer_ytdlp and try_netease_download(chosen_id, mp3_path):
-        audio_file = "original.mp3"
-        audio_source = "netease"
     if audio_file is None and cached.get("page"):
         if _ytdlp_download(str(cached["page"]), mp3_path):
             audio_file = "original.mp3"
             audio_source = str(cached.get("provider") or "ytdlp")
             audio_title = str(cached.get("title") or "")
+    ytdlp_query = f"{chosen.get('name') or ''} {flatten_artists(chosen)}".strip() or query
     if audio_file is None:
-        ytdlp_query = f"{chosen.get('name') or ''} {flatten_artists(chosen)}".strip() or query
-        for provider in ("soundcloud", "youtube"):
-            ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, provider)
-            if ok:
-                audio_file = "original.mp3"
-                audio_source = provider
-                audio_title = got_title
-                break
+        ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "soundcloud")
+        if ok:
+            audio_file = "original.mp3"
+            audio_source = "soundcloud"
+            audio_title = got_title
+    if audio_file is None and not prefer_ytdlp and try_netease_download(chosen_id, mp3_path):
+        audio_file = "original.mp3"
+        audio_source = "netease"
+    if audio_file is None:
+        ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "youtube")
+        if ok:
+            audio_file = "original.mp3"
+            audio_source = "youtube"
+            audio_title = got_title
 
     cover_file = ""
     pic = str(chosen.get("pic") or "")

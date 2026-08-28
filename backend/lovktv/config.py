@@ -24,3 +24,4 @@ ALIYUN_OSS_ENDPOINT = (os.environ.get("ALIYUN_OSS_ENDPOINT") or "").strip()
 ALIYUN_OSS_BUCKET_NAME = (os.environ.get("ALIYUN_OSS_BUCKET_NAME") or "").strip()
 ALIYUN_OSS_BASE_PATH = (os.environ.get("LOVKTV_OSS_PREFIX") or os.environ.get("ALIYUN_OSS_BASE_PATH") or "lovktv").strip() or "lovktv"
 ALIYUN_OSS_DOWNLOAD_DOMAIN = (os.environ.get("ALIYUN_OSS_DOWNLOAD_DOMAIN") or "").rstrip("/")
+HTTPS_PROXY = (os.environ.get("LOVKTV_HTTPS_PROXY") or "").strip()
