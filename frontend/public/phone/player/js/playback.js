@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
@@ -225,7 +226,7 @@ export function renderPlayerIndex() {
 }
 
 export async function loadPlayerList() {
-  const data = await fetch("/api/songs").then((r) => r.json()).catch(() => ({ songs: [] }));
+  const { data } = await fetchJson("/api/songs").catch(() => ({ data: { songs: [] } }));
   state.playerCatalog = (data.songs || []).filter((song) => song.status === "ready");
   renderPlayerList();
 }
@@ -386,7 +387,8 @@ export function waitMedia(el, gen, wantSrc) {
 export async function loadPlayerSong(songId, opts) {
   const wantPlay = !!(opts && opts.play);
   const gen = ++state.playerLoad;
-  const song = await fetch("/api/songs/" + songId).then((r) => r.json());
+  /** @type {{ data: Song }} */
+  const { data: song } = await fetchJson("/api/songs/" + songId);
   if (gen !== state.playerLoad) return;
   if (!song.id || song.status !== "ready") {
     $("playerMeta").textContent = "这首还不能播";
@@ -408,7 +410,8 @@ export async function loadPlayerSong(songId, opts) {
   resetPlayerFace();
   try { audio.currentTime = 0; } catch (err) {}
   try { if (guide) guide.currentTime = 0; } catch (err) {}
-  state.playerLyrics = await fetch(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
+  const lyrics = await fetchJson(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`);
+  state.playerLyrics = lyrics.ok ? lyrics.data : { cues: [] };
   if (gen !== state.playerLoad) return;
   state.lyricsDirty = false;
   resetPlayerFace();
@@ -476,7 +479,8 @@ export async function bootPlayer() {
   if (state.playerSong) return;
   const code = $("room").value.trim();
   if (!code) return;
-  const room = await fetch("/api/rooms/" + code).then((r) => r.json()).catch(() => null);
+  const roomHit = await fetchJson("/api/rooms/" + code).catch(() => null);
+  const room = roomHit && roomHit.data;
   if (room && room.now_playing && room.now_playing.status === "ready") {
     await loadPlayerSong(room.now_playing.song_id);
   }
@@ -524,19 +528,3 @@ export function bindPlayback() {
   $("playerToDesk").onclick = () => api.showPage("desk");
 }
 
-api.setPlayIcon = setPlayIcon;
-api.refreshPlayIcon = refreshPlayIcon;
-api.unlockPlayerGesture = unlockPlayerGesture;
-api.togglePlayer = togglePlayer;
-api.playFromMs = playFromMs;
-api.pausePlayer = pausePlayer;
-api.applyKaraokeGain = applyKaraokeGain;
-api.syncGuide = syncGuide;
-api.applyPlayerVocalMix = applyPlayerVocalMix;
-api.hookPlayerAudio = hookPlayerAudio;
-api.loadPlayerList = loadPlayerList;
-api.loadPlayerSong = loadPlayerSong;
-api.openPlayer = openPlayer;
-api.bootPlayer = bootPlayer;
-api.playNextSong = playNextSong;
-api.cueIndexAt = cueIndexAt;

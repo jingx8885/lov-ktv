@@ -1,4 +1,5 @@
-import { $ } from "../shared/ui/js/dom.js";
+import "./install.js";
+import { $must } from "../shared/ui/js/dom.js";
 import { PAGES } from "./state.js";
 import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho } from "./ui/js/who.js";
@@ -18,7 +19,7 @@ const params = new URLSearchParams(location.search);
 if (params.get("login")) {
   location.replace("/login.html?" + params.toString());
 }
-$("room").value = (params.get("room") || localStorage.getItem("room") || "").toUpperCase();
+$must("room").value = (params.get("room") || localStorage.getItem("room") || "").toUpperCase();
 
 bindWho();
 bindOverlays();
@@ -33,7 +34,7 @@ bindAlign();
 bindPhoneMic();
 
 setInterval(() => {
-  if (!$("page-desk").hidden) {
+  if (!$must("page-desk").hidden) {
     loadRoom();
     loadSongs();
   }
@@ -42,7 +43,7 @@ setInterval(() => {
 const bootHash = (location.hash || "").replace("#", "");
 const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
 showPage(bootPage, null, false);
-if (bootHash === "room" || !$("room").value) openOverlay("roomSheet");
+if (bootHash === "room" || !$must("room").value) openOverlay("roomSheet");
 
 const syncKeyboard = () => {
   const vv = window.visualViewport;

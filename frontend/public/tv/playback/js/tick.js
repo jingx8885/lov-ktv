@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
@@ -59,7 +60,9 @@ export function stopPlayback() {
 export async function tick() {
   const code = roomCode() || (state.room && state.room.code);
   if (!code) return;
-  state.room = await fetch("/api/rooms/" + code).then((r) => r.json());
+  /** @type {{ data: Room }} */
+  const roomHit = await fetchJson("/api/rooms/" + code);
+  state.room = roomHit.data;
   localStorage.setItem("tvRoom", state.room.code);
   prefetchQueue(state.room);
   const now = state.room.now_playing;
@@ -88,8 +91,10 @@ export async function tick() {
     state.lyricPaint.prev = "";
     state.lyricPaint.cur = "";
     state.lyricPaint.next = "";
-    state.lyrics = await fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
-    state.skeleton = await fetch(`/media/${now.song_id}/skeleton.json`).then((r) => r.ok ? r.json() : null).catch(() => null);
+    const lyricsHit = await fetchJson(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`);
+    state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
+    const skeletonHit = await fetchJson(`/media/${now.song_id}/skeleton.json`).catch(() => ({ ok: false, data: null }));
+    state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;
     state.lastMtvSeek = 0;
@@ -108,10 +113,9 @@ export async function tick() {
     if (Date.now() - state.lastLyricsAt > 8000) {
       state.lastLyricsAt = Date.now();
       const prev = lyricsFingerprint(state.lyrics);
-      fetch(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${state.lastLyricsAt}`)
-        .then((r) => r.ok ? r.json() : null)
-        .then((data) => {
-          if (!data || !data.cues || lyricsFingerprint(data) === prev) return;
+      fetchJson(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${state.lastLyricsAt}`)
+        .then(({ ok, data }) => {
+          if (!ok || !data || !data.cues || lyricsFingerprint(data) === prev) return;
           state.lyrics = data;
         })
         .catch(() => {});
@@ -182,3 +186,4 @@ api.tick = tick;
 api.startPlayback = startPlayback;
 api.stopPlayback = stopPlayback;
 api.pauseAudio = pauseAudio;
+

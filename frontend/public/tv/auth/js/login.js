@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { state } from "../../state.js";
 
 export function renderQr(url, target) {
@@ -21,7 +21,7 @@ export function roomCode() {
 
 export async function hostOrigin() {
   try {
-    const data = await fetch("/api/host").then((r) => r.json());
+    const { data } = await fetchJson("/api/host");
     if (data && data.origin) return String(data.origin).replace(/\/$/, "");
   } catch (err) {}
   return location.origin;
@@ -39,15 +39,14 @@ export function renderUserChip(user) {
 }
 
 export async function currentUser() {
-  const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ user: null }));
+  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({ data: { user: null } }));
   return data.user;
 }
 
 export async function pollLogin() {
   if (!state.loginTicket) return;
-  const res = await fetch("/api/auth/qr/" + state.loginTicket + "?claim=1", { credentials: "same-origin" });
-  if (!res.ok) return;
-  const data = await res.json();
+  const { ok, data } = await fetchJson("/api/auth/qr/" + state.loginTicket + "?claim=1", { credentials: "same-origin" });
+  if (!ok) return;
   if (data.status === "expired") {
     $("loginHint").textContent = "二维码过期了，点刷新";
     return;
@@ -63,13 +62,12 @@ export async function pollLogin() {
 export async function startLoginQr() {
   $("loginGate").hidden = false;
   $("loginHint").textContent = "正在生成二维码…";
-  const res = await fetch("/api/auth/qr", {
+  const { data } = await fetchJson("/api/auth/qr", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ room: state.room ? state.room.code : roomCode() }),
   });
-  const data = await res.json();
   state.loginTicket = data.ticket;
   renderQr(data.url, "loginQr");
   $("loginHint").textContent = "微信扫一下就行，约 3 分钟有效";
@@ -82,9 +80,11 @@ export async function bootAuth() {
     document.body.classList.add("androidtv");
   }
   const wanted = roomCode();
-  state.room = wanted
-    ? await fetch("/api/rooms/" + wanted).then((r) => r.json())
-    : await fetch("/api/rooms", { method: "POST" }).then((r) => r.json());
+  /** @type {{ data: Room }} */
+  const roomRes = wanted
+    ? await fetchJson("/api/rooms/" + wanted)
+    : await fetchJson("/api/rooms", { method: "POST" });
+  state.room = roomRes.data;
   localStorage.setItem("tvRoom", state.room.code);
   $("code").textContent = state.room.code;
   const url = (await hostOrigin()) + "/m.html?room=" + state.room.code + "&v=queue3";
@@ -103,5 +103,3 @@ export async function bootAuth() {
   };
 }
 
-api.roomCode = roomCode;
-api.hostOrigin = hostOrigin;

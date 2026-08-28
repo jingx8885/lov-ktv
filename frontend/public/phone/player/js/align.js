@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { paintLine } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state, STEP_MS } from "../../state.js";
@@ -182,12 +183,12 @@ export function bindAlign() {
     const btn = $("saveAlign");
     btn.disabled = true;
     try {
-      const res = await fetch(`/api/songs/${state.playerSong.id}/lyrics`, {
+      const { ok, data } = await fetchJson(`/api/songs/${state.playerSong.id}/lyrics`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(state.playerLyrics),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!ok) throw new Error(data.detail || "保存失败");
       state.lyricsDirty = false;
       btn.classList.add("on");
       btn.setAttribute("aria-label", "已保存");
@@ -216,10 +217,3 @@ export function bindAlign() {
   });
 }
 
-api.exitEdit = exitEdit;
-api.enterEdit = enterEdit;
-api.ensureTimeline = ensureTimeline;
-api.updateAlignNow = updateAlignNow;
-api.renderAlignList = renderAlignList;
-api.applyEditorTracks = applyEditorTracks;
-api.syncEditAxis = syncEditAxis;

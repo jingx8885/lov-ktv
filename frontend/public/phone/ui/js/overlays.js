@@ -1,5 +1,4 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
 
 export function closeOverlay(id) {
   const el = $(id);
@@ -11,7 +10,8 @@ export function openOverlay(id) {
   if (el) el.hidden = false;
 }
 
-export function showActionSheet({ title, message, confirm, danger }) {
+/** @param {ActionSheetOpts} [opts] */
+export function showActionSheet({ title, message, confirm, danger } = {}) {
   return new Promise((resolve) => {
     const root = $("actionSheet");
     $("actionSheetTitle").textContent = title || "";
@@ -42,6 +42,3 @@ export function bindOverlays() {
   $("nowMore").onclick = () => openOverlay("mixSheet");
 }
 
-api.closeOverlay = closeOverlay;
-api.openOverlay = openOverlay;
-api.showActionSheet = showActionSheet;

@@ -1,3 +1,4 @@
+/** @type {Record<string, string>} */
 export const STATUS = {
   queued: "排队",
   fetching: "搜歌下载",

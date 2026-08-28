@@ -82,7 +82,3 @@ export function bindRoomRtc(code) {
   });
 }
 
-api.bindLiveMic = bindLiveMic;
-api.clearLiveMic = clearLiveMic;
-api.bindRoomRtc = bindRoomRtc;
-api.micGainValue = micGainValue;

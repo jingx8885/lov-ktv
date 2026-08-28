@@ -58,4 +58,3 @@ export function bindNav() {
   });
 }
 
-api.showPage = showPage;

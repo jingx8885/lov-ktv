@@ -30,7 +30,7 @@ export function hookAudio() {
 
 export function unlockAudio() {
   state.audioUnlocked = true;
-  api.startKeepAlive();
+  if (typeof api.startKeepAlive === "function") api.startKeepAlive();
   if (window.LovAec) {
     LovAec.ensureCtx().then(() => {
       hookAudio();
@@ -41,9 +41,10 @@ export function unlockAudio() {
   hookAudio();
 }
 
+/** @param {HTMLMediaElement | null} el @returns {Promise<void>} */
 export function playEl(el) {
   if (!el) return Promise.resolve();
-  api.startKeepAlive();
+  if (typeof api.startKeepAlive === "function") api.startKeepAlive();
   return resumeCtxs()
     .then(() => {
       const keep = $("keepAlive");
@@ -53,8 +54,3 @@ export function playEl(el) {
     .catch(() => resumeCtxs().then(() => el.play()));
 }
 
-api.hookAudio = hookAudio;
-api.unlockAudio = unlockAudio;
-api.playEl = playEl;
-api.resumeCtxs = resumeCtxs;
-api.liveCtxs = liveCtxs;

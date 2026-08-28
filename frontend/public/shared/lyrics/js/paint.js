@@ -1,15 +1,18 @@
 import { escapeHtml } from "../../ui/js/dom.js";
 
+/** @param {LyricToken} tok @param {number} t */
 export function tokenProgress(tok, t) {
   if (t >= tok.end_ms) return 100;
   if (t >= tok.start_ms) return ((t - tok.start_ms) / Math.max(tok.end_ms - tok.start_ms, 1)) * 100;
   return 0;
 }
 
+/** @param {LyricCue | null | undefined} cue */
 export function cueKey(cue) {
   return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}` : "";
 }
 
+/** @param {LyricCue} cue */
 export function cueLine(cue) {
   const text = String(cue.text || "");
   const tokens = cue.tokens || [];
@@ -20,6 +23,7 @@ export function cueLine(cue) {
   return text;
 }
 
+/** @param {LyricCue} cue @param {number} t */
 export function renderCue(cue, t) {
   const tokens = cue.tokens || [];
   if (!tokens.length) return escapeHtml(cueLine(cue));
@@ -39,6 +43,14 @@ export function renderCue(cue, t) {
   }).join("");
 }
 
+/**
+ * @param {HTMLElement | null} el
+ * @param {LyricCue | null | undefined} cue
+ * @param {number} t
+ * @param {keyof LyricPaintSlots | string} slot
+ * @param {LyricPaintSlots} paint
+ * @param {string} [empty]
+ */
 export function paintLine(el, cue, t, slot, paint, empty) {
   if (!el) return;
   if (!cue) {
@@ -60,10 +72,12 @@ export function paintLine(el, cue, t, slot, paint, empty) {
   el.querySelectorAll(".rb").forEach((node, i) => {
     if (!toks[i]) return;
     const next = Math.round(tokenProgress(toks[i], t)) + "%";
-    if (node.style.getPropertyValue("--p") !== next) node.style.setProperty("--p", next);
+    const style = /** @type {HTMLElement} */ (node).style;
+    if (style.getPropertyValue("--p") !== next) style.setProperty("--p", next);
   });
 }
 
+/** @param {LyricCue[] | null | undefined} cues @param {number} t */
 export function cueIndexAt(cues, t) {
   const list = cues || [];
   const idx = list.findIndex((c) => t >= c.start_ms && t < c.end_ms);

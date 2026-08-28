@@ -69,4 +69,3 @@ export function bindRoomRtc() {
   };
 }
 
-api.connectRoomRtc = connectRoomRtc;

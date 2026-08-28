@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
 
@@ -11,7 +11,7 @@ export function loginQs() {
 }
 
 export async function loadWho() {
-  const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json()).catch(() => ({ user: null }));
+  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({ data: { user: null } }));
   const user = data.user;
   $("whoName").textContent = user ? (user.sid || user.nickname || "已登录") : "未登录";
   $("whoHint").textContent = user ? (user.wechat ? "微信 ID 已锁定" : "本机 ID") : "微信扫一下就能认号";
@@ -37,4 +37,3 @@ export function bindWho() {
   loadWho();
 }
 
-api.loadWho = loadWho;

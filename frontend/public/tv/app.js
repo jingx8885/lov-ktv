@@ -1,4 +1,6 @@
-import { $ } from "../shared/ui/js/dom.js";
+import "./install.js";
+import { $must } from "../shared/ui/js/dom.js";
+import { fetchJson } from "../shared/ui/js/http.js";
 import { state } from "./state.js";
 import { bootAuth, roomCode } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
@@ -23,48 +25,52 @@ document.addEventListener("visibilitychange", () => {
   if (state.armed && state.room && state.room.now_playing) startPlayback();
 });
 
-$("start").onclick = () => {
+$must("start").onclick = () => {
   unlockAudio();
   startPlayback();
 };
 document.addEventListener("pointerdown", () => {
   unlockAudio();
-  const karaoke = $("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && karaoke.paused) {
+  const karaoke = $must("karaoke");
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke.paused) {
     startPlayback();
   }
 });
 document.addEventListener("keydown", () => {
   unlockAudio();
-  const karaoke = $("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && karaoke.paused) {
+  const karaoke = $must("karaoke");
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke.paused) {
     startPlayback();
   }
 });
-$("skip").onclick = async () => {
+$must("skip").onclick = async () => {
   const code = roomCode() || (state.room && state.room.code);
   if (!code) return;
-  $("skip").disabled = true;
+  $must("skip").disabled = true;
   try {
-    state.room = await fetch("/api/rooms/" + code + "/skip", { method: "POST" }).then((r) => r.json());
+    /** @type {{ data: Room }} */
+    const { data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
+    state.room = data;
     if (!state.room.now_playing) stopPlayback();
     else state.lastItem = "";
-    if (state.room.now_playing) $("title").textContent = state.room.now_playing.title;
+    if (state.room.now_playing) $must("title").textContent = state.room.now_playing.title;
     await tick();
   } finally {
-    $("skip").disabled = false;
+    $must("skip").disabled = false;
   }
 };
-$("toggle").onclick = async () => {
+$must("toggle").onclick = async () => {
   const next = (state.room.vocal_mix || 0) > 0.5 ? 0 : 1;
-  state.room = await fetch("/api/rooms/" + (roomCode() || state.room.code) + "/mix", {
+  /** @type {{ data: Room }} */
+  const { data } = await fetchJson("/api/rooms/" + (roomCode() || state.room.code) + "/mix", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ vocal_mix: next }),
-  }).then((r) => r.json());
+  });
+  state.room = data;
   applyMix();
 };
-$("karaoke").addEventListener("ended", () => $("skip").click());
+$must("karaoke").addEventListener("ended", () => $must("skip").click());
 
 bootAuth().then(() => {
   bindRoomRtc(state.room.code);

@@ -1,5 +1,4 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
 import { state } from "../../state.js";
 
 export function mediaUrl(songId, name) {
@@ -111,8 +110,3 @@ export function syncVocal(forceTime) {
   }
 }
 
-api.mediaUrl = mediaUrl;
-api.prefetchQueue = prefetchQueue;
-api.applyMix = applyMix;
-api.syncVocal = syncVocal;
-api.roomLine = roomLine;

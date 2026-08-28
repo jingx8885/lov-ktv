@@ -1,4 +1,7 @@
-export const state = {
+import { guardState } from "../shared/ui/js/guard.js";
+
+/** @type {PhoneState} */
+export const state = guardState({
   previewId: "",
   searchPage: 1,
   searchHits: [],
@@ -36,10 +39,12 @@ export const state = {
   phoneCtx: null,
   phoneMicLevel: Number(localStorage.getItem("phoneMicGain") || 80),
   phoneIem: localStorage.getItem("phoneIem") !== "0",
-};
+}, "phone");
 
 export const STEP_MS = 100;
 export const LIB_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
+/** @type {string[]} */
 export const PAGES = ["search", "desk", "player"];
+/** @type {Record<string, string>} */
 export const PAGE_TITLE = { search: "搜歌", desk: "点歌", player: "听歌" };
 export const SEARCH_EMPTY = `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>搜歌名或歌手</p><span class="tiny">先听再加入曲库</span></div>`;

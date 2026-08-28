@@ -1,0 +1,66 @@
+interface TvApi {
+  roomCode(): string;
+  hostOrigin(): Promise<string>;
+  bindLiveMic(stream: MediaStream): Promise<void>;
+  clearLiveMic(): void;
+  bindRoomRtc(code: string): void;
+  micGainValue(): number;
+  pageVisible(): boolean;
+  canPlay(): boolean;
+  tick(): Promise<void>;
+  startPlayback(): void;
+  stopPlayback(): void;
+  pauseAudio(): void;
+  startKeepAlive(): void;
+  schedulePlayRetries(): void;
+  silenceMtv(mtv?: HTMLMediaElement | null): void;
+  nativeMv(): boolean;
+  syncNativeMv(): void;
+  bindMtv(songId: string): void;
+  mediaUrl(songId: string, name: string): string;
+  prefetchQueue(snap: Room): void;
+  applyMix(): void;
+  syncVocal(forceTime?: number): void;
+  roomLine(snap: Room): string;
+  ensureStageFx(): StageFxHandle | null;
+  lyricsFingerprint(data: LyricsDoc | null): string;
+  paint(t?: number): void;
+  hookAudio(): void;
+  unlockAudio(): void;
+  playEl(el: HTMLMediaElement | null): Promise<void>;
+  resumeCtxs(): Promise<unknown>;
+  liveCtxs(): AudioContext[];
+}
+
+interface TvState {
+  room: Room | null;
+  lyrics: LyricsDoc;
+  lastItem: string;
+  prefetched: Set<string>;
+  prefetchBusy: number;
+  prefetchWait: string[];
+  armed: boolean;
+  tabId: string;
+  audioBus: BroadcastChannel | null;
+  isLeader: boolean;
+  lastLyricsAt: number;
+  lyricPaint: LyricPaintSlots;
+  audioHook: BandsHook | null;
+  stageFx: StageFxHandle | null;
+  lastFxCue: number;
+  lastCelebrateAt: number;
+  hookLines: Set<string>;
+  roomRtc: LovMicSession | null;
+  lastMtvSeek: number;
+  lastVocalSync: number;
+  boundMtvSong: string;
+  skeleton: MtvSkeleton | null;
+  loginTicket: string;
+  loginTimer: number;
+  pendingMic: MediaStream | null;
+  audioUnlocked: boolean;
+  keepAliveTimer: number;
+  keepAliveSrc: string;
+  keepAliveTone: KeepAliveTone | null;
+  playRetryTimer: number;
+}

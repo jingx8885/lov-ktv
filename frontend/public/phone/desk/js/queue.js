@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { ICO, songInitial, paintTopRoom } from "../../ui/js/icons.js";
@@ -13,8 +14,8 @@ export async function loadRoom() {
     }
     return;
   }
-  /** @type {Room} */
-  const room = await fetch(`/api/rooms/${code}`).then((r) => r.json());
+  /** @type {{ data: Room }} */
+  const { data: room } = await fetchJson(`/api/rooms/${code}`);
   $("roomState").textContent = `房间 ${room.code} · 已点 ${room.queue.length}`;
   paintTopRoom(room.code);
   const now = room.now_playing;
@@ -56,13 +57,12 @@ export async function loadRoom() {
   }).join("") || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>还没点歌</p><button class="btn primary" type="button" data-go-lib>去曲库加点</button></div>`;
   $("queue").querySelectorAll("[data-play]").forEach((btn) => {
     btn.onclick = async () => {
-      const res = await fetch(`/api/rooms/${code}/play`, {
+      const { ok, data } = await fetchJson(`/api/rooms/${code}/play`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: btn.dataset.play }),
       });
-      const data = await res.json();
-      if (!res.ok) showToast(data.detail || "还不能点这首");
+      if (!ok) showToast(data.detail || "还不能点这首");
       loadRoom();
     };
   });
@@ -70,4 +70,3 @@ export async function loadRoom() {
   if (goLib) goLib.onclick = () => showDeskPane("lib");
 }
 
-api.loadRoom = loadRoom;

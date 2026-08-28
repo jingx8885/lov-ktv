@@ -1,5 +1,4 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./playback.js";
@@ -221,6 +220,3 @@ export function bindPhoneMic() {
   };
 }
 
-api.ensurePhoneCtx = ensurePhoneCtx;
-api.stopPhoneMic = stopPhoneMic;
-api.paintPhoneMic = paintPhoneMic;

@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -40,11 +41,11 @@ export function paintMix(room) {
 export function postMix(body) {
   const code = $("room").value.trim().toUpperCase();
   if (!code) return;
-  return fetch(`/api/rooms/${code}/mix`, {
+  return fetchJson(`/api/rooms/${code}/mix`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  }).then((r) => r.json()).then((room) => {
+  }).then(({ data: room }) => {
     paintMix(room);
     return room;
   }).catch(() => {});
@@ -82,7 +83,8 @@ export function bindMix() {
     }
     $("skip").disabled = true;
     try {
-      const room = await fetch(`/api/rooms/${code}/skip`, { method: "POST" }).then((r) => r.json());
+      /** @type {{ data: Room }} */
+      const { data: room } = await fetchJson(`/api/rooms/${code}/skip`, { method: "POST" });
       const now = room.now_playing;
       $("roomState").textContent = now
         ? `房间 ${room.code} · 正在唱 ${now.title}`
@@ -96,5 +98,3 @@ export function bindMix() {
   };
 }
 
-api.paintVocalMix = paintVocalMix;
-api.paintMix = paintMix;

@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
@@ -61,9 +62,10 @@ export async function loadSongs() {
     page: String(state.libState.page),
     count: "8",
   });
-  /** @type {SongListPage | null} */
-  const data = await fetch("/api/songs?" + params.toString()).then((r) => r.json()).catch(() => null);
-  if (!data) return;
+  /** @type {{ data: SongListPage }} */
+  const loaded = await fetchJson("/api/songs?" + params.toString()).catch(() => null);
+  if (!loaded) return;
+  const data = loaded.data;
   const songs = data.songs || [];
   state.libState.page = data.page || state.libState.page;
   if ($("libCount")) $("libCount").textContent = (data.lib_total || data.total) ? String(data.lib_total || data.total) : "";
@@ -113,14 +115,13 @@ export async function loadSongs() {
         return showToast("先填房间码并点进入");
       }
       btn.disabled = true;
-      const res = await fetch(`/api/rooms/${code}/queue`, {
+      const { ok, data } = await fetchJson(`/api/rooms/${code}/queue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ song_id: btn.dataset.queue }),
       });
-      const data = await res.json();
       btn.disabled = false;
-      if (!res.ok) {
+      if (!ok) {
         showToast(data.detail || "还不能点这首");
         loadSongs();
         return;
@@ -195,5 +196,3 @@ export function bindLibrary() {
   });
 }
 
-api.showDeskPane = showDeskPane;
-api.loadSongs = loadSongs;

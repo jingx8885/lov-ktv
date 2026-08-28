@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -19,12 +20,13 @@ export async function joinRoom(openScreen, quiet) {
   $("join").disabled = true;
   try {
     if (!code) {
-      const created = await fetch("/api/rooms", { method: "POST" }).then((r) => r.json());
-      code = created.code;
+      const created = await fetchJson("/api/rooms", { method: "POST" });
+      code = created.data.code;
     }
     $("room").value = code;
     localStorage.setItem("room", code);
-    const room = await fetch("/api/rooms/" + code).then((r) => r.json());
+    /** @type {{ data: Room }} */
+    const { data: room } = await fetchJson("/api/rooms/" + code);
     $("roomState").textContent = `已进房 ${room.code} · 队列 ${room.queue.length}`;
     $("openTv").href = tvUrl(room.code);
     paintTopRoom(room.code);
@@ -57,5 +59,3 @@ export function bindJoin() {
   }
 }
 
-api.joinRoom = joinRoom;
-api.openTv = openTv;

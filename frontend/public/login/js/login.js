@@ -1,4 +1,5 @@
 import { $ } from "../../shared/ui/js/dom.js";
+import { fetchJson } from "../../shared/ui/js/http.js";
 
 const params = new URLSearchParams(location.search);
 const ticket = params.get("login") || params.get("ticket") || "";
@@ -41,28 +42,26 @@ function renderUser(user) {
 }
 
 async function loadMe() {
-  const data = await fetch("/api/auth/me", { credentials: "same-origin" }).then((r) => r.json());
+  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" });
   return data.user;
 }
 
 async function confirmTicket() {
   if (!ticket) return true;
-  const res = await fetch("/api/auth/qr/" + ticket + "/confirm", { method: "POST", credentials: "same-origin" });
-  if (res.ok) return true;
-  const data = await res.json().catch(() => ({}));
+  const { ok, data } = await fetchJson("/api/auth/qr/" + ticket + "/confirm", { method: "POST", credentials: "same-origin" });
+  if (ok) return true;
   showError(data.detail || "电视码过期了，请刷新电视再扫");
   return false;
 }
 
 async function deviceLogin() {
-  const res = await fetch("/api/auth/device", {
+  const { ok, data } = await fetchJson("/api/auth/device", {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ device_id: deviceId() }),
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
+  if (!ok) {
     showError(data.detail || "本机认号失败");
     return null;
   }
@@ -93,7 +92,8 @@ $("deviceLogin").onclick = async () => {
     $("toTv").href = "/tv.html?room=" + room;
     $("toMobile").href = "/m.html?room=" + room;
   }
-  const status = await fetch("/api/auth/status").then((r) => r.json()).catch(() => ({}));
+  const statusHit = await fetchJson("/api/auth/status").catch(() => ({ data: {} }));
+  const status = statusHit.data;
   const wechatOn = !!(status.wechat || status.wechat_quick);
   const user = await loadMe();
   if (!params.get("error") && !user && inWechat && wechatOn) {

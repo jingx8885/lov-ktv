@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { api } from "../../api.js";
 import { state, SEARCH_EMPTY } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
@@ -26,11 +27,11 @@ export function bindSearchHits(q) {
         language: hit.language || "",
         source: hit.source || "",
       };
-      const created = await fetch("/api/songs/import", {
+      const { data: created } = await fetchJson("/api/songs/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).then((r) => r.json());
+      });
       if (!created.id) {
         btn.disabled = false;
         btn.classList.remove("busy");
@@ -100,10 +101,9 @@ export async function runSearch(page, append = false) {
     moreBtn.disabled = true;
     moreBtn.textContent = "加载中…";
   }
-  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
-  /** @type {SearchPage} */
-  const data = await res.json();
-  if (!res.ok) {
+  /** @type {{ ok: boolean, data: SearchPage }} */
+  const { ok, data } = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
+  if (!ok) {
     if (append && moreBtn) {
       moreBtn.disabled = false;
       moreBtn.textContent = "加载更多";
@@ -167,9 +167,8 @@ export function bindSearch() {
       fd.append("file", file);
       fd.append("title", file.name);
       fd.append("lyrics", "");
-      const res = await fetch("/api/songs", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.detail || "上传失败");
+      const { ok, data } = await fetchJson("/api/songs", { method: "POST", body: fd });
+      if (!ok) throw new Error(data.detail || "上传失败");
       $("file").value = "";
       api.showPage("desk");
     } catch (err) {
@@ -180,4 +179,3 @@ export function bindSearch() {
   };
 }
 
-api.runSearch = runSearch;

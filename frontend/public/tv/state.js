@@ -1,4 +1,7 @@
-export const state = {
+import { guardState } from "../shared/ui/js/guard.js";
+
+/** @type {TvState} */
+export const state = guardState({
   room: null,
   lyrics: { cues: [] },
   lastItem: "",
@@ -29,4 +32,4 @@ export const state = {
   keepAliveSrc: "",
   keepAliveTone: null,
   playRetryTimer: 0,
-};
+}, "tv");

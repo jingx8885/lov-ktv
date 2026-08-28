@@ -1,0 +1,10 @@
+{
+  "name": "lovktv-frontend",
+  "private": true,
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

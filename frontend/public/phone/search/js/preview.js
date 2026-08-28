@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { state } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -30,9 +30,8 @@ export async function togglePreview(hit, btn) {
   stopPreview();
   btn.classList.add("busy");
   const params = previewParams(hit);
-  const infoRes = await fetch(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());
-  const info = await infoRes.json().catch(() => ({}));
-  if (!infoRes.ok) {
+  const { ok, data: info } = await fetchJson(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());
+  if (!ok) {
     btn.classList.remove("busy");
     showToast(info.detail || "这首暂时不能试听，换一条再听");
     return;
@@ -51,5 +50,3 @@ export async function togglePreview(hit, btn) {
   audio.onended = stopPreview;
 }
 
-api.stopPreview = stopPreview;
-api.togglePreview = togglePreview;

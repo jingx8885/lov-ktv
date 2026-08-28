@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
+
+let hideTimer = 0;
 
 export function showToast(message) {
   const el = $("toast");
@@ -7,11 +8,9 @@ export function showToast(message) {
   el.textContent = message;
   el.hidden = false;
   el.classList.add("on");
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => {
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
     el.classList.remove("on");
     el.hidden = true;
   }, 2400);
 }
-
-api.showToast = showToast;

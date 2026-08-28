@@ -1,6 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { paintLine } from "../../../shared/lyrics/js/paint.js";
-import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js";
@@ -104,6 +103,3 @@ export function paint() {
   requestAnimationFrame(paint);
 }
 
-api.ensureStageFx = ensureStageFx;
-api.lyricsFingerprint = lyricsFingerprint;
-api.paint = paint;

@@ -62,7 +62,3 @@ export function bindMtv(songId) {
   silenceMtv(mtv);
 }
 
-api.silenceMtv = silenceMtv;
-api.nativeMv = nativeMv;
-api.syncNativeMv = syncNativeMv;
-api.bindMtv = bindMtv;
