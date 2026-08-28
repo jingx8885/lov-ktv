@@ -19,6 +19,9 @@ def test_landing_has_hooks_and_product_exits():
     assert 'id="house"' in HTML
     assert 'id="notes"' in HTML
     assert "landing.css" in HTML
+    assert 'href="/brand/logo.svg"' in HTML
+    assert 'src="/brand/icon.png"' in HTML
+    assert 'class="lp-logo"' in HTML
 
 
 def test_landing_follows_gigglecut_layout():

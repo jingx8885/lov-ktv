@@ -27,6 +27,8 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()
     assert (ROOT / "shared" / "audio" / "js" / "aec-worklet.js").is_file()
     assert (ROOT / "landing" / "css" / "landing.css").is_file()
+    assert (ROOT / "brand" / "logo.svg").is_file()
+    assert (ROOT / "brand" / "icon.png").is_file()
     mic = phone.split('id="playerMic"', 1)[1].split("</button>", 1)[0]
     vocal = phone.split('id="playerVocal"', 1)[1].split("</button>", 1)[0]
     iem = phone.split('id="playerIem"', 1)[1].split("</button>", 1)[0]
@@ -70,6 +72,9 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/shared/audio/js/aec.js",
             "/shared/audio/js/aec-worklet.js",
             "/landing/css/landing.css",
+            "/brand/logo.svg",
+            "/brand/icon.png",
+            "/brand/apple-touch.png",
         ):
             res = client.get(path)
             assert res.status_code == 200, path

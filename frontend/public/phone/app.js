@@ -10,7 +10,7 @@ import { bindSearch, paintSearchHits } from "./search/js/hits.js";
 import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin } from "./room/js/join.js";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=mix3";
+import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=mix4";
 import { bindRoomRtc } from "./room/js/rtc.js";
 import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
