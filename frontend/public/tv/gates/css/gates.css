@@ -1,0 +1,42 @@
+.start-gate {
+  position: fixed; inset: 0; z-index: 12;
+  display: grid; place-items: center;
+  background: rgba(11,16,32,.55);
+  pointer-events: none;
+}
+.start-gate[hidden] { display: none; }
+.start-gate .btn { min-width: 220px; min-height: 64px; font-size: 22px; pointer-events: auto; }
+.tv .start-gate { background: transparent; }
+.tv .start-gate .btn {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
+  min-height: 0;
+  opacity: 0;
+  pointer-events: auto;
+}
+.login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(11, 16, 32, .78);
+}
+.login-gate[hidden] { display: none; }
+.login-card {
+  width: min(520px, 92vw);
+  background: var(--card);
+  border-radius: 20px;
+  padding: 28px 28px 22px;
+  text-align: center;
+}
+.login-card .qr {
+  width: 220px;
+  height: 220px;
+  margin: 16px auto;
+  background: #fff;
+  border-radius: 16px;
+  padding: 12px;
+}
+.login-card .qr svg, .login-card .qr img { width: 100%; height: 100%; display: block; }

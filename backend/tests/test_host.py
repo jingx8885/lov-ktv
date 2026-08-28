@@ -35,35 +35,40 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
 def test_phone_player_overlays_guide_on_karaoke():
     from pathlib import Path
 
-    html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "m.html").read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    html = (root / "m.html").read_text(encoding="utf-8")
+    player = (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
     assert 'id="playerGuide" preload="auto"' in html
     assert 'id="playerOriginal"' not in html
-    assert "function syncOriginal" not in html
-    assert "orig.src = original" not in html
-    gain = html.split("function applyKaraokeGain", 1)[1].split("function mediaAhead", 1)[0]
+    assert "function syncOriginal" not in player
+    assert "orig.src = original" not in player
+    gain = player.split("function applyKaraokeGain", 1)[1].split("function syncGuide", 1)[0]
     assert "playerVocal" not in gain
-    assert "value = editing && !mixTrackOn ? 0 : 1" in gain
-    sync = html.split("function syncGuide", 1)[1].split("function applyKaraokeGain", 1)[0]
-    assert 'mediaUrl(song.id, "guide.m4a")' in html
+    assert "value = editing && !state.mixTrackOn ? 0 : 1" in gain
+    sync = player.split("function syncGuide", 1)[1].split("function applyPlayerVocalMix", 1)[0]
+    assert 'mediaUrl(song.id, "guide.m4a")' in player
     assert "0.32" in sync
     assert "playerVocal" in sync
-    assert "function mediaAhead" in html
+    assert "function mediaAhead" in player
 
 
 def test_phone_player_starts_when_song_clicked():
     from pathlib import Path
 
-    html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "m.html").read_text(encoding="utf-8")
-    assert "unlockPlayerGesture" in html
-    assert 'loadPlayerSong(btn.dataset.pick, { play: true })' in html
-    assert 'loadPlayerSong(songId, { play: true })' in html
-    assert 'play: !$("playerAudio").paused' not in html
+    root = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    player = (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    nav = (root / "phone" / "nav" / "js" / "pages.js").read_text(encoding="utf-8")
+    assert "unlockPlayerGesture" in player
+    assert 'loadPlayerSong(btn.dataset.pick, { play: true })' in player
+    assert 'loadPlayerSong(songId, { play: true })' in nav
+    assert 'play: !$("playerAudio").paused' not in player
+    assert 'play: !$("playerAudio").paused' not in nav
 
 
 def test_tv_page_builds_phone_url_from_host_origin():
     from pathlib import Path
 
-    html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "tv.html").read_text(encoding="utf-8")
-    assert "/api/host" in html
-    assert "hostOrigin" in html
-    assert "m.html?room=" in html
+    js = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "tv" / "auth" / "js" / "login.js").read_text(encoding="utf-8")
+    assert "/api/host" in js
+    assert "hostOrigin" in js
+    assert "m.html?room=" in js

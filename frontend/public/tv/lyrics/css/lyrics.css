@@ -1,0 +1,42 @@
+.lyrics { text-align: center; min-height: 40vh; display: grid; place-items: center; }
+.tv .lyrics > .lyric-plate {
+  max-width: min(92vw, 1520px);
+  padding: 20px 44px 24px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 36%, rgba(6, 10, 22, 0.18)),
+    rgba(8, 12, 26, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+}
+.tv:not(.has-native-mv) .lyric-plate:not(.bare) {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 36%, rgba(6, 10, 22, 0.18)),
+    rgba(8, 12, 26, 0.58);
+}
+.tv .lyrics .prev:empty,
+.tv .lyrics .next:empty,
+.tv .lyrics .line:empty { display: none; }
+.tv .lyric-plate:not(:has(.line:not(:empty))) {
+  display: none;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+body.tv.has-native-mv .lyric-plate,
+body.tv .lyric-plate.bare {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 12px 4px !important;
+}

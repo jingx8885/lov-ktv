@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 
 
 HTML = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "index.html").read_text(encoding="utf-8")
-CSS = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "landing.css").read_text(encoding="utf-8")
+CSS = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "landing" / "css" / "landing.css").read_text(encoding="utf-8")
 
 
 def test_landing_has_toc_and_product_exits():
@@ -36,4 +36,4 @@ def test_root_serves_landing(tmp_path, monkeypatch):
         page = client.get("/")
     assert page.status_code == 200
     assert "把夜店灯光" in page.text
-    assert "/landing.css" in page.text
+    assert "/landing/css/landing.css" in page.text

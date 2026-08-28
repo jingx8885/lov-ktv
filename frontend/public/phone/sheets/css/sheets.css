@@ -1,0 +1,96 @@
+.overlay {
+  position: fixed;
+  inset: 0 0 calc(var(--nav-h) + var(--safe-b)) 0;
+  z-index: 40;
+  display: flex;
+  align-items: flex-end;
+}
+.overlay[hidden] { display: none !important; }
+.overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, .46);
+}
+.sheet {
+  position: relative;
+  width: 100%;
+  max-height: min(86dvh, 720px);
+  overflow: auto;
+  padding: 8px 20px calc(18px + var(--safe-b) + var(--kb));
+  border-radius: 14px 14px 0 0;
+  background: #2c2c2e;
+}
+.sheet-handle {
+  width: 36px;
+  height: 5px;
+  margin: 4px auto 12px;
+  border-radius: 99px;
+  background: rgba(235, 235, 245, .3);
+}
+.sheet h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+}
+.sheet .field { display: block; margin-bottom: 12px; }
+.sheet .field .tiny { display: block; margin-bottom: 6px; }
+.sheet .btn { width: 100%; margin-top: 8px; }
+.sheet .btn.primary {
+  min-height: 44px;
+  border-radius: 12px;
+}
+.sheet .btn:not(.primary):not(.wechat) {
+  min-height: 44px;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 400;
+}
+.sheet .who { margin-bottom: 12px; }
+.action-sheet {
+  position: relative;
+  width: 100%;
+  padding: 8px 10px calc(10px + var(--safe-b) + var(--kb));
+}
+.action-card,
+.action-cancel {
+  width: 100%;
+  border-radius: 14px;
+  background: #2c2c2e;
+  text-align: center;
+}
+.action-card { padding: 14px 12px 8px; margin-bottom: 8px; }
+.action-card h2 { margin: 0 0 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.action-card .tiny { margin: 0 0 8px; }
+.action-btn,
+.action-cancel {
+  min-height: 56px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 20px;
+}
+.action-btn { width: 100%; border-top: 1px solid var(--separator); }
+.action-btn.danger { color: #ff453a; }
+.action-cancel { font-weight: 600; }
+.toast {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-t) + 54px);
+  z-index: 50;
+  max-width: calc(100vw - 48px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(44, 44, 46, .92);
+  color: #fff;
+  font-size: 15px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.toast[hidden] { display: none; }
+.ktv-hint summary {
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.ktv-hint .tiny { margin: 6px 0 0; line-height: 1.45; }

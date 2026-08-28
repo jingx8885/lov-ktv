@@ -1,0 +1,64 @@
+.gate { min-height: 100vh; display: grid; place-items: center; }
+.brand { letter-spacing: .3em; color: var(--gold); text-transform: lowercase; }
+.wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 80px; }
+.card { background: var(--card); border-radius: 16px; padding: 14px; margin: 10px 0; }
+input, textarea {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 0;
+  background: #0e1426; color: var(--text); font-size: 16px;
+}
+.row input { flex: 1 1 0; width: auto; min-width: 0; }
+.hit { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.hit > div { min-width: 0; flex: 1; }
+.hit b { display: block; }
+.hit-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; flex: 0 0 auto; }
+.hit-actions .btn { min-width: 84px; }
+.btn.danger { background: #6b2a3a; }
+.btn:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+.pager .btn { min-width: 96px; }
+.queue-item { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #243; }
+.tabs { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.tabs button.on { background: var(--accent); }
+.btn.wechat { background: #07c160; color: #fff; }
+.sid-display {
+  margin: 4px 0 8px;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  line-height: 1.1;
+}
+.btn.disabled, a.btn.disabled { opacity: .45; pointer-events: auto; }
+.row.wrap-row { flex-wrap: wrap; }
+.rule { border: 0; border-top: 1px solid #243; margin: 16px 0; }
+.who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.who > div { flex: 1; min-width: 0; }
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #2a3354;
+}
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+.user-chip .avatar { width: 36px; height: 36px; }
+.btn:focus, .btn:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
+body.androidtv .btn { min-height: 56px; font-size: 18px; }
