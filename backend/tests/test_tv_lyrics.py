@@ -9,8 +9,11 @@ def test_tv_lyrics_are_smaller_than_shared_defaults():
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
     assert "clamp(28px, 4.6vw, 58px)" in shared
     assert "clamp(28px, 4.6vw, 58px)" not in tv
+    assert "clamp(22px, 2.6vw, 38px)" not in tv
     assert "body.tv .lyrics .line" in tv
-    assert "clamp(22px, 2.6vw, 38px)" in tv
-    assert "clamp(13px, 1.5vw, 20px)" in tv
+    assert "clamp(15px, 1.5vw, 22px)" in tv
+    assert "clamp(11px, 1vw, 14px)" in tv
+    assert ".tv .lyrics .prev { display: none; }" in tv
     assert 'body.tv[data-lyric-mode="all"] .lyrics .line .rt { display: none; }' in tv
+    assert 'body.tv[data-lyric-mode="all"] .lyrics .line .gloss { display: none; }' in tv
     assert 'href="/tv/lyrics/css/lyrics.css' in html

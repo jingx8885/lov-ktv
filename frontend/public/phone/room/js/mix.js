@@ -12,10 +12,13 @@ export function mixEditing() {
 }
 
 export function paintVocalMix(mix) {
+  const btn = $("vocalMix");
+  const label = $("vocalMixLabel");
+  if (!btn || !label) return;
   const on = Number(mix) >= 0.5;
-  $("vocalMix").classList.toggle("on", on);
-  $("vocalMixLabel").textContent = on ? t("common.vocal") : t("common.karaoke");
-  $("vocalMix").setAttribute("aria-label", on ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
+  btn.classList.toggle("on", on);
+  label.textContent = on ? t("common.vocal") : t("common.karaoke");
+  btn.setAttribute("aria-label", on ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
 }
 
 export function paintLyricMode(mode, language) {
@@ -31,30 +34,41 @@ export function paintLyricMode(mode, language) {
 }
 
 export function paintMix(room) {
-  if (!room || mixEditing()) return;
+  const hostVol = $("hostVol");
+  const hostVolVal = $("hostVolVal");
+  const hostVolLabel = $("hostVolLabel");
+  const micGain = $("micGain");
+  const micGainVal = $("micGainVal");
+  if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
   const vol = room.host_volume != null ? room.host_volume : (room.volume != null ? room.volume : 80);
   const gain = room.mic_gain != null ? room.mic_gain : 80;
-  $("hostVol").value = String(vol);
-  $("hostVolVal").textContent = String(vol);
-  $("hostVolLabel").textContent = room.host_volume_kind === "mac" ? "Mac" : t("common.volume");
-  $("micGain").value = String(gain);
-  $("micGainVal").textContent = String(gain);
+  hostVol.value = String(vol);
+  hostVolVal.textContent = String(vol);
+  hostVolLabel.textContent = room.host_volume_kind === "mac" ? "Mac" : t("common.volume");
+  micGain.value = String(gain);
+  micGainVal.textContent = String(gain);
   const live = !!(state.roomRtc && state.roomRtc.isLive());
-  $("micToggle").classList.toggle("live", live);
-  $("micToggle").classList.toggle("on", live || !!room.mic_on);
-  $("micToggle").setAttribute("aria-label", live ? t("common.micOff") : t("common.micOn"));
+  const micToggle = $("micToggle");
+  if (micToggle) {
+    micToggle.classList.toggle("live", live);
+    micToggle.classList.toggle("on", live || !!room.mic_on);
+    micToggle.setAttribute("aria-label", live ? t("common.micOff") : t("common.micOn"));
+  }
   if ($("micToggleLabel")) $("micToggleLabel").textContent = live ? t("common.micOff") : t("common.micOn");
-  $("micGainRow").hidden = !live;
+  if ($("micGainRow")) $("micGainRow").hidden = !live;
+  const micHint = $("micHint");
+  if (!micHint) return;
   if (!live && !room.mic_on) {
-    if (!$("micHint").dataset.hold) $("micHint").textContent = "";
+    if (!micHint.dataset.hold) micHint.textContent = "";
   } else if (live) {
-    $("micHint").textContent = room.mic_on ? t("phone.mic.liveTv") : t("phone.mic.linking");
+    micHint.textContent = room.mic_on ? t("phone.mic.liveTv") : t("phone.mic.linking");
   }
 }
 
 export function postMix(body) {
-  const code = $("room").value.trim().toUpperCase();
+  const roomEl = $("room");
+  const code = roomEl ? roomEl.value.trim().toUpperCase() : "";
   if (!code) return;
   return fetchJson(`/api/rooms/${code}/mix`, {
     method: "POST",
@@ -68,6 +82,7 @@ export function postMix(body) {
 
 export function bindMixSlider(id, key) {
   const el = $(id);
+  if (!el) return;
   const slide = () => {
     $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
     clearTimeout(state.mixTimer);
@@ -86,7 +101,7 @@ export function bindMix() {
       postMix({ lyric_mode: btn.dataset.lyricMode });
     };
   });
-  $("vocalMix").onclick = () => {
+  if ($("vocalMix")) $("vocalMix").onclick = () => {
     const next = $("vocalMix").classList.contains("on") ? 0 : 1;
     paintVocalMix(next);
     fetch(`/api/rooms/${$("room").value}/mix`, {
@@ -95,7 +110,7 @@ export function bindMix() {
       body: JSON.stringify({ vocal_mix: next }),
     });
   };
-  $("skip").onclick = async () => {
+  if ($("skip")) $("skip").onclick = async () => {
     const code = $("room").value.trim().toUpperCase();
     $("room").value = code;
     if (!code) {

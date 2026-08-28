@@ -10,7 +10,7 @@ import { bindSearch, paintSearchHits } from "./search/js/hits.js";
 import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin } from "./room/js/join.js";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js";
+import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=mix2";
 import { bindRoomRtc } from "./room/js/rtc.js";
 import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
@@ -70,10 +70,10 @@ bindPhoneMic();
 bindLearn();
 
 setInterval(() => {
-  if (!$must("page-desk").hidden) {
-    loadRoom();
-    loadSongs();
-  }
+  const desk = document.getElementById("page-desk");
+  if (!desk || desk.hidden) return;
+  loadRoom();
+  loadSongs();
 }, 2000);
 
 const bootHash = (location.hash || "").replace("#", "");

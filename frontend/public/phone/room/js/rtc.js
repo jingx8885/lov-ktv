@@ -4,7 +4,7 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
-import { paintMix } from "./mix.js";
+import { paintMix } from "./mix.js?v=mix2";
 
 export function connectRoomRtc(code) {
   code = String(code || "").trim().toUpperCase();
@@ -29,42 +29,48 @@ export function connectRoomRtc(code) {
     },
     onState: (rtcState) => {
       if (!state.roomRtc.isLive()) return;
-      if (rtcState === "connected") $("micHint").textContent = t("phone.mic.liveTv");
-      else if (rtcState === "failed") $("micHint").textContent = t("phone.mic.tvFail");
+      const micHint = $("micHint");
+      if (!micHint) return;
+      if (rtcState === "connected") micHint.textContent = t("phone.mic.liveTv");
+      else if (rtcState === "failed") micHint.textContent = t("phone.mic.tvFail");
     },
   });
 }
 
 export function bindRoomRtc() {
-  $("micToggle").onclick = async () => {
-    const code = $("room").value.trim().toUpperCase();
+  const micToggle = $("micToggle");
+  if (!micToggle) return;
+  micToggle.onclick = async () => {
+    const roomEl = $("room");
+    const code = roomEl ? roomEl.value.trim().toUpperCase() : "";
     if (!code) {
       openOverlay("roomSheet");
       return showToast(t("phone.mic.needRoom"));
     }
     connectRoomRtc(code);
-    const btn = $("micToggle");
+    const btn = micToggle;
+    const micHint = $("micHint");
     btn.disabled = true;
-    $("micHint").dataset.hold = "1";
+    if (micHint) micHint.dataset.hold = "1";
     try {
       if (state.roomRtc && state.roomRtc.isLive()) {
         await state.roomRtc.stopMic();
-        $("micHint").textContent = "";
+        if (micHint) micHint.textContent = "";
       } else {
         api.stopPhoneMic();
-        $("micHint").textContent = t("phone.mic.allow");
+        if (micHint) micHint.textContent = t("phone.mic.allow");
         await state.roomRtc.startMic();
-        $("micHint").textContent = t("phone.mic.phoneOut");
+        if (micHint) micHint.textContent = t("phone.mic.phoneOut");
       }
     } catch (err) {
-      $("micHint").textContent = LovMic.micErrorText(err);
+      if (micHint) micHint.textContent = LovMic.micErrorText(err);
     } finally {
-      delete $("micHint").dataset.hold;
+      if (micHint) delete micHint.dataset.hold;
       btn.disabled = false;
       const live = !!(state.roomRtc && state.roomRtc.isLive());
       btn.classList.toggle("live", live);
       btn.classList.toggle("on", live);
-      $("micGainRow").hidden = !live;
+      if ($("micGainRow")) $("micGainRow").hidden = !live;
       btn.setAttribute("aria-label", live ? t("common.micOff") : t("common.micOn"));
     }
   };
