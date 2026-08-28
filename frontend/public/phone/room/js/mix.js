@@ -24,7 +24,7 @@ export function paintLyricMode(mode, language) {
   if (language != null) state.nowLanguage = String(language || "");
   applyLyricMode(document.body, next);
   const jaLabel = state.nowLanguage === "ja" ? t("phone.lyric.ja") : t("phone.lyric.src");
-  document.querySelectorAll("[data-lyric-mode]").forEach((btn) => {
+  document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.lyricMode === next);
     if (btn.dataset.lyricMode === "ja") btn.textContent = jaLabel;
   });
@@ -80,7 +80,7 @@ export function bindMixSlider(id, key) {
 export function bindMix() {
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
-  document.querySelectorAll("[data-lyric-mode]").forEach((btn) => {
+  document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
     btn.onclick = () => {
       paintLyricMode(btn.dataset.lyricMode);
       postMix({ lyric_mode: btn.dataset.lyricMode });

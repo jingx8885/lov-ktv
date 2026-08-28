@@ -38,8 +38,8 @@ from lovktv.jobs import process_import, process_realign, process_upload, resume_
 from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
+from lovktv import store
 from lovktv.store import (
-    DB_PATH,
     bump,
     confirm_login_ticket,
     consume_confirmed_ticket,
@@ -171,7 +171,7 @@ def api_host(request: Request) -> dict:
         "models": model_status(),
         "oss": oss_status(),
         "agent": agent_status(),
-        "database": db_dialect(DB_PATH),
+        "database": db_dialect(store.DB_PATH),
     }
 
 
