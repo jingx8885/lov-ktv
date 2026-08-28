@@ -450,11 +450,15 @@ def _resolve_bilibili_source(song_id: str, title: str = "", artist: str = "") ->
 def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
     """Mugen is handled by the caller. Then Bilibili → SoundCloud → NetEase → YouTube."""
     cached = peek_audio_source(song_id)
-    if cached.get("kind") in {"bilibili", "netease", "ytdlp"}:
+    if cached.get("kind") == "bilibili":
+        return cached
+    bili = _resolve_bilibili_source(song_id, title, artist)
+    if bili:
+        return bili
+    if cached.get("kind") in {"netease", "ytdlp"}:
         return cached
     return (
-        _resolve_bilibili_source(song_id, title, artist)
-        or _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
+        _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
         or _resolve_netease_source(song_id, title)
         or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
     )

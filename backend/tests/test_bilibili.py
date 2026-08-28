@@ -70,6 +70,23 @@ def test_pick_mv_uses_ranked_search(monkeypatch):
     assert hit["bvid"] == "BV1UZhK61E9z"
 
 
+def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
+    fetch._AUDIO_CACHE.clear()
+    fetch.remember_audio_source(
+        "186016",
+        {"kind": "ytdlp", "page": "https://youtube.com/watch?v=wrong", "title": "花海 DJ", "provider": "youtube"},
+    )
+    monkeypatch.setattr(
+        fetch,
+        "pick_bilibili_mv",
+        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+    )
+    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
+    assert source["kind"] == "bilibili"
+    assert source["bvid"] == "BV1UZhK61E9z"
+
+
 def test_resolve_prefers_bilibili(monkeypatch):
     fetch._AUDIO_CACHE.clear()
     monkeypatch.setattr(

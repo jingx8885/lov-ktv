@@ -57,6 +57,9 @@ def headers(referer: str = PAGE_ORIGIN + "/") -> dict[str, str]:
     }
 
 
+SEARCH_REFERER = "https://search.bilibili.com/"
+
+
 def api_get(url: str, timeout: float = 12) -> dict[str, Any]:
     req = urllib.request.Request(url, headers=headers())
     with urlopen(req, timeout=timeout) as resp:
@@ -108,14 +111,21 @@ def search_videos(query: str, count: int = 20) -> list[dict[str, Any]]:
             "page_size": max(1, min(int(count), 30)),
         }
     )
-    try:
-        payload = api_get(url)
-    except Exception:
-        return []
-    if int(payload.get("code") or 0) != 0:
-        return []
-    raw = (payload.get("data") or {}).get("result") or []
-    if not isinstance(raw, list):
+    raw: list[Any] = []
+    for _attempt in range(2):
+        try:
+            req = urllib.request.Request(url, headers=headers(SEARCH_REFERER))
+            with urlopen(req, timeout=12) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict) or int(payload.get("code") or 0) != 0:
+            continue
+        result = (payload.get("data") or {}).get("result") or []
+        if isinstance(result, list) and result:
+            raw = result
+            break
+    if not raw:
         return []
     out: list[dict[str, Any]] = []
     for item in raw:
