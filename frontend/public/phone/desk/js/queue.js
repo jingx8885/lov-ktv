@@ -13,6 +13,7 @@ export async function loadRoom() {
     }
     return;
   }
+  /** @type {Room} */
   const room = await fetch(`/api/rooms/${code}`).then((r) => r.json());
   $("roomState").textContent = `房间 ${room.code} · 已点 ${room.queue.length}`;
   paintTopRoom(room.code);
@@ -43,13 +44,13 @@ export async function loadRoom() {
     const ready = item.status === "ready";
     return `
         <div class="desk-row ${playing ? "on" : ""}">
-          <span class="desk-avatar ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1).padStart(2, "0")}</span>
+          <span class="desk-index ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1)}</span>
           <div class="desk-copy">
             <b>${escapeHtml(item.title)}</b>
             <span class="tiny">${playing ? "正在唱" : (ready ? "下一首排队" : (STATUS[item.status] || item.status))}</span>
           </div>
           <div class="desk-actions">
-            <button class="icon-btn ${playing ? "primary" : ""}" data-play="${item.id}" aria-label="唱这首">${ICO.play}</button>
+            <button class="row-action ${playing ? "on" : "ghost"}" data-play="${item.id}" aria-label="唱这首">${ICO.play}</button>
           </div>
         </div>`;
   }).join("") || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>还没点歌</p><button class="btn primary" type="button" data-go-lib>去曲库加点</button></div>`;

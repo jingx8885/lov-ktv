@@ -2,7 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { openOverlay } from "../../ui/js/overlays.js";
+import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
 
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
@@ -28,6 +28,7 @@ export function paintMix(room) {
   $("micToggle").classList.toggle("live", live);
   $("micToggle").classList.toggle("on", live || !!room.mic_on);
   $("micToggle").setAttribute("aria-label", live ? "关麦" : "开麦");
+  if ($("micToggleLabel")) $("micToggleLabel").textContent = live ? "关麦" : "开麦";
   $("micGainRow").hidden = !live;
   if (!live && !room.mic_on) {
     if (!$("micHint").dataset.hold) $("micHint").textContent = "";
@@ -86,6 +87,7 @@ export function bindMix() {
       $("roomState").textContent = now
         ? `房间 ${room.code} · 正在唱 ${now.title}`
         : `房间 ${room.code} · 队列空`;
+      closeOverlay("mixSheet");
       api.showPage("desk", null, false);
       await api.loadRoom();
     } finally {

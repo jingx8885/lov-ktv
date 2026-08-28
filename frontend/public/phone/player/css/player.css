@@ -195,7 +195,7 @@ button.tl-head {
   gap: 8px;
 }
 .player-list > .list-row + .list-row {
-  box-shadow: inset 12px 1px 0 var(--separator);
+  box-shadow: none;
 }
 .player-pick.on { background: rgba(255, 55, 95, .1); }
 .player-pick b { font-size: 15px; font-weight: 400; }

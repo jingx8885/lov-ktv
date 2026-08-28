@@ -61,6 +61,7 @@ export async function loadSongs() {
     page: String(state.libState.page),
     count: "8",
   });
+  /** @type {SongListPage | null} */
   const data = await fetch("/api/songs?" + params.toString()).then((r) => r.json()).catch(() => null);
   if (!data) return;
   const songs = data.songs || [];
@@ -97,9 +98,9 @@ export async function loadSongs() {
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
-            ${canPlay ? `<button class="icon-btn primary" data-queue="${song.id}" aria-label="点歌">${ICO.plus}</button>` : ""}
-            ${canRetry ? `<button class="icon-btn" data-retry="${song.id}" aria-label="重试">${ICO.listen}</button>` : ""}
-            ${canDelete ? `<button class="icon-btn ghost" data-del="${song.id}" aria-label="删除">${ICO.trash}</button>` : ""}
+            ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="点歌">${ICO.plus}</button>` : ""}
+            ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="重试">${ICO.listen}</button>` : ""}
+            ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="删除">${ICO.trash}</button>` : ""}
           </div>
         </div>`;
   }).join("") || emptyHint;

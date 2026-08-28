@@ -1,7 +1,7 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state, SEARCH_EMPTY } from "../../state.js";
-import { ICO, songInitial } from "../../ui/js/icons.js";
+import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { stopPreview, togglePreview } from "./preview.js";
 
@@ -62,13 +62,12 @@ export function searchCard(hit) {
   ].filter(Boolean);
   return `
         <article class="list-row">
-          <span class="list-cover ${isMv ? "mv" : ""}">${escapeHtml(songInitial(hit.title))}</span>
           <div class="list-copy">
             <b>${escapeHtml(hit.title)}</b>
             <span class="tiny">${bits.join(" · ")}</span>
           </div>
-          ${hit.id ? `<button type="button" class="icon-btn ghost list-preview" data-preview="${escapeHtml(hit.id)}" aria-label="试听">${ICO.play}</button>` : ""}
-          <button type="button" class="icon-btn primary list-add" data-import='${JSON.stringify(hit)}' aria-label="加入曲库">${ICO.plus}</button>
+          ${hit.id ? `<button type="button" class="row-action ghost list-preview" data-preview="${escapeHtml(hit.id)}" aria-label="试听">${ICO.play}</button>` : ""}
+          <button type="button" class="row-action list-add" data-import='${JSON.stringify(hit)}' aria-label="加入曲库">${ICO.plus}</button>
         </article>`;
 }
 
@@ -102,6 +101,7 @@ export async function runSearch(page, append = false) {
     moreBtn.textContent = "加载中…";
   }
   const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
+  /** @type {SearchPage} */
   const data = await res.json();
   if (!res.ok) {
     if (append && moreBtn) {

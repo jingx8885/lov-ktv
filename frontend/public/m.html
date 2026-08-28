@@ -11,10 +11,10 @@
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
   <link rel="stylesheet" href="/shared/ui/css/base.css?v=split1" />
   <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split1" />
-  <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split1" />
-  <link rel="stylesheet" href="/phone/search/css/search.css?v=split1" />
-  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split1" />
-  <link rel="stylesheet" href="/phone/player/css/player.css?v=split1" />
+  <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split4" />
+  <link rel="stylesheet" href="/phone/search/css/search.css?v=split5" />
+  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split5" />
+  <link rel="stylesheet" href="/phone/player/css/player.css?v=split3" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css?v=split1" />
 </head>
 <body class="phone">
@@ -42,10 +42,10 @@
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10.6L6.7 5.3 5.3 6.7 10.6 12l-5.3 5.3 1.4 1.4L12 13.4l5.3 5.3 1.4-1.4L13.4 12l5.3-5.3-1.4-1.4z"/></svg>
             </button>
           </div>
+          <button class="search-upload" id="openUpload" type="button" aria-label="本地入库">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l4.2 4.2-1.4 1.4L13 6.8V14h-2V6.8L9.2 8.6 7.8 7.2 12 3zM5 16h14v2H5v-2z"/></svg>
+          </button>
           <button class="search-cancel" id="searchCancel" type="button" hidden>取消</button>
-        </div>
-        <div class="search-meta">
-          <button class="search-upload" id="openUpload" type="button">本地入库</button>
         </div>
       </div>
       <audio id="preview" preload="none"></audio>
@@ -67,8 +67,22 @@
             <div><b>还没在唱</b><p class="tiny">从曲库点一首</p></div>
           </div>
         </div>
-        <button class="icon-btn ghost" id="nowMore" type="button" aria-label="房间控制">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 10a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4zm6 0a2 2 0 110 4 2 2 0 010-4z"/></svg>
+        <button class="icon-btn ghost" id="nowMore" type="button" aria-label="音量">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4V9zm12.2 1.2a4 4 0 010 3.6l-1.5-.8a2.2 2.2 0 000-2zM18 7.2a7 7 0 010 9.6l-1.4-.9a5.2 5.2 0 000-7.8z"/></svg>
+        </button>
+      </div>
+      <div class="now-tools">
+        <button class="now-act" id="skip" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
+          切歌
+        </button>
+        <button class="now-act" id="vocalMix" type="button" aria-label="当前伴奏，点按切到原唱">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
+          <em id="vocalMixLabel">伴奏</em>
+        </button>
+        <button class="now-act" id="micToggle" type="button" aria-label="开麦">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
+          <em id="micToggleLabel">开麦</em>
         </button>
       </div>
       <div class="desk-sheet">
@@ -288,19 +302,7 @@
       <button type="button" class="overlay-backdrop" data-close-sheet="mixSheet" aria-label="关闭"></button>
       <div class="sheet" role="dialog" aria-labelledby="mixSheetTitle">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2 id="mixSheetTitle">房间控制</h2>
-        <div class="now-tools">
-          <button class="icon-btn" id="skip" type="button" aria-label="切歌">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
-          </button>
-          <button class="icon-btn" id="vocalMix" type="button" aria-label="当前伴奏，点按切到原唱">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
-            <em id="vocalMixLabel">伴奏</em>
-          </button>
-          <button class="icon-btn" id="micToggle" type="button" aria-label="开麦">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
-          </button>
-        </div>
+        <h2 id="mixSheetTitle">音量</h2>
         <div class="now-mix">
           <label class="mix-row">
             <span id="hostVolLabel">音量</span>
@@ -334,6 +336,6 @@
   <script src="/shared/audio/js/bands.js?v=wave8"></script>
   <script src="/phone/player/js/timeline.js?v=tl7"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/phone/app.js?v=split1"></script>
+  <script type="module" src="/phone/app.js?v=split5"></script>
 </body>
 </html>
