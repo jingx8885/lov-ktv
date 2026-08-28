@@ -35,6 +35,15 @@ def test_expand_splits_multi_kanji_okurigana():
     assert specs == [("はしり", "走"), ("つづけ", "続"), ("る", "")]
 
 
+def test_expand_does_not_copy_kanji_label_onto_okurigana():
+    specs = expand_units([{"sing": "見つめている", "label": "見"}])
+    assert ("みつめ", "見") in specs or specs[0][1] == "見"
+    assert all(label != "見" for piece, label in specs[1:])
+    specs = expand_units([{"sing": "迷わず", "label": "迷"}])
+    assert specs[0][1] == "迷"
+    assert all(label != "迷" for piece, label in specs[1:])
+
+
 def test_expand_keeps_etymology_kanji_on_sung_kana():
     assert expand_units([{"sing": "もがいてる", "label": "藻掻", "romaji": "mogaiteru"}]) == [
         ("もがいてる", "藻掻")

@@ -353,9 +353,9 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
                 specs.extend(leftover)
                 continue
         if _KANJI.search(sing):
-            leftover = ja_token_specs(sing)
-            for piece, fallback in leftover:
-                specs.append((piece, label if label and fallback else (label or fallback)))
+            leftover = _merge_plain_kana(ja_token_specs(sing))
+            for index, (piece, fallback) in enumerate(leftover):
+                specs.append((piece, fallback or (label if index == 0 else "")))
             continue
         if label or _is_katakana(surface) or str(unit.get("romaji") or "").strip():
             specs.append((surface, label))
