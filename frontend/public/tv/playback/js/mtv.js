@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
-import { mediaUrl } from "./mix.js";
+import { mediaUrl } from "./mix.js?v=stall1";
 
 export function silenceMtv(mtv) {
   mtv.muted = true;

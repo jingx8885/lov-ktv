@@ -63,4 +63,9 @@ interface TvState {
   keepAliveSrc: string;
   keepAliveTone: KeepAliveTone | null;
   playRetryTimer: number;
+  resumeAt: number;
+  emptyNow: number;
+  mediaStall: number;
+  mediaFallback: string;
+  lastRecoverAt: number;
 }

@@ -32,4 +32,9 @@ export const state = guardState({
   keepAliveSrc: "",
   keepAliveTone: null,
   playRetryTimer: 0,
+  resumeAt: 0,
+  emptyNow: 0,
+  mediaStall: 0,
+  mediaFallback: "",
+  lastRecoverAt: 0,
 }, "tv");

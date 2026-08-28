@@ -1,14 +1,14 @@
-import "./install.js";
+import "./install.js?v=stall1";
 import { bootI18n, onLangChange, applyDom } from "../shared/i18n/js/i18n.js";
 import { $must } from "../shared/ui/js/dom.js";
 import { fetchJson } from "../shared/ui/js/http.js";
 import { state } from "./state.js";
 import { bootAuth, roomCode, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
-import { bindRoomRtc } from "./audio/js/mic.js";
-import { applyMix } from "./playback/js/mix.js";
-import { tick, startPlayback, stopPlayback, pauseAudio, pageVisible } from "./playback/js/tick.js";
-import { paint } from "./playback/js/lyrics.js";
+import { bindRoomRtc } from "./audio/js/mic.js?v=stall1";
+import { applyMix } from "./playback/js/mix.js?v=stall1";
+import { tick, startPlayback, stopPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js?v=stall1";
+import { paint } from "./playback/js/lyrics.js?v=stall1";
 
 bootI18n();
 onLangChange(() => {
@@ -40,14 +40,14 @@ $must("start").onclick = () => {
 document.addEventListener("pointerdown", () => {
   unlockAudio();
   const karaoke = $must("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke.paused) {
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && wantsResume(karaoke)) {
     startPlayback();
   }
 });
 document.addEventListener("keydown", () => {
   unlockAudio();
   const karaoke = $must("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke.paused) {
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && wantsResume(karaoke)) {
     startPlayback();
   }
 });
@@ -79,7 +79,15 @@ $must("toggle").onclick = async () => {
   state.room = data;
   applyMix();
 };
-$must("karaoke").addEventListener("ended", () => $must("skip").click());
+$must("karaoke").addEventListener("ended", () => {
+  const karaoke = $must("karaoke");
+  if (songReallyEnded(karaoke)) {
+    $must("skip").click();
+    return;
+  }
+  restoreResume(karaoke);
+  if (state.armed && state.room && state.room.now_playing) startPlayback();
+});
 
 bootAuth().then(() => {
   bindRoomRtc(state.room.code);

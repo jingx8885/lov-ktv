@@ -49,9 +49,9 @@ export function prefetchQueue(snap) {
     urls.push(`/media/${songId}/skeleton.json`);
   };
   const now = snap && snap.now_playing;
-  if (now && now.status === "ready") add(now.song_id);
+  const nowId = now && now.status === "ready" ? now.song_id : "";
   ((snap && snap.queue) || []).forEach((item) => {
-    if (item && item.status === "ready") add(item.song_id);
+    if (item && item.status === "ready" && item.song_id !== nowId) add(item.song_id);
   });
   urls.slice(0, 12).forEach(prefetchUrl);
 }

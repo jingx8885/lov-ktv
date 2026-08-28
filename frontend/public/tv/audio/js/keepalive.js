@@ -2,6 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { liveCtxs, resumeCtxs } from "./unlock.js";
+import { wantsResume } from "../../playback/js/tick.js?v=stall1";
 
 export function makeQuietLoop() {
   const sr = 44100;
@@ -70,7 +71,7 @@ export function startKeepAlive() {
     pumpKeepAlive();
     const now = state.room && state.room.now_playing;
     const karaoke = $("karaoke");
-    if (now && now.status === "ready" && karaoke && karaoke.paused && api.pageVisible() && state.isLeader) {
+    if (now && now.status === "ready" && wantsResume(karaoke) && api.pageVisible() && state.isLeader) {
       api.startPlayback();
     }
   }, 1500);
@@ -89,6 +90,10 @@ export function schedulePlayRetries() {
     }
     if (karaoke && !karaoke.paused && karaoke.getAttribute("src")) {
       $("gate").hidden = true;
+      state.playRetryTimer = 0;
+      return;
+    }
+    if (!wantsResume(karaoke)) {
       state.playRetryTimer = 0;
       return;
     }

@@ -2,7 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js?v=paint2";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
-import { syncVocal } from "./mix.js";
+import { syncVocal } from "./mix.js?v=stall1";
 
 export function ensureStageFx() {
   if (state.stageFx || !window.LovStageFx) return state.stageFx;

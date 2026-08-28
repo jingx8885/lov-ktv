@@ -1,6 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
+import { wantsResume } from "../../playback/js/tick.js?v=stall1";
 
 export function micGainValue() {
   const hostMac = state.room && state.room.host_volume_kind === "mac";
@@ -64,7 +65,7 @@ export function bindRoomRtc(code) {
         if (state.lastItem !== (now.id || now.song_id)) api.tick();
         else if (api.pageVisible() && state.isLeader) {
           const karaoke = $("karaoke");
-          if (karaoke && karaoke.paused) api.startPlayback();
+          if (wantsResume(karaoke)) api.startPlayback();
         }
       }
     },
