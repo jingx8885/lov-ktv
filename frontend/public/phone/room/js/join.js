@@ -21,12 +21,14 @@ export async function joinRoom(openScreen, quiet) {
   try {
     if (!code) {
       const created = await fetchJson("/api/rooms", { method: "POST" });
+      if (!created.ok || !created.data.code) throw new Error(created.data.detail || "开房失败");
       code = created.data.code;
     }
     $("room").value = code;
     localStorage.setItem("room", code);
-    /** @type {{ data: Room }} */
-    const { data: room } = await fetchJson("/api/rooms/" + code);
+    /** @type {{ ok: boolean, data: Room }} */
+    const { ok, data: room } = await fetchJson("/api/rooms/" + code);
+    if (!ok || !room.code) throw new Error(room.detail || "进房失败");
     $("roomState").textContent = `已进房 ${room.code} · 队列 ${room.queue.length}`;
     $("openTv").href = tvUrl(room.code);
     paintTopRoom(room.code);

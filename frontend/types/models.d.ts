@@ -46,6 +46,7 @@ interface Room {
   mic_gain?: number;
   mic_on?: boolean;
   host_volume_kind?: string;
+  detail?: string;
 }
 
 interface LyricToken {

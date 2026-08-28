@@ -60,8 +60,9 @@ export function stopPlayback() {
 export async function tick() {
   const code = roomCode() || (state.room && state.room.code);
   if (!code) return;
-  /** @type {{ data: Room }} */
+  /** @type {{ ok: boolean, data: Room }} */
   const roomHit = await fetchJson("/api/rooms/" + code);
+  if (!roomHit.ok || !roomHit.data || !roomHit.data.code) return;
   state.room = roomHit.data;
   localStorage.setItem("tvRoom", state.room.code);
   prefetchQueue(state.room);
@@ -179,11 +180,4 @@ export function startPlayback() {
   api.playEl(vocal).catch(() => {});
   api.playEl($("mtv")).catch(() => {});
 }
-
-api.pageVisible = pageVisible;
-api.canPlay = canPlay;
-api.tick = tick;
-api.startPlayback = startPlayback;
-api.stopPlayback = stopPlayback;
-api.pauseAudio = pauseAudio;
 

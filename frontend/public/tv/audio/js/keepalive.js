@@ -105,6 +105,3 @@ export function schedulePlayRetries() {
   n += 1;
 }
 
-api.startKeepAlive = startKeepAlive;
-api.schedulePlayRetries = schedulePlayRetries;
-

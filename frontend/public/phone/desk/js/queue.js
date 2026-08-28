@@ -14,8 +14,9 @@ export async function loadRoom() {
     }
     return;
   }
-  /** @type {{ data: Room }} */
-  const { data: room } = await fetchJson(`/api/rooms/${code}`);
+  /** @type {{ ok: boolean, data: Room }} */
+  const { ok, data: room } = await fetchJson(`/api/rooms/${code}`);
+  if (!ok || !room.code) return;
   $("roomState").textContent = `房间 ${room.code} · 已点 ${room.queue.length}`;
   paintTopRoom(room.code);
   const now = room.now_playing;

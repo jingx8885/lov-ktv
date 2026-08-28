@@ -48,8 +48,9 @@ $must("skip").onclick = async () => {
   if (!code) return;
   $must("skip").disabled = true;
   try {
-    /** @type {{ data: Room }} */
-    const { data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
+    /** @type {{ ok: boolean, data: Room }} */
+    const { ok, data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
+    if (!ok || !data.code) return;
     state.room = data;
     if (!state.room.now_playing) stopPlayback();
     else state.lastItem = "";

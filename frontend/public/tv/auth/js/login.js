@@ -80,10 +80,13 @@ export async function bootAuth() {
     document.body.classList.add("androidtv");
   }
   const wanted = roomCode();
-  /** @type {{ data: Room }} */
+  /** @type {{ ok: boolean, data: Room }} */
   const roomRes = wanted
     ? await fetchJson("/api/rooms/" + wanted)
     : await fetchJson("/api/rooms", { method: "POST" });
+  if (!roomRes.ok || !roomRes.data || !roomRes.data.code) {
+    throw new Error((roomRes.data && roomRes.data.detail) || "开房失败");
+  }
   state.room = roomRes.data;
   localStorage.setItem("tvRoom", state.room.code);
   $("code").textContent = state.room.code;
