@@ -1,13 +1,13 @@
 .tv { position: relative; min-height: 100vh; overflow: hidden; background: var(--bg); }
 #mtv {
-  position: fixed; inset: 0; width: 100%; height: 100%;
-  object-fit: cover; z-index: 0; opacity: 0; pointer-events: none !important;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; z-index: 0; opacity: .01; pointer-events: none !important;
 }
 .tv.has-mtv #mtv { opacity: .78; }
 .tv.has-native-mv #mtv { opacity: 1; }
 .tv.has-mtv::after {
   content: "";
-  position: fixed; inset: 0; z-index: 1; pointer-events: none !important;
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 1; pointer-events: none !important;
   background: linear-gradient(180deg, rgba(11,16,32,.62) 0%, rgba(11,16,32,.22) 42%, rgba(11,16,32,.78) 100%);
 }
 .tv.has-native-mv::after { display: none; }
@@ -15,14 +15,19 @@
 .tv.has-native-mv .party-fx { display: none !important; }
 .tv.has-native-mv .lyrics {
   min-height: 0;
+  align-items: end;
+  justify-items: center;
   place-items: end center;
-  padding-bottom: 4px;
+  padding-bottom: 28px;
 }
 .tv.has-native-mv .lyrics .prev { display: none; }
 .stage-fx,
 .party-fx {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none !important;
@@ -90,13 +95,17 @@
   padding: 10px;
   box-shadow: 0 10px 32px rgba(0,0,0,.55);
 }
-.qrbox .qr svg, .qrbox .qr img, .qrbox .qr canvas {
+.qrbox .qr svg, .qrbox .qr img, .qrbox .qr canvas, .qrbox .qr table {
   width: 100%;
   height: 100%;
   display: block;
 }
+.qrbox .qr table {
+  border-collapse: collapse;
+  margin: 0 !important;
+}
 .qrbox .qr-cap {
-  margin: 0;
+  margin: 8px 0 0;
   font-size: 15px;
   font-weight: 700;
   text-align: center;
@@ -110,6 +119,23 @@
   color: inherit;
   text-decoration: none;
 }
+.remote-hint {
+  display: none;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  text-shadow: 0 2px 10px rgba(0,0,0,.8);
+  color: #f4f1ea;
+}
+.tv.androidtv .remote-hint {
+  display: block;
+}
+.tv.androidtv .start-gate {
+  background: transparent;
+  z-index: 11;
+}
 .tv-ui header {
   padding-left: 228px;
   min-width: 0;
@@ -122,6 +148,7 @@
   background: none;
   color: inherit;
   font: inherit;
+  font-size: 28px;
   font-size: clamp(22px, 3.2vw, 42px);
   font-weight: 700;
   text-align: left;

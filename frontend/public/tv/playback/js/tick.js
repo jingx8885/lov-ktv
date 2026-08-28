@@ -6,7 +6,7 @@ import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js?v=stall1";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js?v=stall1";
-import { lyricsFingerprint, ensureStageFx } from "./lyrics.js?v=paint3";
+import { lyricsFingerprint, ensureStageFx } from "./lyrics.js?v=paint4";
 
 export function pageVisible() {
   return document.visibilityState === "visible";

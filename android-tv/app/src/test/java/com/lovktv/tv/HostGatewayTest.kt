@@ -54,7 +54,11 @@ class HostGatewayTest {
         assertEquals("http://192.168.1.8:8787", payload.origin)
         assertEquals("http://10.0.2.2:8787", payload.processOrigin)
         assertEquals("/m.html?room=EABAB5", payload.phonePath)
-        assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue3", payload.phoneUrl)
+        assertEquals(
+            "http://10.0.2.2:8787/m.html?room=EABAB5&v=queue3&lan=http%3A%2F%2F192.168.1.8%3A8787",
+            payload.phoneUrl,
+        )
+        assertEquals("EABAB5", payload.room)
         assertEquals(0, payload.cacheReady)
         assertEquals(18787, payload.micPort)
         assertEquals(48000, payload.micSampleRate)
@@ -62,6 +66,22 @@ class HostGatewayTest {
         assertTrue(json.contains("\"cache_ready\":0"))
         assertTrue(json.contains("\"mic_port\":18787"))
         assertTrue(json.contains("\"mic_sample_rate\":48000"))
+        assertTrue(json.contains("\"room\":\"EABAB5\""))
+    }
+
+    @Test
+    fun hostPayloadPhoneUrlUsesPublicProcessOrigin() {
+        val payload = HostGateway.hostPayload(
+            lanOrigin = "http://192.168.1.8:8788",
+            processOrigin = "https://ktv.lovbrowser.com",
+            room = "EABAB5",
+        )
+        assertEquals("http://192.168.1.8:8788", payload.origin)
+        assertEquals("https://ktv.lovbrowser.com", payload.processOrigin)
+        assertEquals(
+            "https://ktv.lovbrowser.com/m.html?room=EABAB5&v=queue3&lan=http%3A%2F%2F192.168.1.8%3A8788",
+            payload.phoneUrl,
+        )
     }
 
     @Test

@@ -1,5 +1,6 @@
-.lyrics { text-align: center; min-height: 40vh; display: grid; place-items: center; }
+.lyrics { text-align: center; min-height: 40vh; display: grid; align-items: center; justify-items: center; place-items: center; }
 .tv .lyrics > .lyric-plate {
+  max-width: 92vw;
   max-width: min(92vw, 1520px);
   padding: 20px 44px 24px;
   border-radius: 24px;
@@ -77,11 +78,13 @@ body.tv .lyric-plate.bare .line .lyric-zh {
     drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
 }
 body.tv .lyrics .line {
-  font-size: clamp(13px, 3.6vw, 17px);
+  font-size: 42px;
+  font-size: clamp(28px, 4.6vw, 58px);
 }
 body.tv .lyrics .prev,
 body.tv .lyrics .next {
-  font-size: 11px;
+  font-size: 24px;
+  font-size: clamp(18px, 2.8vw, 34px);
 }
 body.tv .lyrics .anno .roma {
   min-height: 1.15em;

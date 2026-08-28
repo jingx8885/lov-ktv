@@ -18,6 +18,10 @@ export function renderQr(url, target) {
     const qr = qrcode(0, "M");
     qr.addData(url);
     qr.make();
+    if (document.body.classList.contains("androidtv") && typeof qr.createImgTag === "function") {
+      box.innerHTML = qr.createImgTag(5, 0);
+      return;
+    }
     box.innerHTML = qr.createSvgTag(5, 0);
     return;
   }
@@ -31,6 +35,8 @@ export function roomCode() {
 export async function hostOrigin() {
   try {
     const { data } = await fetchJson("/api/host");
+    const process = data && data.process_origin ? String(data.process_origin).replace(/\/$/, "") : "";
+    if (process) return process;
     if (data && data.origin) return String(data.origin).replace(/\/$/, "");
   } catch (err) {}
   return location.origin;
@@ -99,10 +105,18 @@ export async function bootAuth() {
   if (!roomRes.ok || !roomRes.data || !roomRes.data.code) {
     throw new Error((roomRes.data && roomRes.data.detail) || t("tv.openFail"));
   }
-  state.room = roomRes.data;
   localStorage.setItem("tvRoom", state.room.code);
   $("code").textContent = state.room.code;
-  const url = (await hostOrigin()) + "/m.html?room=" + state.room.code + "&v=queue3";
+  let process = "";
+  let lan = "";
+  try {
+    const { data } = await fetchJson("/api/host");
+    process = data && data.process_origin ? String(data.process_origin).replace(/\/$/, "") : "";
+    lan = data && data.origin ? String(data.origin).replace(/\/$/, "") : "";
+  } catch (err) {}
+  const base = process || lan || (await hostOrigin());
+  let url = base + "/m.html?room=" + state.room.code + "&v=queue3";
+  if (lan && process && lan !== process) url += "&lan=" + encodeURIComponent(lan);
   $("phoneLink").href = url;
   renderQr(url);
   const user = await currentUser();

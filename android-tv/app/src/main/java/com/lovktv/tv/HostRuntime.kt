@@ -17,4 +17,7 @@ object HostRuntime {
 
     @Volatile
     var micPort: Int = 0
+
+    @Volatile
+    var roomCode: String = ""
 }

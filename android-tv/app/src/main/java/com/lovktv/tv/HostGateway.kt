@@ -25,13 +25,17 @@ data class HostInfo(
     val cacheReady: Int = 0,
     val micPort: Int = 0,
     val micSampleRate: Int = LanMic.SAMPLE_RATE,
+    val room: String = "",
 )
 
 object HostGateway {
-    fun phoneUrl(origin: String, room: String): String {
+    fun phoneUrl(origin: String, room: String, lanOrigin: String = ""): String {
         val base = origin.trim().trimEnd('/')
         val code = room.trim().uppercase()
-        return "$base/m.html?room=$code&v=queue3"
+        val url = "$base/m.html?room=$code&v=queue3"
+        val lan = lanOrigin.trim().trimEnd('/')
+        if (lan.isBlank() || lan.equals(base, ignoreCase = true)) return url
+        return "$url&lan=${java.net.URLEncoder.encode(lan, "UTF-8")}"
     }
 
     fun isLocalPath(path: String): Boolean {
@@ -75,9 +79,19 @@ object HostGateway {
     ): HostInfo {
         val origin = lanOrigin.trim().trimEnd('/')
         val process = processOrigin.trim().trimEnd('/')
+        val phoneBase = process.ifBlank { origin }
         val code = room.trim().uppercase()
         val phonePath = if (code.isEmpty()) "/m.html?room=" else "/m.html?room=$code"
-        val phone = if (code.isEmpty()) "$origin/m.html" else phoneUrl(origin, code)
+        val phone = if (code.isEmpty()) {
+            val suffix = if (origin.isNotBlank() && !origin.equals(phoneBase, ignoreCase = true)) {
+                "?lan=${java.net.URLEncoder.encode(origin, "UTF-8")}"
+            } else {
+                ""
+            }
+            "$phoneBase/m.html$suffix"
+        } else {
+            phoneUrl(phoneBase, code, origin)
+        }
         return HostInfo(
             origin = origin,
             processOrigin = process,
@@ -87,6 +101,7 @@ object HostGateway {
             cacheReady = cacheReady,
             micPort = micPort,
             micSampleRate = micSampleRate,
+            room = code,
         )
     }
 
@@ -100,7 +115,8 @@ object HostGateway {
             append("\"phone_url\":").append(quote(info.phoneUrl)).append(',')
             append("\"cache_ready\":").append(info.cacheReady).append(',')
             append("\"mic_port\":").append(info.micPort).append(',')
-            append("\"mic_sample_rate\":").append(info.micSampleRate)
+            append("\"mic_sample_rate\":").append(info.micSampleRate).append(',')
+            append("\"room\":").append(quote(info.room))
             append('}')
         }
     }

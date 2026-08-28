@@ -32,11 +32,30 @@
         android:textColor="#9AA3B5"
         android:textSize="14sp" />
 
+    <Button
+        android:id="@+id/scan"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:layout_marginTop="28dp"
+        android:backgroundTint="#FF4D8D"
+        android:text="@string/scan_join"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center"
+        android:text="@string/join_or_type"
+        android:textColor="#9AA3B5"
+        android:textSize="13sp" />
+
     <EditText
         android:id="@+id/room"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="12dp"
         android:background="#151B2E"
         android:hint="@string/room_hint"
         android:imeOptions="actionNext"
@@ -65,9 +84,9 @@
         android:layout_width="match_parent"
         android:layout_height="56dp"
         android:layout_marginTop="20dp"
-        android:backgroundTint="#FF4D8D"
+        android:backgroundTint="#151B2E"
         android:text="@string/enter_room"
-        android:textColor="#FFFFFF"
+        android:textColor="#F4F1EA"
         android:textSize="18sp" />
 
     <TextView

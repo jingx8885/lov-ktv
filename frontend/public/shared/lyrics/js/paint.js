@@ -81,7 +81,7 @@ function tokenHasAnno(tok) {
 export function clusterTokens(tokens) {
   const out = [];
   for (const tok of tokens || []) {
-    const cur = { ...tok, text: String(tok.text || "") };
+    const cur = Object.assign({}, tok, { text: String(tok.text || "") });
     const prev = out[out.length - 1];
     const join = prev
       && isKanaText(prev.text)
@@ -174,9 +174,14 @@ function tokenRoma(tok) {
 function rubyHtml(tok, keepRow) {
   const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
   if (reading && isKanjiText(tok.text) && !isKanjiText(reading)) {
-    return `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+    return `<span class="rt">${Array.from(reading).map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
   }
   return keepRow ? `<span class="rt"></span>` : "";
+}
+
+function karaokeSpan(text, p) {
+  const safe = escapeHtml(text);
+  return `<span class="rb"><span class="rb-base">${safe}</span><span class="rb-fill" style="width:${p}%">${safe}</span></span>`;
 }
 
 /** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
@@ -192,14 +197,14 @@ export function renderCue(cue, t, mode) {
   const keepZh = showExtra;
   const keepRt = showExtra && (script === "ja" || !script);
   if (!tokens.length) {
-    const body = escapeHtml(cueLine(cue));
+    const body = karaokeSpan(cueLine(cue), Math.round(tokenProgress(cue, t)));
     return keepZh
       ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>`
       : body;
   }
   const html = `<span class="line-words">${tokens.map((tok, i) => {
     const p = Math.round(tokenProgress(tok, t));
-    const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
+    const body = karaokeSpan(tok.text, p);
     const roma = keepRoma ? tokenRoma(tok) : "";
     const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
     const gloss = keepGloss && tok.zh ? String(tok.zh) : "";
@@ -250,11 +255,20 @@ export function paintLine(el, cue, t, slot, paint, empty, mode) {
   }
   if (paint[slot] !== id || skin !== "live") return;
   const toks = clusterTokens(cue.tokens || []);
-  el.querySelectorAll(".rb").forEach((node, i) => {
+  const fills = el.querySelectorAll(".rb-fill");
+  if (!toks.length && fills.length) {
+    const next = Math.round(tokenProgress(cue, t)) + "%";
+    fills.forEach((node) => {
+      const style = /** @type {HTMLElement} */ (node).style;
+      if (style.width !== next) style.width = next;
+    });
+    return;
+  }
+  fills.forEach((node, i) => {
     if (!toks[i]) return;
     const next = Math.round(tokenProgress(toks[i], t)) + "%";
     const style = /** @type {HTMLElement} */ (node).style;
-    if (style.getPropertyValue("--p") !== next) style.setProperty("--p", next);
+    if (style.width !== next) style.width = next;
   });
 }
 

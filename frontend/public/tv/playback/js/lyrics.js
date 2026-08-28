@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js?v=paint3";
+import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js?v=paint4";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js?v=stall1";
@@ -59,7 +59,7 @@ export function paint() {
   const now = state.room && state.room.now_playing;
   const mode = applyLyricMode(
     document.body,
-    state.room && state.room.lyric_mode,
+    (state.room && state.room.lyric_mode) || "all",
     now && now.language,
   );
   if (now && now.status === "ready") {

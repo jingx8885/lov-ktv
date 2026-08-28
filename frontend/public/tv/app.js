@@ -1,14 +1,14 @@
 import "./install.js?v=paint3";
 import { bootI18n, onLangChange, applyDom } from "../shared/i18n/js/i18n.js";
 import { $must } from "../shared/ui/js/dom.js";
-import { fetchJson } from "../shared/ui/js/http.js";
 import { state } from "./state.js";
-import { bootAuth, roomCode, renderUserChip } from "./auth/js/login.js";
+import { bootAuth, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
 import { bindRoomRtc } from "./audio/js/mic.js?v=paint3";
 import { applyMix } from "./playback/js/mix.js?v=stall1";
-import { tick, startPlayback, stopPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js?v=paint3";
-import { paint } from "./playback/js/lyrics.js?v=paint3";
+import { tick, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js?v=paint4";
+import { paint } from "./playback/js/lyrics.js?v=paint4";
+import { bindRemote, skipSong, toggleVocal } from "./playback/js/remote.js?v=paint3";
 
 bootI18n();
 onLangChange(() => {
@@ -51,47 +51,27 @@ document.addEventListener("keydown", () => {
     startPlayback();
   }
 });
-$must("skip").onclick = async () => {
-  const code = roomCode() || (state.room && state.room.code);
-  if (!code) return;
-  $must("skip").disabled = true;
-  try {
-    /** @type {{ ok: boolean, data: Room }} */
-    const { ok, data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
-    if (!ok || !data.code) return;
-    state.room = data;
-    if (!state.room.now_playing) stopPlayback();
-    else state.lastItem = "";
-    if (state.room.now_playing) $must("title").textContent = state.room.now_playing.title;
-    await tick();
-  } finally {
-    $must("skip").disabled = false;
-  }
-};
-$must("toggle").onclick = async () => {
-  const next = (state.room.vocal_mix || 0) > 0.5 ? 0 : 1;
-  /** @type {{ data: Room }} */
-  const { data } = await fetchJson("/api/rooms/" + (roomCode() || state.room.code) + "/mix", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ vocal_mix: next }),
-  });
-  state.room = data;
-  applyMix();
-};
+$must("skip").onclick = () => skipSong();
+$must("toggle").onclick = () => toggleVocal();
 $must("karaoke").addEventListener("ended", () => {
   const karaoke = $must("karaoke");
   if (songReallyEnded(karaoke)) {
-    $must("skip").click();
+    skipSong();
     return;
   }
   restoreResume(karaoke);
   if (state.armed && state.room && state.room.now_playing) startPlayback();
 });
+bindRemote();
 
 bootAuth().then(() => {
   bindRoomRtc(state.room.code);
   tick();
   setInterval(tick, 1500);
   requestAnimationFrame(paint);
+}).catch((err) => {
+  const code = document.getElementById("code");
+  const qr = document.getElementById("qr");
+  if (code) code.textContent = "开房失败";
+  if (qr) qr.textContent = (err && err.message) || "请按菜单键检查处理服务器";
 });

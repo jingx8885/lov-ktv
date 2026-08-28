@@ -23,9 +23,11 @@ class TvActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tv)
         webView = findViewById(R.id.webview)
-        val cookies = CookieManager.getInstance()
-        cookies.setAcceptCookie(true)
-        cookies.setAcceptThirdPartyCookies(webView, true)
+        runCatching {
+            val cookies = CookieManager.getInstance()
+            cookies.setAcceptCookie(true)
+            cookies.setAcceptThirdPartyCookies(webView, true)
+        }
 
         webView.setBackgroundColor(Color.parseColor("#0B1020"))
         webView.isFocusable = true
@@ -33,16 +35,30 @@ class TvActivity : Activity() {
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
-            databaseEnabled = true
+            databaseEnabled = false
             mediaPlaybackRequiresUserGesture = false
             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            cacheMode = WebSettings.LOAD_DEFAULT
+            cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = "$userAgentString LovKtvAndroidTV/1.0"
         }
-        webView.webChromeClient = WebChromeClient()
+        webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
+        webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
+                val msg = consoleMessage ?: return true
+                android.util.Log.e("lovktv-web", "${msg.message()} @${msg.sourceId()}:${msg.lineNumber()}")
+                return true
+            }
+        }
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                 return false
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                view?.evaluateJavascript(
+                    "(function(){var s=document.getElementById('start');if(s)s.click();})()",
+                    null,
+                )
             }
 
             override fun onReceivedError(
@@ -65,13 +81,17 @@ class TvActivity : Activity() {
             private var tries = 0
 
             override fun run() {
-                if (HostRuntime.ready || tries >= 40) {
+                if (HostRuntime.ready && HostRuntime.port in 1..65535) {
                     val port = HostRuntime.port
                     webView.loadUrl("http://127.0.0.1:$port/tv.html?androidtv=1")
                     return
                 }
                 tries += 1
-                webView.postDelayed(this, 100)
+                if (tries < 80) {
+                    webView.postDelayed(this, 100)
+                } else {
+                    Toast.makeText(this@TvActivity, getString(R.string.server_error), Toast.LENGTH_LONG).show()
+                }
             }
         })
     }
@@ -88,7 +108,20 @@ class TvActivity : Activity() {
             finish()
             return true
         }
+        if (event != null && RemoteKeys.interceptInNative(keyCode)) {
+            sendRemote(RemoteKeys.jsAction(keyCode) ?: return super.onKeyDown(keyCode, event))
+            return true
+        }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private fun sendRemote(action: String) {
+        val safe = action.replace(Regex("[^A-Za-z]"), "")
+        if (safe.isEmpty()) return
+        webView.evaluateJavascript(
+            "window.LovKtvRemote&&window.LovKtvRemote.$safe&&window.LovKtvRemote.$safe()",
+            null,
+        )
     }
 
     override fun onPause() {

@@ -7,6 +7,7 @@ object Prefs {
     private const val FILE = "lovktv-phone"
     private const val KEY_SERVER = "server_url"
     private const val KEY_ROOM = "room_code"
+    private const val KEY_LAN = "lan_url"
 
     fun serverUrl(context: Context): String {
         return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -20,11 +21,18 @@ object Prefs {
             .orEmpty()
     }
 
-    fun save(context: Context, server: String, room: String) {
+    fun lanUrl(context: Context): String {
+        return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_LAN, "")
+            .orEmpty()
+    }
+
+    fun save(context: Context, server: String, room: String, lan: String = "") {
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_SERVER, normalize(server))
             .putString(KEY_ROOM, room.trim().uppercase())
+            .putString(KEY_LAN, if (lan.isBlank()) "" else normalize(lan))
             .apply()
     }
 

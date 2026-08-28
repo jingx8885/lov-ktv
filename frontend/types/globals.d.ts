@@ -145,6 +145,15 @@ interface KeepAliveTone {
   gain: GainNode;
 }
 
+interface LovKtvRemoteApi {
+  skip(): void | Promise<void>;
+  toggleVocal(): void | Promise<void>;
+  volumeUp(): void | Promise<void>;
+  volumeDown(): void | Promise<void>;
+  confirm(): void;
+  start(): boolean;
+}
+
 interface Window {
   webkitAudioContext?: typeof AudioContext;
   webkitOfflineAudioContext?: typeof OfflineAudioContext;
@@ -153,6 +162,7 @@ interface Window {
   LovAec?: LovAecApi;
   LovTimeline?: LovTimelineApi;
   LovStageFx?: LovStageFxApi;
+  LovKtvRemote?: LovKtvRemoteApi;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
 }
 

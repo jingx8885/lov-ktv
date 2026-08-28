@@ -9,13 +9,14 @@ import android.widget.TextView
 
 class RowAdapter(
     private val inflater: LayoutInflater,
-    private val onAction: (Row) -> Unit,
+    private val onAction: (Row, String) -> Unit,
 ) : BaseAdapter() {
     data class Row(
         val key: String,
         val title: String,
         val meta: String,
         val action: String,
+        val action2: String = "",
         val enabled: Boolean = true,
         val payload: Any? = null,
     )
@@ -42,7 +43,16 @@ class RowAdapter(
         val button = view.findViewById<Button>(R.id.action)
         button.text = row.action
         button.isEnabled = row.enabled
-        button.setOnClickListener { onAction(row) }
+        button.setOnClickListener { onAction(row, row.action) }
+        val extra = view.findViewById<Button>(R.id.action2)
+        if (row.action2.isBlank()) {
+            extra.visibility = View.GONE
+        } else {
+            extra.visibility = View.VISIBLE
+            extra.text = row.action2
+            extra.isEnabled = row.enabled
+            extra.setOnClickListener { onAction(row, row.action2) }
+        }
         return view
     }
 }

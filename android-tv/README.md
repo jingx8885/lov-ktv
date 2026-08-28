@@ -22,9 +22,10 @@ APK：`/Volumes/外接硬盘/开发数据/android/apks/lov-ktv-tv-debug.apk`
 
 1. 电脑或 NAS 先跑处理端：`PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787`
 2. 电视首次填处理服务器，例如 `http://电脑局域网IP:8787`
-3. 电视出码后，手机扫码打开点歌页
+3. 电视出码后，手机扫码打开点歌页，或安装 `android-phone/` 进房
 4. 菜单键可改处理服务器地址
-5. 已唱过的歌会留在电视 `filesDir/media/`，断网后曲库只显示这些成品
+5. 遥控器：确认键切换原唱/伴唱，右键切歌，上下键调音量
+6. 已唱过的歌会留在电视 `filesDir/media/`，断网后曲库只显示这些成品
 
 `AndroidManifest` 声明 `leanback`，触摸屏 optional，允许局域网 HTTP。前台服务类型为 `dataSync`。
 

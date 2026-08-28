@@ -46,7 +46,9 @@ function detectLang() {
 /** @param {string} key @param {Record<string, string|number>} [vars] */
 export function t(key, vars) {
   const pack = PACKS[current] || zh;
-  let text = pack[key] ?? zh[key] ?? key;
+  let text = pack[key];
+  if (text == null) text = zh[key];
+  if (text == null) text = key;
   if (vars) {
     text = String(text).replace(/\{(\w+)\}/g, (_, name) => (
       vars[name] == null ? `{${name}}` : String(vars[name])

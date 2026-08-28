@@ -30,7 +30,7 @@ export async function fetchJson(url, opts) {
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", acceptLanguage());
   const mid = machineId();
   if (mid && !headers.has("X-LovKtv-Machine")) headers.set("X-LovKtv-Machine", mid);
-  const res = await fetch(url, { credentials: "same-origin", ...opts, headers });
+  const res = await fetch(url, Object.assign({}, opts || {}, { credentials: "same-origin", headers }));
   let data = {};
   try {
     data = await res.json();

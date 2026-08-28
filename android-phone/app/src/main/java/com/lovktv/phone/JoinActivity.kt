@@ -11,50 +11,76 @@ import android.widget.TextView
 
 class JoinActivity : Activity() {
     private val main = Handler(Looper.getMainLooper())
+    private lateinit var room: EditText
+    private lateinit var server: EditText
+    private lateinit var error: TextView
+    private lateinit var enter: Button
+    private lateinit var scan: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_join)
-        val room = findViewById<EditText>(R.id.room)
-        val server = findViewById<EditText>(R.id.server)
-        val error = findViewById<TextView>(R.id.error)
-        val enter = findViewById<Button>(R.id.enter)
+        room = findViewById(R.id.room)
+        server = findViewById(R.id.server)
+        error = findViewById(R.id.error)
+        enter = findViewById(R.id.enter)
+        scan = findViewById(R.id.scan)
         room.setText(Prefs.roomCode(this))
         server.setText(Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER })
+        scan.setOnClickListener { ScanActivity.start(this) }
         enter.setOnClickListener {
-            val code = room.text.toString().trim().uppercase()
-            val url = Prefs.normalize(server.text.toString())
-            if (code.isEmpty()) {
-                error.text = "先填房间码"
-                return@setOnClickListener
-            }
-            enter.isEnabled = false
-            error.text = "连接中…"
-            Thread({
-                try {
-                    val api = ApiClient(url)
-                    val host = api.host()
-                    api.room(code)
-                    Prefs.save(this, url, code)
-                    val micReady = HostParser.lanMicReady(host)
-                    main.post {
-                        startActivity(
-                            Intent(this, DeskActivity::class.java)
-                                .putExtra(DeskActivity.EXTRA_SERVER, url)
-                                .putExtra(DeskActivity.EXTRA_ROOM, code)
-                                .putExtra(DeskActivity.EXTRA_MIC_HOST, HostParser.hostFromOrigin(host.origin))
-                                .putExtra(DeskActivity.EXTRA_MIC_PORT, if (micReady) host.micPort else 0)
-                                .putExtra(DeskActivity.EXTRA_MIC_RATE, host.micSampleRate),
-                        )
-                        finish()
-                    }
-                } catch (exc: Exception) {
-                    main.post {
-                        enter.isEnabled = true
-                        error.text = exc.message ?: "进房失败"
-                    }
-                }
-            }, "lovktv-join").start()
+            joinRoom(room.text.toString(), server.text.toString())
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != ScanActivity.REQ || resultCode != RESULT_OK) return
+        val text = data?.getStringExtra(ScanActivity.EXTRA_TEXT).orEmpty()
+        val target = JoinLink.parse(text, server.text.toString())
+        if (target == null) {
+            error.text = getString(R.string.scan_invalid)
+            return
+        }
+        room.setText(target.room)
+        server.setText(target.server)
+        joinRoom(target.room, target.server, target.lan)
+    }
+
+    private fun joinRoom(codeRaw: String, serverRaw: String, lanRaw: String = "") {
+        val code = codeRaw.trim().uppercase()
+        val url = Prefs.normalize(serverRaw)
+        val lan = lanRaw.ifBlank { Prefs.lanUrl(this) }
+        if (code.isEmpty()) {
+            error.text = "先填房间码"
+            return
+        }
+        enter.isEnabled = false
+        scan.isEnabled = false
+        error.text = "连接中…"
+        Thread({
+            try {
+                val session = RoomConnect.open(url, code, lan)
+                Prefs.save(this, session.server, session.room, session.lanOrigin)
+                main.post {
+                    startActivity(
+                        Intent(this, DeskActivity::class.java)
+                            .putExtra(DeskActivity.EXTRA_SERVER, session.server)
+                            .putExtra(DeskActivity.EXTRA_ROOM, session.room)
+                            .putExtra(DeskActivity.EXTRA_LAN, session.lanOrigin)
+                            .putExtra(DeskActivity.EXTRA_MIC_HOST, session.micHost)
+                            .putExtra(DeskActivity.EXTRA_MIC_PORT, session.micPort)
+                            .putExtra(DeskActivity.EXTRA_MIC_RATE, session.micRate),
+                    )
+                    finish()
+                }
+            } catch (exc: Exception) {
+                main.post {
+                    enter.isEnabled = true
+                    scan.isEnabled = true
+                    error.text = exc.message ?: "进房失败"
+                }
+            }
+        }, "lovktv-join").start()
     }
 }

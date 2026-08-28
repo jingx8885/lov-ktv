@@ -1,4 +1,4 @@
-.lyrics { text-align: center; min-height: 40vh; display: grid; place-items: center; }
+.lyrics { text-align: center; min-height: 40vh; display: grid; align-items: center; justify-items: center; place-items: center; }
 .tv .lyrics > .lyric-plate {
   max-width: min(92vw, 1520px);
   padding: 20px 44px 24px;
@@ -33,6 +33,7 @@
   align-items: flex-end;
   column-gap: 0.22em;
   row-gap: 0.16em;
+  max-width: 96vw;
   max-width: min(96vw, 1600px);
 }
 .lyrics .line-words {
@@ -48,17 +49,18 @@
 .next .line-words {
   flex-wrap: wrap;
 }
-.line { font-size: clamp(28px, 4.6vw, 58px); font-weight: 700; text-shadow: 0 4px 24px rgba(0,0,0,.45); }
-.prev { margin-bottom: 14px; font-size: clamp(18px, 2.8vw, 34px); color: var(--muted); opacity: 0.78; }
-.next { margin-top: 16px; font-size: clamp(18px, 2.8vw, 34px); color: var(--muted); }
+.line { font-size: 42px; font-size: clamp(28px, 4.6vw, 58px); font-weight: 700; text-shadow: 0 4px 24px rgba(0,0,0,.45); }
+.prev { margin-bottom: 14px; font-size: 24px; font-size: clamp(18px, 2.8vw, 34px); color: var(--muted); opacity: 0.78; }
+.next { margin-top: 16px; font-size: 24px; font-size: clamp(18px, 2.8vw, 34px); color: var(--muted); }
 .lyrics .tok {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   vertical-align: bottom;
+  padding: 0 0.08em;
   padding-inline: 0.08em;
 }
-.lyrics .tok.latin { padding-inline: 0.02em 0; }
+.lyrics .tok.latin { padding: 0 0.02em 0 0; padding-inline: 0.02em 0; }
 .lyrics .tok-space,
 .align-text .tok-space {
   display: inline-block;
@@ -73,6 +75,7 @@
   width: max-content;
 }
 .lyrics .anno .rb {
+  position: relative;
   display: block;
   width: max-content;
   text-align: center;
@@ -143,21 +146,38 @@ body[data-lyric-script]:not([data-lyric-script="ja"]):not([data-lyric-script=""]
   display: none;
 }
 .line .rb {
-  background: linear-gradient(90deg, var(--gold) var(--p, 0%), #fff var(--p, 0%));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-.next .rb {
+  position: relative;
+  display: inline-block;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
   background: none;
-  -webkit-background-clip: initial;
-  background-clip: initial;
-  color: inherit;
 }
+.lyrics .rb-base {
+  position: relative;
+  z-index: 0;
+}
+.lyrics .rb-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  overflow: hidden;
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.next .rb,
+.next .rb-fill {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+.next .rb-fill { width: 0 !important; }
 .prev .rb {
-  background: linear-gradient(90deg, var(--gold) 100%, #fff 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
   opacity: 0.72;
 }
+.prev .rb-fill { width: 100% !important; }

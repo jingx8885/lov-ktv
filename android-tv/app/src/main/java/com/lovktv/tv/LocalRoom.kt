@@ -62,7 +62,12 @@ class LocalRoom(
 
     @Synchronized
     fun ensure(code: String?): RoomSnap {
-        val key = (code ?: newCode()).uppercase()
+        val wanted = code?.trim()?.uppercase().orEmpty()
+        val key = when {
+            wanted.isNotBlank() -> wanted
+            rooms.isNotEmpty() -> rooms.keys.last()
+            else -> newCode()
+        }
         return rooms.getOrPut(key) { RoomSnap(code = key) }
     }
 
@@ -70,21 +75,26 @@ class LocalRoom(
     fun snapshot(code: String): RoomSnap = ensure(code)
 
     @Synchronized
+    fun activeCode(): String = rooms.keys.lastOrNull().orEmpty()
+
+    @Synchronized
     fun enqueue(code: String, songId: String): RoomSnap {
         val room = ensure(code)
-        val song = songLookup(songId)
-        if (song == null || !song.singable) {
+        val id = songId.trim()
+        if (id.isBlank()) throw IllegalArgumentException("缺歌曲")
+        val song = songLookup(id)
+        if (song != null && !song.singable) {
             throw IllegalArgumentException("这首还没就绪，不能点")
         }
-        if (room.queue.any { it.songId == songId }) return room
+        if (room.queue.any { it.songId == id }) return room
         val item = QueueItem(
             id = newId(),
-            songId = song.id,
+            songId = song?.id ?: id,
             position = (room.queue.maxOfOrNull { it.position } ?: 0) + 1,
-            title = song.title,
-            artist = song.artist,
+            title = song?.title?.ifBlank { id } ?: id,
+            artist = song?.artist.orEmpty(),
             status = "ready",
-            language = song.language,
+            language = song?.language ?: "zh",
         )
         val queue = room.queue + item
         val playing = room.nowPlaying != null

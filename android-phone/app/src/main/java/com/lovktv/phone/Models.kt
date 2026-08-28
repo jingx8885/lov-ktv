@@ -5,6 +5,7 @@ import org.json.JSONObject
 
 data class SongRow(
     val id: String,
+    val songId: String,
     val title: String,
     val artist: String,
     val status: String,
@@ -26,8 +27,13 @@ data class RoomView(
     val code: String,
     val nowTitle: String,
     val nowArtist: String,
+    val vocalMix: Double,
+    val volume: Int,
+    val nowIndex: Int,
     val queue: List<SongRow>,
-)
+) {
+    val vocalOn: Boolean get() = vocalMix >= 0.5
+}
 
 object Models {
     fun songs(json: String): List<SongRow> {
@@ -60,6 +66,9 @@ object Models {
             code = root.optString("code").uppercase(),
             nowTitle = now?.optString("title").orEmpty(),
             nowArtist = now?.optString("artist").orEmpty(),
+            vocalMix = root.optDouble("vocal_mix", 1.0),
+            volume = root.optInt("volume", 80).coerceIn(0, 100),
+            nowIndex = root.optInt("now_index", 0).coerceAtLeast(0),
             queue = (0 until list.length()).map { index -> song(list.getJSONObject(index)) },
         )
     }
@@ -76,9 +85,14 @@ object Models {
         }
     }
 
+    fun canBump(index: Int, nowIndex: Int): Boolean = index > nowIndex + 1
+
     private fun song(item: JSONObject): SongRow {
+        val songId = item.optString("song_id").ifBlank { item.optString("id") }
+        val id = item.optString("id").ifBlank { songId }
         return SongRow(
-            id = item.optString("id").ifBlank { item.optString("song_id") },
+            id = id,
+            songId = songId,
             title = item.optString("title"),
             artist = item.optString("artist"),
             status = item.optString("status"),

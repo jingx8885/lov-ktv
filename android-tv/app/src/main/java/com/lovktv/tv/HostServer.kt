@@ -11,6 +11,8 @@ import io.ktor.server.application.call
 import io.ktor.server.application.install
 import io.ktor.server.cio.CIO
 import io.ktor.server.engine.ApplicationEngine
+import io.ktor.server.engine.applicationEngineEnvironment
+import io.ktor.server.engine.connector
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.request.httpMethod
 import io.ktor.server.request.path
@@ -33,6 +35,7 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readBytes
 import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
@@ -49,6 +52,7 @@ import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 class HostServer(
@@ -56,6 +60,7 @@ class HostServer(
     processOrigin: String,
     private val cache: MediaCache,
     private val preferredPort: Int = HostRuntime.DEFAULT_PORT,
+    private val persistRoom: (String) -> Unit = {},
 ) {
     @Volatile
     var processOrigin: String = Prefs.normalize(processOrigin)
@@ -67,51 +72,110 @@ class HostServer(
         .readTimeout(0, TimeUnit.SECONDS)
         .writeTimeout(0, TimeUnit.SECONDS)
         .pingInterval(20, TimeUnit.SECONDS)
-        .followRedirects(false)
-        .followSslRedirects(false)
+        .followRedirects(true)
+        .followSslRedirects(true)
+        .build()
+
+    private val apiHttp = OkHttpClient.Builder()
+        .connectTimeout(12, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .writeTimeout(20, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
         .build()
 
     val puller = SongPuller(cache, http) { this.processOrigin }
 
+    private val roomSync = Executors.newSingleThreadScheduledExecutor { runnable ->
+        Thread(runnable, "lovktv-room").apply { isDaemon = true }
+    }
+
     private var engine: ApplicationEngine? = null
 
     fun start(): Int {
-        var last: Exception? = null
-        for (offset in 0 until 5) {
-            val port = preferredPort + offset
-            try {
-                val server = embeddedServer(CIO, host = "0.0.0.0", port = port) {
-                    install(WebSockets)
-                    routing {
-                        get("/") { serveAsset(call, "/") }
-                        webSocket("/ws/{path...}") {
-                            proxyWebSocket(call.request.path(), call.request.queryString())
-                        }
-                        route("{path...}") {
-                            handle { dispatch(call) }
-                        }
+        val port = PortPicker.firstFree(preferredPort)
+        val handler = CoroutineExceptionHandler { _, exc ->
+            android.util.Log.e("HostServer", "ktor failed", exc)
+        }
+        val env = applicationEngineEnvironment {
+            parentCoroutineContext = handler
+            connector {
+                this.host = "0.0.0.0"
+                this.port = port
+            }
+            module {
+                install(WebSockets)
+                routing {
+                    get("/") { serveAsset(call, "/") }
+                    webSocket("/ws/{path...}") {
+                        proxyWebSocket(call.request.path(), call.request.queryString())
+                    }
+                    route("{path...}") {
+                        handle { dispatch(call) }
                     }
                 }
-                server.start(wait = false)
-                engine = server
-                HostRuntime.port = port
-                HostRuntime.processOrigin = processOrigin
-                HostRuntime.lanOrigin = LanAddress.origin(port)
-                HostRuntime.ready = true
-                puller.start()
-                return port
-            } catch (exc: Exception) {
-                last = exc
             }
         }
-        throw last ?: IOException("无法绑定局域网端口")
+        val server = embeddedServer(CIO, environment = env)
+        server.start(wait = false)
+        engine = server
+        HostRuntime.port = port
+        HostRuntime.processOrigin = processOrigin
+        HostRuntime.lanOrigin = LanAddress.origin(port)
+        HostRuntime.ready = true
+        if (HostRuntime.roomCode.isNotBlank()) localRoom.ensure(HostRuntime.roomCode)
+        puller.start()
+        roomSync.scheduleWithFixedDelay({ runCatching { syncProcessRoom() } }, 1, 2, TimeUnit.SECONDS)
+        return port
     }
 
     fun stop() {
         HostRuntime.ready = false
         puller.stop()
+        roomSync.shutdownNow()
         engine?.stop(200, 800)
         engine = null
+    }
+
+    private fun rememberCode(code: String) {
+        val next = Prefs.validRoom(code)
+        if (next.isBlank()) return
+        HostRuntime.roomCode = next
+        persistRoom(next)
+    }
+
+    private fun syncProcessRoom() {
+        var code = HostRuntime.roomCode.trim()
+        if (code.isBlank()) {
+            code = localRoom.activeCode()
+            if (code.isNotBlank()) HostRuntime.roomCode = code
+        }
+        val origin = processOrigin.trim().trimEnd('/')
+        if (code.isBlank() || origin.isBlank()) return
+        try {
+            val request = Request.Builder()
+                .url(HostGateway.remoteUrl(origin, "/api/rooms/$code", null))
+                .header("Accept", "application/json")
+                .header("User-Agent", "LovKtv-TV/1.0")
+                .build()
+            apiHttp.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    android.util.Log.w("HostServer", "syncProcessRoom $code -> ${response.code}")
+                    return
+                }
+                val text = response.body?.string().orEmpty()
+                if (text.isBlank()) return
+                val remote = JSONObject(text)
+                val remoteQueue = remote.optJSONArray("queue")
+                val remoteHas = remoteQueue != null && remoteQueue.length() > 0
+                val local = localRoom.snapshot(code)
+                if (!remoteHas && local.queue.isNotEmpty()) return
+                localRoom.importSnapshot(text)
+                rememberCode(code)
+            }
+        } catch (exc: Exception) {
+            android.util.Log.w("HostServer", "syncProcessRoom $code failed: ${exc.message}")
+        }
     }
 
     private suspend fun dispatch(call: ApplicationCall) {
@@ -129,6 +193,7 @@ class HostServer(
         val info = HostGateway.hostPayload(
             lanOrigin = HostRuntime.lanOrigin.ifBlank { LanAddress.origin(HostRuntime.port) },
             processOrigin = processOrigin,
+            room = HostRuntime.roomCode.ifBlank { localRoom.activeCode() },
             cacheReady = cache.listReady().size,
             micPort = HostRuntime.micPort,
             micSampleRate = LanMic.SAMPLE_RATE,
@@ -143,21 +208,8 @@ class HostServer(
             serveFile(call, local)
             return
         }
-        val remote = HostGateway.remoteUrl(processOrigin, "/media/$songId/$name", call.request.queryString().ifBlank { null })
-        val fetched = withContext(Dispatchers.IO) { fetchBytes(remote) }
-        if (fetched != null && fetched.isNotEmpty()) {
-            if (name in MediaCache.WANTED) {
-                withContext(Dispatchers.IO) { cache.putFile(songId, name, fetched) }
-            }
-            val dest = cache.file(songId, name)
-            if (dest != null && dest.exists()) {
-                serveFile(call, dest)
-            } else {
-                call.respondBytes(fetched, mime(name))
-            }
-            return
-        }
-        call.respond(HttpStatusCode.NotFound, "not found")
+        puller.hint()
+        proxyHttp(call, ByteArray(0))
     }
 
     private suspend fun proxyOrFallback(call: ApplicationCall, kind: ApiKind) {
@@ -167,9 +219,22 @@ class HostServer(
         } else {
             call.receive<ByteArray>()
         }
-        val buffered = kind is ApiKind.SongsList || kind is ApiKind.Song || kind is ApiKind.RoomCreate ||
-            kind is ApiKind.RoomGet || kind is ApiKind.RoomQueue || kind is ApiKind.RoomBump ||
+        val localRoomApi = kind is ApiKind.RoomCreate || kind is ApiKind.RoomGet ||
+            kind is ApiKind.RoomQueue || kind is ApiKind.RoomBump ||
             kind is ApiKind.RoomSkip || kind is ApiKind.RoomPlay || kind is ApiKind.RoomMix
+        if (localRoomApi) {
+            try {
+                val json = fallbackJson(kind, incoming)
+                runCatching { rememberCode(JSONObject(json).optString("code")) }
+                call.respondText(json, ContentType.Application.Json)
+                if (kind is ApiKind.RoomQueue || kind is ApiKind.RoomPlay) puller.hint()
+            } catch (exc: IllegalArgumentException) {
+                val status = if (exc.message == "歌曲不存在") HttpStatusCode.NotFound else HttpStatusCode.BadRequest
+                call.respond(status, exc.message ?: "bad request")
+            }
+            return
+        }
+        val buffered = kind is ApiKind.SongsList || kind is ApiKind.Song
         if (buffered) {
             val remote = withContext(Dispatchers.IO) { fetchApi(call, incoming) }
             if (remote != null) {
@@ -195,7 +260,10 @@ class HostServer(
             is ApiKind.RoomGet, is ApiKind.RoomQueue, is ApiKind.RoomBump,
             is ApiKind.RoomSkip, is ApiKind.RoomPlay, is ApiKind.RoomMix,
             ApiKind.RoomCreate,
-            -> runCatching { localRoom.importSnapshot(text) }
+            -> {
+                runCatching { localRoom.importSnapshot(text) }
+                runCatching { rememberCode(JSONObject(text).optString("code")) }
+            }
             ApiKind.SongsList, is ApiKind.Song -> puller.hint()
             else -> Unit
         }
@@ -207,7 +275,10 @@ class HostServer(
         return when (kind) {
             ApiKind.SongsList -> cache.catalogJson()
             is ApiKind.Song -> cache.songJson(kind.id) ?: throw IllegalArgumentException("歌曲不存在")
-            ApiKind.RoomCreate -> localRoom.ensure(null).toJson()
+            ApiKind.RoomCreate -> {
+                val wanted = obj.optString("code").ifBlank { HostRuntime.roomCode }.ifBlank { null }
+                localRoom.ensure(wanted).toJson()
+            }
             is ApiKind.RoomGet -> localRoom.snapshot(kind.code).toJson()
             is ApiKind.RoomQueue -> localRoom.enqueue(kind.code, obj.optString("song_id")).toJson()
             is ApiKind.RoomBump -> localRoom.bump(kind.code, obj.optString("id")).toJson()
@@ -231,25 +302,22 @@ class HostServer(
                 call.request.queryString().ifBlank { null },
             )
             val method = call.request.httpMethod.value
-            val mediaType = call.request.headers[HttpHeaders.ContentType]?.toMediaTypeOrNull()
+            val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
             val body: RequestBody? = if (method == "GET" || method == "HEAD") null else incoming.toRequestBody(mediaType)
-            val builder = Request.Builder().url(remote).method(method, body)
-            copyHeaders(call, builder)
-            http.newCall(builder.build()).execute().use { response ->
-                if (!response.isSuccessful) return null
+            val builder = Request.Builder()
+                .url(remote)
+                .method(method, body)
+                .header("Accept", "application/json")
+                .header("User-Agent", "LovKtv-TV/1.0")
+            apiHttp.newCall(builder.build()).execute().use { response ->
+                if (!response.isSuccessful) {
+                    android.util.Log.w("HostServer", "fetchApi ${call.request.path()} -> ${response.code}")
+                    return null
+                }
                 response.body?.bytes()
             }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun fetchBytes(url: String): ByteArray? {
-        return try {
-            http.newCall(Request.Builder().url(url).build()).execute().use { response ->
-                if (!response.isSuccessful) null else response.body?.bytes()
-            }
-        } catch (_: Exception) {
+        } catch (exc: Exception) {
+            android.util.Log.w("HostServer", "fetchApi ${call.request.path()} failed: ${exc.message}")
             null
         }
     }
@@ -369,6 +437,13 @@ class HostServer(
     private fun copyHeaders(call: ApplicationCall, builder: Request.Builder) {
         for (name in call.request.headers.names()) {
             if (HostGateway.isHopByHop(name)) continue
+            if (name.equals("origin", ignoreCase = true) ||
+                name.equals("referer", ignoreCase = true) ||
+                name.equals("cookie", ignoreCase = true) ||
+                name.equals("accept-encoding", ignoreCase = true)
+            ) {
+                continue
+            }
             for (value in call.request.headers.getAll(name).orEmpty()) {
                 builder.addHeader(name, value)
             }

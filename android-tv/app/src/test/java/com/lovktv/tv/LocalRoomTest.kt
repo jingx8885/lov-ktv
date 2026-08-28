@@ -33,7 +33,7 @@ class LocalRoomTest {
     }
 
     @Test
-    fun rejectSongThatIsNotCachedReady() {
+    fun rejectSongThatIsNotReady() {
         val room = LocalRoom(songLookup = { id -> songs.firstOrNull { it.id == id } })
         room.ensure("OFF2")
         try {
@@ -42,12 +42,18 @@ class LocalRoomTest {
         } catch (exc: IllegalArgumentException) {
             assertTrue(exc.message!!.contains("还没就绪"))
         }
-        try {
-            room.enqueue("OFF2", "missing")
-            throw AssertionError("should fail")
-        } catch (exc: IllegalArgumentException) {
-            assertTrue(exc.message!!.contains("还没就绪"))
-        }
+        val snap = room.enqueue("OFF2", "missing")
+        assertEquals("missing", snap.nowPlaying?.songId)
+        assertEquals("ready", snap.nowPlaying?.status)
+    }
+
+    @Test
+    fun ensureWithoutCodeReusesSameRoom() {
+        val room = LocalRoom(songLookup = { id -> songs.firstOrNull { it.id == id } })
+        val first = room.ensure(null)
+        val second = room.ensure(null)
+        assertEquals(first.code, second.code)
+        assertTrue(first.code.matches(Regex("^[A-Z0-9]{4,12}$")))
     }
 
     @Test

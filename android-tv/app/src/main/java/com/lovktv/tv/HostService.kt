@@ -11,6 +11,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 
 class HostService : Service() {
     @Volatile
@@ -21,6 +22,8 @@ class HostService : Service() {
 
     @Volatile
     private var mic: MicReceiver? = null
+
+    private val launching = AtomicBoolean(false)
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -40,17 +43,24 @@ class HostService : Service() {
             updateNotification()
             return START_STICKY
         }
+        if (!launching.compareAndSet(false, true)) {
+            return START_STICKY
+        }
         Thread({
             try {
                 val media = MediaCache(File(filesDir, "media"))
                 cache = media
                 HostRuntime.micPort = startMic()
-                val created = HostServer(assets, process, media)
+                HostRuntime.roomCode = Prefs.roomCode(this)
+                val created = HostServer(assets, process, media) { code ->
+                    Prefs.saveRoom(this, code)
+                }
                 val port = created.start()
                 server = created
                 HostRuntime.port = port
                 Handler(Looper.getMainLooper()).post { updateNotification() }
             } catch (exc: Exception) {
+                launching.set(false)
                 HostRuntime.ready = false
                 val text = "局域网服务启动失败：${exc.message ?: "未知错误"}"
                 Handler(Looper.getMainLooper()).post {
@@ -67,6 +77,7 @@ class HostService : Service() {
         HostRuntime.micPort = 0
         server?.stop()
         server = null
+        launching.set(false)
         HostRuntime.ready = false
         super.onDestroy()
     }

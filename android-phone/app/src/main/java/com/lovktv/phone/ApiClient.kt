@@ -43,6 +43,27 @@ class ApiClient(base: String) {
         return Models.room(post("/api/rooms/${code.uppercase()}/queue", body))
     }
 
+    fun bump(code: String, itemId: String): RoomView {
+        val body = JSONObject().put("id", itemId)
+        return Models.room(post("/api/rooms/${code.uppercase()}/bump", body))
+    }
+
+    fun play(code: String, itemId: String): RoomView {
+        val body = JSONObject().put("id", itemId)
+        return Models.room(post("/api/rooms/${code.uppercase()}/play", body))
+    }
+
+    fun skip(code: String): RoomView {
+        return Models.room(post("/api/rooms/${code.uppercase()}/skip", JSONObject()))
+    }
+
+    fun mix(code: String, vocalMix: Double? = null, volume: Int? = null): RoomView {
+        val body = JSONObject()
+        if (vocalMix != null) body.put("vocal_mix", vocalMix)
+        if (volume != null) body.put("volume", volume)
+        return Models.room(post("/api/rooms/${code.uppercase()}/mix", body))
+    }
+
     private fun get(path: String): String = execute(
         Request.Builder().url(url(path)).get().build(),
     )
