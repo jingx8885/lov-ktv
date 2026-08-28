@@ -56,7 +56,12 @@ class HostGatewayTest {
         assertEquals("/m.html?room=EABAB5", payload.phonePath)
         assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue3", payload.phoneUrl)
         assertEquals(0, payload.cacheReady)
-        assertTrue(HostGateway.toJson(payload).contains("\"cache_ready\":0"))
+        assertEquals(18787, payload.micPort)
+        assertEquals(48000, payload.micSampleRate)
+        val json = HostGateway.toJson(payload)
+        assertTrue(json.contains("\"cache_ready\":0"))
+        assertTrue(json.contains("\"mic_port\":18787"))
+        assertTrue(json.contains("\"mic_sample_rate\":48000"))
     }
 
     @Test

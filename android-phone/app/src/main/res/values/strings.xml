@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">lov-ktv 点歌</string>
+    <string name="brand">lov-ktv</string>
+    <string name="join_title">点歌台</string>
+    <string name="join_hint">填电视上的房间码。低延时麦要连电视局域网；只点歌可以连公网处理端。</string>
+    <string name="room_hint">房间码</string>
+    <string name="server_hint">https://ktv.lovbrowser.com</string>
+    <string name="enter_room">进入</string>
+    <string name="search">搜歌</string>
+    <string name="queue">已点</string>
+    <string name="library">曲库</string>
+    <string name="mic_off">开麦</string>
+    <string name="mic_on">关麦</string>
+    <string name="mic_need_tv">低延时麦需要同一 WiFi 上的 Android 电视 App</string>
+    <string name="mic_channel">低延时麦</string>
+</resources>

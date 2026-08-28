@@ -157,6 +157,8 @@ def api_host(request: Request) -> dict:
         "mode": "server",
         "phone_path": "/m.html?room=",
         "cache_ready": 0,
+        "mic_port": 0,
+        "mic_sample_rate": 48000,
         "models": model_status(),
         "oss": oss_status(),
         "agent": agent_status(),

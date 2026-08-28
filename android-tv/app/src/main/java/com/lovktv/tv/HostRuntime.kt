@@ -14,4 +14,7 @@ object HostRuntime {
 
     @Volatile
     var processOrigin: String = ""
+
+    @Volatile
+    var micPort: Int = 0
 }

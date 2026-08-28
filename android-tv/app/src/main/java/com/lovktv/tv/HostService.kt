@@ -19,6 +19,9 @@ class HostService : Service() {
     @Volatile
     private var cache: MediaCache? = null
 
+    @Volatile
+    private var mic: MicReceiver? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -41,6 +44,7 @@ class HostService : Service() {
             try {
                 val media = MediaCache(File(filesDir, "media"))
                 cache = media
+                HostRuntime.micPort = startMic()
                 val created = HostServer(assets, process, media)
                 val port = created.start()
                 server = created
@@ -58,16 +62,33 @@ class HostService : Service() {
     }
 
     override fun onDestroy() {
+        mic?.stop()
+        mic = null
+        HostRuntime.micPort = 0
         server?.stop()
         server = null
         HostRuntime.ready = false
         super.onDestroy()
     }
 
+    private fun startMic(): Int {
+        return try {
+            val receiver = MicReceiver(LanMic.DEFAULT_PORT)
+            val bound = receiver.start()
+            mic = receiver
+            bound
+        } catch (_: Exception) {
+            0
+        }
+    }
+
     private fun updateNotification() {
         val origin = HostRuntime.lanOrigin.ifBlank { "http://127.0.0.1:${HostRuntime.port}" }
         val ready = cache?.listReady()?.size ?: 0
-        val extra = if (ready > 0) " · 已缓存 ${ready} 首" else ""
+        val extra = buildString {
+            if (ready > 0) append(" · 已缓存 ${ready} 首")
+            if (HostRuntime.micPort > 0) append(" · 麦 ${HostRuntime.micPort}")
+        }
         startForeground(NOTIFICATION_ID, notification("局域网已开  $origin$extra"))
     }
 

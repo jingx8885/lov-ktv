@@ -4,6 +4,7 @@ import android.content.res.AssetManager
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.withCharset
 import io.ktor.http.content.OutgoingContent
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.call
@@ -129,6 +130,8 @@ class HostServer(
             lanOrigin = HostRuntime.lanOrigin.ifBlank { LanAddress.origin(HostRuntime.port) },
             processOrigin = processOrigin,
             cacheReady = cache.listReady().size,
+            micPort = HostRuntime.micPort,
+            micSampleRate = LanMic.SAMPLE_RATE,
         )
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
         call.respondText(HostGateway.toJson(info), ContentType.Application.Json)
@@ -446,7 +449,7 @@ class HostServer(
             name.endsWith(".json") -> ContentType.Application.Json
             name.endsWith(".svg") -> ContentType.parse("image/svg+xml")
             name.endsWith(".png") -> ContentType.Image.PNG
-            name.endsWith(".jpg"), name.endsWith(".jpeg") -> ContentType.Image.JPEG
+            name.endsWith(".jpg") || name.endsWith(".jpeg") -> ContentType.Image.JPEG
             name.endsWith(".m4a") -> ContentType.parse("audio/mp4")
             name.endsWith(".mp3") -> ContentType.parse("audio/mpeg")
             name.endsWith(".mp4") -> ContentType.parse("video/mp4")

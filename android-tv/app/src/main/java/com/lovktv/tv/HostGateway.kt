@@ -23,6 +23,8 @@ data class HostInfo(
     val phonePath: String,
     val phoneUrl: String,
     val cacheReady: Int = 0,
+    val micPort: Int = 0,
+    val micSampleRate: Int = LanMic.SAMPLE_RATE,
 )
 
 object HostGateway {
@@ -63,7 +65,14 @@ object HostGateway {
             ?: ""
     }
 
-    fun hostPayload(lanOrigin: String, processOrigin: String, room: String = "", cacheReady: Int = 0): HostInfo {
+    fun hostPayload(
+        lanOrigin: String,
+        processOrigin: String,
+        room: String = "",
+        cacheReady: Int = 0,
+        micPort: Int = LanMic.DEFAULT_PORT,
+        micSampleRate: Int = LanMic.SAMPLE_RATE,
+    ): HostInfo {
         val origin = lanOrigin.trim().trimEnd('/')
         val process = processOrigin.trim().trimEnd('/')
         val code = room.trim().uppercase()
@@ -76,6 +85,8 @@ object HostGateway {
             phonePath = phonePath,
             phoneUrl = phone,
             cacheReady = cacheReady,
+            micPort = micPort,
+            micSampleRate = micSampleRate,
         )
     }
 
@@ -87,7 +98,9 @@ object HostGateway {
             append("\"mode\":").append(quote(info.mode)).append(',')
             append("\"phone_path\":").append(quote(info.phonePath)).append(',')
             append("\"phone_url\":").append(quote(info.phoneUrl)).append(',')
-            append("\"cache_ready\":").append(info.cacheReady)
+            append("\"cache_ready\":").append(info.cacheReady).append(',')
+            append("\"mic_port\":").append(info.micPort).append(',')
+            append("\"mic_sample_rate\":").append(info.micSampleRate)
             append('}')
         }
     }

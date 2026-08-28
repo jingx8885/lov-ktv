@@ -24,10 +24,27 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["mode"] == "server"
     assert data["phone_path"].startswith("/m.html?room=")
     assert data["cache_ready"] == 0
+    assert data["mic_port"] == 0
+    assert data["mic_sample_rate"] == 48000
     assert "separator" in data["models"]
     assert "whisper" in data["models"]
     assert data["agent"]["enabled"] is False
     assert data["agent"]["model"] == ""
+
+
+def test_phone_player_avoids_hard_seek_on_original():
+    from pathlib import Path
+
+    html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "m.html").read_text(encoding="utf-8")
+    assert 'id="playerOriginal" preload="auto"' in html
+    assert "function mediaAhead" in html
+    assert "orig.seeking" in html
+    assert "0.32" in html
+    assert "playerOrigWait" in html
+    sync = html.split("function syncOriginal", 1)[1].split("function applyPlayerVocalMix", 1)[0]
+    assert "orig.currentTime = clock" in sync
+    assert "targetReady" in sync
+    assert "> 0.08" not in sync
 
 
 def test_tv_page_builds_phone_url_from_host_origin():

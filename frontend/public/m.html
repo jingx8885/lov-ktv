@@ -130,7 +130,7 @@
           </button>
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
-        <audio id="playerOriginal" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
+        <audio id="playerOriginal" preload="auto" playsinline crossorigin="anonymous" hidden></audio>
         <audio id="playerGuide" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
         <audio id="phoneIemVoice" autoplay playsinline hidden></audio>
         <div class="player-stage">
@@ -336,6 +336,7 @@
     }
     function playerIsPlaying() {
       const audio = $("playerAudio");
+      if (playerClockHold != null && !playerHeld) return true;
       return !!(audio && audio.src && !audio.paused);
     }
     function refreshPlayIcon() {
@@ -934,6 +935,8 @@
     let playerCatalog = [];
     let playerLoad = 0;
     let playerClockHold = null;
+    let playerClockHoldAt = 0;
+    let playerOrigWait = false;
     let playerHoldDur = 0;
     const lyricPaint = { prev: "", cur: "", next: "", align: "" };
 
@@ -1144,21 +1147,62 @@
       else if (!editing && playerVocal) value = 0;
       if (playerHook && playerHook.gain) playerHook.gain.gain.value = value;
     }
+    function mediaAhead(el, at) {
+      try {
+        const ranges = el.buffered;
+        const t = Number(at) || 0;
+        for (let i = 0; i < ranges.length; i += 1) {
+          if (t >= ranges.start(i) - 0.05 && t <= ranges.end(i)) return ranges.end(i) - t;
+        }
+      } catch (err) {}
+      return 0;
+    }
+    function holdPlayerClock(t) {
+      if (playerClockHold == null) {
+        playerClockHold = t;
+        playerClockHoldAt = Date.now();
+      }
+    }
+    function releasePlayerClock() {
+      playerClockHold = null;
+      playerClockHoldAt = 0;
+    }
     function syncOriginal(forceTime) {
       const audio = $("playerAudio");
       const orig = $("playerOriginal");
       if (!orig || !orig.getAttribute("src")) return;
-      const t = forceTime != null ? forceTime : (audio.currentTime || 0);
-      if (orig.readyState >= 1) {
-        try {
-          if (Math.abs((orig.currentTime || 0) - t) > 0.08) orig.currentTime = t;
-        } catch (err) {}
-      }
       const editing = document.body.classList.contains("edit-on");
-      const want = !playerHeld && !editing && !!playerVocal && !!(audio && !audio.paused && audio.src);
+      const want = !playerHeld && !editing && !!playerVocal && !!(audio && audio.src);
+      const clock = forceTime != null ? forceTime : (playerClockHold != null ? playerClockHold : (audio.currentTime || 0));
       orig.muted = !want;
-      if (want) orig.play().catch(() => {});
-      else orig.pause();
+      if (want) {
+        const started = orig.readyState >= 2;
+        const starving = orig.seeking || playerOrigWait || (started && orig.readyState < 3 && mediaAhead(orig, orig.currentTime || 0) < 0.12);
+        if (started && starving) {
+          holdPlayerClock(audio.paused ? clock : (audio.currentTime || clock));
+          if (!audio.paused) audio.pause();
+        } else if (playerClockHold != null && !orig.seeking && mediaAhead(orig, playerClockHold) >= 0.5) {
+          releasePlayerClock();
+          if (!playerHeld && audio.paused) audio.play().catch(() => {});
+        } else if (playerClockHold != null && Date.now() - playerClockHoldAt > 4000) {
+          releasePlayerClock();
+          if (!playerHeld && audio.paused) audio.play().catch(() => {});
+        }
+      } else if (playerClockHold != null && (!playerVocal || playerHeld)) {
+        releasePlayerClock();
+      }
+      const drift = Math.abs((orig.currentTime || 0) - clock);
+      const slack = forceTime != null ? 0.08 : 0.32;
+      const canSeek = orig.readyState >= 1 && !orig.seeking && drift > slack;
+      const targetReady = forceTime != null || mediaAhead(orig, clock) > 0.2;
+      if (canSeek && targetReady) {
+        try { orig.currentTime = clock; } catch (err) {}
+      }
+      if (want) {
+        if (orig.paused) orig.play().catch(() => {});
+      } else {
+        orig.pause();
+      }
     }
     function applyPlayerVocalMix() {
       applyKaraokeGain();
@@ -1277,7 +1321,7 @@
       const dur = (durSec || 0) * 1000;
       $("playerNow").textContent = fmtClock(t);
       $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
-      $("playerArt").classList.toggle("is-live", !audio.paused && !!audio.src);
+      $("playerArt").classList.toggle("is-live", (!audio.paused || playerClockHold != null) && !!audio.src && !playerHeld);
       refreshPlayIcon();
       if (hold != null) {
         syncGuide(hold);
@@ -1325,7 +1369,8 @@
       try { return new URL(src, location.href).pathname; } catch (err) { return String(src || "").split("?")[0]; }
     }
     function resetPlayerFace() {
-      playerClockHold = null;
+      releasePlayerClock();
+      playerOrigWait = false;
       playerHoldDur = 0;
       selectedCue = 0;
       lyricPaint.prev = "";
@@ -1480,13 +1525,19 @@
     ["play", "pause", "ended"].forEach((name) => {
       $("playerAudio").addEventListener(name, refreshPlayIcon);
     });
+    const origEl = $("playerOriginal");
+    origEl.addEventListener("waiting", () => { playerOrigWait = true; });
+    origEl.addEventListener("stalled", () => { playerOrigWait = true; });
+    ["playing", "canplay", "canplaythrough"].forEach((name) => {
+      origEl.addEventListener(name, () => { playerOrigWait = false; });
+    });
     $("playerVocal").onclick = () => {
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
       $("playerVocal").classList.toggle("on", !!playerVocal);
       $("playerVocalLabel").textContent = playerVocal ? "原唱" : "伴奏";
       $("playerVocal").setAttribute("aria-label", playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
-      playerClockHold = null;
+      releasePlayerClock();
       applyPlayerVocalMix();
     };
     function seekPlayerArt(event) {
