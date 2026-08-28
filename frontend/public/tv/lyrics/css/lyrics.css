@@ -77,15 +77,15 @@ body.tv .lyric-plate.bare .line .lyric-zh {
     drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
 }
 body.tv .lyrics .line {
-  font-size: clamp(9px, 2.8vw, 13px);
+  font-size: clamp(13px, 3.6vw, 17px);
 }
 body.tv .lyrics .prev,
 body.tv .lyrics .next {
-  font-size: 7px;
+  font-size: 11px;
 }
 body.tv .lyrics .anno .roma {
   min-height: 0.34em;
-  font-size: 10px;
+  font-size: 14px;
   color: rgba(255, 255, 255, .58);
   letter-spacing: 0.02em;
   font-weight: 600;
@@ -93,9 +93,9 @@ body.tv .lyrics .anno .roma {
 }
 body.tv .lyrics .anno .gloss {
   min-height: 0.3em;
-  font-size: 10px;
+  font-size: 14px;
 }
 body.tv .lyrics .lyric-zh {
   margin-top: 0.18em;
-  font-size: 11px;
+  font-size: 15px;
 }
