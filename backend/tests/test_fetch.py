@@ -1,6 +1,12 @@
 from lovktv.catalog import fetch
 
 
+def test_clean_search_title_strips_version_marks():
+    assert fetch.clean_search_title("晴天(深情版)") == "晴天"
+    assert fetch.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"
+    assert fetch.clean_search_title("群青 (Remix)") == "群青"
+
+
 def _no_mugen(monkeypatch):
     monkeypatch.setattr(
         fetch,
@@ -11,6 +17,8 @@ def _no_mugen(monkeypatch):
     monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(fetch, "search_bilibili_hits", lambda *args, **kwargs: [])
+    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
 
 
 def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
@@ -57,14 +65,14 @@ def test_search_hits_include_preview_url(monkeypatch):
     _no_mugen(monkeypatch)
     seen = {}
 
-    def fake_search(query, count=10, source="netease", page=1):
+    def fake_bili(query, count=8, page=1):
         seen["page"] = page
         seen["count"] = count
-        return [{"id": "22689669", "name": "Give a reason", "artist": ["林原めぐみ"]}]
+        return [{"id": "BV1xx", "title": "Give a reason", "artist": "林原めぐみ", "source": "bilibili", "is_mv": True, "preview_url": "/api/preview/BV1xx"}]
 
-    monkeypatch.setattr(fetch, "search_tonzhon", fake_search)
+    monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
     result = fetch.search_songs("Give a reason", count=8, page=2)
-    assert result["hits"][0]["preview_url"] == "/api/preview/22689669"
+    assert result["hits"][0]["preview_url"] == "/api/preview/BV1xx"
     assert result["page"] == 2
     assert result["has_more"] is False
     assert seen == {"page": 2, "count": 8}
@@ -74,9 +82,10 @@ def test_search_has_more_when_page_is_full(monkeypatch):
     _no_mugen(monkeypatch)
     monkeypatch.setattr(
         fetch,
-        "search_tonzhon",
-        lambda query, count=10, source="netease", page=1: [
-            {"id": str(i), "name": f"song {i}", "artist": ["a"]} for i in range(count)
+        "search_bilibili_hits",
+        lambda query, count=10, page=1: [
+            {"id": f"BV{i}", "title": f"song {i}", "artist": "a", "source": "bilibili", "is_mv": True}
+            for i in range(count)
         ],
     )
     result = fetch.search_songs("x", count=10, page=1)

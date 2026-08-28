@@ -1,17 +1,19 @@
 """Song search + download, following vendor/lovjpn/scripts/fetch_song.py.
 
-Search lists Karaoke Mugen first, then NetEase titles.
-Audio: Mugen → Bilibili MV → SoundCloud → NetEase eapi → YouTube.
+Search lists Mugen, Bilibili, and SoundCloud.
+Audio resolve may still fall back to NetEase / YouTube.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
 import subprocess
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
@@ -77,9 +79,18 @@ BAD_TITLE_TOKENS = (
 )
 
 
+TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
+
+
 def is_clean_title(title: str) -> bool:
     low = (title or "").lower()
     return not any(tok in low for tok in BAD_TITLE_TOKENS)
+
+
+def clean_search_title(title: str) -> str:
+    text = TITLE_VERSION.sub("", title or "")
+    text = re.sub(r"\s+", " ", text).strip(" -_·|/")
+    return text or str(title or "").strip()
 
 
 def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
@@ -125,41 +136,157 @@ def flatten_artists(song: dict[str, Any]) -> str:
     return " / ".join(names)
 
 
+SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
+
+
+def _tonzhon_hits(query: str, count: int, page: int) -> list[dict[str, Any]]:
+    try:
+        return search_tonzhon(query, count=count, page=page)
+    except Exception:
+        return []
+
+
+def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict[str, Any]]:
+    try:
+        videos = bilibili.search_videos(query, count=max(count, 12), page=page)
+    except Exception:
+        return []
+    hits: list[dict[str, Any]] = []
+    for item in videos:
+        title = str(item.get("title") or "")
+        bvid = str(item.get("bvid") or "")
+        if not bvid or not title:
+            continue
+        low = title.lower()
+        if any(tok in low for tok in bilibili.SKIP_TITLE):
+            continue
+        duration = item.get("duration")
+        if isinstance(duration, int) and not (bilibili.MIN_SEC <= duration <= bilibili.MAX_SEC):
+            continue
+        remember_audio_source(
+            bvid,
+            {
+                "kind": "bilibili",
+                "bvid": bvid,
+                "title": title,
+                "cover": str(item.get("pic") or ""),
+            },
+        )
+        hits.append(
+            {
+                "id": bvid,
+                "title": title,
+                "artist": str(item.get("author") or ""),
+                "album": "",
+                "pic": str(item.get("pic") or ""),
+                "source": "bilibili",
+                "is_mv": True,
+                "clean": is_clean_title(title),
+                "preview_url": f"/api/preview/{bvid}",
+            }
+        )
+        if len(hits) >= count:
+            break
+    return hits
+
+
+def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) -> list[dict[str, Any]]:
+    if page > 1 or provider != "soundcloud":
+        return []
+    ytdlp = shutil.which("yt-dlp")
+    if not ytdlp:
+        return []
+    try:
+        rows = _list_ytdlp(query, ytdlp, provider, count=count, timeout=6)
+    except Exception:
+        return []
+    hits: list[dict[str, Any]] = []
+    for row in rows:
+        title = str(row.get("title") or "")
+        page_url = str(row.get("url") or "")
+        if not page_url:
+            continue
+        hid = f"{provider}_{hashlib.sha1(page_url.encode('utf-8')).hexdigest()[:12]}"
+        remember_audio_source(
+            hid,
+            {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider},
+        )
+        hits.append(
+            {
+                "id": hid,
+                "title": title,
+                "artist": "",
+                "album": "",
+                "pic": "",
+                "source": provider,
+                "is_mv": provider == "youtube",
+                "clean": is_clean_title(title),
+                "preview_url": f"/api/preview/{hid}",
+            }
+        )
+        if len(hits) >= count:
+            break
+    return hits
+
+
+def merge_channel_hits(groups: dict[str, list[dict[str, Any]]], count: int) -> list[dict[str, Any]]:
+    queues = {key: list(groups.get(key) or []) for key in SEARCH_CHANNELS}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(out) < count:
+        added = False
+        for key in SEARCH_CHANNELS:
+            bucket = queues[key]
+            while bucket:
+                hit = bucket.pop(0)
+                hid = str(hit.get("id") or "")
+                if not hid or hid in seen:
+                    continue
+                seen.add(hid)
+                out.append(hit)
+                added = True
+                break
+            if len(out) >= count:
+                break
+        if not added:
+            break
+    return out
+
+
 def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
     page = max(1, int(page))
     count = max(1, min(int(count), 30))
-    mugen = search_mugen(query, count=count, page=page)
-    hits = list(mugen.get("hits") or [])
-    used_netease = False
-    netease_full = False
-    if len(hits) < count:
-        tonzhon = search_tonzhon(query, count=count, page=page)
-        used_netease = True
-        netease_full = len(tonzhon) >= count
-        for song in tonzhon:
-            title = str(song.get("name") or "")
-            song_id = str(song.get("id") or "")
-            hits.append(
-                {
-                    "id": song_id,
-                    "title": title,
-                    "artist": flatten_artists(song),
-                    "album": (song.get("album") or [""])[0] if isinstance(song.get("album"), list) else song.get("album") or "",
-                    "pic": song.get("pic") or "",
-                    "source": "netease",
-                    "clean": is_clean_title(title),
-                    "preview_url": f"/api/preview/{song_id}" if song_id else "",
-                }
-            )
-            if len(hits) >= count:
-                break
+    extra = min(count, 5)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        mugen_job = pool.submit(search_mugen, query, count, page)
+        bili_job = pool.submit(search_bilibili_hits, query, count, page)
+        sc_job = pool.submit(search_ytdlp_hits, query, "soundcloud", extra, page)
+        try:
+            mugen = mugen_job.result()
+        except Exception:
+            mugen = {"hits": [], "has_more": False}
+        try:
+            bili = bili_job.result()
+        except Exception:
+            bili = []
+        try:
+            soundcloud = sc_job.result()
+        except Exception:
+            soundcloud = []
+        groups = {
+            "mugen": list(mugen.get("hits") or []),
+            "bilibili": bili,
+            "soundcloud": soundcloud,
+        }
+    hits = merge_channel_hits(groups, count)
+    available = sum(len(bucket) for bucket in groups.values())
     return {
         "query": query,
         "page": page,
         "count": count,
-        "has_more": bool(mugen.get("has_more")) or (used_netease and netease_full),
-        "hits": hits[:count],
-        "sources": ["mugen", "netease"],
+        "has_more": bool(mugen.get("has_more")) or available > len(hits) or any(len(groups[key]) >= count for key in SEARCH_CHANNELS),
+        "hits": hits,
+        "sources": list(SEARCH_CHANNELS),
     }
 
 
@@ -257,7 +384,7 @@ def try_netease_download(song_id: str, out_path: Path) -> bool:
     return False
 
 
-def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15) -> list[dict[str, Any]]:
+def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15, timeout: float = 60) -> list[dict[str, Any]]:
     prefix = {"soundcloud": f"scsearch{count}:", "youtube": f"ytsearch{count}:"}[provider]
     cmd = [
         ytdlp,
@@ -271,7 +398,7 @@ def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15) -> list[
         *ytdlp_proxy_args(),
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, check=False)
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
     out: list[dict[str, Any]] = []
@@ -432,6 +559,10 @@ def open_bilibili_audio(bvid: str, timeout: float = 20):
 def _resolve_bilibili_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
     hit = pick_bilibili_mv(title, artist)
     if not hit:
+        cleaned = clean_search_title(title)
+        if cleaned and cleaned != title:
+            hit = pick_bilibili_mv(cleaned, "")
+    if not hit:
         return {}
     urls = bilibili.play_urls(str(hit.get("bvid") or ""))
     if not urls.get("audio_url"):
@@ -447,11 +578,43 @@ def _resolve_bilibili_source(song_id: str, title: str = "", artist: str = "") ->
     )
 
 
+def is_preview_id(song_id: str) -> bool:
+    value = str(song_id or "").strip()
+    if not value:
+        return False
+    if is_mugen_kid(value) or bilibili.is_bvid(value) or value.isdigit():
+        return True
+    return bool(peek_audio_source(value).get("kind"))
+
+
 def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
     """Mugen is handled by the caller. Then Bilibili → SoundCloud → NetEase → YouTube."""
+    if bilibili.is_bvid(song_id):
+        cached = peek_audio_source(song_id)
+        if cached.get("kind") == "bilibili":
+            return cached
+        urls = bilibili.play_urls(song_id)
+        if not urls.get("audio_url"):
+            return {}
+        return remember_audio_source(
+            song_id,
+            {
+                "kind": "bilibili",
+                "bvid": song_id,
+                "title": str(urls.get("title") or title),
+                "cover": str(urls.get("cover") or ""),
+            },
+        )
     cached = peek_audio_source(song_id)
     if cached.get("kind") == "bilibili":
         return cached
+    if cached.get("kind") == "ytdlp" and not str(song_id).isdigit():
+        return cached
+    if not str(song_id).isdigit():
+        return cached if cached.get("kind") else {}
+    netease = _resolve_netease_source(song_id, title)
+    if netease:
+        return netease
     bili = _resolve_bilibili_source(song_id, title, artist)
     if bili:
         return bili
@@ -459,7 +622,6 @@ def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dic
         return cached
     return (
         _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
-        or _resolve_netease_source(song_id, title)
         or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
     )
 
@@ -563,7 +725,19 @@ def import_song(
         needs_align = False
         language = str(timeline.get("language") or "")
     else:
-        lrc = fetch_lyric(str(chosen.get("id")))
+        lyric_id = str(chosen.get("id") or "")
+        lrc = fetch_lyric(lyric_id) if lyric_id.isdigit() else ""
+        if not lrc.strip():
+            for song in _tonzhon_hits(title_name, 5, 1):
+                sid = str(song.get("id") or "")
+                if not sid.isdigit():
+                    continue
+                try:
+                    lrc = fetch_lyric(sid)
+                except Exception:
+                    lrc = ""
+                if lrc.strip():
+                    break
         if not lrc.strip():
             raise RuntimeError("歌词为空")
         (out_dir / "lyrics.lrc").write_text(lrc, encoding="utf-8")
@@ -581,12 +755,13 @@ def import_song(
     chosen_id = str(chosen.get("id") or "")
     pic = str(chosen.get("pic") or "")
     cached = peek_audio_source(chosen_id)
-    if audio_file is None and cached.get("kind") == "bilibili" and cached.get("bvid"):
-        if try_bilibili_download(str(cached["bvid"]), mp3_path, mtv_path):
+    pinned_bvid = str(cached.get("bvid") or (chosen_id if bilibili.is_bvid(chosen_id) else "") or (song_id if bilibili.is_bvid(song_id or "") else ""))
+    if audio_file is None and pinned_bvid:
+        if try_bilibili_download(pinned_bvid, mp3_path, mtv_path):
             audio_file = "original.mp3"
             audio_source = "bilibili"
-            audio_title = str(cached.get("title") or "")
-            audio_bvid = str(cached["bvid"])
+            audio_title = str(cached.get("title") or title_name)
+            audio_bvid = pinned_bvid
             has_video = mtv_path.exists()
             if not pic and cached.get("cover"):
                 pic = str(cached["cover"])
@@ -597,7 +772,7 @@ def import_song(
             audio_title = str(cached.get("title") or "")
     ytdlp_query = f"{chosen.get('name') or ''} {flatten_artists(chosen)}".strip() or query
     if audio_file is None:
-        hit = pick_bilibili_mv(title_name, artist_name)
+        hit = pick_bilibili_mv(title_name, artist_name) or pick_bilibili_mv(clean_search_title(title_name), "")
         if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
             audio_file = "original.mp3"
             audio_source = "bilibili"

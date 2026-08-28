@@ -12,6 +12,7 @@ class ModelsTest {
         )
         assertEquals(1, hits.size)
         assertEquals("群青", hits[0].title)
+        assertTrue(hits[0].isMv)
         val room = Models.room(
             """{"code":"eabab5","now_playing":{"title":"群青","artist":"YOASOBI"},"queue":[{"song_id":"s1","title":"群青","artist":"YOASOBI","status":"ready"}]}""",
         )

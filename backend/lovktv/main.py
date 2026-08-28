@@ -25,9 +25,9 @@ from lovktv.auth import (
     wechat_authorize_url,
     wechat_ready,
 )
-from lovktv.catalog.fetch import open_preview_stream, resolve_audio_source, search_songs
+from lovktv.catalog.fetch import is_preview_id, open_preview_stream, resolve_audio_source, search_songs
 from lovktv.catalog.mugen import is_mugen_kid
-from lovktv.catalog.index import prefer_native_library, query_library
+from lovktv.catalog.index import prefer_native_library, query_library, song_letter
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
 from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
@@ -331,7 +331,7 @@ def api_search(q: str, count: int = 10, page: int = 1) -> dict:
 def api_preview_resolve(song_id: str, title: str = "", artist: str = "", media: str = "") -> dict:
     if is_mugen_kid(song_id):
         return {"ok": True, "id": song_id, "kind": "mugen", "title": title}
-    if not song_id.isdigit():
+    if not is_preview_id(song_id):
         raise HTTPException(400, "无效的试听 id")
     source = resolve_audio_source(song_id, title, artist)
     if not source:
@@ -341,7 +341,7 @@ def api_preview_resolve(song_id: str, title: str = "", artist: str = "", media: 
 
 @app.get("/api/preview/{song_id}")
 def api_preview(song_id: str, title: str = "", artist: str = "", media: str = ""):
-    if not is_mugen_kid(song_id) and not song_id.isdigit():
+    if not is_preview_id(song_id):
         raise HTTPException(400, "无效的试听 id")
     resp, source = open_preview_stream(song_id, title, artist, media=media)
     if resp is None:
@@ -485,7 +485,8 @@ def api_songs(
 ) -> dict:
     songs = prefer_native_library([with_media_flags(song) or song for song in list_songs()])
     if page is None and not q and not letter:
-        return {"songs": songs, "total": len(songs)}
+        tagged = [{**song, "letter": song_letter(song)} for song in songs]
+        return {"songs": tagged, "total": len(tagged)}
     return query_library(songs, q=q, by=by, letter=letter, page=page or 1, count=count)
 
 

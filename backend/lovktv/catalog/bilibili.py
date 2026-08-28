@@ -8,21 +8,32 @@ Stay off Clash; these hosts are China CDN.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
 import subprocess
+import time
 import urllib.parse
 import urllib.request
+import uuid
 from pathlib import Path
 from typing import Any
 
 from lovktv.catalog.http import urlopen
 
 SEARCH_URL = "https://api.bilibili.com/x/web-interface/search/type"
+WBI_SEARCH = "https://api.bilibili.com/x/web-interface/wbi/search/type"
+ALL_SEARCH = "https://api.bilibili.com/x/web-interface/search/all/v2"
+NAV_URL = "https://api.bilibili.com/x/web-interface/nav"
 VIEW_URL = "https://api.bilibili.com/x/web-interface/view"
 PLAYURL = "https://api.bilibili.com/x/player/playurl"
 PAGE_ORIGIN = "https://www.bilibili.com"
+WBI_MIXIN = [
+    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
+    33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
+    61, 26, 17, 0, 1, 60, 51, 30, 4, 54, 52, 22, 25, 20, 56, 34, 21, 11, 44, 6,
+]
 BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
@@ -49,15 +60,32 @@ SKIP_TITLE = (
 )
 
 
+_BUVID3 = ""
+_WBI_KEYS: tuple[float, str, str] | None = None
+
+
+def buvid3() -> str:
+    global _BUVID3
+    if not _BUVID3:
+        _BUVID3 = str(uuid.uuid4()).upper() + "infoc"
+    return _BUVID3
+
+
 def headers(referer: str = PAGE_ORIGIN + "/") -> dict[str, str]:
     return {
         "User-Agent": BROWSER_UA,
         "Referer": referer,
         "Origin": PAGE_ORIGIN,
+        "Cookie": f"buvid3={buvid3()}",
     }
 
 
 SEARCH_REFERER = "https://search.bilibili.com/"
+BVID = re.compile(r"^BV[0-9A-Za-z]{10,12}$")
+
+
+def is_bvid(value: str | None) -> bool:
+    return bool(value and BVID.match(str(value).strip()))
 
 
 def api_get(url: str, timeout: float = 12) -> dict[str, Any]:
@@ -99,54 +127,161 @@ def cover_url(pic: str) -> str:
     return pic
 
 
-def search_videos(query: str, count: int = 20) -> list[dict[str, Any]]:
-    query = (query or "").strip()
-    if not query:
+def _wbi_filename(url: str) -> str:
+    return Path(urllib.parse.urlparse(str(url or "")).path).stem
+
+
+def mixin_key(img_key: str, sub_key: str) -> str:
+    raw = f"{img_key}{sub_key}"
+    return "".join(raw[index] for index in WBI_MIXIN if index < len(raw))[:32]
+
+
+def sign_wbi(params: dict[str, Any], img_key: str, sub_key: str, ts: int | None = None) -> dict[str, Any]:
+    signed = {str(key): "".join(ch for ch in str(value) if ch not in "!'()*") for key, value in params.items()}
+    signed["wts"] = int(ts if ts is not None else time.time())
+    query = urllib.parse.urlencode(dict(sorted(signed.items())))
+    signed["w_rid"] = hashlib.md5((query + mixin_key(img_key, sub_key)).encode()).hexdigest()
+    return signed
+
+
+def wbi_keys() -> tuple[str, str]:
+    global _WBI_KEYS
+    now = time.time()
+    if _WBI_KEYS and now - _WBI_KEYS[0] < 3600:
+        return _WBI_KEYS[1], _WBI_KEYS[2]
+    try:
+        data = api_get(NAV_URL, timeout=8)
+    except Exception:
+        data = {}
+    img = ((data.get("data") or {}).get("wbi_img") or {}) if isinstance(data, dict) else {}
+    img_key = _wbi_filename(str(img.get("img_url") or ""))
+    sub_key = _wbi_filename(str(img.get("sub_url") or ""))
+    if img_key and sub_key:
+        _WBI_KEYS = (now, img_key, sub_key)
+        return img_key, sub_key
+    if _WBI_KEYS:
+        return _WBI_KEYS[1], _WBI_KEYS[2]
+    return "", ""
+
+
+def _search_payload(url: str, timeout: float = 12) -> dict[str, Any]:
+    req = urllib.request.Request(url, headers=headers(SEARCH_REFERER))
+    with urlopen(req, timeout=timeout) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    return payload if isinstance(payload, dict) else {}
+
+
+def _video_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    if int(payload.get("code") or 0) != 0:
         return []
-    url = SEARCH_URL + "?" + urllib.parse.urlencode(
+    data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+    result = data.get("result") or []
+    if isinstance(result, list) and result and isinstance(result[0], dict) and result[0].get("bvid"):
+        return [item for item in result if isinstance(item, dict)]
+    if isinstance(result, list):
+        for block in result:
+            if not isinstance(block, dict) or block.get("result_type") != "video":
+                continue
+            items = block.get("data") or []
+            if isinstance(items, list):
+                return [item for item in items if isinstance(item, dict)]
+    return []
+
+
+def _search_wbi(query: str, count: int, page: int) -> list[dict[str, Any]]:
+    img_key, sub_key = wbi_keys()
+    if not img_key or not sub_key:
+        return []
+    params = sign_wbi(
         {
             "search_type": "video",
             "keyword": query,
-            "page": 1,
-            "page_size": max(1, min(int(count), 30)),
+            "page": page,
+            "page_size": count,
+        },
+        img_key,
+        sub_key,
+    )
+    try:
+        return _video_items(_search_payload(f"{WBI_SEARCH}?{urllib.parse.urlencode(params)}"))
+    except Exception:
+        return []
+
+
+def _search_type(query: str, count: int, page: int) -> list[dict[str, Any]]:
+    params = urllib.parse.urlencode(
+        {
+            "search_type": "video",
+            "keyword": query,
+            "page": page,
+            "page_size": count,
         }
     )
-    raw: list[Any] = []
-    for _attempt in range(2):
-        try:
-            req = urllib.request.Request(url, headers=headers(SEARCH_REFERER))
-            with urlopen(req, timeout=12) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-        except Exception:
-            continue
-        if not isinstance(payload, dict) or int(payload.get("code") or 0) != 0:
-            continue
-        result = (payload.get("data") or {}).get("result") or []
-        if isinstance(result, list) and result:
-            raw = result
-            break
-    if not raw:
+    try:
+        return _video_items(_search_payload(f"{SEARCH_URL}?{params}"))
+    except Exception:
         return []
+
+
+def _search_all(query: str, page: int) -> list[dict[str, Any]]:
+    params = urllib.parse.urlencode({"keyword": query, "page": page})
+    try:
+        return _video_items(_search_payload(f"{ALL_SEARCH}?{params}"))
+    except Exception:
+        return []
+
+
+def map_video(item: dict[str, Any]) -> dict[str, Any] | None:
+    bvid = str(item.get("bvid") or "").strip()
+    title = strip_title(str(item.get("title") or ""))
+    if not bvid or not title:
+        return None
+    return {
+        "bvid": bvid,
+        "title": title,
+        "author": str(item.get("author") or ""),
+        "typename": str(item.get("typename") or ""),
+        "duration": parse_duration(item.get("duration")),
+        "pic": cover_url(str(item.get("pic") or "")),
+        "page": f"{PAGE_ORIGIN}/video/{bvid}",
+    }
+
+
+def search_videos(query: str, count: int = 20, page: int = 1) -> list[dict[str, Any]]:
+    query = (query or "").strip()
+    if not query:
+        return []
+    page = max(1, int(page))
+    count = max(1, min(int(count), 30))
+    raw: list[dict[str, Any]] = []
+    for attempt in range(3):
+        raw = _search_wbi(query, count, page) or _search_type(query, count, page) or _search_all(query, page)
+        if raw:
+            break
+        if attempt < 2:
+            time.sleep(0.15)
     out: list[dict[str, Any]] = []
     for item in raw:
-        if not isinstance(item, dict):
-            continue
-        bvid = str(item.get("bvid") or "").strip()
-        title = strip_title(str(item.get("title") or ""))
-        if not bvid or not title:
-            continue
-        out.append(
-            {
-                "bvid": bvid,
-                "title": title,
-                "author": str(item.get("author") or ""),
-                "typename": str(item.get("typename") or ""),
-                "duration": parse_duration(item.get("duration")),
-                "pic": cover_url(str(item.get("pic") or "")),
-                "page": f"{PAGE_ORIGIN}/video/{bvid}",
-            }
-        )
+        mapped = map_video(item)
+        if mapped:
+            out.append(mapped)
     return out
+
+
+def title_in_video(video_title: str, title: str) -> bool:
+    if not title:
+        return True
+    video = video_title or ""
+    idx = video.casefold().find(title.casefold())
+    if idx < 0:
+        return False
+    if any("\u4e00" <= char <= "\u9fff" for char in title):
+        if idx > 0 and "\u4e00" <= video[idx - 1] <= "\u9fff":
+            return False
+        end = idx + len(title)
+        if end < len(video) and "\u4e00" <= video[end] <= "\u9fff":
+            return False
+    return True
 
 
 def score_hit(hit: dict[str, Any], title: str, artist: str = "") -> int:
@@ -157,7 +292,7 @@ def score_hit(hit: dict[str, Any], title: str, artist: str = "") -> int:
     duration = hit.get("duration")
     if isinstance(duration, int) and not (MIN_SEC <= duration <= MAX_SEC):
         return -1
-    if title and title.casefold() not in video_title.casefold():
+    if title and not title_in_video(video_title, title):
         return -1
     author = str(hit.get("author") or "")
     if artist and artist.casefold() not in video_title.casefold() and artist.casefold() not in author.casefold():

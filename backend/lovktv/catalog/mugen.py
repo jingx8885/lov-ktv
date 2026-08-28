@@ -173,6 +173,7 @@ def map_hit(item: dict[str, Any]) -> dict[str, Any]:
         "album": pick_album(item),
         "pic": "",
         "source": "mugen",
+        "is_mv": True,
         "language": pick_language(item) or "ja",
         "clean": not off_vocal,
         "off_vocal": off_vocal,
@@ -190,7 +191,7 @@ def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
     start = (page - 1) * count
     params = urllib.parse.urlencode({"filter": query, "from": start, "size": count})
     try:
-        data = get_json(f"{MUGEN_SEARCH}?{params}", timeout=20)
+        data = get_json(f"{MUGEN_SEARCH}?{params}", timeout=5)
     except Exception:
         return {"query": query, "page": page, "count": count, "has_more": False, "hits": [], "total": 0}
     content = data.get("content") if isinstance(data, dict) else []

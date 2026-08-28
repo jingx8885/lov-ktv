@@ -236,16 +236,100 @@ def test_search_songs_puts_mugen_first(monkeypatch):
     )
     monkeypatch.setattr(
         fetch,
-        "search_tonzhon",
-        lambda query, count=12, source="netease", page=1: [
-            {"id": "1", "name": "网易兜底", "artist": ["X"]}
+        "search_bilibili_hits",
+        lambda query, count=8, page=1: [
+            {"id": "BV1xx", "title": "B站兜底", "artist": "UP", "source": "bilibili", "is_mv": True}
         ],
     )
+    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
     result = fetch.search_songs("NIGHT DANCER", count=10, page=1)
     assert result["hits"][0]["source"] == "mugen"
     assert result["hits"][0]["title"] == "NIGHT DANCER"
-    assert result["hits"][1]["source"] == "netease"
+    assert result["hits"][1]["source"] == "bilibili"
+    assert result["hits"][0].get("is_mv") is not False
+    assert result["hits"][1]["is_mv"] is True
     assert result["has_more"] is False
+
+
+def test_search_songs_queries_channels_together(monkeypatch):
+    called = []
+
+    def fake_mugen(query, count=10, page=1):
+        called.append("mugen")
+        return {
+            "hits": [
+                {
+                    "id": f"kid-{i}",
+                    "title": f"MV {i}",
+                    "source": "mugen",
+                    "is_mv": True,
+                }
+                for i in range(count)
+            ],
+            "has_more": True,
+            "total": 40,
+        }
+
+    def fake_bili(query, count=8, page=1):
+        called.append("bilibili")
+        return [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}]
+
+    monkeypatch.setattr(fetch, "search_mugen", fake_mugen)
+    monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
+    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = fetch.search_songs("群青", count=10, page=1)
+    assert set(called) == {"mugen", "bilibili"}
+    assert result["hits"][0]["source"] == "mugen"
+    assert any(hit["source"] == "bilibili" for hit in result["hits"])
+    assert result["has_more"] is True
+
+
+def test_search_songs_keeps_mugen_when_others_fail(monkeypatch):
+    monkeypatch.setattr(
+        fetch,
+        "search_mugen",
+        lambda query, count=10, page=1: {
+            "hits": [{"id": "kid", "title": "群青", "source": "mugen", "is_mv": True}],
+            "has_more": False,
+            "total": 1,
+        },
+    )
+    monkeypatch.setattr(
+        fetch,
+        "search_bilibili_hits",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("down")),
+    )
+    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = fetch.search_songs("群青", count=10, page=1)
+    assert result["hits"][0]["title"] == "群青"
+    assert result["hits"][0]["source"] == "mugen"
+
+
+def test_search_songs_shows_remaining_channels(monkeypatch):
+    monkeypatch.setattr(
+        fetch,
+        "search_mugen",
+        lambda query, count=10, page=1: {
+            "hits": [{"id": "kid", "title": "Mugen", "source": "mugen", "is_mv": True}],
+            "has_more": False,
+            "total": 1,
+        },
+    )
+    monkeypatch.setattr(
+        fetch,
+        "search_bilibili_hits",
+        lambda query, count=8, page=1: [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}],
+    )
+    monkeypatch.setattr(
+        fetch,
+        "search_ytdlp_hits",
+        lambda query, provider, count=5, page=1: [
+            {"id": "soundcloud_abc", "title": "sc", "artist": "", "source": "soundcloud", "is_mv": False}
+        ],
+    )
+    result = fetch.search_songs("晴天", count=10, page=1)
+    assert [hit["source"] for hit in result["hits"]] == ["mugen", "bilibili", "soundcloud"]
+    assert result["sources"] == ["mugen", "bilibili", "soundcloud"]
 
 
 def test_import_song_prefers_vocal_mugen_hit(tmp_path, monkeypatch):

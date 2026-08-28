@@ -21,7 +21,7 @@ def test_curl_and_ytdlp_use_lovktv_https_proxy(monkeypatch):
 def test_resolve_prefers_playable_soundcloud(monkeypatch):
     fetch._AUDIO_CACHE.clear()
     _no_bilibili(monkeypatch)
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
+    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
     def fake_list(query, ytdlp, provider, count=15):

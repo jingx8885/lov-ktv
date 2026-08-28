@@ -1,4 +1,77 @@
+import hashlib
+
 from lovktv.catalog import bilibili, fetch
+
+
+def test_score_rejects_title_inside_longer_name():
+    official = {
+        "title": "周杰伦-晴天[正版]",
+        "typename": "MV",
+        "duration": 316,
+        "author": "杰威尔音乐",
+    }
+    other = {
+        "title": "孙燕姿.明天晴天.MV",
+        "typename": "MV",
+        "duration": 240,
+        "author": "x",
+    }
+    assert bilibili.score_hit(official, "晴天", "") >= 0
+    assert bilibili.score_hit(other, "晴天", "") == -1
+
+
+def test_wbi_sign_is_stable():
+    signed = bilibili.sign_wbi(
+        {"keyword": "晴天", "search_type": "video"},
+        "7cd084941338484aae1ad9425b84077c",
+        "4932caff0ff746eab6f01bf08b70ac45",
+        ts=1700000000,
+    )
+    assert signed["wts"] == 1700000000
+    assert signed["w_rid"] == hashlib.md5(
+        (
+            "keyword=%E6%99%B4%E5%A4%A9&search_type=video&wts=1700000000"
+            + bilibili.mixin_key("7cd084941338484aae1ad9425b84077c", "4932caff0ff746eab6f01bf08b70ac45")
+        ).encode()
+    ).hexdigest()
+
+
+def test_video_items_reads_all_v2_block():
+    items = bilibili._video_items(
+        {
+            "code": 0,
+            "data": {
+                "result": [
+                    {"result_type": "tips", "data": []},
+                    {
+                        "result_type": "video",
+                        "data": [{"bvid": "BV1xx", "title": "晴天", "author": "x", "duration": "4:30"}],
+                    },
+                ]
+            },
+        }
+    )
+    assert items[0]["bvid"] == "BV1xx"
+
+
+def test_search_videos_falls_back_when_wbi_empty(monkeypatch):
+    monkeypatch.setattr(bilibili, "_search_wbi", lambda *args, **kwargs: [])
+    monkeypatch.setattr(bilibili, "_search_type", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        bilibili,
+        "_search_all",
+        lambda query, page: [{"bvid": "BV1UZhK61E9z", "title": "<em>晴天</em>", "author": "杰威尔", "duration": "5:16", "pic": ""}],
+    )
+    monkeypatch.setattr(bilibili.time, "sleep", lambda _s: None)
+    hits = bilibili.search_videos("晴天")
+    assert hits[0]["bvid"] == "BV1UZhK61E9z"
+    assert hits[0]["title"] == "晴天"
+
+
+def test_is_bvid():
+    assert bilibili.is_bvid("BV1UZhK61E9z")
+    assert not bilibili.is_bvid("186016")
+    assert not bilibili.is_bvid("not-a-bvid")
 
 
 def test_strip_title_and_duration():
@@ -76,6 +149,7 @@ def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
         "186016",
         {"kind": "ytdlp", "page": "https://youtube.com/watch?v=wrong", "title": "花海 DJ", "provider": "youtube"},
     )
+    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
@@ -87,7 +161,7 @@ def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
     assert source["bvid"] == "BV1UZhK61E9z"
 
 
-def test_resolve_prefers_bilibili(monkeypatch):
+def test_resolve_uses_netease_before_bilibili(monkeypatch):
     fetch._AUDIO_CACHE.clear()
     monkeypatch.setattr(
         fetch,
@@ -98,6 +172,39 @@ def test_resolve_prefers_bilibili(monkeypatch):
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
     source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
+    assert source["kind"] == "netease"
+    assert source["id"] == "186016"
+
+
+def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
+    fetch._AUDIO_CACHE.clear()
+    seen = []
+
+    def fake_pick(title, artist=""):
+        seen.append((title, artist))
+        if title == "晴天":
+            return {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""}
+        return None
+
+    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(fetch, "pick_bilibili_mv", fake_pick)
+    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
+    assert ("晴天(深情版)", "Lucky小爱") in seen
+    assert ("晴天", "") in seen
+    assert source["bvid"] == "BV1UZhK61E9z"
+
+
+def test_resolve_uses_bilibili_when_netease_empty(monkeypatch):
+    fetch._AUDIO_CACHE.clear()
+    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(
+        fetch,
+        "pick_bilibili_mv",
+        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+    )
+    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
     assert source["kind"] == "bilibili"
     assert source["bvid"] == "BV1UZhK61E9z"
 

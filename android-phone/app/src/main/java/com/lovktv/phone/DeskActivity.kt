@@ -94,7 +94,7 @@ class DeskActivity : Activity() {
                         RowAdapter.Row(
                             key = "hit:${hit.id}",
                             title = hit.title.ifBlank { "未命名" },
-                            meta = listOf(hit.artist, hit.source).filter { it.isNotBlank() }.joinToString(" · "),
+                            meta = listOf(hit.artist, if (hit.isMv) "MV" else "歌曲").filter { it.isNotBlank() }.joinToString(" · "),
                             action = "入库",
                             payload = hit,
                         )

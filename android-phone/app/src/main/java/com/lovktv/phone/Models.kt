@@ -19,6 +19,7 @@ data class SearchHit(
     val artist: String,
     val language: String,
     val source: String,
+    val isMv: Boolean,
 )
 
 data class RoomView(
@@ -46,6 +47,7 @@ object Models {
                 artist = item.optString("artist"),
                 language = item.optString("language"),
                 source = item.optString("source"),
+                isMv = item.optBoolean("is_mv") || item.optString("source") == "mugen",
             )
         }
     }

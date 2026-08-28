@@ -70,18 +70,19 @@ def eapi_play_url(song_id: str, timeout: float = 12) -> str:
         {"params": eapi_params({"ids": f"[{song_id}]", "br": 320000})}
     ).encode()
     req = urllib.request.Request(EAPI_URL, data=body, headers=eapi_headers())
-    try:
-        with urlopen(req, timeout=timeout, via_proxy=True) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except Exception:
-        return ""
-    item = (data.get("data") or [{}])[0] if isinstance(data, dict) else {}
-    if not isinstance(item, dict):
-        return ""
-    url = str(item.get("url") or "").strip()
-    if item.get("code") not in (None, 200) and not url:
-        return ""
-    return url
+    for _attempt in range(2):
+        try:
+            with urlopen(req, timeout=timeout, via_proxy=True) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            continue
+        item = (data.get("data") or [{}])[0] if isinstance(data, dict) else {}
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get("url") or "").strip()
+        if url:
+            return url
+    return ""
 
 
 def media_request(url: str) -> urllib.request.Request:
