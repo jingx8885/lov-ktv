@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 
 const PEEK_PORT = 58;
@@ -56,7 +57,7 @@ function applySheet(y, anim, hard = true) {
   const grab = $("playerSheetGrab");
   if (grab) {
     grab.setAttribute("aria-expanded", snap === "open" ? "true" : "false");
-    grab.setAttribute("aria-label", snap === "open" ? "收起曲库" : "打开曲库");
+    grab.setAttribute("aria-label", snap === "open" ? t("phone.player.closeLib") : t("phone.player.openLib"));
   }
   const scrim = $("playerSheetScrim");
   if (scrim) scrim.hidden = snap !== "open";
@@ -92,8 +93,8 @@ export function syncPlayerSheetMeta() {
   const count = (state.playerCatalog || []).length;
   const title = $("playerSheetTitle");
   const meta = $("playerSheetMeta");
-  if (title) title.textContent = "曲库";
-  if (meta) meta.textContent = count ? `${count} 首` : "还没有可播的歌";
+  if (title) title.textContent = t("phone.desk.lib");
+  if (meta) meta.textContent = count ? t("phone.desk.nSongs", { n: count }) : t("phone.player.noPlayable");
 }
 
 export function bindPlayerSheet() {

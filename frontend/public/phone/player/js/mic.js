@@ -1,12 +1,11 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./playback.js";
 
 export function phoneMicHintIdle() {
-  return state.phoneIem
-    ? "戴有线耳机。耳返会关掉回声消除，自己的声音才会快。蓝牙耳机会再慢一截。"
-    : "本机唱歌，伴奏和人声一起从手机喇叭出来。回音大就打开耳返。";
+  return state.phoneIem ? t("phone.mic.idleIem") : t("phone.mic.idleSpeaker");
 }
 
 export function ensurePhoneCtx() {
@@ -40,7 +39,7 @@ export async function acquirePhoneMic() {
       last = err;
     }
   }
-  throw last || new Error("开麦失败");
+  throw last || new Error(t("phone.mic.fail"));
 }
 
 export function disconnectPhoneMicGraph() {
@@ -77,8 +76,8 @@ export function paintPhoneMic() {
   const on = !!(state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live"));
   $("playerMic").classList.toggle("on", on);
   $("playerMic").classList.toggle("live", on);
-  $("playerMic").setAttribute("aria-label", on ? "关麦" : "开麦唱歌");
-  $("playerMicLabel").textContent = on ? "开麦中" : "开麦";
+  $("playerMic").setAttribute("aria-label", on ? t("common.micOff") : t("phone.player.micSing"));
+  $("playerMicLabel").textContent = on ? t("phone.player.micOn") : t("common.micOn");
   $("playerMicRow").hidden = !on;
   $("playerKtv").classList.toggle("live", on);
   $("playerIem").classList.toggle("on", state.phoneIem);
@@ -148,11 +147,11 @@ export async function startPhoneMic(opts) {
   const jack = await headphoneState();
   if (!restart && state.phoneIem && jack.kind === "speaker") {
     const go = await showActionSheet({
-      title: "先戴上耳机",
-      message: "喇叭外放会把伴奏灌回麦克风。还没戴也要开麦？",
-      confirm: "继续开麦",
+      title: t("phone.mic.headphoneTitle"),
+      message: t("phone.mic.headphoneMsg"),
+      confirm: t("phone.mic.headphoneGo"),
     });
-    if (!go) throw new Error("先戴上耳机再开麦");
+    if (!go) throw new Error(t("phone.mic.headphoneNeed"));
   }
   hookPlayerAudio();
   state.phoneCtx = ensurePhoneCtx();
@@ -168,11 +167,11 @@ export async function startPhoneMic(opts) {
   applyPlayerVocalMix();
   paintPhoneMic();
   if (state.phoneIem && jack.kind === "headphones") {
-    $("playerMicHint").textContent = "耳返已开：回声消除已关，有线耳机听自己会快很多。麦声拉到 0 就只听伴奏";
+    $("playerMicHint").textContent = t("phone.mic.hintIemWired");
   } else if (state.phoneIem) {
-    $("playerMicHint").textContent = "耳返已开。请用有线耳机；蓝牙还会慢一截。麦声拉到 0 就只听伴奏";
+    $("playerMicHint").textContent = t("phone.mic.hintIemBt");
   } else {
-    $("playerMicHint").textContent = "麦已打开，人声和伴奏从这只手机出来";
+    $("playerMicHint").textContent = t("phone.mic.hintSpeaker");
   }
 }
 
@@ -191,7 +190,7 @@ export function bindPhoneMic() {
       await startPhoneMic({ restart: true });
     } catch (err) {
       stopPhoneMic();
-      $("playerMicHint").textContent = (err && err.message) || "耳返切换失败";
+      $("playerMicHint").textContent = (err && err.message) || t("phone.mic.iemFail");
     } finally {
       delete $("playerMicHint").dataset.hold;
       paintPhoneMic();
@@ -206,12 +205,12 @@ export function bindPhoneMic() {
         stopPhoneMic();
         $("playerMicHint").textContent = phoneMicHintIdle();
       } else {
-        $("playerMicHint").textContent = state.phoneIem ? "戴上耳机，并允许使用麦克风" : "请允许使用麦克风";
+        $("playerMicHint").textContent = state.phoneIem ? t("phone.mic.allowIem") : t("phone.mic.allow");
         await startPhoneMic();
       }
     } catch (err) {
       stopPhoneMic();
-      $("playerMicHint").textContent = (window.LovMic && LovMic.micErrorText(err)) || (err && err.message) || "开麦失败";
+      $("playerMicHint").textContent = (window.LovMic && LovMic.micErrorText(err)) || (err && err.message) || t("phone.mic.fail");
     } finally {
       delete $("playerMicHint").dataset.hold;
       btn.disabled = false;

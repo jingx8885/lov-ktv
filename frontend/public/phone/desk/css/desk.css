@@ -63,18 +63,26 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
+  min-width: 0;
   min-height: 44px;
-  padding: 0 8px;
+  padding: 0 4px;
   border: 0;
   border-radius: 10px;
   background: transparent;
   color: var(--text);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
   cursor: pointer;
 }
 .now-act svg { width: 18px; height: 18px; fill: currentColor; flex: 0 0 18px; }
-.now-act em { font-style: normal; }
+.now-act em {
+  font-style: normal;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .now-act#skip { color: var(--accent); }
 .now-act.on { color: var(--accent); }
 .now-act.live {
@@ -85,7 +93,7 @@
 .now-mix { padding: 0 2px 4px; }
 .mix-row {
   display: grid;
-  grid-template-columns: 52px 1fr 36px;
+  grid-template-columns: minmax(52px, max-content) 1fr 36px;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
@@ -122,15 +130,20 @@
 }
 .seg-sm { margin-top: 8px; }
 .lyric-seg { margin: 0 0 12px; }
-.lyric-seg .seg-btn { font-size: 12px; min-height: 30px; }
+.lyric-seg .seg-btn { font-size: 11px; min-height: 30px; padding: 0 2px; }
 .seg-btn {
+  min-width: 0;
   min-height: 32px;
+  padding: 0 4px;
   border: 0;
   border-radius: 7px;
   background: transparent;
   color: rgba(235, 235, 245, .6);
   font-size: 13px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   cursor: pointer;
 }
 .seg-btn.on {

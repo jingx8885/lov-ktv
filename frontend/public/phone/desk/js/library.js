@@ -1,5 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
@@ -19,7 +20,7 @@ export function showDeskPane(name) {
 
 export function renderLibIndex(letters) {
   const have = new Map((letters || []).map((item) => [item.key, item.count]));
-  $("libIndex").innerHTML = `<button type="button" class="lib-letter ${state.libState.letter ? "" : "on"}" data-lib-letter="">全</button>` +
+  $("libIndex").innerHTML = `<button type="button" class="lib-letter ${state.libState.letter ? "" : "on"}" data-lib-letter="">${t("phone.desk.letterAll")}</button>` +
     LIB_LETTERS.map((key) => {
       const n = have.get(key) || 0;
       const on = state.libState.letter === key ? "on" : "";
@@ -43,8 +44,8 @@ export function renderLibPager(data) {
     return;
   }
   $("libPager").innerHTML = page < pages
-    ? `<button type="button" class="list-more" data-lib-page="${page + 1}">加载更多 · ${page}/${pages}</button>`
-    : `<span class="lib-page-num">${total} 首</span>`;
+    ? `<button type="button" class="list-more" data-lib-page="${page + 1}">${t("phone.desk.morePages", { page, pages })}</button>`
+    : `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
   $("libPager").querySelectorAll("[data-lib-page]").forEach((btn) => {
     btn.onclick = () => {
       state.libState.page = Number(btn.dataset.libPage);
@@ -84,25 +85,25 @@ export async function loadSongs() {
   renderLibIndex(data.letters || []);
   renderLibPager(data);
   const emptyHint = state.libState.q || state.libState.letter
-    ? `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>没有符合的歌</p><button class="btn" type="button" data-lib-clear>清除筛选</button></div>`
-    : `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>曲库还是空的</p><button class="btn primary" type="button" data-go-search>去搜歌</button></div>`;
+    ? `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.noMatch")}</p><button class="btn" type="button" data-lib-clear>${t("phone.desk.clearFilter")}</button></div>`
+    : `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyLib")}</p><button class="btn primary" type="button" data-go-search>${t("phone.desk.goSearch")}</button></div>`;
   $("songs").innerHTML = songs.map((song) => {
     const canPlay = song.status === "ready";
     const canRetry = song.status === "failed";
     const canDelete = song.status !== "fetching" && song.status !== "separating";
     const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
-    const mv = song.native_video ? `<em class="desk-pill mv">官方MV</em>` : "";
+    const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
     return `
         <div class="desk-row ${canPlay ? "" : "busy"}">
           <div class="desk-copy">
             <b>${escapeHtml(song.title)}</b>
-            <span class="tiny">${escapeHtml(song.artist || "未知歌手")} ${mv}${pill}</span>
+            <span class="tiny">${escapeHtml(song.artist || t("common.unknownArtist"))} ${mv}${pill}</span>
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
-            ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="点歌">${ICO.plus}</button>` : ""}
-            ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="重试">${ICO.listen}</button>` : ""}
-            ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="删除">${ICO.trash}</button>` : ""}
+            ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
+            ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}</button>` : ""}
+            ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
           </div>
         </div>`;
   }).join("") || emptyHint;
@@ -112,7 +113,7 @@ export async function loadSongs() {
       const code = $("room").value.trim();
       if (!code) {
         openOverlay("roomSheet");
-        return showToast("先填房间码并点进入");
+        return showToast(t("phone.desk.needRoom"));
       }
       btn.disabled = true;
       const { ok, data } = await fetchJson(`/api/rooms/${code}/queue`, {
@@ -122,7 +123,7 @@ export async function loadSongs() {
       });
       btn.disabled = false;
       if (!ok) {
-        showToast(data.detail || "还不能点这首");
+        showToast(data.detail || t("phone.desk.cantQueue"));
         loadSongs();
         return;
       }
@@ -141,7 +142,7 @@ export async function loadSongs() {
   $("songs").querySelectorAll("[data-del]").forEach((btn) => {
     btn.onclick = async (event) => {
       event.stopPropagation();
-      const go = await showActionSheet({ title: "删除这首歌？", message: "曲库里的成品也会删掉。", confirm: "删除", danger: true });
+      const go = await showActionSheet({ title: t("phone.desk.deleteTitle"), message: t("phone.desk.deleteMsg"), confirm: t("phone.desk.delete"), danger: true });
       if (!go) return;
       btn.disabled = true;
       await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
@@ -190,7 +191,7 @@ export function bindLibrary() {
       document.querySelectorAll("[data-lib-by]").forEach((item) => {
         item.classList.toggle("on", item === btn);
       });
-      $("libQ").placeholder = state.libState.by === "artist" ? "搜歌星" : state.libState.by === "title" ? "搜歌名" : "搜歌名 / 歌星";
+      $("libQ").placeholder = state.libState.by === "artist" ? t("phone.desk.libPhArtist") : state.libState.by === "title" ? t("phone.desk.libPhTitle") : t("phone.desk.libPh");
       loadSongs();
     };
   });

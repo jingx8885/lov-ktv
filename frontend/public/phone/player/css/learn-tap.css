@@ -1,0 +1,143 @@
+#learnTap {
+  position: relative;
+  overflow: hidden;
+}
+.learn-tap-fx,
+.learn-tap-wash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.learn-tap-fx { z-index: 0; }
+.learn-tap-wash {
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 18% 12%, rgba(255, 77, 141, .2), transparent 42%),
+    radial-gradient(ellipse at 88% 18%, rgba(110, 200, 255, .16), transparent 40%),
+    radial-gradient(ellipse at 70% 88%, rgba(245, 193, 108, .14), transparent 46%),
+    linear-gradient(180deg, rgba(0, 0, 0, .12), rgba(0, 0, 0, .42));
+}
+#learnTap > *:not(.learn-tap-fx):not(.learn-tap-wash) {
+  position: relative;
+  z-index: 2;
+}
+.learn-tap-combo {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, .55);
+}
+.learn-tap-zh {
+  margin: 0;
+  text-align: center;
+  color: rgba(255, 255, 255, .72);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, .5);
+}
+.learn-tap-field {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-height: 180px;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+.learn-tap-tile {
+  appearance: none;
+  position: absolute;
+  min-width: 56px;
+  min-height: 48px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 16px;
+  color: var(--tile-ink, var(--text));
+  background: var(--tile-bg, rgba(255, 255, 255, .12));
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .22),
+    0 0 0 1.5px var(--tile-line, rgba(255, 255, 255, .2)),
+    0 10px 22px rgba(0, 0, 0, .28);
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  transform: rotate(var(--tile-rot, 0deg));
+  animation: learn-tap-float var(--float-dur, 2.8s) ease-in-out var(--float-delay, 0ms) infinite;
+}
+.learn-tap-tile b {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.learn-tap-tile small {
+  color: inherit;
+  opacity: .72;
+  font-size: 11px;
+  line-height: 1.1;
+}
+.learn-tap-tile:active {
+  transform: rotate(var(--tile-rot, 0deg)) scale(.94);
+}
+.learn-tap-tile.is-hit {
+  pointer-events: none;
+  opacity: .2;
+  transform: rotate(var(--tile-rot, 0deg)) scale(.86);
+  animation: none;
+}
+.learn-tap-tile.is-burst {
+  animation: learn-ok-pop 420ms cubic-bezier(.2, .9, .3, 1);
+}
+.learn-tap-tile.is-miss {
+  animation: learn-tap-miss 220ms ease;
+  background: rgba(255, 69, 58, .34);
+}
+.learn-tap-tile.is-left {
+  pointer-events: none;
+  opacity: .35;
+  animation: none;
+  filter: grayscale(.4);
+}
+.learn-tap-strip {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+  min-height: 36px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 2px 2px;
+}
+.learn-tap-got {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(245, 193, 108, .22);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 600;
+}
+@keyframes learn-tap-float {
+  0%, 100% { transform: rotate(var(--tile-rot, 0deg)) translateY(0); }
+  50% { transform: rotate(var(--tile-rot, 0deg)) translateY(var(--tile-bob, -8px)); }
+}
+@keyframes learn-tap-miss {
+  0%, 100% { transform: rotate(var(--tile-rot, 0deg)) translateX(0); }
+  30% { transform: rotate(var(--tile-rot, 0deg)) translateX(-6px); }
+  60% { transform: rotate(var(--tile-rot, 0deg)) translateX(5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .learn-tap-fx,
+  .learn-tap-wash { display: none; }
+  .learn-tap-tile,
+  .learn-tap-tile:active,
+  .learn-tap-tile.is-burst,
+  .learn-tap-tile.is-miss { transform: none; animation: none; }
+}

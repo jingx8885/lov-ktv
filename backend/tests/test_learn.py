@@ -55,18 +55,46 @@ def test_skips_instrumental_and_mixes_meaning_with_words():
     assert quiz["schema"] == "lovktv-learn-v1"
     assert [line["text"] for line in quiz["lines"]] == ["走る記憶", "青い空", "夜の風"]
     first = quiz["lines"][0]
-    assert len(first["questions"]) == QUESTIONS_PER_LINE
-    kinds = [item["kind"] for item in first["questions"]]
-    assert "meaning" in kinds
-    assert "word" in kinds
-    meaning = next(item for item in first["questions"] if item["kind"] == "meaning")
-    assert meaning["prompt"] == "这句是什么意思？"
-    assert {choice["text"] for choice in meaning["choices"]} >= {"奔跑的记忆"}
-    assert meaning["choices"][meaning["answer"]]["text"] == "奔跑的记忆"
-    word = next(item for item in first["questions"] if item["kind"] == "word")
-    assert word["stem"] in {"走る", "記憶"}
-    assert len(word["choices"]) == 4
-    assert quiz["total_questions"] == QUESTIONS_PER_LINE * 3
+    assert QUESTIONS_PER_LINE == 1
+    assert len(first["questions"]) == 1
+    item = first["questions"][0]
+    assert item["kind"] in {"meaning", "word"}
+    assert len(item["choices"]) == 4
+    if item["kind"] == "meaning":
+        assert item["prompt"] == "这句是什么意思？"
+        assert item["choices"][item["answer"]]["text"] == "奔跑的记忆"
+    else:
+        assert item["stem"] in {"走る", "記憶", "夜", "の", "風", "青い", "空"}
+        assert item["choices"][item["answer"]]["text"]
+    assert quiz["total_questions"] == 3
+    assert [item["text"] for item in first["words"]] == ["走る", "記憶"]
+    night = next(line for line in quiz["lines"] if line["text"] == "夜の風")
+    assert [item["text"] for item in night["words"]] == ["夜", "の", "風"]
+
+
+def test_tap_words_keeps_order_and_skips_punct():
+    from lovktv.learn import tap_words
+
+    words = tap_words(
+        {
+            "text": "夜の、風の音",
+            "tokens": [
+                {"text": "夜", "zh": "夜晚", "romaji": "yoru"},
+                {"text": "の", "zh": "的", "romaji": "no"},
+                {"text": "、"},
+                {"text": "風", "zh": "风", "romaji": "kaze"},
+                {"text": "の", "zh": "的", "romaji": "no"},
+                {"text": "音", "zh": "声音", "romaji": "oto"},
+            ],
+        }
+    )
+    assert [item["text"] for item in words] == ["夜", "の", "風", "の", "音"]
+    assert words[1]["romaji"] == "no"
+    assert words[3]["romaji"] == "no"
+    latin = tap_words({"text": "hello world", "tokens": []})
+    assert [item["text"] for item in latin] == ["hello", "world"]
+    chars = tap_words({"text": "我从草原来", "tokens": []})
+    assert [item["text"] for item in chars] == list("我从草原来")
 
 
 def test_quiz_is_deterministic():
@@ -105,11 +133,78 @@ def test_phone_learn_shell_is_wired():
     html = (root / "m.html").read_text(encoding="utf-8")
     app = (root / "phone" / "app.js").read_text(encoding="utf-8")
     assert 'id="playerLearnBtn"' in html
+    transport = html.split('class="player-transport"', 1)[1].split("</div>", 1)[0]
+    assert 'id="playerLearnBtn"' in transport
+    assert transport.index('id="playerPlay"') < transport.index('id="playerLearnBtn"')
+    assert 'id="tabLearn"' in html
+    assert "data-enter-learn" in html
     assert 'id="playerLearn"' in html
     assert 'data-learn-mode="quiz"' in html
+    assert 'data-learn-mode="tap"' in html
     assert 'data-learn-mode="echo"' in html
+    assert 'id="learnTap"' in html
+    assert 'id="learnTapFx"' in html
+    assert "stage-fx.js" in html
     assert "learn.css" in html
+    assert "learn-quiz.css" in html
+    assert "learn-tap.css" in html
+    assert "learn-echo.css" in html
     assert "bindLearn" in app
+    assert 'id="learnFx"' in html
+    shell = (root / "phone" / "player" / "js" / "learn.js").read_text(encoding="utf-8")
+    css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
+    quiz = (root / "phone" / "player" / "js" / "learn-quiz.js").read_text(encoding="utf-8")
+    tap = (root / "phone" / "player" / "js" / "learn-tap.js").read_text(encoding="utf-8")
+    echo = (root / "phone" / "player" / "js" / "learn-echo.js").read_text(encoding="utf-8")
+    fx = (root / "phone" / "player" / "js" / "learn-fx.js").read_text(encoding="utf-8")
+    assert ".learn-body[hidden]" in css
+    assert "learnTapGo" not in shell
+    assert "learnTapGo" not in html
+    assert "learnQuizGo" not in html
+    assert "learnEchoGo" not in html
+    assert "learnQuizNext" not in shell
+    assert "learnQuizNext" not in html
+    assert 'id="learnCount"' in html
+    assert "data-learn-diff" in html
+    assert "runCountdown" in fx
+    assert "kickPlayerPaint" in shell
+    paint = (root / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
+    assert "clusterTokens" in paint
+    assert "isKanjiText(reading)" in paint
+    assert "fitLyricExtras" in paint
+    assert "fitLyricLine" in paint
+    assert "line-words" in paint
+    assert "kickPlayerPaint" in (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    assert "setLearnDiff" in (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
+    assert "playbackRate" in (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
+    assert "learnEchoGo" not in shell
+    assert "bindQuiz" in quiz
+    assert "lineAt" in quiz
+    assert "cancelCueWindow" in quiz
+    assert "bindTap" in tap
+    assert "lineAt" in tap
+    assert "scatterTiles" in tap
+    assert "TILE_SKINS" in tap
+    assert "LovStageFx" in tap
+    assert "--tile-bg" in tap
+    assert "bindEcho" in echo
+    assert "export function singWindowEnd" in echo
+    assert "SING_MIN_MS" in echo
+    assert "learnEchoPreview" in echo
+    assert "learnEchoRetry" in echo
+    assert "learnEchoNext" in echo
+    assert 'id="learnEchoPreview"' in html
+    assert 'id="learnEchoRetry"' in html
+    assert 'id="learnEchoNext"' in html
+    zh = (root / "shared" / "i18n" / "locales" / "zh.js").read_text(encoding="utf-8")
+    assert '"phone.player.learn": "游戏"' in zh
+    assert '"learn.title": "游戏"' in zh
+    assert '"learn.echo": "翻唱挑战"' in zh
+    assert "celebrateCorrect" in quiz
+    assert "SFX_GAIN = 0.068" in fx
+    assert "pausePlayer" not in fx
+    assert "applyKaraokeGain" not in fx
+    assert "bus.connect(ctx.destination)" in fx
 
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
@@ -118,6 +213,7 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
+    main.MEDIA_DIR = store.MEDIA_DIR
     store.init_db()
     song = store.create_song("群青", "YOASOBI", "ja")
     store.update_song(song["id"], status="ready")
@@ -135,5 +231,6 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
         assert res.status_code == 200
         data = res.json()
         assert data["title"] == "群青"
-        assert data["modes"] == ["quiz", "echo"]
+        assert data["modes"] == ["quiz", "tap", "echo"]
         assert data["lines"][0]["questions"]
+        assert [item["text"] for item in data["lines"][0]["words"]] == ["走る", "記憶"]

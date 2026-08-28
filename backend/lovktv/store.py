@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import json
 import shutil
-import sqlite3
 import threading
 import time
 import uuid
 from typing import Any
 
 from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
+from lovktv.db import connect as db_connect
+from lovktv.db import execute, init_schema
+from lovktv.schema import ROOM_FIELDS, SONG_FIELDS
 
 READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
@@ -22,74 +24,13 @@ def normalize_lyric_mode(value: Any) -> str:
 _LOCK = threading.Lock()
 
 
-def connect() -> sqlite3.Connection:
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+def connect():
+    return db_connect(DB_PATH)
 
 
 def init_db() -> None:
     with connect() as conn:
-        conn.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS songs (
-              id TEXT PRIMARY KEY,
-              title TEXT NOT NULL,
-              artist TEXT NOT NULL DEFAULT '',
-              language TEXT NOT NULL DEFAULT 'zh',
-              status TEXT NOT NULL DEFAULT 'queued',
-              error TEXT NOT NULL DEFAULT '',
-              audio_source TEXT NOT NULL DEFAULT '',
-              netease_id TEXT NOT NULL DEFAULT '',
-              created_at INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS rooms (
-              code TEXT PRIMARY KEY,
-              created_at INTEGER NOT NULL,
-              vocal_mix REAL NOT NULL DEFAULT 1,
-              volume INTEGER NOT NULL DEFAULT 80,
-              mic_gain INTEGER NOT NULL DEFAULT 80,
-              lyric_mode TEXT NOT NULL DEFAULT 'all',
-              now_index INTEGER NOT NULL DEFAULT 0
-            );
-            CREATE TABLE IF NOT EXISTS queue (
-              id TEXT PRIMARY KEY,
-              room TEXT NOT NULL,
-              song_id TEXT NOT NULL,
-              position INTEGER NOT NULL,
-              created_at INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS users (
-              id TEXT PRIMARY KEY,
-              wechat_openid TEXT NOT NULL DEFAULT '',
-              wechat_unionid TEXT NOT NULL DEFAULT '',
-              device_id TEXT NOT NULL DEFAULT '',
-              nickname TEXT NOT NULL DEFAULT '',
-              avatar TEXT NOT NULL DEFAULT '',
-              created_at INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS sessions (
-              token TEXT PRIMARY KEY,
-              user_id TEXT NOT NULL,
-              created_at INTEGER NOT NULL,
-              expires_at INTEGER NOT NULL
-            );
-            CREATE TABLE IF NOT EXISTS login_tickets (
-              id TEXT PRIMARY KEY,
-              status TEXT NOT NULL,
-              user_id TEXT NOT NULL DEFAULT '',
-              created_at INTEGER NOT NULL,
-              expires_at INTEGER NOT NULL
-            );
-            """
-        )
-        cols = {row[1] for row in conn.execute("PRAGMA table_info(rooms)")}
-        if "mic_gain" not in cols:
-            conn.execute("ALTER TABLE rooms ADD COLUMN mic_gain INTEGER NOT NULL DEFAULT 80")
-        if "lyric_mode" not in cols:
-            conn.execute("ALTER TABLE rooms ADD COLUMN lyric_mode TEXT NOT NULL DEFAULT 'all'")
+        init_schema(conn)
 
 
 def now_ms() -> int:
@@ -100,10 +41,17 @@ def new_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
+def _row(row: Any) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return dict(row)
+
+
 def create_song(title: str, artist: str = "", language: str = "zh", netease_id: str = "") -> dict[str, Any]:
     song_id = new_id()
     with _LOCK, connect() as conn:
-        conn.execute(
+        execute(
+            conn,
             "INSERT INTO songs (id, title, artist, language, status, netease_id, created_at) VALUES (?,?,?,?,?,?,?)",
             (song_id, title, artist, language, "queued", netease_id, now_ms()),
         )
@@ -112,17 +60,18 @@ def create_song(title: str, artist: str = "", language: str = "zh", netease_id: 
 
 
 def update_song(song_id: str, **fields: Any) -> None:
-    if not fields:
+    allowed = {key: value for key, value in fields.items() if key in SONG_FIELDS}
+    if not allowed:
         return
-    assignments = ", ".join(f"{key}=?" for key in fields)
+    assignments = ", ".join(f"{key}=?" for key in allowed)
     with _LOCK, connect() as conn:
-        conn.execute(f"UPDATE songs SET {assignments} WHERE id=?", (*fields.values(), song_id))
+        execute(conn, f"UPDATE songs SET {assignments} WHERE id=?", (*allowed.values(), song_id))
 
 
 def get_song(song_id: str) -> dict[str, Any] | None:
     with connect() as conn:
-        row = conn.execute("SELECT * FROM songs WHERE id=?", (song_id,)).fetchone()
-    return dict(row) if row else None
+        row = execute(conn, "SELECT * FROM songs WHERE id=?", (song_id,)).fetchone()
+    return _row(row)
 
 
 def media_flags(song_id: str) -> dict[str, Any]:
@@ -159,20 +108,28 @@ def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def list_songs() -> list[dict[str, Any]]:
     with connect() as conn:
-        rows = conn.execute("SELECT * FROM songs ORDER BY created_at DESC").fetchall()
+        rows = execute(conn, "SELECT * FROM songs ORDER BY created_at DESC").fetchall()
     return [dict(row) for row in rows]
 
 
-def _clamp_room_indexes(conn: sqlite3.Connection) -> None:
-    rooms = conn.execute("SELECT code, now_index FROM rooms").fetchall()
+def _count_value(row: Any) -> int:
+    if row is None:
+        return 0
+    if isinstance(row, dict):
+        return int(next(iter(row.values())))
+    return int(row[0])
+
+
+def _clamp_room_indexes(conn: Any) -> None:
+    rooms = execute(conn, "SELECT code, now_index FROM rooms").fetchall()
     for room in rooms:
-        count = conn.execute("SELECT COUNT(*) FROM queue WHERE room=?", (room["code"],)).fetchone()[0]
+        count = _count_value(execute(conn, "SELECT COUNT(*) FROM queue WHERE room=?", (room["code"],)).fetchone())
         if count <= 0:
-            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
+            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
         elif int(room["now_index"]) < 0:
-            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
+            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
         elif int(room["now_index"]) >= count:
-            conn.execute("UPDATE rooms SET now_index=? WHERE code=?", (count - 1, room["code"]))
+            execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (count - 1, room["code"]))
 
 
 def delete_song(song_id: str) -> bool:
@@ -180,8 +137,8 @@ def delete_song(song_id: str) -> bool:
     if not song:
         return False
     with _LOCK, connect() as conn:
-        conn.execute("DELETE FROM queue WHERE song_id=?", (song_id,))
-        conn.execute("DELETE FROM songs WHERE id=?", (song_id,))
+        execute(conn, "DELETE FROM queue WHERE song_id=?", (song_id,))
+        execute(conn, "DELETE FROM songs WHERE id=?", (song_id,))
         _clamp_room_indexes(conn)
     folder = MEDIA_DIR / song_id
     if folder.exists():
@@ -201,20 +158,18 @@ def ensure_room(code: str | None = None) -> dict[str, Any]:
     if not code:
         code = uuid.uuid4().hex[:6].upper()
     with _LOCK, connect() as conn:
-        row = conn.execute("SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
+        row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
         if not row:
-            conn.execute(
-                "INSERT INTO rooms (code, created_at) VALUES (?,?)",
-                (code, now_ms()),
-            )
-            row = conn.execute("SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
+            execute(conn, "INSERT INTO rooms (code, created_at) VALUES (?,?)", (code, now_ms()))
+            row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
     return dict(row)
 
 
 def room_snapshot(code: str) -> dict[str, Any]:
     room = ensure_room(code)
     with connect() as conn:
-        rows = conn.execute(
+        rows = execute(
+            conn,
             """
             SELECT queue.id, queue.song_id, queue.position, songs.title, songs.artist, songs.status, songs.language
             FROM queue JOIN songs ON songs.id = queue.song_id
@@ -226,7 +181,7 @@ def room_snapshot(code: str) -> dict[str, Any]:
     index = int(room["now_index"])
     if queue and index < 0:
         with _LOCK, connect() as conn:
-            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (code,))
+            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (code,))
         index = 0
         room["now_index"] = 0
     now = queue[index] if queue and 0 <= index < len(queue) else None
@@ -244,13 +199,14 @@ def enqueue(code: str, song_id: str) -> dict[str, Any]:
         return snap
     had_playing = snap.get("now_playing") is not None
     with _LOCK, connect() as conn:
-        pos = conn.execute("SELECT COALESCE(MAX(position),0)+1 FROM queue WHERE room=?", (code,)).fetchone()[0]
-        conn.execute(
+        pos = _count_value(execute(conn, "SELECT COALESCE(MAX(position),0)+1 FROM queue WHERE room=?", (code,)).fetchone())
+        execute(
+            conn,
             "INSERT INTO queue (id, room, song_id, position, created_at) VALUES (?,?,?,?,?)",
             (new_id(), code, song_id, pos, now_ms()),
         )
         if not had_playing:
-            conn.execute("UPDATE rooms SET now_index=0 WHERE code=?", (code,))
+            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (code,))
     return room_snapshot(code)
 
 
@@ -262,7 +218,7 @@ def bump(code: str, item_id: str) -> dict[str, Any]:
         return snap
     target_pos = items[snap["now_index"] + 1]["position"] if len(items) > snap["now_index"] + 1 else items[idx]["position"]
     with _LOCK, connect() as conn:
-        conn.execute("UPDATE queue SET position=? WHERE id=?", (target_pos - 1, item_id))
+        execute(conn, "UPDATE queue SET position=? WHERE id=?", (target_pos - 1, item_id))
     return room_snapshot(code)
 
 
@@ -278,8 +234,8 @@ def skip(code: str) -> dict[str, Any]:
     remaining = len(queue) - 1
     nxt = 0 if remaining <= 0 or cur >= remaining else cur
     with _LOCK, connect() as conn:
-        conn.execute("DELETE FROM queue WHERE id=?", (item_id,))
-        conn.execute("UPDATE rooms SET now_index=? WHERE code=?", (nxt, code))
+        execute(conn, "DELETE FROM queue WHERE id=?", (item_id,))
+        execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (nxt, code))
     return room_snapshot(code)
 
 
@@ -307,7 +263,7 @@ def play_now(code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]:
     if snap["queue"][idx].get("status") != READY:
         raise ValueError("这首还没就绪，不能点")
     with _LOCK, connect() as conn:
-        conn.execute("UPDATE rooms SET now_index=? WHERE code=?", (idx, code))
+        execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (idx, code))
     return room_snapshot(code)
 
 
@@ -327,10 +283,11 @@ def set_mix(
         fields["mic_gain"] = max(0, min(100, int(mic_gain)))
     if lyric_mode is not None:
         fields["lyric_mode"] = normalize_lyric_mode(lyric_mode)
-    if fields:
-        assignments = ", ".join(f"{key}=?" for key in fields)
+    allowed = {key: value for key, value in fields.items() if key in ROOM_FIELDS}
+    if allowed:
+        assignments = ", ".join(f"{key}=?" for key in allowed)
         with _LOCK, connect() as conn:
-            conn.execute(f"UPDATE rooms SET {assignments} WHERE code=?", (*fields.values(), code))
+            execute(conn, f"UPDATE rooms SET {assignments} WHERE code=?", (*allowed.values(), code))
     return room_snapshot(code)
 
 
@@ -338,7 +295,7 @@ def write_json(path, payload: Any) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _user_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
+def _user_row(row: Any) -> dict[str, Any] | None:
     if not row:
         return None
     data = dict(row)
@@ -354,7 +311,7 @@ def _user_row(row: sqlite3.Row | None) -> dict[str, Any] | None:
 
 def get_user(user_id: str) -> dict[str, Any] | None:
     with connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+        row = execute(conn, "SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     return _user_row(row)
 
 
@@ -364,16 +321,18 @@ def upsert_wechat_user(openid: str, unionid: str = "", nickname: str = "", avata
         raise ValueError("微信未返回账号")
     now = now_ms()
     with _LOCK, connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE wechat_openid=?", (openid,)).fetchone()
+        row = execute(conn, "SELECT * FROM users WHERE wechat_openid=?", (openid,)).fetchone()
         if row:
             user_id = row["id"]
-            conn.execute(
+            execute(
+                conn,
                 "UPDATE users SET wechat_unionid=?, nickname=?, avatar=? WHERE id=?",
                 (unionid or row["wechat_unionid"], nickname or row["nickname"], avatar or row["avatar"], user_id),
             )
         else:
             user_id = new_id()
-            conn.execute(
+            execute(
+                conn,
                 "INSERT INTO users (id, wechat_openid, wechat_unionid, nickname, avatar, created_at) VALUES (?,?,?,?,?,?)",
                 (user_id, openid, unionid, nickname or f"ID {user_id[:6].upper()}", avatar, now),
             )
@@ -389,14 +348,15 @@ def upsert_device_user(device_id: str, nickname: str = "") -> dict[str, Any]:
         raise ValueError("无效的设备")
     now = now_ms()
     with _LOCK, connect() as conn:
-        row = conn.execute("SELECT * FROM users WHERE device_id=?", (device_id,)).fetchone()
+        row = execute(conn, "SELECT * FROM users WHERE device_id=?", (device_id,)).fetchone()
         if row:
             user_id = row["id"]
             if nickname and nickname != row["nickname"]:
-                conn.execute("UPDATE users SET nickname=? WHERE id=?", (nickname, user_id))
+                execute(conn, "UPDATE users SET nickname=? WHERE id=?", (nickname, user_id))
         else:
             user_id = new_id()
-            conn.execute(
+            execute(
+                conn,
                 "INSERT INTO users (id, device_id, nickname, created_at) VALUES (?,?,?,?)",
                 (user_id, device_id, nickname or f"ID {user_id[:6].upper()}", now),
             )
@@ -411,7 +371,8 @@ def create_session(user_id: str, days: int | None = None) -> str:
     token = uuid.uuid4().hex + uuid.uuid4().hex
     now = now_ms()
     with _LOCK, connect() as conn:
-        conn.execute(
+        execute(
+            conn,
             "INSERT INTO sessions (token, user_id, created_at, expires_at) VALUES (?,?,?,?)",
             (token, user_id, now, now + days * 86400_000),
         )
@@ -423,7 +384,8 @@ def user_from_session(token: str) -> dict[str, Any] | None:
         return None
     now = now_ms()
     with connect() as conn:
-        row = conn.execute(
+        row = execute(
+            conn,
             "SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token=? AND sessions.expires_at>?",
             (token, now),
         ).fetchone()
@@ -434,7 +396,7 @@ def delete_session(token: str) -> None:
     if not token:
         return
     with _LOCK, connect() as conn:
-        conn.execute("DELETE FROM sessions WHERE token=?", (token,))
+        execute(conn, "DELETE FROM sessions WHERE token=?", (token,))
 
 
 def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:
@@ -442,7 +404,8 @@ def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:
     ticket = uuid.uuid4().hex[:10]
     now = now_ms()
     with _LOCK, connect() as conn:
-        conn.execute(
+        execute(
+            conn,
             "INSERT INTO login_tickets (id, status, created_at, expires_at) VALUES (?,?,?,?)",
             (ticket, "pending", now, now + ttl_ms),
         )
@@ -451,13 +414,13 @@ def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:
 
 def get_login_ticket(ticket: str) -> dict[str, Any] | None:
     with connect() as conn:
-        row = conn.execute("SELECT * FROM login_tickets WHERE id=?", (ticket,)).fetchone()
+        row = execute(conn, "SELECT * FROM login_tickets WHERE id=?", (ticket,)).fetchone()
     if not row:
         return None
     data = dict(row)
     if data["status"] == "pending" and int(data["expires_at"]) <= now_ms():
         with _LOCK, connect() as conn:
-            conn.execute("UPDATE login_tickets SET status='expired' WHERE id=? AND status='pending'", (ticket,))
+            execute(conn, "UPDATE login_tickets SET status='expired' WHERE id=? AND status='pending'", (ticket,))
         data["status"] = "expired"
     return data
 
@@ -467,7 +430,8 @@ def confirm_login_ticket(ticket: str, user_id: str) -> dict[str, Any]:
     if not row or row["status"] != "pending":
         raise ValueError("二维码已过期，请刷新")
     with _LOCK, connect() as conn:
-        conn.execute(
+        execute(
+            conn,
             "UPDATE login_tickets SET status='confirmed', user_id=? WHERE id=? AND status='pending'",
             (user_id, ticket),
         )
@@ -482,10 +446,48 @@ def consume_confirmed_ticket(ticket: str) -> dict[str, Any] | None:
     if not user:
         return None
     with _LOCK, connect() as conn:
-        cur = conn.execute(
+        cur = execute(
+            conn,
             "UPDATE login_tickets SET status='used' WHERE id=? AND status='confirmed'",
             (ticket,),
         )
         if cur.rowcount != 1:
             return None
     return user
+
+
+def upsert_songs(rows: list[dict[str, Any]]) -> int:
+    if not rows:
+        return 0
+    keys = (
+        "id",
+        "title",
+        "artist",
+        "language",
+        "status",
+        "error",
+        "audio_source",
+        "netease_id",
+        "created_at",
+    )
+    init_db()
+    with _LOCK, connect() as conn:
+        for row in rows:
+            values = [row.get(key, "") for key in keys]
+            execute(
+                conn,
+                """
+                INSERT INTO songs (id, title, artist, language, status, error, audio_source, netease_id, created_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(id) DO UPDATE SET
+                  title=excluded.title,
+                  artist=excluded.artist,
+                  language=excluded.language,
+                  status=excluded.status,
+                  error=excluded.error,
+                  audio_source=excluded.audio_source,
+                  netease_id=excluded.netease_id
+                """,
+                values,
+            )
+    return len(rows)

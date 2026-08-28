@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
 
@@ -13,8 +14,8 @@ export function loginQs() {
 export async function loadWho() {
   const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({ data: { user: null } }));
   const user = data.user;
-  $("whoName").textContent = user ? (user.sid || user.nickname || "已登录") : "未登录";
-  $("whoHint").textContent = user ? (user.wechat ? "微信 ID 已锁定" : "本机 ID") : "微信扫一下就能认号";
+  $("whoName").textContent = user ? (user.sid || user.nickname || t("phone.who.in")) : t("phone.who.out");
+  $("whoHint").textContent = user ? (user.wechat ? t("phone.who.wechat") : t("phone.who.device")) : t("phone.who.hint");
   $("whoLogin").hidden = !!user;
   $("whoLogin").href = loginQs();
   $("whoLogout").hidden = !user;
@@ -32,7 +33,7 @@ export function bindWho() {
   $("whoLogout").onclick = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     await loadWho();
-    showToast("已退出");
+    showToast(t("phone.who.bye"));
   };
   loadWho();
 }

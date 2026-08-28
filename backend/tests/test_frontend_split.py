@@ -23,6 +23,12 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()
     assert (ROOT / "shared" / "audio" / "js" / "aec-worklet.js").is_file()
     assert (ROOT / "landing" / "css" / "landing.css").is_file()
+    mic = phone.split('id="playerMic"', 1)[1].split("</button>", 1)[0]
+    vocal = phone.split('id="playerVocal"', 1)[1].split("</button>", 1)[0]
+    iem = phone.split('id="playerIem"', 1)[1].split("</button>", 1)[0]
+    assert "<svg" in mic and "<svg" in vocal and "<svg" in iem
+    assert mic[mic.index("<svg"):] != vocal[vocal.index("<svg"):]
+    assert vocal[vocal.index("<svg"):] != iem[iem.index("<svg"):]
 
 
 def test_split_assets_are_served(tmp_path, monkeypatch):
@@ -42,9 +48,20 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/tv/app.js",
             "/tv/install.js",
             "/shared/ui/js/http.js",
+            "/shared/i18n/js/i18n.js",
+            "/shared/i18n/locales/zh.js",
+            "/shared/i18n/locales/yue.js",
+            "/shared/i18n/locales/en.js",
+            "/shared/i18n/locales/ja.js",
             "/phone/shell/css/shell.css",
             "/phone/player/css/learn.css",
+            "/phone/player/css/learn-quiz.css",
+            "/phone/player/css/learn-tap.css",
+            "/phone/player/css/learn-echo.css",
             "/phone/player/js/learn.js",
+            "/phone/player/js/learn-fx.js",
+            "/phone/player/js/learn-tap.js",
+            "/tv/fx/js/stage-fx.js",
             "/tv/stage/css/stage.css",
             "/shared/audio/js/aec.js",
             "/shared/audio/js/aec-worklet.js",

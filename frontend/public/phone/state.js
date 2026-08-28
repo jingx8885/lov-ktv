@@ -1,4 +1,5 @@
 import { guardState } from "../shared/ui/js/guard.js";
+import { t } from "../shared/i18n/js/i18n.js";
 
 /** @type {PhoneState} */
 export const state = guardState({
@@ -41,14 +42,16 @@ export const state = guardState({
   phoneCtx: null,
   phoneMicLevel: Number(localStorage.getItem("phoneMicGain") || 80),
   phoneIem: localStorage.getItem("phoneIem") !== "0",
-  learnOpen: false,
-  learnVocalWas: 1,
 }, "phone");
 
 export const STEP_MS = 100;
 export const LIB_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");
 /** @type {string[]} */
 export const PAGES = ["search", "desk", "player"];
-/** @type {Record<string, string>} */
-export const PAGE_TITLE = { search: "搜歌", desk: "点歌", player: "听歌" };
-export const SEARCH_EMPTY = `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>搜歌名或歌手</p><span class="tiny">先听再加入曲库</span></div>`;
+/** @param {string} name */
+export function pageTitle(name) {
+  return t("phone.nav." + name);
+}
+export function searchEmpty() {
+  return `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.empty")}</p><span class="tiny">${t("phone.search.emptyHint")}</span></div>`;
+}

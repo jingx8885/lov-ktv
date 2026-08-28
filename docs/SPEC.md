@@ -35,7 +35,7 @@
 |---|---|---|
 | 仓库名 | lov-ktv | 用户指定 |
 | 进曲 | lovjpn / tonzhon 搜索下载 | 手机上传体验差，用户通常没有文件 |
-| 后端 | Python FastAPI + SQLite | 直接调用分离/对齐生态 |
+| 后端 | Python FastAPI + PostgreSQL（Supabase）/ SQLite | 线上 PG；本机与测试用 SQLite |
 | 分离 | audio-separator（UVR / BS-RoFormer / KARA_2） | 生产级、MIT |
 | 对齐 | 网易 LRC 行级时间戳 + 行内字/词插值 | 官方 LRC 比 Whisper 稳 |
 | 播放 | Web TV + Android TV WebView | H.264/AAC 产物，一套 UI |

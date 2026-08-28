@@ -1,174 +1,221 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { applyPlayerVocalMix, pausePlayer } from "./playback.js";
-import { cancelCueWindow } from "./learn-play.js";
-import { advanceQuiz, quizScore, replayQuizLine, resetQuiz, showQuizLine } from "./learn-quiz.js";
-import { echoBusy, paintEchoHome, resetEcho, runEcho, skipEchoLine, stopEcho } from "./learn-echo.js";
+import { acquirePhoneMic } from "./mic.js";
+import { applyPlayerVocalMix, kickPlayerPaint, pausePlayer, unlockPlayerGesture } from "./playback.js";
+import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js";
+import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn-fx.js";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js";
+import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn-echo.js";
+import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js";
 
-/** @type {{ mode: LearnMode | "", quiz: LearnQuiz | null, scoreKind: string, vocalWas: number }} */
-const ui = { mode: "", quiz: null, scoreKind: "", vocalWas: 1 };
+/** @type {{ mode: LearnMode | "", pack: LearnQuiz | null, vocalWas: number, boot: number }} */
+const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };
+
+/** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
+const MODES = {
+  quiz: { pane: "learnQuiz", setup: startQuiz, run: runQuiz, stop: stopQuiz, score: quizScoreView },
+  tap: { pane: "learnTap", setup: startTap, run: runTap, stop: stopTap, score: tapScoreView },
+  echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView },
+};
+const CYCLE = ["quiz", "tap", "echo"];
+const PANES = ["learnHome", "learnQuiz", "learnTap", "learnEcho", "learnScore"];
 
 function showPane(id) {
-  ["learnHome", "learnQuiz", "learnEcho", "learnScore"].forEach((name) => {
+  PANES.forEach((name) => {
     const el = $(name);
     if (el) el.hidden = name !== id;
   });
 }
 
 function restoreVocal() {
-  state.playerVocal = state.learnVocalWas ? 1 : 0;
+  state.playerVocal = ui.vocalWas ? 1 : 0;
   const btn = $("playerVocal");
   if (btn) {
     btn.classList.toggle("on", !!state.playerVocal);
-    $("playerVocalLabel").textContent = state.playerVocal ? "原唱" : "伴奏";
+    $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
   }
   applyPlayerVocalMix();
 }
 
-export function exitLearn() {
-  if (!state.learnOpen) return;
-  stopEcho();
+function paintDiff() {
+  const cur = loadLearnDiff();
+  document.querySelectorAll("[data-learn-diff]").forEach((btn) => {
+    btn.classList.toggle("on", btn.dataset.learnDiff === cur);
+  });
+}
+
+export function isLearnOpen() {
+  return document.body.classList.contains("learn-on");
+}
+
+function stopModes() {
+  ui.boot += 1;
+  cancelCountdown();
+  Object.values(MODES).forEach((mode) => mode.stop());
   cancelCueWindow();
-  state.learnOpen = false;
+}
+
+export function exitLearn() {
+  if (!isLearnOpen()) return;
+  stopModes();
+  clearLearnFx();
+  resetLearnRate();
   ui.mode = "";
   document.body.classList.remove("learn-on");
   $("playerLearn").hidden = true;
   restoreVocal();
+  kickPlayerPaint();
 }
 
 function openLearnShell() {
   api.exitEdit();
   pausePlayer();
-  state.learnVocalWas = state.playerVocal ? 1 : 0;
-  state.learnOpen = true;
+  ui.vocalWas = state.playerVocal ? 1 : 0;
   document.body.classList.add("learn-on");
   $("playerLearn").hidden = false;
-  $("learnTitle").textContent = "学习";
+  $("learnTitle").textContent = t("learn.title");
   $("learnMeta").textContent = state.playerSong ? `${state.playerSong.title}` : "";
+  $("learnSong").textContent = state.playerSong ? state.playerSong.title : "";
+  paintDiff();
 }
 
 function gradeLabel(pct) {
-  if (pct >= 90) return "几乎全对";
-  if (pct >= 75) return "很稳";
-  if (pct >= 55) return "过得去";
-  return "再听两遍";
+  if (pct >= 90) return t("learn.grade.s");
+  if (pct >= 75) return t("learn.grade.a");
+  if (pct >= 55) return t("learn.grade.b");
+  return t("learn.grade.c");
 }
 
-/** @param {{ pct: number, ok?: number, total?: number, counts?: any, sung?: number, mixUrl?: string }} score */
+function nextMode(mode) {
+  const index = CYCLE.indexOf(mode);
+  return CYCLE[(index + 1) % CYCLE.length];
+}
+
+function otherLabel(mode) {
+  const next = nextMode(mode);
+  if (next === "tap") return t("learn.go.tap");
+  if (next === "echo") return t("learn.go.echo");
+  return t("learn.go.quiz");
+}
+
+/** @param {any} score */
 function showScore(score) {
+  const spec = MODES[ui.mode] || MODES.quiz;
+  const view = spec.score(score, gradeLabel);
   showPane("learnScore");
-  $("learnTitle").textContent = ui.mode === "echo" ? "跟唱得分" : "测验得分";
+  $("learnTitle").textContent = view.title;
   $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
   $("learnScoreNum").textContent = String(score.pct);
-  if (ui.mode === "echo") {
-    $("learnScoreSub").textContent = `${gradeLabel(score.pct)} · 唱了 ${score.sung || 0}/${score.total || 0} 句`;
-    $("learnScoreDetail").textContent = "按音量和节奏贴合度估的，当个练习参考。";
-    const mix = $("learnMix");
-    mix.hidden = !score.mixUrl;
-    if (score.mixUrl) {
-      mix.src = score.mixUrl;
-      mix.play().catch(() => {});
-    }
+  $("learnScoreSub").textContent = view.sub;
+  $("learnScoreDetail").textContent = view.detail;
+  $("learnAgain").textContent = view.again;
+  $("learnOther").textContent = otherLabel(ui.mode);
+  const mix = $("learnMix");
+  mix.hidden = !view.mixUrl;
+  if (view.mixUrl) {
+    mix.src = view.mixUrl;
+    mix.play().catch(() => {});
   } else {
-    const counts = score.counts || {};
-    const bits = [];
-    if (counts.meaning && counts.meaning[1]) bits.push(`句意 ${counts.meaning[0]}/${counts.meaning[1]}`);
-    if (counts.word && counts.word[1]) bits.push(`单词 ${counts.word[0]}/${counts.word[1]}`);
-    if (counts.listen && counts.listen[1]) bits.push(`听写 ${counts.listen[0]}/${counts.listen[1]}`);
-    $("learnScoreSub").textContent = `${gradeLabel(score.pct)} · ${score.ok}/${score.total}`;
-    $("learnScoreDetail").textContent = bits.join(" · ");
-    $("learnMix").hidden = true;
-    $("learnMix").removeAttribute("src");
+    mix.removeAttribute("src");
   }
-  $("learnAgain").textContent = ui.mode === "echo" ? "再唱一遍" : "再测一遍";
-  $("learnOther").textContent = ui.mode === "echo" ? "去做测验" : "去跟唱";
+  if (view.celebrate) celebrateCorrect($("learnScoreNum"), { line: true });
 }
 
-async function loadQuiz() {
-  if (ui.quiz && ui.quiz.song_id === (state.playerSong && state.playerSong.id)) return ui.quiz;
+async function loadPack() {
+  if (ui.pack && ui.pack.song_id === (state.playerSong && state.playerSong.id)) return ui.pack;
   const song = state.playerSong;
   if (!song) return null;
   const { ok, status, data } = await fetchJson(`/api/songs/${song.id}/learn`);
   if (!ok) {
-    showToast((data && data.detail) || (status === 409 ? "这首还不能学" : "学习内容加载失败"));
+    showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
     return null;
   }
-  ui.quiz = data;
+  ui.pack = data;
   return data;
 }
 
-async function startQuiz() {
-  const quiz = await loadQuiz();
-  if (!quiz) return;
-  ui.mode = "quiz";
-  resetQuiz(quiz);
-  showPane("learnQuiz");
-  await showQuizLine();
-}
-
-async function startEcho() {
-  const quiz = await loadQuiz();
-  if (!quiz) return;
-  ui.mode = "echo";
-  resetEcho(quiz.lines);
-  showPane("learnEcho");
-  paintEchoHome();
+async function startMode(mode) {
+  const spec = MODES[mode] || MODES.quiz;
+  const pack = await loadPack();
+  if (!pack) return;
+  stopModes();
+  const boot = ui.boot;
+  applyLearnRate();
+  unlockPlayerGesture();
+  pausePlayer();
+  ui.mode = /** @type {LearnMode} */ (MODES[mode] ? mode : "quiz");
+  showPane(spec.pane);
+  spec.setup(pack);
+  if (ui.mode === "echo") {
+    const stream = await acquirePhoneMic();
+    if (!stream) {
+      showToast(t("learn.noRec"));
+      ui.mode = "";
+      showPane("learnHome");
+      return;
+    }
+  }
+  const go = await runCountdown();
+  if (!go || boot !== ui.boot || ui.mode !== mode) return;
+  const score = await spec.run();
+  if (boot !== ui.boot) return;
+  if (score) showScore(score);
 }
 
 export async function enterLearn() {
-  if (!state.playerSong) return showToast("先从点歌台听一首");
+  if (!state.playerSong) return showToast(t("phone.player.needSong"));
   if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
-    return showToast("这首还没有歌词");
+    return showToast(t("learn.needLyrics"));
   }
   openLearnShell();
   showPane("learnHome");
 }
 
 export function bindLearn() {
-  $("playerLearnBtn").onclick = () => enterLearn();
+  document.querySelectorAll("[data-enter-learn]").forEach((btn) => {
+    btn.onclick = () => {
+      if (state.currentPage !== "player") api.showPage("player");
+      enterLearn();
+    };
+  });
   $("learnBack").onclick = () => {
     if (ui.mode && $("learnHome").hidden) {
-      stopEcho();
-      cancelCueWindow();
+      stopModes();
       restoreVocal();
+      resetLearnRate();
       ui.mode = "";
       showPane("learnHome");
-      $("learnTitle").textContent = "学习";
+      $("learnTitle").textContent = t("learn.title");
       $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
+      paintDiff();
       return;
     }
     exitLearn();
   };
-  document.querySelectorAll("[data-learn-mode]").forEach((btn) => {
+  document.querySelectorAll("[data-learn-diff]").forEach((btn) => {
     btn.onclick = () => {
-      if (btn.dataset.learnMode === "echo") startEcho();
-      else startQuiz();
+      setLearnDiff(btn.dataset.learnDiff);
+      paintDiff();
     };
   });
-  $("learnReplay").onclick = () => replayQuizLine();
-  $("learnQuizNext").onclick = async () => {
-    const next = advanceQuiz();
-    if (next === "line") await showQuizLine();
-    if (next === "score") showScore(quizScore());
-  };
-  $("learnEchoGo").onclick = async () => {
-    if (echoBusy()) return;
-    const score = await runEcho();
-    if (score) showScore(score);
-  };
-  $("learnEchoSkip").onclick = () => skipEchoLine();
+  document.querySelectorAll("[data-learn-mode]").forEach((btn) => {
+    btn.addEventListener("pointerdown", () => unlockPlayerGesture());
+    btn.onclick = () => startMode(btn.dataset.learnMode);
+  });
+  bindQuiz();
+  bindTap();
+  bindEcho();
   $("learnAgain").onclick = () => {
     $("learnMix").pause();
-    if (ui.mode === "echo") startEcho();
-    else startQuiz();
+    startMode(ui.mode);
   };
   $("learnOther").onclick = () => {
     $("learnMix").pause();
-    if (ui.mode === "echo") startQuiz();
-    else startEcho();
+    startMode(nextMode(ui.mode));
   };
   $("learnDone").onclick = () => exitLearn();
 }

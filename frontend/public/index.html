@@ -3,304 +3,296 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>lov-ktv · 客厅就是包厢</title>
-  <meta name="description" content="手机搜歌入库，电视开唱。人声分离、中日英扫色歌词，家庭和包厢都能用的自托管 KTV。" />
-  <meta name="theme-color" content="#07040a" />
-  <meta property="og:title" content="lov-ktv · 客厅就是包厢" />
-  <meta property="og:description" content="搜歌名就能唱。电视当舞台，手机当点歌台。" />
+  <title data-i18n-title="landing.title">lov-ktv · 任意一首歌，当场变成包厢</title>
+  <meta name="description" content="搜歌名就能唱。人声当场拆掉，歌词按字扫色。电视当舞台，手机当点歌台。家庭和包厢都能用的自托管 KTV。" data-i18n-content="landing.desc" />
+  <meta name="theme-color" content="#030303" />
+  <meta property="og:title" content="lov-ktv · 任意一首歌，当场变成包厢" data-i18n-content="landing.title" />
+  <meta property="og:description" content="搜歌名入库，伴奏当场拆，歌词跟着嘴走。不用找文件，不用下 App。" data-i18n-content="landing.ogDesc" />
   <meta property="og:type" content="website" />
-  <link rel="stylesheet" href="/landing/css/landing.css?v=2" />
+  <link rel="stylesheet" href="/landing/css/landing.css?v=12" />
 </head>
 <body class="lp">
-  <div class="lp-grain" aria-hidden="true"></div>
-  <aside class="lp-toc" aria-label="目录">
-    <p>Contents</p>
-    <a href="#opening"><em>01</em> Opening</a>
-    <a href="#ritual"><em>02</em> Ritual</a>
-    <a href="#house"><em>03</em> House</a>
-    <a href="#notes"><em>04</em> Notes</a>
-  </aside>
-
   <header class="lp-nav">
-    <a class="lp-logo" href="#opening">lov-ktv</a>
-    <nav>
-      <a href="#ritual">怎么唱</a>
-      <a href="#house">给谁</a>
-      <a href="#notes">问答</a>
-    </nav>
-    <div class="lp-nav-end">
-      <a class="ghost" href="/m.html">点歌</a>
-      <a class="pill" href="/tv.html">开电视</a>
+    <div class="lp-wrap lp-nav-inner">
+      <a class="lp-logo" href="#opening">lov-ktv<span>.</span></a>
+      <nav>
+        <a href="#ritual" data-i18n="landing.nav.ritual">怎么唱</a>
+        <a href="#features" data-i18n="landing.nav.features">能力</a>
+        <a href="#notes" data-i18n="landing.nav.notes">问答</a>
+      </nav>
+      <div class="lp-nav-end">
+        <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+          <option value="zh">中文</option>
+          <option value="yue">粵語</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
+        <a class="btn ghost sm" href="/m.html" data-i18n="landing.nav.phone">点歌</a>
+        <a class="btn solid sm" href="/tv.html" data-i18n="landing.nav.tv">开电视</a>
+      </div>
     </div>
   </header>
 
-  <main>
-    <section class="lp-hero" id="opening">
-      <div class="lp-lights" aria-hidden="true">
-        <i class="beam a"></i>
-        <i class="beam b"></i>
-        <i class="beam c"></i>
-      </div>
-      <div class="lp-copy">
-        <p class="eye">Issue 01 · Private Room</p>
+  <section class="lp-hero" id="opening">
+    <div class="lp-hero-fx" aria-hidden="true">
+      <div class="lp-mesh a"></div>
+      <div class="lp-mesh b"></div>
+      <div class="lp-aurora"></div>
+      <div class="lp-lamp"></div>
+      <svg class="lp-beams" viewBox="0 0 1440 800" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="lpBeam" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#ff4d8d" stop-opacity="0"/>
+            <stop offset=".46" stop-color="#ffffff" stop-opacity=".9"/>
+            <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g fill="none" stroke="url(#lpBeam)" stroke-linecap="round">
+          <path d="M-40 120C280 200 520 40 1500 260" stroke-width="1.5"/>
+          <path d="M-20 280C340 140 780 420 1480 180" stroke-width="1.15"/>
+          <path d="M0 520C420 360 860 640 1460 400" stroke-width="1.25"/>
+          <path d="M80 40C480 160 900 -20 1520 140" stroke-width="1"/>
+          <path d="M-60 680C300 560 760 720 1500 520" stroke-width="1.1"/>
+        </g>
+      </svg>
+      <div class="lp-meteors"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="lp-spot"></div>
+      <div class="lp-grain"></div>
+      <div class="lp-vignette"></div>
+    </div>
+    <div class="lp-wrap lp-hero-grid">
+      <div class="lp-hero-copy">
+        <p class="badge" data-i18n="landing.hero.badge">搜歌名 · 人声分离 · 扫色歌词</p>
         <h1>
-          <span>把夜店灯光</span>
-          <span class="gold">搬进客厅。</span>
+          <span data-i18n="landing.hero.h1a">任意一首歌，</span>
+          <span class="grad" data-i18n="landing.hero.h1b">当场变成包厢。</span>
         </h1>
-        <p class="lead">手机搜歌名入库，电视当舞台。伴奏当场拆出来，歌词按字扫色。家庭聚会、朋友包厢，扫一下就能唱。</p>
-        <p class="price">自托管 · 不运营公网曲库 · 已下好的歌断网也能唱</p>
+        <p class="lead" data-i18n="landing.hero.lead">搜歌名入库，人声当场拆掉，歌词按字扫色。电视当舞台，手机扫码点歌。不用找文件，不用下 App，曲库留在自己家里。</p>
         <div class="cta">
-          <a class="pill" href="/tv.html">打开电视</a>
-          <a class="ghost" href="/m.html">手机点歌</a>
+          <a class="btn solid" href="/tv.html"><span data-i18n="landing.hero.tv">打开电视</span> <span aria-hidden="true">→</span></a>
+          <a class="btn ghost" href="/m.html" data-i18n="landing.hero.phone">手机点歌</a>
         </div>
-        <p class="fine">浏览器电视或 Android TV 都能开。先让电视出码，手机再进房。</p>
+        <p class="fine" data-i18n="landing.hero.fine">浏览器或 Android TV 都能开。先让电视出码，手机再进房。</p>
       </div>
-      <div class="lp-stage" aria-hidden="true">
-        <div class="tv-frame">
-          <div class="tv-bar"><i></i><i></i><i></i><span>ROOM 1842</span></div>
-          <p class="now">NOW SINGING</p>
-          <p class="lyric wait">夜风吹过这条街</p>
-          <p class="lyric sing"><span>把心事唱给谁听</span></p>
-          <p class="lyric next">下一句已经在灯里</p>
+      <div class="lp-shot" id="demo">
+        <div class="lp-shot-ring"></div>
+        <div class="lp-glare"></div>
+        <div class="lp-shot-glow"></div>
+        <div class="lp-shot-meta">
+          <span id="demoNow">NOW SINGING</span>
+          <strong id="demoSong">夜曲</strong>
+          <em id="demoArtist">周杰伦</em>
         </div>
-        <div class="phone-frame">
-          <b>点歌台</b>
-          <ul>
-            <li><em>夜曲</em><small>周杰伦</small></li>
-            <li class="on"><em>NIGHT DANCER</em><small>imase</small></li>
-            <li><em>告白气球</em><small>周杰伦</small></li>
-          </ul>
+        <p class="lyric wait" id="demoPrev">一群嗜血的蚂蚁 被腐肉所吸引</p>
+        <p class="lyric sing" id="demoCur"><span>我却得到你的纵容 神的原谅</span></p>
+        <p class="lyric next" id="demoNext">而你 却沉默地转过身</p>
+        <div class="lp-bars">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
         </div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="lp-promises" aria-label="承诺">
-      <article>
-        <strong>不用找文件</strong>
-        <p>搜歌名就能入库。网易外链、SoundCloud、YouTube 依次回落，上传只是后备。</p>
-      </article>
-      <article>
-        <strong>歌词跟着嘴</strong>
-        <p>官方 LRC 优先，中日按字扫色，英文按词。日语带假名，不像漂字幕。</p>
-      </article>
-      <article>
-        <strong>灯还在自己家里</strong>
-        <p>处理在你的服务器或盒子上。曲库不下公网，下好的歌断网也能唱。</p>
-      </article>
-    </section>
+  <section class="lp-trust" data-i18n-aria="landing.trust.label" aria-label="能力条">
+    <div class="lp-wrap">
+      <span data-i18n="landing.trust.netease">网易外链</span>
+      <i></i>
+      <span>SoundCloud</span>
+      <i></i>
+      <span>YouTube</span>
+      <i></i>
+      <span>UVR ONNX</span>
+      <i></i>
+      <span data-i18n="landing.trust.lrc">官方 LRC</span>
+      <i></i>
+      <span data-i18n="landing.trust.scan">中日英扫色</span>
+      <i></i>
+      <span>Android TV</span>
+      <i></i>
+      <span data-i18n="landing.trust.host">自托管</span>
+    </div>
+  </section>
 
-    <section class="lp-block" id="ritual">
-      <header class="lp-head">
-        <p class="eye">02 · Ritual</p>
-        <h2>三步，房间就亮了</h2>
-      </header>
+  <section class="lp-section" id="features">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.feat.eye">舞台上真正用得到的</p>
+      <h2 data-i18n="landing.feat.h">每一步都是按钮。房间自己把它们接上。</h2>
+      <div class="lp-features">
+        <article>
+          <p class="eye">Search</p>
+          <h3 data-i18n="landing.feat.1h">主路是搜歌名，不是传文件</h3>
+          <p data-i18n="landing.feat.1p">歌名进曲库，网易外链、SoundCloud、YouTube 依次回落。上传只是后备。</p>
+        </article>
+        <article>
+          <p class="eye">Split</p>
+          <h3 data-i18n="landing.feat.2h">人声分离不背 Torch</h3>
+          <p data-i18n="landing.feat.2p">onnxruntime 当场拆轨。处理完缓存在盒子上，处理端掉线也能唱。</p>
+        </article>
+        <article>
+          <p class="eye">Color</p>
+          <h3 data-i18n="landing.feat.3h">中日英，三种扫色语法</h3>
+          <p data-i18n="landing.feat.3p">当前句加下一句。日语注音贴在字头上。ASS / LRC / JSON 都留，字幕外挂不烧录。</p>
+        </article>
+        <article>
+          <p class="eye">Room</p>
+          <h3 data-i18n="landing.feat.4h">不用装 App，扫一下就进房</h3>
+          <p data-i18n="landing.feat.4p">电视出码，手机当点歌台。队列、顶歌、切歌，谁来谁点。</p>
+        </article>
+        <article>
+          <p class="eye">Box</p>
+          <h3 data-i18n="landing.feat.5h">Android TV 当局域网宿主</h3>
+          <p data-i18n="landing.feat.5p">盒子装上就开房。成品缓存在本地，客厅断网也能把今晚唱完。</p>
+        </article>
+        <article>
+          <p class="eye">Mic</p>
+          <h3 data-i18n="landing.feat.6h">手机麦可以混到电视</h3>
+          <p data-i18n="landing.feat.6p">音量滑条直接管现场。微信认号可选，没配也能先用本机身份唱。</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section lp-alt" id="ritual">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.ritual.eye">三步开房</p>
+      <h2 data-i18n="landing.ritual.h">电视出码，手机搜歌，墙上开唱。</h2>
       <ol class="lp-steps">
         <li>
           <span>01</span>
-          <div>
-            <strong>电视开房</strong>
-            <p>盒子或浏览器打开电视页，墙上出现房间码和二维码。</p>
-          </div>
+          <strong data-i18n="landing.ritual.1h">电视开房</strong>
+          <p data-i18n="landing.ritual.1p">盒子或浏览器打开电视页，墙上出现房间码和二维码。</p>
         </li>
         <li>
           <span>02</span>
-          <div>
-            <strong>手机搜歌</strong>
-            <p>扫码进同一间房。先试听确认，再丢进曲库排队。</p>
-          </div>
+          <strong data-i18n="landing.ritual.2h">手机搜歌</strong>
+          <p data-i18n="landing.ritual.2p">扫码进同一间房。先试听确认，再丢进曲库排队。</p>
         </li>
         <li>
           <span>03</span>
-          <div>
-            <strong>扫色开唱</strong>
-            <p>伴奏、人声、MTV 就位。原唱伴唱随时切，下一句已经等在灯里。</p>
-          </div>
+          <strong data-i18n="landing.ritual.3h">扫色开唱</strong>
+          <p data-i18n="landing.ritual.3p">伴奏、人声、歌词就位。原唱伴唱随时切，下一句已经等在灯里。</p>
         </li>
       </ol>
-    </section>
+    </div>
+  </section>
 
-    <section class="lp-block" id="features" aria-label="能力">
-      <header class="lp-head">
-        <p class="eye">Lookbook</p>
-        <h2>舞台上真正用得到的东西</h2>
-      </header>
-      <div class="lp-features">
-        <article>
-          <div>
-            <p class="eye">Search</p>
-            <h3>搜歌名，不是传文件</h3>
-            <p>大部分人手机里没有母带。所以主路是搜歌下载：歌名进曲库，处理自动跑完。</p>
-          </div>
-          <ul>
-            <li>歌名 / 歌手直接搜</li>
-            <li>先试听，再入库</li>
-            <li>队列、顶歌、切歌</li>
-            <li>原唱 / 伴唱不中断</li>
-          </ul>
-        </article>
-        <article class="flip">
-          <div>
-            <p class="eye">Split</p>
-            <h3>伴奏是拆出来的，不是将就的</h3>
-            <p>UVR ONNX 做人声分离。卡拉 OK 轨留给你，导唱轨在需要时再叠回去。</p>
-          </div>
-          <ul>
-            <li>onnxruntime，不背 Torch</li>
-            <li>伴奏 + 人声双轨</li>
-            <li>处理完缓存在盒子上</li>
-            <li>可挂 MTV 当背景</li>
-          </ul>
-        </article>
-        <article>
-          <div>
-            <p class="eye">Color</p>
-            <h3>中日英，三种扫色语法</h3>
-            <p>官方时间轴优先。中日走到字，英文走到词，日语注音贴在字头上。</p>
-          </div>
-          <ul>
-            <li>当前句 + 下一句</li>
-            <li>十尺电视也能看清</li>
-            <li>ASS / LRC / JSON 都留</li>
-            <li>字幕外挂，不烧录</li>
-          </ul>
-        </article>
-      </div>
-    </section>
-
-    <section class="lp-block" id="house">
-      <header class="lp-head">
-        <p class="eye">03 · House</p>
-        <h2>谁会把灯打开</h2>
-      </header>
-      <div class="lp-grid3">
-        <article>
-          <strong>家里来人</strong>
-          <p>电视当舞台，沙发当卡座。不用再把手机凑到蓝牙音箱前轮流点。</p>
-        </article>
-        <article>
-          <strong>朋友包厢</strong>
-          <p>局域网扫码进房。谁来谁点，队列在电视上，麦声也可以从手机混进去。</p>
-        </article>
-        <article>
-          <strong>自己练</strong>
-          <p>日语假名、英文词级扫色，练完一句再下一句。已处理的歌，断网也在。</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="lp-block" aria-label="对比">
-      <header class="lp-head">
-        <p class="eye">Versus</p>
-        <h2>不是再下一个点歌 App</h2>
-      </header>
+  <section class="lp-section" id="versus">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.vs.eye">不是再下一个点歌 App</p>
+      <h2 data-i18n="landing.vs.h">U 盘、会员曲库、网上伴奏，都是在找别人做好的卡拉 OK。</h2>
       <div class="lp-table-wrap">
         <table>
           <thead>
             <tr>
               <th></th>
-              <th>自己找文件</th>
-              <th>在线 K 歌</th>
+              <th data-i18n="landing.vs.diy">自己找文件</th>
+              <th data-i18n="landing.vs.online">在线 K 歌</th>
               <th>lov-ktv</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <th>进曲</th>
-              <td>翻硬盘</td>
-              <td>平台曲库</td>
-              <td>搜歌名入库</td>
+              <th data-i18n="landing.vs.in">进曲</th>
+              <td data-i18n="landing.vs.inDiy">翻硬盘 / U 盘</td>
+              <td data-i18n="landing.vs.inOnline">平台曲库</td>
+              <td data-i18n="landing.vs.inUs">搜歌名入库</td>
             </tr>
             <tr>
-              <th>歌词</th>
-              <td>经常没有</td>
-              <td>有时会飘</td>
-              <td>官方轴扫色</td>
+              <th data-i18n="landing.vs.kar">伴奏</th>
+              <td data-i18n="landing.vs.karDiy">碰运气</td>
+              <td data-i18n="landing.vs.karOnline">平台给什么唱什么</td>
+              <td data-i18n="landing.vs.karUs">当场拆人声</td>
             </tr>
             <tr>
-              <th>数据</th>
-              <td>散落各处</td>
-              <td>上云</td>
-              <td>自托管</td>
+              <th data-i18n="landing.vs.lyr">歌词</th>
+              <td data-i18n="landing.vs.lyrDiy">经常没有</td>
+              <td data-i18n="landing.vs.lyrOnline">有时会飘</td>
+              <td data-i18n="landing.vs.lyrUs">官方轴按字扫色</td>
+            </tr>
+            <tr>
+              <th data-i18n="landing.vs.data">数据</th>
+              <td data-i18n="landing.vs.dataDiy">散落各处</td>
+              <td data-i18n="landing.vs.dataOnline">上云</td>
+              <td data-i18n="landing.vs.dataUs">自托管，断网也能唱</td>
             </tr>
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="lp-block" aria-label="更多">
-      <header class="lp-head">
-        <p class="eye">Extras</p>
-        <h2>灯还亮着的细节</h2>
-      </header>
-      <div class="lp-grid4">
+  <section class="lp-section lp-alt" id="house">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.house.eye">谁会把灯打开</p>
+      <h2 data-i18n="landing.house.h">家里来人，朋友包厢，自己练一句。</h2>
+      <div class="lp-steps">
         <article>
-          <strong>Android TV</strong>
-          <p>盒子装上就当局域网宿主，手机扫电视码进房。</p>
+          <strong data-i18n="landing.house.1h">家里来人</strong>
+          <p data-i18n="landing.house.1p">电视当舞台，沙发当卡座。不用再把手机凑到蓝牙音箱前轮流点。</p>
         </article>
         <article>
-          <strong>本机缓存</strong>
-          <p>处理完成的歌落在盒子上，处理端掉线也能唱。</p>
+          <strong data-i18n="landing.house.2h">朋友包厢</strong>
+          <p data-i18n="landing.house.2p">局域网扫码进房。谁来谁点，队列在电视上，麦声也可以从手机混进去。</p>
         </article>
         <article>
-          <strong>微信认号</strong>
-          <p>扫一下就认出人。没配微信时，本机身份也能先唱。</p>
-        </article>
-        <article>
-          <strong>开麦混音</strong>
-          <p>手机麦可以混到电视。音量滑条直接管现场。</p>
+          <strong data-i18n="landing.house.3h">自己练</strong>
+          <p data-i18n="landing.house.3p">日语假名、英文词级扫色，练完一句再下一句。已处理的歌，断网也在。</p>
         </article>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section class="lp-block" id="notes">
-      <header class="lp-head">
-        <p class="eye">04 · Notes</p>
-        <h2>上场前会问的</h2>
-      </header>
+  <section class="lp-section" id="notes">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.faq.eye">上场前会问的</p>
+      <h2 data-i18n="landing.faq.h">先把最容易卡壳的说清楚。</h2>
       <dl class="lp-faq">
         <div>
-          <dt>一定要 Android 电视吗？</dt>
-          <dd>不用。浏览器打开电视页就能唱。Android TV 是把宿主和缓存装进盒子里。</dd>
+          <dt data-i18n="landing.faq.1q">一定要 Android 电视吗？</dt>
+          <dd data-i18n="landing.faq.1a">不用。浏览器打开电视页就能唱。Android TV 是把宿主和缓存装进盒子里。</dd>
         </div>
         <div>
-          <dt>歌从哪来？</dt>
-          <dd>按歌名搜：网易外链，再到 SoundCloud、YouTube。只给自己的房间用，不二次分发。</dd>
+          <dt data-i18n="landing.faq.2q">歌从哪来？</dt>
+          <dd data-i18n="landing.faq.2a">按歌名搜：网易外链，再到 SoundCloud、YouTube。只给自己的房间用，不二次分发。</dd>
         </div>
         <div>
-          <dt>没有官方歌词怎么办？</dt>
-          <dd>可以粘贴歌词。再没有就走转写。有官方 LRC 时，以官方轴为准。</dd>
+          <dt data-i18n="landing.faq.3q">没有官方歌词怎么办？</dt>
+          <dd data-i18n="landing.faq.3a">可以粘贴歌词。再没有就走转写。有官方 LRC 时，以官方轴为准。</dd>
         </div>
         <div>
-          <dt>要不要本机装 Torch？</dt>
-          <dd>不要。人声分离是 ONNX。镜像里已经烤好模型。</dd>
+          <dt data-i18n="landing.faq.4q">要不要本机装 Torch？</dt>
+          <dd data-i18n="landing.faq.4a">不要。人声分离是 ONNX。镜像里已经烤好模型。</dd>
         </div>
         <div>
-          <dt>断网能唱吗？</dt>
-          <dd>已经处理好并缓存在盒子上的歌可以。新歌还是要处理端在线。</dd>
+          <dt data-i18n="landing.faq.5q">断网能唱吗？</dt>
+          <dd data-i18n="landing.faq.5a">已经处理好并缓存在盒子上的歌可以。新歌还是要处理端在线。</dd>
         </div>
         <div>
-          <dt>能当公开曲库网站吗？</dt>
-          <dd>不能。这是家庭 / 包厢自托管。不要公开发布媒体文件。</dd>
+          <dt data-i18n="landing.faq.6q">能当公开曲库网站吗？</dt>
+          <dd data-i18n="landing.faq.6a">不能。这是家庭 / 包厢自托管。不要公开发布媒体文件。</dd>
         </div>
       </dl>
-    </section>
+    </div>
+  </section>
 
-    <section class="lp-closer">
-      <p class="eye">Encore</p>
-      <h2>灯一开，今晚就有歌。</h2>
-      <p>先把电视打开，再让手机进房。第一首歌进队列的时候，客厅就不只是客厅了。</p>
+  <section class="lp-closer">
+    <div class="lp-wrap">
+      <p class="eye" data-i18n="landing.close.eye">今晚就有歌</p>
+      <h2 data-i18n="landing.close.h">第一首歌进队列，客厅就不是客厅了。</h2>
+      <p data-i18n="landing.close.p">先把电视打开，再让手机进房。搜一首今晚想唱的，伴奏和歌词会自己就位。</p>
       <div class="cta">
-        <a class="pill" href="/tv.html">打开电视</a>
-        <a class="ghost" href="/m.html">手机点歌</a>
+        <a class="btn solid" href="/tv.html"><span data-i18n="landing.hero.tv">打开电视</span> <span aria-hidden="true">→</span></a>
+        <a class="btn ghost" href="/m.html" data-i18n="landing.hero.phone">手机点歌</a>
       </div>
-    </section>
-  </main>
+    </div>
+  </section>
 
   <footer class="lp-foot">
-    <a class="lp-logo" href="#opening">lov-ktv</a>
-    <p>仅供个人或家庭局域网。不要公开发布曲库。</p>
-    <p><a href="/tv.html">电视</a> · <a href="/m.html">点歌</a> · <a href="/login.html">认号</a></p>
+    <div class="lp-wrap">
+      <p>lov-ktv · <span data-i18n="landing.foot.note">仅供个人或家庭局域网。不要公开发布曲库。</span></p>
+      <p><a href="/tv.html" data-i18n="landing.foot.tv">电视</a><a href="/m.html" data-i18n="landing.foot.phone">点歌</a><a href="/login.html" data-i18n="landing.foot.login">认号</a></p>
+    </div>
   </footer>
-  <script src="/landing/js/landing.js?v=2"></script>
+  <script type="module" src="/landing/js/landing.js?v=9"></script>
 </body>
 </html>

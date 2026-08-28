@@ -1,3 +1,4 @@
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { $ } from "../../../shared/ui/js/dom.js";
 import { state } from "../../state.js";
 
@@ -58,8 +59,9 @@ export function prefetchQueue(snap) {
 export function roomLine(snap) {
   const mix = Math.round(((snap && snap.vocal_mix) || 0) * 100);
   const vol = (snap && snap.volume != null) ? snap.volume : 80;
-  const mic = snap && snap.mic_on ? " · 手机麦开" : "";
-  return `队列 ${((snap && snap.queue) || []).length} · 原唱 ${mix}% · 音量 ${vol}%${mic}`;
+  const n = ((snap && snap.queue) || []).length;
+  const mic = snap && snap.mic_on ? t("tv.queueMic") : "";
+  return t("tv.queue", { n, mix, vol }) + mic;
 }
 
 export function applyMix() {

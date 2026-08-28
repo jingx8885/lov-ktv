@@ -8,7 +8,7 @@ import re
 import unicodedata
 from typing import Any
 
-QUESTIONS_PER_LINE = 4
+QUESTIONS_PER_LINE = 1
 LEARN_SCHEMA = "lovktv-learn-v1"
 
 _SKIP_LINE = re.compile(
@@ -26,6 +26,8 @@ _FALLBACK_ZH = (
     "昨天", "明天", "一个人", "回家", "下雨", "微笑", "夜晚", "记忆", "旅程",
     "心跳", "远方", "春天", "秘密", "眼泪", "阳光", "风",
 )
+_PUNCT = re.compile(r"^[\s.,!?;:…。、！？・～~'\"“”‘’（）()「」『』【】\[\]/\\-]+$")
+_LATIN_SPLIT = re.compile(r"[A-Za-z]")
 
 
 def _norm(value: Any) -> str:
@@ -62,6 +64,39 @@ def cue_romaji(cue: dict[str, Any]) -> str:
 def has_useful_zh(cue: dict[str, Any]) -> bool:
     zh = cue_zh(cue)
     return bool(zh) and zh != cue_text(cue)
+
+
+def tap_words(cue: dict[str, Any]) -> list[dict[str, str]]:
+    """Surface tokens in sung order. Punctuation is dropped; function words stay."""
+    words: list[dict[str, str]] = []
+    for token in cue.get("tokens") or []:
+        if not isinstance(token, dict):
+            continue
+        text = _norm(token.get("text"))
+        if not text or _PUNCT.match(text):
+            continue
+        words.append(
+            {
+                "text": text,
+                "romaji": _norm(token.get("romaji")),
+                "zh": _norm(token.get("zh")),
+            }
+        )
+    if words:
+        return words
+    text = cue_text(cue)
+    if _LATIN_SPLIT.search(text):
+        return [
+            {"text": part, "romaji": "", "zh": ""}
+            for part in text.split()
+            if part and not _PUNCT.match(part)
+        ]
+    chars = [ch for ch in text if ch.strip() and not _PUNCT.match(ch)]
+    if len(chars) >= 2:
+        return [{"text": ch, "romaji": "", "zh": ""} for ch in chars]
+    if text:
+        return [{"text": text, "romaji": cue_romaji(cue), "zh": cue_zh(cue)}]
+    return []
 
 
 def content_tokens(cue: dict[str, Any], *, include_function: bool = False) -> list[dict[str, str]]:
@@ -115,7 +150,8 @@ def _choices(correct: str, pool: list[str], rng: random.Random, extra: tuple[str
         if filler != answer and filler not in picked:
             picked.append(filler)
         else:
-            picked.append(f"选项{len(picked) + 1}")
+            from lovktv.i18n import translate
+            picked.append(translate("zh", "api.learn_option", n=len(picked) + 1))
     options = [answer, *picked]
     rng.shuffle(options)
     return [{"id": index, "text": text, "ok": text == answer} for index, text in enumerate(options)]
@@ -158,65 +194,49 @@ def build_line_questions(
     index: int,
     pools: dict[str, list[str]],
     rng: random.Random,
+    lang: str = "zh",
 ) -> list[dict[str, Any]]:
-    questions: list[dict[str, Any]] = []
+    """One live question per sung line, drawn from that line's bank."""
+    from lovktv.i18n import translate
+
+    bank: list[dict[str, Any]] = []
     text = cue_text(cue)
     if has_useful_zh(cue):
-        questions.append(
+        bank.append(
             _question(
                 f"{index}:meaning:0",
                 "meaning",
-                "这句是什么意思？",
+                translate(lang, "api.learn_meaning"),
                 text,
                 _choices(cue_zh(cue), pools["zh"], rng),
             )
         )
-    words = content_tokens(cue)
-    if len(words) < QUESTIONS_PER_LINE - len(questions):
-        extra = [item for item in content_tokens(cue, include_function=True) if item not in words]
-        words = words + extra
-    rng.shuffle(words)
-    for offset, word in enumerate(words):
-        if len(questions) >= QUESTIONS_PER_LINE:
-            break
-        questions.append(
+    for offset, word in enumerate(content_tokens(cue, include_function=True)):
+        bank.append(
             _question(
                 f"{index}:word:{offset}",
                 "word",
-                f"「{word['text']}」是什么意思？",
+                translate(lang, "api.learn_word", word=word["text"]),
                 word["text"],
                 _choices(word["zh"], pools["word"], rng),
             )
         )
-    if len(questions) < QUESTIONS_PER_LINE and text:
-        questions.append(
+    if not bank and text:
+        bank.append(
             _question(
                 f"{index}:listen:0",
                 "listen",
-                "刚才唱的是哪一句？",
+                translate(lang, "api.learn_listen"),
                 text,
                 _choices(text, pools["text"], rng),
             )
         )
-    more_words = content_tokens(cue, include_function=True)
-    for offset, word in enumerate(more_words, start=len(words)):
-        if len(questions) >= QUESTIONS_PER_LINE:
-            break
-        if any(item.get("stem") == word["text"] for item in questions):
-            continue
-        questions.append(
-            _question(
-                f"{index}:word:{offset}",
-                "word",
-                f"「{word['text']}」是什么意思？",
-                word["text"],
-                _choices(word["zh"], pools["word"], rng),
-            )
-        )
-    return questions[:QUESTIONS_PER_LINE]
+    if not bank:
+        return []
+    return [rng.choice(bank)]
 
 
-def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = None) -> dict[str, Any]:
+def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = None, lang: str = "zh") -> dict[str, Any]:
     song = song or {}
     cues = [cue for cue in (timeline.get("cues") or []) if isinstance(cue, dict) and is_singable_cue(cue)]
     pools = _line_pools(cues)
@@ -224,7 +244,7 @@ def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = Non
     lines: list[dict[str, Any]] = []
     for index, cue in enumerate(cues):
         rng = _seeded_rng(LEARN_SCHEMA, song_id, index, cue_text(cue))
-        questions = build_line_questions(cue, index, pools, rng)
+        questions = build_line_questions(cue, index, pools, rng, lang=lang)
         if not questions:
             continue
         lines.append(
@@ -235,6 +255,7 @@ def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = Non
                 "text": cue_text(cue),
                 "zh": cue_zh(cue),
                 "romaji": cue_romaji(cue),
+                "words": tap_words(cue),
                 "questions": questions,
             }
         )
@@ -244,7 +265,7 @@ def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = Non
         "title": _norm(song.get("title") or timeline.get("title")),
         "artist": _norm(song.get("artist") or timeline.get("artist")),
         "language": _norm(song.get("language") or timeline.get("language")),
-        "modes": ["quiz", "echo"],
+        "modes": ["quiz", "tap", "echo"],
         "questions_per_line": QUESTIONS_PER_LINE,
         "lines": lines,
         "total_questions": sum(len(line["questions"]) for line in lines),

@@ -46,12 +46,109 @@ export function cueRomaji(cue) {
   return bits.join(" ") || String(cue.romaji || "").trim();
 }
 
+function isKanaText(value) {
+  return /^[\u3040-\u30ffーゝゞ]+$/.test(String(value || ""));
+}
+
+function isKanjiText(value) {
+  return /[\u4e00-\u9fff]/.test(String(value || ""));
+}
+
+function tokenHasAnno(tok) {
+  return !!(String(tok.romaji || "").trim() || String(tok.zh || "").trim());
+}
+
+/** Merge per-kana pieces so romaji / gloss sit under the whole sung word. */
+export function clusterTokens(tokens) {
+  const out = [];
+  for (const tok of tokens || []) {
+    const cur = { ...tok, text: String(tok.text || "") };
+    const prev = out[out.length - 1];
+    const join = prev
+      && isKanaText(prev.text)
+      && isKanaText(cur.text)
+      && tokenHasAnno(prev)
+      && !tokenHasAnno(cur);
+    if (join) {
+      prev.text += cur.text;
+      prev.end_ms = cur.end_ms;
+      continue;
+    }
+    out.push(cur);
+  }
+  return out;
+}
+
+function textInkWidth(node) {
+  const range = document.createRange();
+  range.selectNodeContents(node);
+  return range.getBoundingClientRect().width;
+}
+
+function fitLyricExtras(el) {
+  el.querySelectorAll(".anno").forEach((anno) => {
+    const rb = /** @type {HTMLElement | null} */ (anno.querySelector(".rb"));
+    if (!rb) return;
+    const box = /** @type {HTMLElement} */ (anno);
+    box.style.width = "";
+    const cap = rb.getBoundingClientRect().width;
+    if (cap > 0) box.style.width = `${Math.ceil(cap)}px`;
+    box.querySelectorAll(".roma, .gloss").forEach((node) => {
+      const extra = /** @type {HTMLElement} */ (node);
+      extra.style.transform = "";
+      if (cap <= 0) return;
+      const w = textInkWidth(extra);
+      if (w > cap + 1) {
+        extra.style.transform = `scale(${cap / w})`;
+        extra.style.transformOrigin = "top center";
+      }
+    });
+  });
+}
+
+function fitLyricLine(el) {
+  const run = () => {
+    const box = /** @type {HTMLElement} */ (el);
+    box.style.fontSize = "";
+    box.querySelectorAll(".anno").forEach((anno) => {
+      /** @type {HTMLElement} */ (anno).style.width = "";
+    });
+    const words = box.querySelector(".line-words");
+    if (!words) return;
+    fitLyricExtras(box);
+    const maxW = box.clientWidth;
+    if (maxW <= 0) return;
+    const needW = words.scrollWidth;
+    if (needW <= maxW + 1) return;
+    const base = parseFloat(getComputedStyle(box).fontSize) || 24;
+    const next = Math.max(14, base * (maxW / needW) * 0.98);
+    box.style.fontSize = `${next.toFixed(2)}px`;
+    fitLyricExtras(box);
+    const again = words.scrollWidth;
+    if (again > maxW + 1) {
+      const retry = Math.max(14, next * (maxW / again) * 0.97);
+      box.style.fontSize = `${retry.toFixed(2)}px`;
+      fitLyricExtras(box);
+    }
+  };
+  run();
+  if (document.fonts && document.fonts.status !== "loaded") {
+    document.fonts.ready.then(run);
+  }
+}
+
+function rubyHtml(tok) {
+  const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
+  if (!reading || !isKanjiText(tok.text) || isKanjiText(reading)) return "";
+  return `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+}
+
 /** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
 export function renderCue(cue, t, mode) {
   const view = normLyricMode(mode);
   if (view === "zh") return escapeHtml(String(cue.zh || cueLine(cue)));
   if (view === "roma") return escapeHtml(cueRomaji(cue) || cueLine(cue));
-  const tokens = cue.tokens || [];
+  const tokens = clusterTokens(cue.tokens || []);
   if (!tokens.length) {
     const body = escapeHtml(cueLine(cue));
     return view === "all" && cue.zh
@@ -59,22 +156,20 @@ export function renderCue(cue, t, mode) {
       : body;
   }
   const showExtra = view === "all";
-  const html = tokens.map((tok, i) => {
+  const html = `<span class="line-words">${tokens.map((tok, i) => {
     const p = Math.round(tokenProgress(tok, t));
     const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
-    const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
-    const rt = `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
     const roma = showExtra && tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
-    const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : `<span class="roma"></span>`;
+    const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
     const gloss = showExtra && tok.zh ? String(tok.zh) : "";
-    const glossHtml = gloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : `<span class="gloss"></span>`;
+    const glossHtml = gloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
     const latin = /^[A-Za-z0-9']/.test(tok.text || "");
     const next = tokens[i + 1];
     const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
       ? `<span class="tok-space"> </span>`
       : "";
-    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rt}${body}${romaHtml}${glossHtml}</span></span>${space}`;
-  }).join("");
+    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
+  }).join("")}</span>`;
   return showExtra && cue.zh
     ? `${html}<span class="lyric-zh">${escapeHtml(cue.zh)}</span>`
     : html;
@@ -102,13 +197,18 @@ export function paintLine(el, cue, t, slot, paint, empty, mode) {
   }
   const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
   const id = cueKey(cue) + ":" + skin + ":" + view;
+  const fitKey = `${id}:${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}`;
   if (paint[slot] !== id) {
     el.innerHTML = renderCue(cue, t, view);
     paint[slot] = id;
-    return;
+    el.dataset.lyricFit = "";
   }
-  if (skin !== "live") return;
-  const toks = cue.tokens || [];
+  if (el.dataset.lyricFit !== fitKey) {
+    fitLyricLine(el);
+    if (el.clientWidth > 0) el.dataset.lyricFit = fitKey;
+  }
+  if (paint[slot] !== id || skin !== "live") return;
+  const toks = clusterTokens(cue.tokens || []);
   el.querySelectorAll(".rb").forEach((node, i) => {
     if (!toks[i]) return;
     const next = Math.round(tokenProgress(toks[i], t)) + "%";

@@ -1,4 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -28,8 +29,8 @@ export function connectRoomRtc(code) {
     },
     onState: (rtcState) => {
       if (!state.roomRtc.isLive()) return;
-      if (rtcState === "connected") $("micHint").textContent = "麦已接到电视";
-      else if (rtcState === "failed") $("micHint").textContent = "电视没接上，再点一次开麦";
+      if (rtcState === "connected") $("micHint").textContent = t("phone.mic.liveTv");
+      else if (rtcState === "failed") $("micHint").textContent = t("phone.mic.tvFail");
     },
   });
 }
@@ -39,7 +40,7 @@ export function bindRoomRtc() {
     const code = $("room").value.trim().toUpperCase();
     if (!code) {
       openOverlay("roomSheet");
-      return showToast("先填房间码并点进入");
+      return showToast(t("phone.mic.needRoom"));
     }
     connectRoomRtc(code);
     const btn = $("micToggle");
@@ -51,9 +52,9 @@ export function bindRoomRtc() {
         $("micHint").textContent = "";
       } else {
         api.stopPhoneMic();
-        $("micHint").textContent = "请允许使用麦克风";
+        $("micHint").textContent = t("phone.mic.allow");
         await state.roomRtc.startMic();
-        $("micHint").textContent = "麦已打开，声音会从电视出来";
+        $("micHint").textContent = t("phone.mic.phoneOut");
       }
     } catch (err) {
       $("micHint").textContent = LovMic.micErrorText(err);
@@ -64,7 +65,7 @@ export function bindRoomRtc() {
       btn.classList.toggle("live", live);
       btn.classList.toggle("on", live);
       $("micGainRow").hidden = !live;
-      btn.setAttribute("aria-label", live ? "关麦" : "开麦");
+      btn.setAttribute("aria-label", live ? t("common.micOff") : t("common.micOn"));
     }
   };
 }

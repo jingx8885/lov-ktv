@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { paintLine } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state, STEP_MS } from "../../state.js";
@@ -47,7 +48,7 @@ export function exitEdit() {
 }
 
 export function enterEdit() {
-  if (!state.playerSong) return showToast("先从点歌台听一首");
+  if (!state.playerSong) return showToast(t("phone.player.needSong"));
   $("playerAlign").hidden = false;
   document.body.classList.add("edit-on");
   state.mixTrackOn = false;
@@ -103,7 +104,7 @@ export function updateAlignNow(playMs) {
   if (!cue) {
     $("alignTime").textContent = playMs != null ? fmtMs(playMs) : "";
     if (state.lyricPaint.align !== "hint") {
-      $("alignText").textContent = "拖块吸附，松手从这句起播";
+      $("alignText").textContent = t("phone.align.hint");
       state.lyricPaint.align = "hint";
     }
     return;
@@ -174,7 +175,7 @@ export function bindAlign() {
   $("tlZoomIn").onclick = () => ensureTimeline().zoom(1);
   $("tlChain").onclick = () => {
     state.chainRest = !state.chainRest;
-    $("tlChain").textContent = state.chainRest ? "后面一起" : "单句";
+    $("tlChain").textContent = state.chainRest ? t("phone.align.chainRest") : t("phone.align.chain");
     $("tlChain").classList.toggle("primary", state.chainRest);
     ensureTimeline().setChain(state.chainRest);
   };
@@ -188,18 +189,18 @@ export function bindAlign() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(state.playerLyrics),
       });
-      if (!ok) throw new Error(data.detail || "保存失败");
+      if (!ok) throw new Error(data.detail || t("common.saveFailed"));
       state.lyricsDirty = false;
       btn.classList.add("on");
-      btn.setAttribute("aria-label", "已保存");
+      btn.setAttribute("aria-label", t("common.saved"));
       btn.innerHTML = ICO.save;
       setTimeout(() => {
         btn.classList.remove("on");
-        btn.setAttribute("aria-label", "保存");
+        btn.setAttribute("aria-label", t("common.save"));
       }, 1200);
     } catch (err) {
-      btn.setAttribute("aria-label", "保存失败");
-      setTimeout(() => btn.setAttribute("aria-label", "保存"), 1600);
+      btn.setAttribute("aria-label", t("common.saveFailed"));
+      setTimeout(() => btn.setAttribute("aria-label", t("common.save")), 1600);
     } finally {
       btn.disabled = false;
     }

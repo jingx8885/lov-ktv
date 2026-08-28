@@ -51,9 +51,11 @@ input, textarea {
 }
 .user-chip {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   justify-content: flex-end;
+  min-width: 0;
   pointer-events: auto;
 }
 .user-chip .avatar { width: 36px; height: 36px; }
@@ -62,3 +64,56 @@ input, textarea {
   outline-offset: 3px;
 }
 body.androidtv .btn { min-height: 56px; font-size: 18px; }
+.lang-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+}
+.lang-picker button {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill, rgba(120, 120, 128, .16));
+  color: var(--text, inherit);
+  font-size: 12px;
+  font-weight: 650;
+}
+.lang-picker button.on {
+  background: var(--accent, #ff375f);
+  color: #fff;
+}
+select.lang-picker {
+  display: inline-block;
+  margin: 12px 0 0;
+  min-height: 36px;
+  max-width: 9.5em;
+  padding: 0 28px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background-color: var(--fill, rgba(120, 120, 128, .16));
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23fff' d='M1.2 1.4L6 6.2l4.8-4.8'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px;
+  color: var(--text, inherit);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  appearance: none;
+  -webkit-appearance: none;
+}
+select.lang-picker:focus {
+  outline: 2px solid var(--accent, #ff375f);
+  outline-offset: 2px;
+}
+.lp .lang-picker { margin: 0; }
+.lp .lang-picker button {
+  min-height: 36px;
+  background: #1c1619;
+  color: #f6f1ea;
+}
+.lp .lang-picker button.on { background: #ff4d8d; color: #fff; }
+.user-chip .lang-picker { margin: 0 8px 0 0; }
+.login-card .lang-picker { justify-content: center; }

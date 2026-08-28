@@ -1,6 +1,10 @@
 (function (global) {
   const ICE = [{ urls: "stun:stun.l.google.com:19302" }];
 
+  function tt(key, fallback) {
+    return (global.LovI18n && global.LovI18n.t(key)) || fallback;
+  }
+
   function newPeerId() {
     return "p" + Math.random().toString(36).slice(2, 10);
   }
@@ -85,7 +89,7 @@
             resolve();
           } else if (Date.now() - started > 5000) {
             clearInterval(tick);
-            reject(new Error("房间连接还没好，再点一次开麦"));
+            reject(new Error(tt("mic.wsWait", "房间连接还没好，再点一次开麦")));
           }
         }, 80);
       });
@@ -155,7 +159,7 @@
 
     async function startMic() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("这台手机不能开麦");
+        throw new Error(tt("mic.noDevice", "这台手机不能开麦"));
       }
       await waitOpen();
       localStream = await navigator.mediaDevices.getUserMedia({
@@ -233,14 +237,14 @@
     const name = err && err.name;
     const raw = String((err && err.message) || err || "");
     if (name === "NotAllowedError" || /permission|denied|notallowed/i.test(raw)) {
-      return "没拿到麦克风权限。系统设置里打开，或用 Safari 打开本页。";
+      return tt("mic.denied", "没拿到麦克风权限。系统设置里打开，或用 Safari 打开本页。");
     }
-    if (name === "NotFoundError") return "没找到麦克风";
-    if (name === "NotReadableError") return "麦克风正被别的 App 占用";
+    if (name === "NotFoundError") return tt("mic.notFound", "没找到麦克风");
+    if (name === "NotReadableError") return tt("mic.busy", "麦克风正被别的 App 占用");
     if (name === "SecurityError" || /getUserMedia|secure|https/i.test(raw)) {
-      return "开麦需要安全连接。用 https 打开，或把这页加到主屏幕后再试。";
+      return tt("mic.insecure", "开麦需要安全连接。用 https 打开，或把这页加到主屏幕后再试。");
     }
-    return raw || "开麦失败";
+    return raw || tt("mic.fail", "开麦失败");
   }
 
   global.LovMic = { create, micErrorText };

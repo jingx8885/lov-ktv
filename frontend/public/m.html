@@ -3,30 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>lov-ktv 手机点歌</title>
+  <title data-i18n-title="phone.title">lov-ktv 手机点歌</title>
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="theme-color" content="#000000" />
   <meta http-equiv="Cache-Control" content="no-store" />
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
-  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split1" />
-  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split2" />
-  <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split4" />
+  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split4" />
+  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split6" />
+  <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split6" />
   <link rel="stylesheet" href="/phone/search/css/search.css?v=split5" />
-  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split6" />
-  <link rel="stylesheet" href="/phone/player/css/player.css?v=split6" />
-  <link rel="stylesheet" href="/phone/player/css/learn.css?v=learn1" />
+  <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split8" />
+  <link rel="stylesheet" href="/phone/player/css/player.css?v=split14" />
+  <link rel="stylesheet" href="/phone/player/css/learn.css?v=learn9" />
+  <link rel="stylesheet" href="/phone/player/css/learn-quiz.css?v=learn8" />
+  <link rel="stylesheet" href="/phone/player/css/learn-tap.css?v=learn8" />
+  <link rel="stylesheet" href="/phone/player/css/learn-echo.css?v=learn9" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css?v=split1" />
 </head>
 <body class="phone">
   <div class="app">
     <header class="topbar">
-      <button type="button" class="nav-chip" id="topRoom" aria-label="进房">
+      <button type="button" class="nav-chip" id="topRoom" data-i18n-aria="phone.top.room">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.8L12 4l8 6.8V20a1 1 0 01-1 1h-5.2v-6.2H10.2V21H5a1 1 0 01-1-1v-9.2z"/></svg>
-        <span>进房</span>
+        <span data-i18n="phone.top.room">进房</span>
       </button>
-      <h1 id="topTitle">点歌</h1>
-      <button type="button" class="who-mini" id="topWho" aria-label="我的">
+      <h1 id="topTitle" data-i18n="phone.nav.desk">点歌</h1>
+      <button type="button" class="who-mini" id="topWho" data-i18n-aria="phone.top.me">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 1.8c-4.2 0-7.6 2.1-7.6 4.7V20h15.2v-1.5c0-2.6-3.4-4.7-7.6-4.7z"/></svg>
       </button>
     </header>
@@ -38,15 +41,15 @@
             <span class="search-ico" aria-hidden="true">
               <svg viewBox="0 0 24 24"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
             </span>
-            <input id="q" placeholder="歌名 / 歌手" autocomplete="off" enterkeyhint="search" />
-            <button class="search-clear" id="searchClear" type="button" hidden aria-label="清除">
+            <input id="q" data-i18n-placeholder="phone.search.ph" placeholder="歌名 / 歌手" autocomplete="off" enterkeyhint="search" />
+            <button class="search-clear" id="searchClear" type="button" hidden data-i18n-aria="phone.search.clear">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 10.6L6.7 5.3 5.3 6.7 10.6 12l-5.3 5.3 1.4 1.4L12 13.4l5.3 5.3 1.4-1.4L13.4 12l5.3-5.3-1.4-1.4z"/></svg>
             </button>
           </div>
-          <button class="search-upload" id="openUpload" type="button" aria-label="本地入库">
+          <button class="search-upload" id="openUpload" type="button" data-i18n-aria="phone.search.upload">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l4.2 4.2-1.4 1.4L13 6.8V14h-2V6.8L9.2 8.6 7.8 7.2 12 3zM5 16h14v2H5v-2z"/></svg>
           </button>
-          <button class="search-cancel" id="searchCancel" type="button" hidden>取消</button>
+          <button class="search-cancel" id="searchCancel" type="button" hidden data-i18n="common.cancel">取消</button>
         </div>
       </div>
       <audio id="preview" preload="none"></audio>
@@ -54,8 +57,8 @@
       <div class="hits inset-list" id="hits">
         <div class="empty-state">
           <span class="empty-ico" aria-hidden="true"></span>
-          <p>搜歌名或歌手</p>
-          <span class="tiny">先听再加入曲库</span>
+          <p data-i18n="phone.search.empty">搜歌名或歌手</p>
+          <span class="tiny" data-i18n="phone.search.emptyHint">先听再加入曲库</span>
         </div>
       </div>
     </section>
@@ -65,65 +68,65 @@
         <div class="now-card" id="nowCard">
           <div class="now-idle">
             <span class="now-cover">♪</span>
-            <div><b>还没在唱</b><p class="tiny">从曲库点一首</p></div>
+            <div><b data-i18n="phone.desk.idle">还没在唱</b><p class="tiny" data-i18n="phone.desk.idleHint">从曲库点一首</p></div>
           </div>
         </div>
-        <button class="icon-btn ghost" id="nowMore" type="button" aria-label="音量">
+        <button class="icon-btn ghost" id="nowMore" type="button" data-i18n-aria="common.volume">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4V9zm12.2 1.2a4 4 0 010 3.6l-1.5-.8a2.2 2.2 0 000-2zM18 7.2a7 7 0 010 9.6l-1.4-.9a5.2 5.2 0 000-7.8z"/></svg>
         </button>
       </div>
       <div class="now-tools">
         <button class="now-act" id="skip" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
-          切歌
+          <span data-i18n="common.skip">切歌</span>
         </button>
-        <button class="now-act" id="vocalMix" type="button" aria-label="当前伴奏，点按切到原唱">
+        <button class="now-act" id="vocalMix" type="button" data-i18n-aria="phone.desk.vocalOff">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
-          <em id="vocalMixLabel">伴奏</em>
+          <em id="vocalMixLabel" data-i18n="common.karaoke">伴奏</em>
         </button>
-        <button class="now-act" id="micToggle" type="button" aria-label="开麦">
+        <button class="now-act" id="micToggle" type="button" data-i18n-aria="common.micOn">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
-          <em id="micToggleLabel">开麦</em>
+          <em id="micToggleLabel" data-i18n="common.micOn">开麦</em>
         </button>
       </div>
-      <div class="seg seg-sm lyric-seg" id="deskLyricMode" role="tablist" aria-label="歌词显示">
-        <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
-        <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
-        <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
-        <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
+      <div class="seg seg-sm lyric-seg" id="deskLyricMode" role="tablist" data-i18n-aria="phone.lyric.mode">
+        <button type="button" class="seg-btn on" data-lyric-mode="ja" data-i18n="phone.lyric.ja">日语</button>
+        <button type="button" class="seg-btn" data-lyric-mode="zh" data-i18n="phone.lyric.zh">翻译</button>
+        <button type="button" class="seg-btn" data-lyric-mode="roma" data-i18n="phone.lyric.roma">罗马音</button>
+        <button type="button" class="seg-btn" data-lyric-mode="all" data-i18n="phone.lyric.all">全部</button>
       </div>
       <div class="desk-sheet">
         <div class="seg" role="tablist">
-          <button type="button" class="seg-btn on" data-desk="queue">已点<em id="queueCount"></em></button>
-          <button type="button" class="seg-btn" data-desk="lib">曲库<em id="libCount"></em></button>
+          <button type="button" class="seg-btn on" data-desk="queue"><span data-i18n="phone.desk.queue">已点</span><em id="queueCount"></em></button>
+          <button type="button" class="seg-btn" data-desk="lib"><span data-i18n="phone.desk.lib">曲库</span><em id="libCount"></em></button>
         </div>
         <div class="desk-pane inset-list" id="queue">
           <div class="empty-state">
             <span class="empty-ico" aria-hidden="true"></span>
-            <p>还没点歌</p>
-            <button class="btn primary" type="button" data-go-lib>去曲库加点</button>
+            <p data-i18n="phone.desk.emptyQueue">还没点歌</p>
+            <button class="btn primary" type="button" data-go-lib data-i18n="phone.desk.goLib">去曲库加点</button>
           </div>
         </div>
         <div class="desk-pane desk-lib" id="libPane" hidden>
           <div class="lib-tools">
             <div class="lib-search">
-              <input id="libQ" placeholder="搜歌名 / 歌星" autocomplete="off" />
+              <input id="libQ" data-i18n-placeholder="phone.desk.libPh" placeholder="搜歌名 / 歌星" autocomplete="off" />
             </div>
             <div class="seg seg-sm" role="tablist">
-              <button type="button" class="seg-btn on" data-lib-by="all">全部</button>
-              <button type="button" class="seg-btn" data-lib-by="title">歌名</button>
-              <button type="button" class="seg-btn" data-lib-by="artist">歌星</button>
+              <button type="button" class="seg-btn on" data-lib-by="all" data-i18n="common.all">全部</button>
+              <button type="button" class="seg-btn" data-lib-by="title" data-i18n="phone.desk.byTitle">歌名</button>
+              <button type="button" class="seg-btn" data-lib-by="artist" data-i18n="phone.desk.byArtist">歌星</button>
             </div>
           </div>
           <div class="lib-body">
             <div class="inset-list" id="songs">
               <div class="empty-state">
                 <span class="empty-ico" aria-hidden="true"></span>
-                <p>曲库还是空的</p>
-                <button class="btn primary" type="button" data-go-search>去搜歌</button>
+                <p data-i18n="phone.desk.emptyLib">曲库还是空的</p>
+                <button class="btn primary" type="button" data-go-search data-i18n="phone.desk.goSearch">去搜歌</button>
               </div>
             </div>
-            <nav class="lib-index" id="libIndex" aria-label="字母索引"></nav>
+            <nav class="lib-index" id="libIndex" data-i18n-aria="phone.desk.letters"></nav>
           </div>
           <div class="lib-pager" id="libPager"></div>
         </div>
@@ -134,19 +137,16 @@
       <div class="player-main" id="playerMain">
         <div class="player-head">
           <div class="player-head-side">
-            <button class="icon-btn ghost" id="playerToDesk" type="button" aria-label="返回点歌台">
+            <button class="icon-btn ghost" id="playerToDesk" type="button" data-i18n-aria="phone.player.back">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
             </button>
           </div>
           <div class="player-titles">
-            <b id="playerTitle">还没选歌</b>
-            <p class="tiny" id="playerMeta">从点歌台听一首</p>
+            <b id="playerTitle" data-i18n="phone.player.idle">还没选歌</b>
+            <p class="tiny" id="playerMeta" data-i18n="phone.player.idleHint">从点歌台听一首</p>
           </div>
           <div class="player-head-side end">
-            <button class="icon-btn ghost" id="playerLearnBtn" type="button" aria-label="学习">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
-            </button>
-            <button class="icon-btn ghost" id="playerEdit" type="button" aria-label="横屏对齐">
+            <button class="icon-btn ghost" id="playerEdit" type="button" data-i18n-aria="phone.player.align">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
             </button>
           </div>
@@ -162,16 +162,16 @@
           </div>
           <div class="player-clock">
             <b id="playerNow">0:00</b>
-            <input type="range" id="playerSeek" min="0" max="1000" value="0" aria-label="进度" />
+            <input type="range" id="playerSeek" min="0" max="1000" value="0" data-i18n-aria="phone.player.seek" />
             <em id="playerLeft">−0:00</em>
           </div>
         </div>
         <div class="player-lyric-stack">
-          <div class="seg seg-sm lyric-seg" id="playerLyricMode" role="tablist" aria-label="歌词显示">
-            <button type="button" class="seg-btn on" data-lyric-mode="ja">日语</button>
-            <button type="button" class="seg-btn" data-lyric-mode="zh">翻译</button>
-            <button type="button" class="seg-btn" data-lyric-mode="roma">罗马音</button>
-            <button type="button" class="seg-btn" data-lyric-mode="all">全部</button>
+          <div class="seg seg-sm lyric-seg" id="playerLyricMode" role="tablist" data-i18n-aria="phone.lyric.mode">
+            <button type="button" class="seg-btn on" data-lyric-mode="ja" data-i18n="phone.lyric.ja">日语</button>
+            <button type="button" class="seg-btn" data-lyric-mode="zh" data-i18n="phone.lyric.zh">翻译</button>
+            <button type="button" class="seg-btn" data-lyric-mode="roma" data-i18n="phone.lyric.roma">罗马音</button>
+            <button type="button" class="seg-btn" data-lyric-mode="all" data-i18n="phone.lyric.all">全部</button>
           </div>
           <section class="lyrics player-lyrics">
             <div class="prev" id="playerPrev"></div>
@@ -179,92 +179,96 @@
             <div class="next" id="playerNext"></div>
           </section>
         </div>
-        <button type="button" class="player-sheet-scrim" id="playerSheetScrim" hidden aria-label="收起曲库"></button>
+        <button type="button" class="player-sheet-scrim" id="playerSheetScrim" hidden data-i18n-aria="phone.player.closeLib"></button>
         <div class="player-sheet" id="playerSheet" data-snap="peek">
           <button type="button" class="player-sheet-grab" id="playerSheetGrab" aria-expanded="false" aria-controls="playerSheetBody">
             <i class="player-sheet-grip" aria-hidden="true"></i>
             <span class="player-sheet-copy">
-              <b id="playerSheetTitle">曲库</b>
-              <em id="playerSheetMeta">上拉选歌</em>
+              <b id="playerSheetTitle" data-i18n="phone.desk.lib">曲库</b>
+              <em id="playerSheetMeta" data-i18n="phone.player.sheetMeta">上拉选歌</em>
             </span>
             <svg class="player-sheet-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.4 14.6L12 10l4.6 4.6 1.4-1.4L12 7.2 6 13.2z"/></svg>
           </button>
           <div class="player-sheet-body" id="playerSheetBody">
             <div class="player-list inset-list" id="playerList"></div>
-            <nav class="lib-index" id="playerIndex" aria-label="字母索引"></nav>
+            <nav class="lib-index" id="playerIndex" data-i18n-aria="phone.desk.letters"></nav>
           </div>
         </div>
       </div>
       <div class="player-dock" id="playerKtv">
         <label class="mix-row" id="playerMicRow" hidden>
-          <span>麦声</span>
+          <span data-i18n="common.mic">麦声</span>
           <input type="range" id="playerMicGain" min="0" max="100" value="80" />
           <em id="playerMicVal">80</em>
         </label>
-        <p class="tiny player-hint" id="playerMicHint">戴上耳机。伴奏和人声只在耳机里，不当外放，所以没有回音。</p>
+        <p class="tiny player-hint" id="playerMicHint" data-i18n="phone.player.micHintIdle">戴上耳机。伴奏和人声只在耳机里，不当外放，所以没有回音。</p>
         <div class="player-transport">
-          <button class="icon-btn" id="playerMic" type="button" aria-label="开麦唱歌">
+          <button class="icon-btn" id="playerMic" type="button" data-i18n-aria="phone.player.micSing">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
-            <em class="vh" id="playerMicLabel">开麦</em>
+            <em class="vh" id="playerMicLabel" data-i18n="common.micOn">开麦</em>
           </button>
-          <button class="icon-btn on" id="playerIem" type="button" aria-label="耳机耳返">
+          <button class="icon-btn on" id="playerIem" type="button" data-i18n-aria="phone.player.iem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 00-7 7v4a3 3 0 003 3h1v-6H7a5 5 0 1110 0h-2v6h1a3 3 0 003-3v-4a7 7 0 00-7-7z"/></svg>
           </button>
-          <button class="icon-btn on" id="playerVocal" type="button" aria-label="原唱">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
-            <em class="vh" id="playerVocalLabel">原唱</em>
+          <button class="icon-btn on" id="playerVocal" type="button" data-i18n-aria="common.vocal">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11.2A3.2 3.2 0 108 4.8a3.2 3.2 0 000 6.4zM8 12.8c-3.5 0-6.4 1.8-6.4 4V19h12.8v-2.2c0-2.2-2.9-4-6.4-4zM15.4 8.1a4.1 4.1 0 010 7.8l-1.45-1.2a2.5 2.5 0 000-5.4zM18.1 6a6.6 6.6 0 010 12l-1.4-1.2a4.9 4.9 0 000-9.6z"/></svg>
+            <em class="vh" id="playerVocalLabel" data-i18n="common.vocal">原唱</em>
           </button>
-          <button class="play-btn" id="playerPlay" type="button" aria-label="播放">
+          <button class="play-btn" id="playerPlay" type="button" data-i18n-aria="common.play">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
           </button>
-          <button class="icon-btn" id="playerNextBtn" type="button" aria-label="下一首">
+          <button class="icon-btn" id="playerNextBtn" type="button" data-i18n-aria="common.next">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
           </button>
-          <button class="icon-btn" id="playerOrder" type="button" aria-label="顺序播放">
+          <button class="icon-btn" id="playerOrder" type="button" data-i18n-aria="common.seqPlay">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>
-            <em class="vh" id="playerOrderLabel">顺序</em>
+            <em class="vh" id="playerOrderLabel" data-i18n="common.seq">顺序</em>
+          </button>
+          <button class="icon-btn" id="playerLearnBtn" type="button" data-enter-learn data-i18n-aria="phone.player.learn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
+            <em class="vh" data-i18n="phone.player.learn">游戏</em>
           </button>
         </div>
       </div>
       <div class="player-align" id="playerAlign" hidden>
         <div class="edit-bar">
-          <button class="icon-btn ghost" id="editBack" type="button" aria-label="完成">
+          <button class="icon-btn ghost" id="editBack" type="button" data-i18n-aria="phone.player.done">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>
           </button>
-          <button class="play-btn edit-play" id="editPlay" type="button" aria-label="播放">
+          <button class="play-btn edit-play" id="editPlay" type="button" data-i18n-aria="common.play">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
           </button>
           <div class="align-now">
             <span class="align-time" id="alignTime"></span>
-            <span class="align-text" id="alignText">拖块吸附，松手从这句起播</span>
+            <span class="align-text" id="alignText" data-i18n="phone.align.hint">拖块吸附，松手从这句起播</span>
           </div>
-          <button class="icon-btn" id="playerOrderEdit" type="button" aria-label="顺序播放">
+          <button class="icon-btn" id="playerOrderEdit" type="button" data-i18n-aria="common.seqPlay">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>
           </button>
-          <button class="icon-btn" id="playerNextEdit" type="button" aria-label="下一首">
+          <button class="icon-btn" id="playerNextEdit" type="button" data-i18n-aria="common.next">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
           </button>
-          <button class="icon-btn primary" id="saveAlign" type="button" aria-label="保存">
+          <button class="icon-btn primary" id="saveAlign" type="button" data-i18n-aria="common.save">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>
           </button>
         </div>
         <div class="tl-toolbar">
           <button class="btn tl-icon" id="tlZoomOut" type="button">－</button>
           <button class="btn tl-icon" id="tlZoomIn" type="button">＋</button>
-          <button class="btn" id="tlChain" type="button">单句</button>
+          <button class="btn" id="tlChain" type="button" data-i18n="phone.align.chain">单句</button>
           <button class="btn" id="nudgeBack" type="button">－0.1s</button>
           <button class="btn" id="nudgeFwd" type="button">＋0.1s</button>
         </div>
         <div class="tl" id="timeline">
           <aside class="tl-heads">
             <div class="tl-head tl-head-ruler"></div>
-            <button class="tl-head tl-head-mix" id="tlMixHead" type="button" aria-label="伴奏" aria-pressed="true">
+            <button class="tl-head tl-head-mix" id="tlMixHead" type="button" data-i18n-aria="common.karaoke" aria-pressed="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z"/></svg>
             </button>
             <button class="tl-head tl-head-voice" id="tlVoiceHead" type="button" aria-label="人声" aria-pressed="true">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 003-3V6a3 3 0 10-6 0v5a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 0014 0h-2zm-6 7.9V22h2v-3.1A8 8 0 0020 11h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
             </button>
-            <div class="tl-head tl-head-lyrics" aria-label="歌词">
+            <div class="tl-head tl-head-lyrics" data-i18n-aria="common.lyrics">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h10v2H4z"/></svg>
             </div>
           </aside>
@@ -280,51 +284,102 @@
         </div>
       </div>
       <div class="learn" id="playerLearn" hidden>
+        <canvas class="learn-fx" id="learnFx" aria-hidden="true"></canvas>
+        <div class="learn-count" id="learnCount" hidden>
+          <b id="learnCountNum">3</b>
+        </div>
         <header class="learn-bar">
-          <button class="icon-btn ghost" id="learnBack" type="button" aria-label="退出学习">
+          <button class="icon-btn ghost" id="learnBack" type="button" data-i18n-aria="learn.back">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
           </button>
           <div class="learn-titles">
-            <b id="learnTitle">学习</b>
+            <b id="learnTitle" data-i18n="learn.title">游戏</b>
             <p class="tiny" id="learnMeta"></p>
           </div>
           <span></span>
         </header>
         <div class="learn-body" id="learnHome">
-          <p class="learn-lead">选一种学法。测验把句意和单词混在一起考。</p>
-          <button type="button" class="learn-mode" data-learn-mode="quiz">
-            <em>歌词测验</em>
-            <span>每句四道选择题：有的问整句意思，有的挑词考翻译。一首歌下来看得分。</span>
+          <p class="learn-song" id="learnSong"></p>
+          <p class="learn-lead" data-i18n="learn.lead">选一种玩法。难度只改原曲速度，点下去倒计时就开始。</p>
+          <div class="learn-diff" id="learnDiff" role="radiogroup" data-i18n-aria="learn.diff">
+            <button type="button" data-learn-diff="easy">
+              <em data-i18n="learn.diff.easy">轻松</em>
+              <small>0.8×</small>
+            </button>
+            <button type="button" data-learn-diff="normal" class="on">
+              <em data-i18n="learn.diff.normal">标准</em>
+              <small>1.0×</small>
+            </button>
+            <button type="button" data-learn-diff="hard">
+              <em data-i18n="learn.diff.hard">加速</em>
+              <small>1.25×</small>
+            </button>
+          </div>
+          <button type="button" class="learn-mode is-quiz" data-learn-mode="quiz">
+            <span class="learn-mode-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 5h10v3H7zm0 5.5h10V14H7zm0 5.5h6v3H7z"/></svg>
+            </span>
+            <span class="learn-mode-copy">
+              <i>QUIZ</i>
+              <em data-i18n="learn.quiz">歌词测验</em>
+              <span data-i18n="learn.quizHint">原曲往前走，一句一题。</span>
+            </span>
           </button>
-          <button type="button" class="learn-mode" data-learn-mode="echo">
-            <em>跟唱合成</em>
-            <span>播一句，唱一句。最后把你唱的叠回伴奏，整首听一遍并打分。</span>
+          <button type="button" class="learn-mode is-tap" data-learn-mode="tap">
+            <span class="learn-mode-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="7" cy="8" r="2.2"/><circle cx="16" cy="7" r="2.6"/><circle cx="11" cy="16" r="3"/></svg>
+            </span>
+            <span class="learn-mode-copy">
+              <i>TAP</i>
+              <em data-i18n="learn.tap">点词音游</em>
+              <span data-i18n="learn.tapHint">原曲往前走，按歌词顺序点散开的词。</span>
+            </span>
+          </button>
+          <button type="button" class="learn-mode is-echo" data-learn-mode="echo">
+            <span class="learn-mode-ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 8a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 8v3h2v-3z"/></svg>
+            </span>
+            <span class="learn-mode-copy">
+              <i>ECHO</i>
+              <em data-i18n="learn.echo">翻唱挑战</em>
+              <span data-i18n="learn.echoHint">听原唱，对着伴奏翻唱。试听满意再下一句。</span>
+            </span>
           </button>
         </div>
-        <div class="learn-body" id="learnQuiz" hidden>
+        <div class="learn-body is-play" id="learnQuiz" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnQuizBar"></i></div>
+          <p class="learn-combo" id="learnQuizCombo">COMBO 0</p>
           <div class="learn-line">
             <p class="learn-src" id="learnQuizSrc"></p>
             <p class="learn-roma" id="learnQuizRoma"></p>
           </div>
           <div class="learn-qs" id="learnQuizQs"></div>
-          <div class="learn-dock">
-            <button class="btn" id="learnReplay" type="button">重听</button>
-            <button class="btn primary" id="learnQuizNext" type="button" disabled>下一句</button>
-          </div>
+          <button class="learn-skip" id="learnQuizSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
         </div>
-        <div class="learn-body" id="learnEcho" hidden>
+        <div class="learn-body is-play" id="learnTap" hidden>
+          <canvas class="learn-tap-fx" id="learnTapFx" aria-hidden="true"></canvas>
+          <div class="learn-tap-wash" aria-hidden="true"></div>
+          <div class="learn-progress" aria-hidden="true"><i id="learnTapBar"></i></div>
+          <p class="learn-combo" id="learnTapCombo">COMBO 0</p>
+          <p class="tiny learn-tap-zh" id="learnTapZh"></p>
+          <div class="learn-tap-field" id="learnTapField"></div>
+          <div class="learn-tap-strip" id="learnTapStrip" aria-live="polite"></div>
+          <button class="learn-skip" id="learnTapSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+        </div>
+        <div class="learn-body is-play" id="learnEcho" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnEchoBar"></i></div>
+          <p class="learn-combo" id="learnEchoPhase" data-i18n="learn.echoListen">听原唱</p>
           <div class="learn-line">
             <p class="learn-src" id="learnEchoSrc"></p>
             <p class="learn-roma" id="learnEchoRoma"></p>
             <p class="learn-zh" id="learnEchoZh"></p>
           </div>
-          <p class="learn-phase" id="learnEchoPhase">听原唱</p>
           <div class="learn-echo-pulse" id="learnEchoPulse"></div>
-          <div class="learn-dock">
-            <button class="btn" id="learnEchoSkip" type="button">跳过这句</button>
-            <button class="btn primary" id="learnEchoGo" type="button">开始跟唱</button>
+          <button class="learn-skip" id="learnEchoSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+          <div class="learn-dock" id="learnEchoReview" hidden>
+            <button class="btn" id="learnEchoPreview" type="button" data-i18n="learn.echoPreview">试听</button>
+            <button class="btn" id="learnEchoRetry" type="button" data-i18n="learn.echoRetry">重试</button>
+            <button class="btn primary" id="learnEchoNext" type="button" data-i18n="learn.echoConfirm">确定</button>
           </div>
         </div>
         <div class="learn-body" id="learnScore" hidden>
@@ -333,9 +388,9 @@
           <p class="tiny" id="learnScoreDetail"></p>
           <audio id="learnMix" controls playsinline hidden></audio>
           <div class="learn-dock learn-dock-col">
-            <button class="btn primary" id="learnAgain" type="button">再来一次</button>
-            <button class="btn" id="learnOther" type="button">换一种</button>
-            <button class="btn" id="learnDone" type="button">回到听歌</button>
+            <button class="btn primary" id="learnAgain" type="button" data-i18n="learn.again">再来一次</button>
+            <button class="btn" id="learnOther" type="button" data-i18n="learn.other">换一种</button>
+            <button class="btn" id="learnDone" type="button" data-i18n="learn.done">回到听歌</button>
           </div>
         </div>
       </div>
@@ -345,65 +400,76 @@
       <button type="button" data-nav="desk" class="on">
         <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
         <svg class="ico-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z"/></svg>
-        点歌
+        <span data-i18n="phone.nav.desk">点歌</span>
       </button>
       <button type="button" data-nav="search">
         <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
         <svg class="ico-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
-        搜歌
+        <span data-i18n="phone.nav.search">搜歌</span>
       </button>
       <button type="button" data-nav="player">
         <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
         <svg class="ico-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
-        听歌
+        <span data-i18n="phone.nav.player">听歌</span>
+      </button>
+      <button type="button" id="tabLearn" data-enter-learn>
+        <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.6h13.2V20H7.4A1.4 1.4 0 016 18.6V4.6z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 8.2h7.2M9 12h7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg class="ico-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
+        <span data-i18n="phone.player.learn">游戏</span>
       </button>
     </nav>
 
     <div class="overlay" id="roomSheet" hidden>
-      <button type="button" class="overlay-backdrop" data-close-sheet="roomSheet" aria-label="关闭"></button>
+      <button type="button" class="overlay-backdrop" data-close-sheet="roomSheet" data-i18n-aria="common.close"></button>
       <div class="sheet" role="dialog" aria-labelledby="roomSheetTitle">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2 id="roomSheetTitle">进入房间</h2>
+        <h2 id="roomSheetTitle" data-i18n="phone.room.title">进入房间</h2>
         <label class="field">
-          <span class="tiny">房间码</span>
-          <input id="room" placeholder="电视上的 6 位码，空着会新建" inputmode="text" autocomplete="off" />
+          <span class="tiny" data-i18n="phone.room.code">房间码</span>
+          <input id="room" data-i18n-placeholder="phone.room.ph" placeholder="电视上的 6 位码，空着会新建" inputmode="text" autocomplete="off" />
         </label>
-        <button class="btn primary" id="join" type="button">进入房间</button>
-        <a class="btn" id="openTv" href="/tv.html" target="lovktv-tv">打开电视</a>
-        <p class="tiny" id="roomState">进房后电视唱，手机点歌。</p>
+        <button class="btn primary" id="join" type="button" data-i18n="phone.room.join">进入房间</button>
+        <a class="btn" id="openTv" href="/tv.html" target="lovktv-tv" data-i18n="phone.room.openTv">打开电视</a>
+        <p class="tiny" id="roomState" data-i18n="phone.room.hint">进房后电视唱，手机点歌。</p>
       </div>
     </div>
 
     <div class="overlay" id="whoSheet" hidden>
-      <button type="button" class="overlay-backdrop" data-close-sheet="whoSheet" aria-label="关闭"></button>
+      <button type="button" class="overlay-backdrop" data-close-sheet="whoSheet" data-i18n-aria="common.close"></button>
       <div class="sheet" role="dialog" aria-labelledby="whoName">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2>我的</h2>
+        <h2 data-i18n="phone.who.title">我的</h2>
         <div class="who" id="who">
           <img class="avatar" id="whoAvatar" alt="" hidden />
           <div>
-            <b id="whoName">未登录</b>
-            <p class="tiny" id="whoHint">微信扫一下就能认号</p>
+            <b id="whoName" data-i18n="phone.who.out">未登录</b>
+            <p class="tiny" id="whoHint" data-i18n="phone.who.hint">微信扫一下就能认号</p>
           </div>
         </div>
-        <a class="btn wechat" id="whoLogin" href="/api/auth/scan">认号</a>
-        <button class="btn" id="whoLogout" type="button" hidden>退出</button>
+        <a class="btn wechat" id="whoLogin" href="/api/auth/scan" data-i18n="phone.who.login">认号</a>
+        <button class="btn" id="whoLogout" type="button" hidden data-i18n="phone.who.logout">退出</button>
+        <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+          <option value="zh">中文</option>
+          <option value="yue">粵語</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
       </div>
     </div>
 
     <div class="overlay" id="mixSheet" hidden>
-      <button type="button" class="overlay-backdrop" data-close-sheet="mixSheet" aria-label="关闭"></button>
+      <button type="button" class="overlay-backdrop" data-close-sheet="mixSheet" data-i18n-aria="common.close"></button>
       <div class="sheet" role="dialog" aria-labelledby="mixSheetTitle">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2 id="mixSheetTitle">音量</h2>
+        <h2 id="mixSheetTitle" data-i18n="common.volume">音量</h2>
         <div class="now-mix">
           <label class="mix-row">
-            <span id="hostVolLabel">音量</span>
+            <span id="hostVolLabel" data-i18n="common.volume">音量</span>
             <input type="range" id="hostVol" min="0" max="100" value="80" />
             <em id="hostVolVal">80</em>
           </label>
           <label class="mix-row" id="micGainRow" hidden>
-            <span>麦声</span>
+            <span data-i18n="common.mic">麦声</span>
             <input type="range" id="micGain" min="0" max="100" value="80" />
             <em id="micGainVal">80</em>
           </label>
@@ -413,22 +479,23 @@
     </div>
 
     <div class="overlay" id="actionSheet" hidden>
-      <button type="button" class="overlay-backdrop" id="actionSheetBack" aria-label="取消"></button>
+      <button type="button" class="overlay-backdrop" id="actionSheetBack" data-i18n-aria="common.cancel"></button>
       <div class="action-sheet" role="dialog" aria-labelledby="actionSheetTitle">
         <div class="action-card">
           <h2 id="actionSheetTitle"></h2>
           <p class="tiny" id="actionSheetMsg"></p>
           <div id="actionSheetActs"></div>
         </div>
-        <button type="button" class="action-cancel" id="actionSheetCancel">取消</button>
+        <button type="button" class="action-cancel" id="actionSheetCancel" data-i18n="common.cancel">取消</button>
       </div>
     </div>
 
     <div class="toast" id="toast" hidden></div>
   </div>
+  <script src="/tv/fx/js/stage-fx.js?v=fx1"></script>
   <script src="/shared/audio/js/bands.js?v=wave8"></script>
   <script src="/phone/player/js/timeline.js?v=tl7"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/phone/app.js?v=split10"></script>
+  <script type="module" src="/phone/app.js?v=split16"></script>
 </body>
 </html>

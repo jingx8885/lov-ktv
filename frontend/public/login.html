@@ -3,39 +3,45 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>lov-ktv 认号</title>
+  <title data-i18n-title="login.title">lov-ktv 认号</title>
   <meta http-equiv="Cache-Control" content="no-store" />
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
-  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split1" />
-  <link rel="stylesheet" href="/login/css/login.css?v=split1" />
+  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split4" />
+  <link rel="stylesheet" href="/login/css/login.css?v=split2" />
 </head>
 <body>
   <div class="wrap">
     <p class="brand">lov-ktv</p>
-    <h1 id="heading">认号</h1>
-    <p class="muted" id="lead">微信扫一下，直接拿一个稳定 ID。</p>
+    <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+      <option value="zh">中文</option>
+      <option value="yue">粵語</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
+    <h1 id="heading" data-i18n="login.heading">认号</h1>
+    <p class="muted" id="lead" data-i18n="login.lead">微信扫一下，直接拿一个稳定 ID。</p>
     <p class="err" id="err" hidden></p>
 
     <div class="card who" id="meBox" hidden>
       <div>
-        <p class="tiny">你的 ID</p>
+        <p class="tiny" data-i18n="login.yourId">你的 ID</p>
         <p class="sid-display" id="sid">—</p>
         <p class="tiny" id="meHint"></p>
       </div>
-      <button class="btn" id="logout" type="button">退出</button>
+      <button class="btn" id="logout" type="button" data-i18n="login.logout">退出</button>
     </div>
 
     <div class="card" id="loginBox" hidden>
-      <a class="btn wechat" id="wechatScan" href="/api/auth/scan">微信扫码认号</a>
-      <p class="tiny" id="wechatHint">请用微信扫电视上的码。不用点确认。</p>
-      <button class="btn" id="deviceLogin" type="button" hidden>本机认号</button>
+      <a class="btn wechat" id="wechatScan" href="/api/auth/scan" data-i18n="login.wechatBtn">微信扫码认号</a>
+      <p class="tiny" id="wechatHint" data-i18n="login.wechatHint">请用微信扫电视上的码。不用点确认。</p>
+      <button class="btn" id="deviceLogin" type="button" hidden data-i18n="login.deviceBtn">本机认号</button>
     </div>
 
     <p class="row wrap-row">
-      <a class="btn" id="toMobile" href="/m.html">去点歌</a>
-      <a class="btn" id="toTv" href="/tv.html">打开电视</a>
+      <a class="btn" id="toMobile" href="/m.html" data-i18n="login.toPhone">去点歌</a>
+      <a class="btn" id="toTv" href="/tv.html" data-i18n="login.toTv">打开电视</a>
     </p>
   </div>
-  <script type="module" src="/login/js/login.js?v=split2"></script>
+  <script type="module" src="/login/js/login.js?v=split3"></script>
 </body>
 </html>

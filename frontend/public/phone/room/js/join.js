@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -21,28 +22,28 @@ export async function joinRoom(openScreen, quiet) {
   try {
     if (!code) {
       const created = await fetchJson("/api/rooms", { method: "POST" });
-      if (!created.ok || !created.data.code) throw new Error(created.data.detail || "开房失败");
+      if (!created.ok || !created.data.code) throw new Error(created.data.detail || t("phone.room.openFail"));
       code = created.data.code;
     }
     $("room").value = code;
     localStorage.setItem("room", code);
     /** @type {{ ok: boolean, data: Room }} */
     const { ok, data: room } = await fetchJson("/api/rooms/" + code);
-    if (!ok || !room.code) throw new Error(room.detail || "进房失败");
-    $("roomState").textContent = `已进房 ${room.code} · 队列 ${room.queue.length}`;
+    if (!ok || !room.code) throw new Error(room.detail || t("phone.room.fail"));
+    $("roomState").textContent = t("phone.room.joined", { code: room.code, n: room.queue.length });
     $("openTv").href = tvUrl(room.code);
     paintTopRoom(room.code);
     if (openScreen) {
-      $("roomState").textContent = `已进房 ${room.code} · 点「打开电视」看大屏`;
+      $("roomState").textContent = t("phone.room.joinedTv", { code: room.code });
     }
     if (!quiet) {
       closeOverlay("roomSheet");
-      showToast(`已进房 ${room.code}`);
+      showToast(t("phone.room.joinedToast", { code: room.code }));
     }
     await api.loadRoom();
   } catch (err) {
-    $("roomState").textContent = "进房失败，检查服务是否已开";
-    if (!quiet) showToast("进房失败，检查服务是否已开");
+    $("roomState").textContent = t("phone.room.fail");
+    if (!quiet) showToast(t("phone.room.fail"));
   }
   $("join").disabled = false;
 }

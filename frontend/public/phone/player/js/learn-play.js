@@ -2,7 +2,54 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { state } from "../../state.js";
 import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "./playback.js";
 
+export const LEARN_DIFFS = {
+  easy: { id: "easy", rate: 0.8 },
+  normal: { id: "normal", rate: 1 },
+  hard: { id: "hard", rate: 1.25 },
+};
+
+const DIFF_KEY = "lovktv-learn-diff";
 let playGen = 0;
+let diffId = "normal";
+
+export function getLearnDiff() {
+  return LEARN_DIFFS[diffId] ? diffId : "normal";
+}
+
+export function getLearnRate() {
+  return LEARN_DIFFS[getLearnDiff()].rate;
+}
+
+export function applyLearnRate() {
+  const rate = getLearnRate();
+  const audio = $("playerAudio");
+  const guide = $("playerGuide");
+  if (audio) audio.playbackRate = rate;
+  if (guide) guide.playbackRate = rate;
+}
+
+export function resetLearnRate() {
+  const audio = $("playerAudio");
+  const guide = $("playerGuide");
+  if (audio) audio.playbackRate = 1;
+  if (guide) guide.playbackRate = 1;
+}
+
+export function setLearnDiff(id) {
+  diffId = LEARN_DIFFS[id] ? id : "normal";
+  try { localStorage.setItem(DIFF_KEY, diffId); } catch (err) {}
+  applyLearnRate();
+  return getLearnDiff();
+}
+
+export function loadLearnDiff() {
+  try {
+    const saved = localStorage.getItem(DIFF_KEY);
+    if (LEARN_DIFFS[saved]) diffId = saved;
+  } catch (err) {}
+  applyLearnRate();
+  return getLearnDiff();
+}
 
 /** @param {number} startMs @param {number} endMs @param {{ vocal?: boolean }} [opts] */
 export function playCueWindow(startMs, endMs, opts) {
@@ -30,6 +77,7 @@ export function playCueWindow(startMs, endMs, opts) {
       requestAnimationFrame(tick);
     };
     hookPlayerAudio();
+    applyLearnRate();
     try { audio.currentTime = start; } catch (err) {}
     syncGuide(start);
     state.playerHeld = false;

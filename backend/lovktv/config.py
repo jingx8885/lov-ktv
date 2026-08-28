@@ -8,6 +8,8 @@ MODELS_DIR = Path(os.environ.get("LOVKTV_MODELS", DATA_DIR / "models")).resolve(
 WHISPER_DIR = Path(os.environ.get("LOVKTV_WHISPER_DIR", Path.home() / ".cache" / "whisper")).resolve()
 IMAGE_MODELS_DIR = Path("/opt/lovktv/models")
 DB_PATH = DATA_DIR / "lovktv.sqlite"
+# postgres/postgresql URL → PostgreSQL (Supabase). Empty → SQLite at DB_PATH.
+DATABASE_URL = (os.environ.get("LOVKTV_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
 HOST = "0.0.0.0"
 PORT = 8787
 PUBLIC_URL = (os.environ.get("LOVKTV_PUBLIC_URL") or "").rstrip("/")

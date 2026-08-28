@@ -1,5 +1,8 @@
+import { t, bootI18n, onLangChange, applyDom } from "../../shared/i18n/js/i18n.js";
 import { $ } from "../../shared/ui/js/dom.js";
 import { fetchJson } from "../../shared/ui/js/http.js";
+
+bootI18n();
 
 const params = new URLSearchParams(location.search);
 const ticket = params.get("login") || params.get("ticket") || "";
@@ -7,6 +10,10 @@ const room = (params.get("room") || "").toUpperCase();
 const next = params.get("next") || "";
 const inWechat = /MicroMessenger/i.test(navigator.userAgent || "");
 const deviceKey = "lovktv_device";
+
+let meUser = null;
+let scanLead = false;
+let errorRaw = "";
 
 function deviceId() {
   let id = localStorage.getItem(deviceKey);
@@ -26,19 +33,39 @@ function scanHref() {
   return "/api/auth/scan" + (qs ? "?" + qs : "");
 }
 
+function resolveError(raw) {
+  if (!raw) return "";
+  const translated = t(raw);
+  if (translated !== raw) return translated;
+  return raw;
+}
+
 function showError(text) {
   $("err").hidden = !text;
   $("err").textContent = text || "";
 }
 
+function paintLead() {
+  if (meUser) {
+    $("heading").textContent = t("login.done");
+    $("lead").textContent = ticket ? t("login.doneTv") : t("login.doneId");
+    $("meHint").textContent = meUser.wechat ? t("login.wechatLock") : t("login.deviceId");
+    return;
+  }
+  $("heading").textContent = t("login.heading");
+  $("lead").textContent = scanLead ? t("login.leadScan") : t("login.lead");
+}
+
 function renderUser(user) {
+  meUser = user;
   $("meBox").hidden = !user;
   $("loginBox").hidden = !!user;
-  if (!user) return;
+  if (!user) {
+    paintLead();
+    return;
+  }
   $("sid").textContent = user.sid || (user.id || "").slice(0, 6).toUpperCase();
-  $("heading").textContent = "已认号";
-  $("lead").textContent = ticket ? "电视马上会进。这个 ID 下次扫还是你。" : "这个 ID 下次扫还是你。";
-  $("meHint").textContent = user.wechat ? "微信 openid 锁定" : "本机身份";
+  paintLead();
 }
 
 async function loadMe() {
@@ -50,7 +77,7 @@ async function confirmTicket() {
   if (!ticket) return true;
   const { ok, data } = await fetchJson("/api/auth/qr/" + ticket + "/confirm", { method: "POST", credentials: "same-origin" });
   if (ok) return true;
-  showError(data.detail || "电视码过期了，请刷新电视再扫");
+  showError(data.detail || t("login.qrExpired"));
   return false;
 }
 
@@ -62,18 +89,24 @@ async function deviceLogin() {
     body: JSON.stringify({ device_id: deviceId() }),
   });
   if (!ok) {
-    showError(data.detail || "本机认号失败");
+    showError(data.detail || t("login.deviceFail"));
     return null;
   }
   return data.user;
 }
 
+onLangChange(() => {
+  applyDom();
+  paintLead();
+  if (meUser) $("sid").textContent = meUser.sid || (meUser.id || "").slice(0, 6).toUpperCase();
+  if (errorRaw) showError(resolveError(errorRaw));
+});
+
 $("logout").onclick = async () => {
   await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
   renderUser(null);
   $("loginBox").hidden = false;
-  $("heading").textContent = "认号";
-  $("lead").textContent = "微信扫一下，直接拿一个稳定 ID。";
+  paintLead();
 };
 
 $("deviceLogin").onclick = async () => {
@@ -86,7 +119,8 @@ $("deviceLogin").onclick = async () => {
 };
 
 (async function boot() {
-  if (params.get("error")) showError(params.get("error"));
+  errorRaw = params.get("error") || "";
+  if (errorRaw) showError(resolveError(errorRaw));
   $("wechatScan").href = scanHref();
   if (room) {
     $("toTv").href = "/tv.html?room=" + room;
@@ -118,6 +152,7 @@ $("deviceLogin").onclick = async () => {
   $("loginBox").hidden = false;
   $("deviceLogin").hidden = wechatOn;
   if (wechatOn && !inWechat) {
-    $("lead").textContent = "请用微信扫电视上的码，扫完就认号。";
+    scanLead = true;
+    $("lead").textContent = t("login.leadScan");
   }
 })();

@@ -28,6 +28,7 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["mic_sample_rate"] == 48000
     assert "separator" in data["models"]
     assert "whisper" in data["models"]
+    assert data["database"] == "sqlite"
     assert data["agent"]["enabled"] is False
     assert data["agent"]["model"] == ""
 

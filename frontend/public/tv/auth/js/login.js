@@ -1,6 +1,15 @@
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { state } from "../../state.js";
+
+let lastUser = null;
+let lastHintKey = "tv.loginHint";
+
+function setLoginHint(key) {
+  lastHintKey = key;
+  $("loginHint").textContent = t(key);
+}
 
 export function renderQr(url, target) {
   const box = $(target || "qr");
@@ -28,14 +37,17 @@ export async function hostOrigin() {
 }
 
 export function renderUserChip(user) {
-  $("tvUser").textContent = user ? (user.sid || user.nickname || "已登录") : "未登录";
-  $("tvLoginBtn").textContent = user ? "换账号" : "登录";
-  if (user && user.avatar) {
+  if (user !== undefined) lastUser = user;
+  const who = lastUser;
+  $("tvUser").textContent = who ? (who.sid || who.nickname || t("tv.in")) : t("tv.out");
+  $("tvLoginBtn").textContent = who ? t("tv.switch") : t("tv.login");
+  if (who && who.avatar) {
     $("tvAvatar").hidden = false;
-    $("tvAvatar").src = user.avatar;
+    $("tvAvatar").src = who.avatar;
   } else {
     $("tvAvatar").hidden = true;
   }
+  if ($("loginHint")) $("loginHint").textContent = t(lastHintKey);
 }
 
 export async function currentUser() {
@@ -48,7 +60,7 @@ export async function pollLogin() {
   const { ok, data } = await fetchJson("/api/auth/qr/" + state.loginTicket + "?claim=1", { credentials: "same-origin" });
   if (!ok) return;
   if (data.status === "expired") {
-    $("loginHint").textContent = "二维码过期了，点刷新";
+    setLoginHint("tv.loginHintExp");
     return;
   }
   if (data.status === "ok" && data.user) {
@@ -61,7 +73,7 @@ export async function pollLogin() {
 
 export async function startLoginQr() {
   $("loginGate").hidden = false;
-  $("loginHint").textContent = "正在生成二维码…";
+  setLoginHint("tv.loginHintWait");
   const { data } = await fetchJson("/api/auth/qr", {
     method: "POST",
     credentials: "same-origin",
@@ -70,7 +82,7 @@ export async function startLoginQr() {
   });
   state.loginTicket = data.ticket;
   renderQr(data.url, "loginQr");
-  $("loginHint").textContent = "微信扫一下就行，约 3 分钟有效";
+  setLoginHint("tv.loginHintOk");
   if (state.loginTimer) clearInterval(state.loginTimer);
   state.loginTimer = setInterval(pollLogin, 2000);
 }
@@ -85,7 +97,7 @@ export async function bootAuth() {
     ? await fetchJson("/api/rooms/" + wanted)
     : await fetchJson("/api/rooms", { method: "POST" });
   if (!roomRes.ok || !roomRes.data || !roomRes.data.code) {
-    throw new Error((roomRes.data && roomRes.data.detail) || "开房失败");
+    throw new Error((roomRes.data && roomRes.data.detail) || t("tv.openFail"));
   }
   state.room = roomRes.data;
   localStorage.setItem("tvRoom", state.room.code);

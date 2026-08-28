@@ -27,6 +27,7 @@ services:
       ALIYUN_OSS_DOWNLOAD_DOMAIN: ${ALIYUN_OSS_DOWNLOAD_DOMAIN:-}
       LOVKTV_OSS_PREFIX: ${LOVKTV_OSS_PREFIX:-lovktv}
       LOVKTV_HTTPS_PROXY: ${LOVKTV_HTTPS_PROXY:-}
+      LOVKTV_DATABASE_URL: ${LOVKTV_DATABASE_URL:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/api/host"]

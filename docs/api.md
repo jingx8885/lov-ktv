@@ -2,7 +2,7 @@
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | `/api/host` | 局域网入口 `{origin,process_origin,mode,phone_path,cache_ready}` |
+| GET | `/api/host` | 局域网入口 `{origin,process_origin,mode,phone_path,cache_ready,database}` |
 | GET | `/api/search?q=` | tonzhon / 网易搜歌 |
 | POST | `/api/songs/import` | `{query,id,title,artist,language}` 下载入库 |
 | POST | `/api/songs` | multipart 本地上传（后备） |

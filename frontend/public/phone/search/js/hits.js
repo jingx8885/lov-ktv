@@ -1,7 +1,8 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
-import { state, SEARCH_EMPTY } from "../../state.js";
+import { state, searchEmpty } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { stopPreview, togglePreview } from "./preview.js";
@@ -35,12 +36,12 @@ export function bindSearchHits(q) {
       if (!created.id) {
         btn.disabled = false;
         btn.classList.remove("busy");
-        showToast(created.detail || "入库失败");
+        showToast(created.detail || t("phone.search.importFailed"));
         return;
       }
       btn.classList.add("on");
-      btn.setAttribute("aria-label", "已加入");
-      showToast("已加入曲库");
+      btn.setAttribute("aria-label", t("phone.search.added"));
+      showToast(t("phone.search.addedToast"));
       api.loadSongs();
     };
   });
@@ -53,13 +54,13 @@ export function searchCard(hit) {
   const isMv = hit.is_mv === true || hit.source === "mugen" || hit.source === "bilibili";
   const channel = ({
     mugen: "Mugen",
-    bilibili: "B站",
+    bilibili: t("phone.search.bilibili"),
     soundcloud: "SoundCloud",
   })[hit.source] || "";
   const bits = [
-    escapeHtml(hit.artist || "未知歌手"),
+    escapeHtml(hit.artist || t("common.unknownArtist")),
     channel ? `<span class="source-tag ${escapeHtml(hit.source)}">${escapeHtml(channel)}</span>` : "",
-    isMv ? "MV" : "歌曲",
+    isMv ? "MV" : t("phone.search.song"),
   ].filter(Boolean);
   return `
         <article class="list-row">
@@ -67,15 +68,15 @@ export function searchCard(hit) {
             <b>${escapeHtml(hit.title)}</b>
             <span class="tiny">${bits.join(" · ")}</span>
           </div>
-          ${hit.id ? `<button type="button" class="row-action ghost list-preview" data-preview="${escapeHtml(hit.id)}" aria-label="试听">${ICO.play}</button>` : ""}
-          <button type="button" class="row-action list-add" data-import='${JSON.stringify(hit)}' aria-label="加入曲库">${ICO.plus}</button>
+          ${hit.id ? `<button type="button" class="row-action ghost list-preview" data-preview="${escapeHtml(hit.id)}" aria-label="${t("phone.search.preview")}">${ICO.play}</button>` : ""}
+          <button type="button" class="row-action list-add" data-import='${JSON.stringify(hit)}' aria-label="${t("phone.search.add")}">${ICO.plus}</button>
         </article>`;
 }
 
 export function paintSearchHits(q, hasMore) {
   const cards = state.searchHits.map(searchCard).join("")
-    || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>没有这首</p><span class="tiny">换个关键字再搜</span></div>`;
-  const more = hasMore ? `<button type="button" class="list-more" data-page="${state.searchPage + 1}">加载更多</button>` : "";
+    || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.none")}</p><span class="tiny">${t("phone.search.noneHint")}</span></div>`;
+  const more = hasMore ? `<button type="button" class="list-more" data-page="${state.searchPage + 1}">${t("common.loadMore")}</button>` : "";
   $("hits").innerHTML = cards + more;
   bindSearchHits(q);
   if (state.previewId) {
@@ -83,7 +84,7 @@ export function paintSearchHits(q, hasMore) {
     if (live) {
       live.classList.add("on");
       live.innerHTML = ICO.pause;
-      live.setAttribute("aria-label", "停止试听");
+      live.setAttribute("aria-label", t("phone.search.stopPreview"));
     }
   }
 }
@@ -96,21 +97,21 @@ export async function runSearch(page, append = false) {
   if (!append) {
     stopPreview();
     state.searchHits = [];
-    $("hits").innerHTML = `<div class="empty-state"><p>搜索中…</p></div>`;
+    $("hits").innerHTML = `<div class="empty-state"><p>${t("common.searching")}</p></div>`;
   } else if (moreBtn) {
     moreBtn.disabled = true;
-    moreBtn.textContent = "加载中…";
+    moreBtn.textContent = t("common.loading");
   }
   /** @type {{ ok: boolean, data: SearchPage }} */
   const { ok, data } = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
   if (!ok) {
     if (append && moreBtn) {
       moreBtn.disabled = false;
-      moreBtn.textContent = "加载更多";
-      showToast(data.detail || "加载失败");
+      moreBtn.textContent = t("common.loadMore");
+      showToast(data.detail || t("common.loadFailed"));
       return;
     }
-    $("hits").innerHTML = `<div class="empty-state"><p>${escapeHtml(data.detail || "搜索失败")}</p></div>`;
+    $("hits").innerHTML = `<div class="empty-state"><p>${escapeHtml(data.detail || t("api.search_failed", { exc: "" }))}</p></div>`;
     return;
   }
   const hits = data.hits || [];
@@ -146,14 +147,14 @@ export function bindSearch() {
     $("q").value = "";
     $("q").focus();
     state.searchHits = [];
-    $("hits").innerHTML = SEARCH_EMPTY;
+    $("hits").innerHTML = searchEmpty();
     syncSearchChrome();
   };
   $("searchCancel").onclick = () => {
     $("q").value = "";
     $("q").blur();
     state.searchHits = [];
-    $("hits").innerHTML = SEARCH_EMPTY;
+    $("hits").innerHTML = searchEmpty();
     syncSearchChrome();
   };
   $("openUpload").onclick = () => $("file").click();
@@ -168,11 +169,11 @@ export function bindSearch() {
       fd.append("title", file.name);
       fd.append("lyrics", "");
       const { ok, data } = await fetchJson("/api/songs", { method: "POST", body: fd });
-      if (!ok) throw new Error(data.detail || "上传失败");
+      if (!ok) throw new Error(data.detail || t("phone.search.uploadFailed"));
       $("file").value = "";
       api.showPage("desk");
     } catch (err) {
-      showToast(err.message || "上传失败");
+      showToast(err.message || t("phone.search.uploadFailed"));
     } finally {
       btn.disabled = false;
     }

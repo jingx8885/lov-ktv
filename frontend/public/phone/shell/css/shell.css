@@ -30,6 +30,17 @@ body.phone {
   padding: 0;
   overflow: hidden;
   font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
+}
+html[lang="zh-HK"] body.phone {
+  font-family: -apple-system, "PingFang HK", "Noto Sans HK", "PingFang SC", sans-serif;
+}
+html[lang="ja"] body.phone {
+  font-family: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+html[lang="en"] body.phone {
+  font-family: -apple-system, Inter, "SF Pro Text", sans-serif;
+}
+body.phone {
   -webkit-tap-highlight-color: transparent;
 }
 body.phone * {
@@ -119,12 +130,12 @@ body.phone .app {
   gap: 4px;
   min-width: 44px;
   height: 44px;
-  max-width: 118px;
+  max-width: 148px;
   padding: 6px 4px;
   border: 0;
   background: transparent;
   color: var(--accent);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 400;
   letter-spacing: 0;
   overflow: hidden;
@@ -188,7 +199,7 @@ body.phone .app {
   left: 0; right: 0; bottom: 0;
   z-index: 42;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
   padding: 4px 0 var(--safe-b);
   background: rgba(0, 0, 0, .65);
@@ -207,9 +218,18 @@ body.phone .app {
   border-radius: 0;
   background: none;
   color: var(--muted);
+  min-width: 0;
+  overflow: hidden;
   font-size: 10px;
   font-weight: 500;
   letter-spacing: 0;
+}
+.tabbar button span {
+  max-width: 100%;
+  padding: 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .tabbar button.on { color: var(--accent); background: none; font-weight: 600; }
 .tabbar svg { width: 24px; height: 24px; }

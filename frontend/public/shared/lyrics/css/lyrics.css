@@ -31,9 +31,22 @@
   flex-wrap: wrap;
   justify-content: center;
   align-items: flex-end;
-  column-gap: 0.04em;
-  row-gap: 0.28em;
+  column-gap: 0.22em;
+  row-gap: 0.16em;
   max-width: min(96vw, 1600px);
+}
+.lyrics .line-words {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: flex-end;
+  column-gap: inherit;
+  width: 100%;
+  min-width: 0;
+}
+.prev .line-words,
+.next .line-words {
+  flex-wrap: wrap;
 }
 .line { font-size: clamp(28px, 4.6vw, 58px); font-weight: 700; text-shadow: 0 4px 24px rgba(0,0,0,.45); }
 .prev { margin-bottom: 14px; font-size: clamp(18px, 2.8vw, 34px); color: var(--muted); opacity: 0.78; }
@@ -41,8 +54,9 @@
 .lyrics .tok {
   display: inline-flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   vertical-align: bottom;
+  padding-inline: 0.08em;
 }
 .lyrics .tok.latin { padding-inline: 0.02em 0; }
 .lyrics .tok-space,
@@ -55,7 +69,15 @@
 .lyrics .anno {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  width: max-content;
+}
+.lyrics .anno .rb {
+  display: block;
+  width: max-content;
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.03em;
 }
 .lyrics .anno .rt {
   display: flex;
@@ -73,30 +95,33 @@
   font-style: normal;
   font-weight: 700;
 }
-.lyrics .anno .roma {
-  min-height: 0.34em;
-  font-size: .28em;
-  color: rgba(255, 255, 255, .72);
-  letter-spacing: 0.02em;
+.lyrics .anno .roma,
+.lyrics .anno .gloss {
+  box-sizing: border-box;
+  width: 0;
+  min-width: 100%;
   text-align: center;
-  font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.25;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+.lyrics .anno .roma {
+  font-size: .62em;
+  color: rgba(255, 255, 255, .88);
+  font-weight: 650;
 }
 .lyrics .anno .gloss {
-  min-height: 0.3em;
-  font-size: .26em;
-  color: rgba(255, 214, 160, .92);
-  text-align: center;
-  font-weight: 650;
-  line-height: 1.15;
+  font-size: .6em;
+  color: rgba(255, 214, 160, .96);
+  font-weight: 700;
 }
 .lyrics .lyric-zh {
   flex-basis: 100%;
   width: 100%;
-  margin-top: 0.18em;
-  font-size: 0.42em;
+  margin-top: 0.28em;
+  font-size: 0.68em;
   font-weight: 650;
-  color: rgba(255, 255, 255, .88);
+  color: rgba(255, 255, 255, .92);
   text-align: center;
   letter-spacing: 0.04em;
 }

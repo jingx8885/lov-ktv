@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>lov-ktv 电视</title>
+  <title data-i18n-title="tv.title">lov-ktv 电视</title>
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
-  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split1" />
-  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split2" />
-  <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split1" />
+  <link rel="stylesheet" href="/shared/ui/css/base.css?v=split4" />
+  <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split6" />
+  <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split2" />
   <link rel="stylesheet" href="/tv/lyrics/css/lyrics.css?v=split2" />
   <link rel="stylesheet" href="/tv/gates/css/gates.css?v=split1" />
 </head>
@@ -15,25 +15,39 @@
   <video id="mtv" muted playsinline></video>
   <canvas id="stageFx" class="stage-fx" aria-hidden="true"></canvas>
   <canvas id="partyFx" class="party-fx" aria-hidden="true"></canvas>
-  <a class="qrbox" id="phoneLink" href="#">
-    <div id="qr" class="qr"></div>
-    <span class="qr-cap">扫码 · <b id="code"></b></span>
-  </a>
+  <div class="qrbox">
+    <a id="phoneLink" href="#">
+      <div id="qr" class="qr"></div>
+      <span class="qr-cap"><span data-i18n="tv.scan">扫码 · </span><b id="code"></b></span>
+    </a>
+    <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+      <option value="zh">中文</option>
+      <option value="yue">粵語</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
+  </div>
   <div class="login-gate" id="loginGate" hidden>
     <div class="login-card">
       <p class="brand">lov-ktv</p>
-      <h2>微信扫一下</h2>
-      <p class="muted">扫码直接认号，不用点确认。</p>
+      <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+        <option value="zh">中文</option>
+        <option value="yue">粵語</option>
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+      </select>
+      <h2 data-i18n="tv.loginTitle">微信扫一下</h2>
+      <p class="muted" data-i18n="tv.loginLead">扫码直接认号，不用点确认。</p>
       <div id="loginQr" class="qr"></div>
-      <p class="tiny" id="loginHint">二维码约 3 分钟有效</p>
+      <p class="tiny" id="loginHint" data-i18n="tv.loginHint">二维码约 3 分钟有效</p>
       <div class="row wrap-row" style="justify-content:center">
-        <button class="btn primary" id="refreshLogin" type="button">刷新二维码</button>
-        <button class="btn" id="skipLogin" type="button">先不登录</button>
+        <button class="btn primary" id="refreshLogin" type="button" data-i18n="tv.refreshQr">刷新二维码</button>
+        <button class="btn" id="skipLogin" type="button" data-i18n="tv.skipLogin">先不登录</button>
       </div>
     </div>
   </div>
   <div class="start-gate" id="gate">
-    <button class="btn primary" id="start">点击开唱</button>
+    <button class="btn primary" id="start" data-i18n="tv.start">点击开唱</button>
   </div>
   <div class="tv-ui">
     <header class="bar">
@@ -43,9 +57,15 @@
         <p class="muted" id="meta"></p>
       </div>
       <div class="user-chip">
+        <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+          <option value="zh">中文</option>
+          <option value="yue">粵語</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+        </select>
         <img class="avatar" id="tvAvatar" alt="" hidden />
-        <span id="tvUser">未登录</span>
-        <button class="btn" id="tvLoginBtn" type="button">登录</button>
+        <span id="tvUser" data-i18n="tv.out">未登录</span>
+        <button class="btn" id="tvLoginBtn" type="button" data-i18n="tv.login">登录</button>
       </div>
     </header>
     <section class="lyrics">
@@ -60,11 +80,11 @@
       <audio id="vocal" crossorigin="anonymous" hidden></audio>
       <audio id="liveMic" autoplay playsinline hidden></audio>
       <audio id="keepAlive" loop playsinline hidden></audio>
-      <p class="mic-live" id="micLive" hidden>手机麦已接入</p>
+      <p class="mic-live" id="micLive" hidden data-i18n="tv.micLive">手机麦已接入</p>
       <canvas id="bands" class="bands" width="1920" height="120" hidden></canvas>
       <div class="tv-controls">
-        <button class="btn" id="skip" type="button">切歌</button>
-        <button class="btn" id="toggle" type="button">原唱/伴唱</button>
+        <button class="btn" id="skip" type="button" data-i18n="common.skip">切歌</button>
+        <button class="btn" id="toggle" type="button" data-i18n="tv.toggle">原唱/伴唱</button>
       </div>
       <p class="muted" id="qinfo"></p>
     </footer>
@@ -75,6 +95,6 @@
   <script src="/tv/fx/js/stage-fx.js?v=fx1"></script>
   <script src="/shared/audio/js/aec.js?v=aec4"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/tv/app.js?v=split9"></script>
+  <script type="module" src="/tv/app.js?v=split10"></script>
 </body>
 </html>

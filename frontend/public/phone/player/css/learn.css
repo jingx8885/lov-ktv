@@ -5,14 +5,27 @@
 }
 .player-head-side.end { justify-content: flex-end; }
 .player-head {
-  grid-template-columns: 88px 1fr 88px;
+  grid-template-columns: 44px 1fr auto;
 }
 .learn {
+  position: relative;
   display: none;
   flex-direction: column;
   min-height: 0;
   height: 100%;
   padding: 8px 16px calc(12px + var(--safe-b));
+  background:
+    radial-gradient(ellipse at 12% -10%, rgba(255, 77, 141, .22), transparent 42%),
+    radial-gradient(ellipse at 92% 8%, rgba(245, 193, 108, .16), transparent 38%),
+    radial-gradient(ellipse at 50% 120%, rgba(110, 200, 255, .1), transparent 46%);
+}
+.learn-fx {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 8;
 }
 .learn-bar {
   display: grid;
@@ -30,6 +43,7 @@
   font-size: 17px;
   letter-spacing: -0.02em;
 }
+.learn[hidden] { display: none !important; }
 .learn-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -38,39 +52,168 @@
   gap: 12px;
   padding-top: 10px;
 }
-.learn-lead {
-  margin: 8px 0 4px;
-  color: var(--muted);
-  font-size: 15px;
+#learnHome {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
+.learn-body[hidden] { display: none !important; }
+.learn-song {
+  margin: 2px 0 0;
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.learn-lead {
+  margin: 6px 0 2px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.learn-diff {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+.learn-diff button {
+  appearance: none;
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  padding: 8px 6px;
+  border: 0;
+  border-radius: 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+  cursor: pointer;
+}
+.learn-diff button em {
+  font-style: normal;
+  font-size: 15px;
+  font-weight: 700;
+}
+.learn-diff button small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.learn-diff button.on {
+  background: rgba(245, 193, 108, .18);
+  box-shadow: inset 0 0 0 1.5px rgba(245, 193, 108, .7), 0 8px 20px rgba(245, 193, 108, .12);
+}
+.learn-diff button.on small { color: var(--gold); }
+.learn-diff button:active { transform: scale(.97); }
 .learn-mode {
   appearance: none;
   display: grid;
-  gap: 6px;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 14px;
   width: 100%;
   margin: 0;
-  padding: 18px 18px 16px;
+  padding: 16px 16px 15px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 22px;
   text-align: left;
   color: var(--text);
-  background: rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .07);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16);
   cursor: pointer;
 }
-.learn-mode:active { transform: scale(.97); }
+.learn-mode.is-quiz { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #ff4d8d; }
+.learn-mode.is-tap { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #f5c16c; }
+.learn-mode.is-echo { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #b48cff; }
+.learn-mode:active { transform: scale(.975); }
+.learn-mode-ico {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .08);
+}
+.learn-mode-ico svg {
+  width: 26px;
+  height: 26px;
+  fill: currentColor;
+}
+.learn-mode.is-quiz .learn-mode-ico { color: #ff9cbf; background: rgba(255, 77, 141, .18); }
+.learn-mode.is-tap .learn-mode-ico { color: #f5c16c; background: rgba(245, 193, 108, .16); }
+.learn-mode.is-echo .learn-mode-ico { color: #c9b0ff; background: rgba(180, 140, 255, .18); }
+.learn-mode-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.learn-mode-copy i {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--gold);
+}
 .learn-mode em {
   font-style: normal;
   font-size: 20px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-weight: 750;
+  letter-spacing: -0.03em;
 }
-.learn-mode span {
+.learn-mode-copy span {
   color: var(--muted);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.learn-combo {
+  margin: 2px 0 0;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-shadow: 0 1px 14px rgba(245, 193, 108, .35);
+}
+.learn-skip {
+  appearance: none;
+  align-self: center;
+  margin-top: auto;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+.learn-skip:disabled { opacity: .35; }
+.learn-count {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  display: grid;
+  place-items: center;
+  background: rgba(6, 8, 16, .42);
+  pointer-events: none;
+}
+.learn-count[hidden] { display: none !important; }
+.learn-count b {
+  font-size: clamp(84px, 28vw, 132px);
+  line-height: .9;
+  letter-spacing: -0.06em;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(245, 193, 108, .55), 0 8px 24px rgba(0, 0, 0, .45);
+}
+.learn-count.is-go b { color: var(--gold); }
+.learn-count b.is-pop {
+  animation: learn-count-pop 360ms cubic-bezier(.2, .9, .25, 1);
+}
+@keyframes learn-count-pop {
+  0% { transform: scale(.55); opacity: .2; }
+  55% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
 }
 .learn-progress {
   height: 3px;
@@ -103,75 +246,22 @@
   font-size: 14px;
   line-height: 1.4;
 }
-.learn-qs {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  display: grid;
-  gap: 12px;
-  padding-bottom: 8px;
-}
-.learn-q {
-  padding: 12px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, .06);
-}
-.learn-q b {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.learn-choices {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.learn-choice {
-  appearance: none;
-  min-height: 48px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 12px;
-  background: rgba(120, 120, 128, .22);
-  color: var(--text);
-  font-size: 14px;
-  line-height: 1.3;
-  text-align: left;
-  cursor: pointer;
-}
-.learn-choice:active { transform: scale(.97); }
-.learn-choice.is-on { background: rgba(255, 77, 141, .28); }
-.learn-choice.is-ok { background: rgba(48, 176, 80, .36); }
-.learn-choice.is-no { background: rgba(255, 69, 58, .32); }
 .learn-dock {
   flex: 0 0 auto;
   display: flex;
   gap: 10px;
   padding-top: 4px;
 }
-.learn-dock .btn { flex: 1; }
+.learn-dock .btn {
+  flex: 1;
+  min-width: 0;
+  padding: 0 10px;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .learn-dock-col { flex-direction: column; }
-.learn-phase {
-  margin: 8px 0 0;
-  text-align: center;
-  font-size: 16px;
-  font-weight: 600;
-}
-.learn-echo-pulse {
-  width: 88px;
-  height: 88px;
-  margin: 18px auto 8px;
-  border-radius: 50%;
-  background: rgba(255, 77, 141, .18);
-  box-shadow: inset 0 0 0 2px rgba(255, 77, 141, .35);
-}
-.learn-echo-pulse.is-listen { background: rgba(245, 193, 108, .18); box-shadow: inset 0 0 0 2px rgba(245, 193, 108, .4); }
-.learn-echo-pulse.is-sing {
-  background: var(--accent);
-  animation: learn-pulse 1s ease-in-out infinite;
-}
 .learn-score-num {
   margin: 28px 0 8px;
   text-align: center;
@@ -187,18 +277,22 @@
   font-size: 18px;
   font-weight: 600;
 }
+#learnScoreDetail {
+  text-align: center;
+}
 #learnMix {
   width: 100%;
   margin-top: 8px;
 }
-@keyframes learn-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.08); opacity: .82; }
+@keyframes learn-ok-pop {
+  0% { transform: scale(.94); }
+  38% { transform: scale(1.07); }
+  100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
   .learn-mode:active,
-  .learn-choice:active { transform: none; }
-  .learn-echo-pulse.is-sing { animation: none; }
+  .learn-diff button:active { transform: none; }
+  .learn-count b.is-pop { animation: none; }
 }
 body.phone.learn-on { overflow: hidden; }
 body.phone.learn-on .topbar,

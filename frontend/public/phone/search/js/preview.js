@@ -1,5 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -11,7 +12,7 @@ export function stopPreview() {
   state.previewId = "";
   $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
     btn.classList.remove("on", "busy");
-    btn.setAttribute("aria-label", "试听");
+    btn.setAttribute("aria-label", t("phone.search.preview"));
     btn.innerHTML = ICO.play;
   });
 }
@@ -33,19 +34,19 @@ export async function togglePreview(hit, btn) {
   const { ok, data: info } = await fetchJson(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());
   if (!ok) {
     btn.classList.remove("busy");
-    showToast(info.detail || "这首暂时不能试听，换一条再听");
+    showToast(info.detail || t("phone.search.previewFail"));
     return;
   }
   state.previewId = hit.id;
   btn.classList.add("on");
   btn.classList.remove("busy");
-  btn.setAttribute("aria-label", "停止试听");
+  btn.setAttribute("aria-label", t("phone.search.stopPreview"));
   btn.innerHTML = ICO.pause;
   const audio = $("preview");
   audio.src = `/api/preview/${encodeURIComponent(hit.id)}?` + params.toString();
   audio.play().catch(() => {
     stopPreview();
-    showToast("这首暂时不能试听，换一条再听");
+    showToast(t("phone.search.previewFail"));
   });
   audio.onended = stopPreview;
 }

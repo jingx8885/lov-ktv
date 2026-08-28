@@ -1,9 +1,13 @@
 import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { mediaUrl } from "./playback.js";
 import { acquirePhoneMic, startPhoneMic, stopPhoneMic } from "./mic.js";
 import { cancelCueWindow, playCueWindow } from "./learn-play.js";
+
+export const SING_PAD_MS = 1600;
+export const SING_MIN_MS = 4200;
 
 /** @type {LearnEchoSession} */
 const session = {
@@ -12,24 +16,50 @@ const session = {
   clips: [],
   mixUrl: "",
   running: false,
+  review: null,
+  previewUrl: "",
+  skipped: false,
 };
+
+/** @type {HTMLAudioElement | null} */
+let previewEl = null;
 
 export function resetEcho(lines) {
   revokeMix();
+  cancelPreview();
   session.lines = lines || [];
   session.index = 0;
   session.clips = [];
   session.mixUrl = "";
   session.running = false;
+  session.review = null;
+  session.skipped = false;
 }
 
 export function echoBusy() {
   return session.running;
 }
 
+/** @param {{ start_ms?: number, end_ms?: number }} line */
+export function singWindowEnd(line) {
+  const start = Number(line && line.start_ms) || 0;
+  const end = Number(line && line.end_ms) || start;
+  return Math.max(end + SING_PAD_MS, start + SING_MIN_MS);
+}
+
 function revokeMix() {
   if (session.mixUrl) URL.revokeObjectURL(session.mixUrl);
   session.mixUrl = "";
+}
+
+function cancelPreview() {
+  if (previewEl) {
+    previewEl.pause();
+    previewEl.removeAttribute("src");
+    previewEl = null;
+  }
+  if (session.previewUrl) URL.revokeObjectURL(session.previewUrl);
+  session.previewUrl = "";
 }
 
 function recMime() {
@@ -40,7 +70,7 @@ function recMime() {
 function paintEchoLine() {
   const line = session.lines[session.index];
   const total = session.lines.length;
-  $("learnTitle").textContent = "跟唱合成";
+  $("learnTitle").textContent = t("learn.echo");
   $("learnMeta").textContent = line ? `${session.index + 1} / ${total}` : "";
   $("learnEchoSrc").textContent = line ? line.text : "";
   $("learnEchoRoma").textContent = (line && line.romaji) || "";
@@ -54,6 +84,33 @@ function paintEchoLine() {
 function setPhase(name, label) {
   $("learnEchoPhase").textContent = label;
   $("learnEchoPulse").className = `learn-echo-pulse is-${name}`;
+}
+
+function showReviewDock(on) {
+  const review = $("learnEchoReview");
+  const skip = $("learnEchoSkip");
+  if (review) review.hidden = !on;
+  if (skip) skip.hidden = !!on;
+}
+
+function finishReview(action) {
+  if (!session.review) return;
+  const done = session.review;
+  session.review = null;
+  cancelPreview();
+  cancelCueWindow();
+  showReviewDock(false);
+  done(action);
+}
+
+function waitReview() {
+  return new Promise((resolve) => {
+    session.review = resolve;
+    showReviewDock(true);
+    $("learnEchoSkip").disabled = true;
+    const clip = session.clips[session.index];
+    $("learnEchoPreview").disabled = !(clip && clip.blob);
+  });
 }
 
 /** @param {MediaStream} stream @param {number} startMs @param {number} endMs */
@@ -73,6 +130,23 @@ function recordWindow(stream, startMs, endMs) {
     if (rec.state !== "inactive") rec.stop();
     return done.then((blob) => (ok && blob && blob.size ? blob : null));
   });
+}
+
+async function previewClip(clip) {
+  cancelPreview();
+  cancelCueWindow();
+  if (!clip || !clip.blob) return;
+  session.previewUrl = URL.createObjectURL(clip.blob);
+  previewEl = new Audio(session.previewUrl);
+  previewEl.setAttribute("playsinline", "");
+  setPhase("listen", t("learn.echoPreviewing"));
+  previewEl.play().catch(() => {});
+  await playCueWindow(clip.start_ms, clip.rec_end_ms || clip.end_ms, { vocal: false });
+  if (previewEl) {
+    previewEl.pause();
+    previewEl.currentTime = 0;
+  }
+  if (session.review) setPhase("review", t("learn.echoReview"));
 }
 
 async function decodeBuffer(ctx, data) {
@@ -127,7 +201,7 @@ function scoreClip(userBuf, guideBuf, startMs, endMs) {
   const peak = Math.max(...frames, 0.0001);
   const cover = frames.filter((value) => value > peak * 0.12).length / Math.max(1, frames.length);
   const want = Math.max(0.2, (endMs - startMs) / 1000);
-  const fit = 1 - Math.min(1, Math.abs(userBuf.duration - want) / want);
+  const fit = 1 - Math.min(1, Math.abs(Math.min(userBuf.duration, want) - want) / want);
   let vibe = 0.55;
   if (guideBuf) {
     const rate = guideBuf.sampleRate;
@@ -207,9 +281,9 @@ async function mixClips() {
   const karaoke = await loadSongBuffer(live);
   if (!karaoke || !Offline) {
     live.close().catch(() => {});
-    throw new Error("合不成伴奏");
+    throw new Error(t("learn.mixFail"));
   }
-  const last = session.clips.reduce((max, clip) => Math.max(max, clip.end_ms), karaoke.duration * 1000);
+  const last = session.clips.reduce((max, clip) => Math.max(max, clip.rec_end_ms || clip.end_ms), karaoke.duration * 1000);
   const length = Math.ceil(Math.max(karaoke.duration, last / 1000 + 0.2) * karaoke.sampleRate);
   const offline = new Offline(karaoke.numberOfChannels, length, karaoke.sampleRate);
   const bed = offline.createBufferSource();
@@ -258,60 +332,137 @@ export async function scoreEcho() {
   return { pct, sung: sung.length, total: session.lines.length, mixUrl: session.mixUrl };
 }
 
+/** @param {LearnLine} line @param {MediaStream} stream */
+async function takeLine(line, stream) {
+  const recEnd = singWindowEnd(line);
+  while (session.running) {
+    setPhase("sing", t("learn.echoYou"));
+    showReviewDock(false);
+    $("learnEchoSkip").hidden = false;
+    $("learnEchoSkip").disabled = false;
+    session.skipped = false;
+    const blob = await recordWindow(stream, line.start_ms, recEnd);
+    if (!session.running) return "stop";
+    if (session.skipped) return "skip";
+    session.clips[session.index] = {
+      start_ms: line.start_ms,
+      end_ms: line.end_ms,
+      rec_end_ms: recEnd,
+      blob,
+    };
+    setPhase("review", t("learn.echoReview"));
+    const action = await waitReview();
+    if (action === "retry") continue;
+    return action;
+  }
+  return "stop";
+}
+
 export async function runEcho() {
   if (session.running) return null;
   if (!window.MediaRecorder) {
-    showToast("这台手机不能录音");
+    showToast(t("learn.noRec"));
     return null;
   }
   session.running = true;
-  $("learnEchoGo").disabled = true;
+  showReviewDock(false);
+  $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = false;
   try {
     await startPhoneMic();
     const stream = state.phoneMic || await acquirePhoneMic();
-    if (!stream) throw new Error("开麦失败");
+    if (!stream) throw new Error(t("phone.mic.fail"));
     for (session.index = 0; session.index < session.lines.length; session.index += 1) {
       if (!session.running) break;
       const line = session.lines[session.index];
       paintEchoLine();
-      setPhase("listen", "听这句");
-      await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
+      setPhase("listen", t("learn.echoThis"));
+      showReviewDock(false);
+      $("learnEchoSkip").hidden = false;
+      $("learnEchoSkip").disabled = false;
+      session.skipped = false;
+      const heard = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
       if (!session.running) break;
-      setPhase("sing", "轮到你了");
-      const blob = await recordWindow(stream, line.start_ms, line.end_ms);
-      session.clips[session.index] = { start_ms: line.start_ms, end_ms: line.end_ms, blob };
+      if (session.skipped || !heard) {
+        session.clips[session.index] = { start_ms: line.start_ms, end_ms: line.end_ms, rec_end_ms: singWindowEnd(line), blob: null };
+        continue;
+      }
+      const action = await takeLine(line, stream);
+      if (action === "stop") break;
+      if (action === "skip") {
+        session.clips[session.index] = { start_ms: line.start_ms, end_ms: line.end_ms, rec_end_ms: singWindowEnd(line), blob: null };
+      }
     }
     if (!session.running) return null;
-    setPhase("mix", "正在合成…");
+    setPhase("mix", t("learn.echoMix"));
+    showReviewDock(false);
     $("learnEchoBar").style.width = "100%";
     const url = await mixClips();
     const score = await scoreEcho();
     score.mixUrl = url;
     return score;
   } catch (err) {
-    showToast((err && err.message) || "跟唱失败");
+    showToast((err && err.message) || t("learn.echoFail"));
     return null;
   } finally {
     session.running = false;
+    session.review = null;
+    cancelPreview();
     stopPhoneMic();
-    $("learnEchoGo").disabled = false;
+    showReviewDock(false);
+    $("learnEchoSkip").hidden = false;
+    $("learnEchoSkip").disabled = true;
   }
 }
 
 export function skipEchoLine() {
+  session.skipped = true;
+  if (session.review) {
+    finishReview("skip");
+    return;
+  }
   cancelCueWindow();
 }
 
 export function stopEcho() {
   session.running = false;
   cancelCueWindow();
+  cancelPreview();
+  if (session.review) finishReview("stop");
   stopPhoneMic();
 }
 
 export function paintEchoHome() {
   paintEchoLine();
-  setPhase("wait", "先听原唱，再对着伴奏唱回去");
-  $("learnEchoGo").disabled = false;
-  $("learnEchoGo").textContent = "开始跟唱";
+  setPhase("wait", t("learn.echoWait"));
+  showReviewDock(false);
+  $("learnEchoSkip").hidden = false;
+  $("learnEchoSkip").disabled = true;
+}
+
+/** @param {LearnQuiz} pack */
+export function startEcho(pack) {
+  resetEcho(pack.lines);
+  paintEchoHome();
+}
+
+/** @param {any} score @param {(pct: number) => string} grade */
+export function echoScoreView(score, grade) {
+  return {
+    title: t("learn.score.echo"),
+    again: t("learn.again.echo"),
+    sub: t("learn.score.sung", { grade: grade(score.pct), sung: score.sung || 0, total: score.total || 0 }),
+    detail: t("learn.score.echoHint"),
+    mixUrl: score.mixUrl,
+  };
+}
+
+export function bindEcho() {
+  $("learnEchoSkip").onclick = () => skipEchoLine();
+  $("learnEchoPreview").onclick = () => {
+    const clip = session.clips[session.index];
+    previewClip(clip).catch(() => {});
+  };
+  $("learnEchoRetry").onclick = () => finishReview("retry");
+  $("learnEchoNext").onclick = () => finishReview("next");
 }

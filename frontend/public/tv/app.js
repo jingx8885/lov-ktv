@@ -1,13 +1,21 @@
 import "./install.js";
+import { bootI18n, onLangChange, applyDom } from "../shared/i18n/js/i18n.js";
 import { $must } from "../shared/ui/js/dom.js";
 import { fetchJson } from "../shared/ui/js/http.js";
 import { state } from "./state.js";
-import { bootAuth, roomCode } from "./auth/js/login.js";
+import { bootAuth, roomCode, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
 import { bindRoomRtc } from "./audio/js/mic.js";
 import { applyMix } from "./playback/js/mix.js";
 import { tick, startPlayback, stopPlayback, pauseAudio, pageVisible } from "./playback/js/tick.js";
 import { paint } from "./playback/js/lyrics.js";
+
+bootI18n();
+onLangChange(() => {
+  applyDom();
+  renderUserChip();
+  applyMix();
+});
 
 if (state.audioBus) {
   state.audioBus.onmessage = (event) => {

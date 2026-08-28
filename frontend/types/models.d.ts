@@ -11,7 +11,7 @@ type SongStatus =
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
 type LyricMode = "ja" | "zh" | "roma" | "all";
-type LearnMode = "quiz" | "echo";
+type LearnMode = "quiz" | "tap" | "echo";
 type LearnQuestionKind = "meaning" | "word" | "listen";
 
 interface SearchHit {
@@ -142,6 +142,12 @@ interface LearnQuestion {
   answer: number;
 }
 
+interface LearnWord {
+  text: string;
+  romaji?: string;
+  zh?: string;
+}
+
 interface LearnLine {
   index: number;
   start_ms: number;
@@ -149,6 +155,7 @@ interface LearnLine {
   text: string;
   zh?: string;
   romaji?: string;
+  words?: LearnWord[];
   questions: LearnQuestion[];
 }
 
@@ -173,6 +180,7 @@ interface LearnSession {
 interface LearnEchoClip {
   start_ms: number;
   end_ms: number;
+  rec_end_ms: number;
   blob: Blob | null;
 }
 
@@ -182,6 +190,52 @@ interface LearnEchoSession {
   clips: LearnEchoClip[];
   mixUrl: string;
   running: boolean;
+  review: ((action: LearnEchoReview) => void) | null;
+  previewUrl: string;
+}
+
+type LearnEchoReview = "next" | "retry" | "skip" | "stop";
+
+interface LearnScoreView {
+  title: string;
+  again: string;
+  sub: string;
+  detail: string;
+  mixUrl?: string;
+  celebrate?: boolean;
+}
+
+interface LearnTapSession {
+  lines: LearnLine[];
+  index: number;
+  cursor: number;
+  running: boolean;
+  hits: number;
+  misses: number;
+  combo: number;
+  maxCombo: number;
+  perfect: number;
+  lineMisses: number;
+}
+
+interface LearnFxDot {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  life: number;
+  decay: number;
+  r: number;
+  color: string;
+  star: boolean;
+}
+
+interface LearnFxRing {
+  x: number;
+  y: number;
+  r: number;
+  grow: number;
+  life: number;
 }
 
 interface PhoneIcons {

@@ -90,6 +90,4 @@ interface PhoneState {
   phoneCtx: AudioContext | null;
   phoneMicLevel: number;
   phoneIem: boolean;
-  learnOpen: boolean;
-  learnVocalWas: number;
 }

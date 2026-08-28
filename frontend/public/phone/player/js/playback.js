@@ -1,5 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
@@ -13,7 +14,7 @@ export function mediaUrl(songId, name) {
 
 export function setPlayIcon(playing) {
   const icon = playing ? ICO.pause : ICO.play;
-  const label = playing ? "暂停" : "播放";
+  const label = playing ? t("common.pause") : t("common.play");
   ["playerPlay", "editPlay"].forEach((id) => {
     const btn = $(id);
     if (!btn) return;
@@ -53,7 +54,7 @@ export function unlockPlayerGesture() {
 }
 
 export function togglePlayer() {
-  if (!state.playerSong) return showToast("先从点歌台听一首");
+  if (!state.playerSong) return showToast(t("phone.player.needSong"));
   const audio = $("playerAudio");
   hookPlayerAudio();
   if (playerIsPlaying()) {
@@ -63,12 +64,13 @@ export function togglePlayer() {
   }
   state.playerHeld = false;
   setPlayIcon(true);
+  kickPlayerPaint();
   audio.play().then(() => {
     applyPlayerVocalMix();
     refreshPlayIcon();
   }).catch(() => {
     pausePlayerTracks();
-    showToast("点一下播放，手机才允许出声");
+    showToast(t("phone.player.needTap"));
   });
 }
 
@@ -96,6 +98,13 @@ export function pausePlayer() {
     cancelAnimationFrame(state.playerRaf);
     state.playerRaf = 0;
   }
+}
+
+export function kickPlayerPaint() {
+  if (state.playerRaf) return;
+  const page = $("page-player");
+  if (page && page.hidden) return;
+  state.playerRaf = requestAnimationFrame(paintPlayer);
 }
 
 export function mediaAhead(el, at) {
@@ -189,17 +198,17 @@ export function cueIndexAt(t) {
 export function updatePlayOrderBtns() {
   const shuffle = state.playOrder === "shuffle";
   const icon = shuffle ? ICO.shuffle : ICO.seq;
-  const label = shuffle ? "随机" : "顺序";
+  const label = shuffle ? t("common.shuffle") : t("common.seq");
   const main = $("playerOrder");
   if (main) {
     main.innerHTML = `${icon}<em class="vh" id="playerOrderLabel">${label}</em>`;
-    main.setAttribute("aria-label", shuffle ? "随机播放" : "顺序播放");
+    main.setAttribute("aria-label", shuffle ? t("common.shufflePlay") : t("common.seqPlay"));
     main.classList.toggle("on", shuffle);
   }
   const edit = $("playerOrderEdit");
   if (edit) {
     edit.innerHTML = icon;
-    edit.setAttribute("aria-label", shuffle ? "随机播放" : "顺序播放");
+    edit.setAttribute("aria-label", shuffle ? t("common.shufflePlay") : t("common.seqPlay"));
     edit.classList.toggle("on", shuffle);
   }
 }
@@ -243,7 +252,7 @@ export function renderPlayerList() {
             <span class="tiny">${escapeHtml(song.artist || "")}</span>
           </span>
         </button>
-      `).join("") || `<div class="empty-state"><p>曲库还没有可播的歌</p></div>`;
+      `).join("") || `<div class="empty-state"><p>${t("phone.player.emptyLib")}</p></div>`;
   box.querySelectorAll("[data-pick]").forEach((btn) => {
     btn.onclick = () => {
       unlockPlayerGesture();
@@ -290,6 +299,10 @@ export function drawPlayerBands(t) {
   });
 }
 
+function playerIdleLyric() {
+  return state.playerSong ? "" : t("phone.player.idle");
+}
+
 export function paintPlayer() {
   if ($("page-player").hidden) {
     state.playerRaf = 0;
@@ -313,7 +326,7 @@ export function paintPlayer() {
     paintLine($("playerNext"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
   } else {
     paintLine($("playerPrev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
-    paintLine($("playerCur"), null, 0, "cur", state.lyricPaint, state.playerSong ? "" : "还没选歌", mode);
+    paintLine($("playerCur"), null, 0, "cur", state.lyricPaint, playerIdleLyric(), mode);
     paintLine($("playerNext"), null, 0, "next", state.lyricPaint, "", mode);
   }
   const dragging = !!(state.alignTl && state.alignTl.isDragging());
@@ -328,7 +341,11 @@ export function paintPlayer() {
   $("playerNow").textContent = fmtClock(t);
   $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - t))}` : "−0:00";
   const seek = $("playerSeek");
-  if (seek && !seek.matches(":active") && durSec) seek.value = String(Math.round((t / 1000) / durSec * 1000));
+  if (seek) {
+    const ratio = durSec ? Math.max(0, Math.min(1, (t / 1000) / durSec)) : 0;
+    if (!seek.matches(":active") && durSec) seek.value = String(Math.round(ratio * 1000));
+    seek.style.setProperty("--seek-p", `${(seek.matches(":active") ? Number(seek.value) / 1000 : ratio) * 100}%`);
+  }
   $("playerArt").classList.toggle("is-live", (!audio.paused || state.playerClockHold != null) && !!audio.src && !state.playerHeld);
   refreshPlayIcon();
   if (hold != null) {
@@ -395,7 +412,7 @@ export async function loadPlayerSong(songId, opts) {
   const { data: song } = await fetchJson("/api/songs/" + songId);
   if (gen !== state.playerLoad) return;
   if (!song.id || song.status !== "ready") {
-    $("playerMeta").textContent = "这首还不能播";
+    $("playerMeta").textContent = t("phone.player.notReady");
     return;
   }
   api.stopPreview();
@@ -423,7 +440,7 @@ export async function loadPlayerSong(songId, opts) {
   $("playerMeta").textContent = song.artist && !String(song.title).includes(song.artist) ? song.artist : "";
   setPlayerCover(song);
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
-  $("playerVocalLabel").textContent = state.playerVocal ? "原唱" : "伴奏";
+  $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
   state.songMediaRev = Date.now();
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
@@ -506,16 +523,18 @@ export function bindPlayback() {
     state.playerVocal = state.playerVocal ? 0 : 1;
     localStorage.setItem("playerVocal", state.playerVocal ? "1" : "0");
     $("playerVocal").classList.toggle("on", !!state.playerVocal);
-    $("playerVocalLabel").textContent = state.playerVocal ? "原唱" : "伴奏";
-    $("playerVocal").setAttribute("aria-label", state.playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
+    $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
+    $("playerVocal").setAttribute("aria-label", state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
     releasePlayerClock();
     applyPlayerVocalMix();
   };
   $("playerSeek").addEventListener("input", () => {
-    seekPlayerRatio(Number($("playerSeek").value) / 1000);
+    const ratio = Number($("playerSeek").value) / 1000;
+    $("playerSeek").style.setProperty("--seek-p", `${ratio * 100}%`);
+    seekPlayerRatio(ratio);
   });
   $("playerAudio").onended = () => {
-    if (state.learnOpen) return;
+    if (document.body.classList.contains("learn-on")) return;
     if (state.playerClockHold != null) return;
     const audio = $("playerAudio");
     const dur = audio.duration;
@@ -525,8 +544,8 @@ export function bindPlayback() {
     playNextSong();
   };
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
-  $("playerVocalLabel").textContent = state.playerVocal ? "原唱" : "伴奏";
-  $("playerVocal").setAttribute("aria-label", state.playerVocal ? "当前原唱，点按切到伴奏" : "当前伴奏，点按切到原唱");
+  $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
+  $("playerVocal").setAttribute("aria-label", state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
   $("playerOrder").onclick = () => togglePlayOrder();
   $("playerNextBtn").onclick = () => playNextSong();
   updatePlayOrderBtns();

@@ -30,13 +30,16 @@ from lovktv.catalog.fetch import is_preview_id, open_preview_stream, resolve_aud
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.index import prefer_native_library, query_library, song_letter
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
+from lovktv.db import dialect as db_dialect
 from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
+from lovktv.i18n import localize_error_text, localize_exc, localize_song, request_lang, t as i18n_t, translate, ws_lang
 from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
 from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.store import (
+    DB_PATH,
     bump,
     confirm_login_ticket,
     consume_confirmed_ticket,
@@ -117,14 +120,18 @@ def _clear_session(response) -> None:
     response.delete_cookie(SESSION_COOKIE, path="/")
 
 
-def _room_view(code: str, snap: dict | None = None) -> dict:
+def _fail(request: Request, status: int, key: str, **vars) -> None:
+    raise HTTPException(status, i18n_t(request, key, **vars))
+
+
+def _room_view(code: str, snap: dict | None = None, lang: str = "zh") -> dict:
     room = dict(snap or room_snapshot(code))
     room["mic_on"] = bool(_mics.get(code))
     room["mic_peer"] = _mics.get(code) or ""
     room.update(host_volume_meta())
     if room.get("now_playing"):
-        room["now_playing"] = with_media_flags(room["now_playing"])
-    room["queue"] = [with_media_flags(item) or item for item in room.get("queue") or []]
+        room["now_playing"] = localize_song(lang, with_media_flags(room["now_playing"]))
+    room["queue"] = [localize_song(lang, with_media_flags(item) or item) for item in room.get("queue") or []]
     return room
 
 
@@ -164,6 +171,7 @@ def api_host(request: Request) -> dict:
         "models": model_status(),
         "oss": oss_status(),
         "agent": agent_status(),
+        "database": db_dialect(DB_PATH),
     }
 
 
@@ -190,7 +198,7 @@ def api_auth_device(request: Request, payload: dict = Body(default={})) -> JSONR
     try:
         user = upsert_device_user(str(payload.get("device_id") or ""), str(payload.get("nickname") or ""))
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, localize_exc(request, exc)) from exc
     token = create_session(user["id"])
     response = JSONResponse({"user": user})
     _set_session(response, token, request)
@@ -221,7 +229,7 @@ def api_auth_scan(
         try:
             url = wechat_authorize_url(redirect_uri, state, silent=True)
         except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
+            raise HTTPException(400, localize_exc(request, exc)) from exc
         return RedirectResponse(url, status_code=302)
     return RedirectResponse(login_page_url(base, ticket=ticket, room=room, next_path=next), status_code=302)
 
@@ -242,7 +250,7 @@ def api_wechat_login(
         use_silent = False
         use_quick = False
     else:
-        raise HTTPException(400, "还没配置微信开放平台 AppID")
+        _fail(request, 400, "api.wechat_not_configured")
     redirect_uri = f"{_request_base(request)}/api/auth/wechat/callback"
     if use_silent:
         kind = "silent"
@@ -254,7 +262,7 @@ def api_wechat_login(
     try:
         url = wechat_authorize_url(redirect_uri, state, quick=use_quick, silent=use_silent)
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, localize_exc(request, exc)) from exc
     return RedirectResponse(url, status_code=302)
 
 
@@ -263,12 +271,12 @@ def api_wechat_callback(request: Request, code: str = "", state: str = "") -> Re
     kind, ticket, next_path = decode_state(state)
     base = _request_base(request)
     if not code:
-        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error="微信取消了授权"), 302)
+        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error="api.wechat_denied"), 302)
     try:
         info = exchange_wechat_code(code, quick=kind == "quick", silent=kind in {"silent", "base"})
         user = upsert_wechat_user(info["openid"], info.get("unionid") or "", info.get("nickname") or "", info.get("avatar") or "")
     except ValueError as exc:
-        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error=str(exc)), 302)
+        return RedirectResponse(login_page_url(base, ticket=ticket, next_path=next_path, error=localize_exc(request, exc)), 302)
     if ticket:
         try:
             confirm_login_ticket(ticket, user["id"])
@@ -294,7 +302,7 @@ def api_auth_qr(request: Request, payload: dict = Body(default={})) -> dict:
 def api_auth_qr_status(ticket: str, request: Request, claim: bool = False):
     row = get_login_ticket(ticket)
     if not row:
-        raise HTTPException(404, "二维码无效")
+        _fail(request, 404, "api.qr_invalid")
     payload = {"status": row["status"], "expires_at": row["expires_at"]}
     if claim and row["status"] == "confirmed":
         user = consume_confirmed_ticket(ticket)
@@ -311,43 +319,43 @@ def api_auth_qr_status(ticket: str, request: Request, claim: bool = False):
 def api_auth_qr_confirm(ticket: str, request: Request) -> dict:
     user = _current_user(request)
     if not user:
-        raise HTTPException(401, "请先登录")
+        _fail(request, 401, "api.need_login")
     try:
         confirm_login_ticket(ticket, user["id"])
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, localize_exc(request, exc)) from exc
     return {"ok": True, "user": user}
 
 
 @app.get("/api/search")
-def api_search(q: str, count: int = 10, page: int = 1) -> dict:
+def api_search(request: Request, q: str, count: int = 10, page: int = 1) -> dict:
     if not q.strip():
-        raise HTTPException(400, "缺少 q")
+        _fail(request, 400, "api.missing_q")
     try:
         return search_songs(q.strip(), count=count, page=page)
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"搜索失败：{exc}") from exc
+        _fail(request, 502, "api.search_failed", exc=exc)
 
 
 @app.get("/api/preview/{song_id}/resolve")
-def api_preview_resolve(song_id: str, title: str = "", artist: str = "", media: str = "") -> dict:
+def api_preview_resolve(request: Request, song_id: str, title: str = "", artist: str = "", media: str = "") -> dict:
     if is_mugen_kid(song_id):
         return {"ok": True, "id": song_id, "kind": "mugen", "title": title}
     if not is_preview_id(song_id):
-        raise HTTPException(400, "无效的试听 id")
+        _fail(request, 400, "api.bad_preview_id")
     source = resolve_audio_source(song_id, title, artist)
     if not source:
-        raise HTTPException(404, "这首暂时不能试听")
+        _fail(request, 404, "api.preview_unavailable")
     return {"ok": True, "id": song_id, "kind": source.get("kind"), "title": source.get("title") or title}
 
 
 @app.get("/api/preview/{song_id}")
-def api_preview(song_id: str, title: str = "", artist: str = "", media: str = ""):
+def api_preview(request: Request, song_id: str, title: str = "", artist: str = "", media: str = ""):
     if not is_preview_id(song_id):
-        raise HTTPException(400, "无效的试听 id")
+        _fail(request, 400, "api.bad_preview_id")
     resp, source = open_preview_stream(song_id, title, artist, media=media)
     if resp is None:
-        raise HTTPException(404, "这首暂时不能试听")
+        _fail(request, 404, "api.preview_unavailable")
     ctype = str(resp.headers.get("Content-Type") or "audio/mpeg")
     if source.get("kind") == "bilibili" and "html" not in ctype.lower():
         ctype = "audio/mp4"
@@ -366,10 +374,10 @@ def api_preview(song_id: str, title: str = "", artist: str = "", media: str = ""
 
 
 @app.post("/api/songs/import")
-def api_import(payload: dict) -> dict:
+def api_import(request: Request, payload: dict) -> dict:
     query = str(payload.get("query") or payload.get("title") or "").strip()
     if not query:
-        raise HTTPException(400, "缺少 query")
+        _fail(request, 400, "api.missing_query")
     raw_id = str(payload.get("id") or "")
     language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
     song = create_song(
@@ -395,8 +403,9 @@ async def api_upload(
     artist: str = Form(""),
     language: str = Form("zh"),
     lyrics: str = Form(""),
+    request: Request = None,  # FastAPI injects
 ) -> dict:
-    song = create_song(title or file.filename or "未命名", artist, language)
+    song = create_song(title or file.filename or i18n_t(request, "api.unnamed"), artist, language)
     dest = MEDIA_DIR / song["id"] / "original.mp3"
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
@@ -407,10 +416,10 @@ async def api_upload(
 
 
 @app.post("/api/agents/ja-lyrics")
-def api_ja_lyrics(payload: dict = Body(default={})) -> dict:
+def api_ja_lyrics(request: Request, payload: dict = Body(default={})) -> dict:
     lines = [str(item) for item in (payload.get("lines") or []) if str(item).strip()]
     if not lines:
-        raise HTTPException(400, "缺少 lines")
+        _fail(request, 400, "api.missing_lines")
     try:
         return annotate_ja_lines(
             lines,
@@ -418,14 +427,14 @@ def api_ja_lyrics(payload: dict = Body(default={})) -> dict:
             artist=str(payload.get("artist") or ""),
         )
     except Exception as exc:  # noqa: BLE001
-        raise HTTPException(502, f"日语注音失败：{exc}") from exc
+        _fail(request, 502, "api.ja_annotate_failed", exc=exc)
 
 
 @app.post("/api/songs/{song_id}/realign")
-def api_realign(song_id: str, payload: dict = Body(default={})) -> dict:
+def api_realign(request: Request, song_id: str, payload: dict = Body(default={})) -> dict:
     song = get_song(song_id)
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     spawn(
         process_realign,
         song_id,
@@ -436,36 +445,36 @@ def api_realign(song_id: str, payload: dict = Body(default={})) -> dict:
 
 
 @app.put("/api/songs/{song_id}/lyrics")
-def api_save_lyrics(song_id: str, payload: dict = Body(default={})) -> dict:
+def api_save_lyrics(request: Request, song_id: str, payload: dict = Body(default={})) -> dict:
     song = get_song(song_id)
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     try:
         timeline = validate_timeline(payload)
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, localize_exc(request, exc)) from exc
     write_subtitles(timeline, MEDIA_DIR / song_id)
     write_manual_lrc(MEDIA_DIR / song_id, timeline["cues"])
     return {"ok": True, "song_id": song_id, "cues": len(timeline["cues"])}
 
 
 @app.delete("/api/songs/{song_id}")
-def api_delete_song(song_id: str) -> dict:
+def api_delete_song(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     if not delete_song(song_id):
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     return {"ok": True, "song_id": song_id}
 
 
 @app.post("/api/songs/{song_id}/retry")
-def api_retry_song(song_id: str) -> dict:
+def api_retry_song(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     if song.get("status") != "failed":
-        raise HTTPException(400, "只有失败的歌可以重试")
+        _fail(request, 400, "api.retry_only_failed")
     update_song(song_id, status="queued", error="")
     spawn(
         process_import,
@@ -479,13 +488,17 @@ def api_retry_song(song_id: str) -> dict:
 
 @app.get("/api/songs")
 def api_songs(
+    request: Request,
     q: str = "",
     by: str = "all",
     letter: str = "",
     page: int | None = None,
     count: int = 12,
 ) -> dict:
-    songs = prefer_native_library([with_media_flags(song) or song for song in list_songs()])
+    lang = request_lang(request)
+    songs = prefer_native_library([
+        localize_song(lang, with_media_flags(song) or song) for song in list_songs()
+    ])
     if page is None and not q and not letter:
         tagged = [{**song, "letter": song_letter(song)} for song in songs]
         return {"songs": tagged, "total": len(tagged)}
@@ -493,32 +506,32 @@ def api_songs(
 
 
 @app.get("/api/songs/{song_id}")
-def api_song(song_id: str) -> dict:
-    song = with_media_flags(get_song(song_id))
+def api_song(request: Request, song_id: str) -> dict:
+    song = localize_song(request_lang(request), with_media_flags(get_song(song_id)))
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     folder = MEDIA_DIR / song_id
     song["files"] = sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     return song
 
 
 @app.get("/api/songs/{song_id}/learn")
-def api_learn(song_id: str) -> dict:
+def api_learn(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
     if not song:
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     path = MEDIA_DIR / song_id / "lyrics.json"
     if not path.exists():
-        raise HTTPException(409, "这首还没有歌词")
+        _fail(request, 409, "api.no_lyrics")
     try:
         timeline = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        raise HTTPException(409, "歌词还不能用来学习") from exc
+        _fail(request, 409, "api.lyrics_not_ready")
     if not isinstance(timeline, dict):
-        raise HTTPException(409, "歌词还不能用来学习")
-    quiz = build_learn_quiz(timeline, song)
+        _fail(request, 409, "api.lyrics_not_ready")
+    quiz = build_learn_quiz(timeline, song, lang=request_lang(request))
     if not quiz["lines"]:
-        raise HTTPException(409, "这首没有可学的句子")
+        _fail(request, 409, "api.no_learn_lines")
     return quiz
 
 
@@ -528,21 +541,21 @@ def api_create_room() -> dict:
 
 
 @app.get("/api/rooms/{code}")
-def api_room(code: str) -> dict:
-    return _room_view(code.upper())
+def api_room(request: Request, code: str) -> dict:
+    return _room_view(code.upper(), lang=request_lang(request))
 
 
 @app.post("/api/rooms/{code}/queue")
-async def api_enqueue(code: str, payload: dict) -> dict:
+async def api_enqueue(request: Request, code: str, payload: dict) -> dict:
     code = code.upper()
     song_id = str(payload.get("song_id") or "")
     if not get_song(song_id):
-        raise HTTPException(404, "歌曲不存在")
+        _fail(request, 404, "api.song_not_found")
     try:
         snap = enqueue(code, song_id)
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    view = _room_view(code, snap)
+        raise HTTPException(400, localize_exc(request, exc)) from exc
+    view = _room_view(code, snap, lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
 
@@ -553,27 +566,27 @@ def api_bump(code: str, payload: dict) -> dict:
 
 
 @app.post("/api/rooms/{code}/skip")
-async def api_skip(code: str) -> dict:
+async def api_skip(request: Request, code: str) -> dict:
     code = code.upper()
-    view = _room_view(code, skip(code))
+    view = _room_view(code, skip(code), lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
 
 
 @app.post("/api/rooms/{code}/play")
-async def api_play(code: str, payload: dict) -> dict:
+async def api_play(request: Request, code: str, payload: dict) -> dict:
     code = code.upper()
     try:
         snap = play_now(code, str(payload.get("id") or ""), str(payload.get("song_id") or ""))
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
-    view = _room_view(code, snap)
+        raise HTTPException(400, localize_exc(request, exc)) from exc
+    view = _room_view(code, snap, lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
 
 
 @app.post("/api/rooms/{code}/mix")
-async def api_mix(code: str, payload: dict) -> dict:
+async def api_mix(request: Request, code: str, payload: dict) -> dict:
     code = code.upper()
     snap = set_mix(
         code,
@@ -584,7 +597,7 @@ async def api_mix(code: str, payload: dict) -> dict:
     )
     if payload.get("volume") is not None:
         set_host_volume(int(payload.get("volume") or 0))
-    view = _room_view(code, snap)
+    view = _room_view(code, snap, lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
 
@@ -592,10 +605,11 @@ async def api_mix(code: str, payload: dict) -> dict:
 @app.websocket("/ws/rooms/{code}")
 async def ws_room(ws: WebSocket, code: str) -> None:
     code = code.upper()
+    lang = ws_lang(ws)
     await ws.accept()
     _rooms.setdefault(code, set()).add(ws)
     _peers[ws] = {"code": code, "peer": "", "role": ""}
-    await ws.send_json({"type": "snapshot", "room": _room_view(code)})
+    await ws.send_json({"type": "snapshot", "room": _room_view(code, lang=lang)})
     try:
         while True:
             msg = await ws.receive_json()
@@ -630,7 +644,7 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     skip=ws,
                 )
                 if kind in {"offer", "hangup"}:
-                    await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+                    await _broadcast(code, {"type": "snapshot", "room": _room_view(code, lang=lang)})
                 continue
             if action == "mic":
                 peer = str(msg.get("from") or _peers.get(ws, {}).get("peer") or "")
@@ -641,7 +655,7 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     _mics.pop(code, None)
                 if msg.get("mic_gain") is not None:
                     set_mix(code, mic_gain=msg.get("mic_gain"))
-                await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+                await _broadcast(code, {"type": "snapshot", "room": _room_view(code, lang=lang)})
                 continue
             if action == "skip":
                 snap = skip(code)
@@ -651,7 +665,7 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                 try:
                     snap = enqueue(code, str(msg.get("song_id") or ""))
                 except ValueError as exc:
-                    await ws.send_json({"type": "error", "message": str(exc)})
+                    await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
                     continue
             elif action == "mix":
                 snap = set_mix(
@@ -664,9 +678,9 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                 if msg.get("volume") is not None:
                     set_host_volume(int(msg.get("volume") or 0))
             else:
-                await ws.send_json({"type": "error", "message": "未知命令"})
+                await ws.send_json({"type": "error", "message": translate(lang, "api.unknown_command")})
                 continue
-            await _broadcast(code, {"type": "snapshot", "room": _room_view(code, snap)})
+            await _broadcast(code, {"type": "snapshot", "room": _room_view(code, snap, lang=lang)})
     except WebSocketDisconnect:
         info = _peers.pop(ws, {})
         _rooms.get(code, set()).discard(ws)
@@ -674,7 +688,7 @@ async def ws_room(ws: WebSocket, code: str) -> None:
         if peer and _mics.get(code) == peer:
             _mics.pop(code, None)
             await _broadcast(code, {"type": "rtc", "kind": "hangup", "from": peer})
-            await _broadcast(code, {"type": "snapshot", "room": _room_view(code)})
+            await _broadcast(code, {"type": "snapshot", "room": _room_view(code, lang=lang)})
         await _broadcast(
             code,
             {"type": "peer", "event": "leave", "peer": peer, "role": info.get("role") or ""},
