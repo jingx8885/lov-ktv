@@ -2,6 +2,7 @@ import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
+import { paintLyricMode } from "../../room/js/mix.js?v=mix3";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
@@ -433,6 +434,7 @@ export async function loadPlayerSong(songId, opts) {
   try { if (guide) guide.currentTime = 0; } catch (err) {}
   const lyrics = await fetchJson(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`);
   state.playerLyrics = lyrics.ok ? lyrics.data : { cues: [] };
+  paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
   if (gen !== state.playerLoad) return;
   state.lyricsDirty = false;
   resetPlayerFace();

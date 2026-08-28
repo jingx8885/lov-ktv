@@ -14,6 +14,7 @@
 | `users` | 微信或本机设备身份 |
 | `sessions` | 登录 cookie |
 | `login_tickets` | 电视扫码登录票 |
+| `hosts` | 本机 / UA 与房间的绑定 |
 
 ### songs
 
@@ -71,6 +72,16 @@
 | user_id | TEXT | `users.id` |
 | created_at | BIGINT | 纪元毫秒 |
 | expires_at | BIGINT | 纪元毫秒 |
+
+### hosts
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| key | TEXT PK | `m:` 机器号或 `u:` UA+IP 指纹 |
+| room | TEXT | `rooms.code` |
+| ua | TEXT | 最近一次 User-Agent |
+| created_at | BIGINT | 纪元毫秒 |
+| last_seen | BIGINT | 纪元毫秒 |
 
 ### login_tickets
 

@@ -59,6 +59,14 @@ export function bindJoin() {
   if ($("room").value) {
     $("openTv").href = tvUrl($("room").value);
     joinRoom(false, true);
+    return;
   }
+  fetchJson("/api/rooms").then(({ ok, data }) => {
+    if (!ok || !data.code || $("room").value) return;
+    $("room").value = String(data.code).toUpperCase();
+    localStorage.setItem("room", $("room").value);
+    $("openTv").href = tvUrl($("room").value);
+    joinRoom(false, true);
+  });
 }
 

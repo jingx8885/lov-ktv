@@ -3,7 +3,7 @@ from lovktv.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
 
 
 def test_schema_covers_current_tables():
-    assert set(TABLES) == {"songs", "rooms", "queue", "users", "sessions", "login_tickets"}
+    assert set(TABLES) == {"songs", "rooms", "queue", "users", "sessions", "login_tickets", "hosts"}
     assert TABLES["songs"] == (
         "id",
         "title",
@@ -36,6 +36,7 @@ def test_schema_covers_current_tables():
     )
     assert TABLES["sessions"] == ("token", "user_id", "created_at", "expires_at")
     assert TABLES["login_tickets"] == ("id", "status", "user_id", "created_at", "expires_at")
+    assert TABLES["hosts"] == ("key", "room", "ua", "created_at", "last_seen")
 
 
 def test_postgres_ddl_uses_bigint_for_epoch_ms():

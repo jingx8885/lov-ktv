@@ -62,3 +62,12 @@ CREATE INDEX IF NOT EXISTS users_wechat ON users (wechat_openid);
 CREATE INDEX IF NOT EXISTS users_device ON users (device_id);
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS login_tickets_exp ON login_tickets (expires_at);
+
+CREATE TABLE IF NOT EXISTS hosts (
+  key TEXT PRIMARY KEY,
+  room TEXT NOT NULL,
+  ua TEXT NOT NULL DEFAULT '',
+  created_at BIGINT NOT NULL,
+  last_seen BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS hosts_room ON hosts (room);

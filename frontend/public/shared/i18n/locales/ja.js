@@ -133,7 +133,7 @@ export default {
   "phone.lyric.ja": "日本語",
   "phone.lyric.src": "原文",
   "phone.lyric.zh": "翻訳",
-  "phone.lyric.roma": "ローマ",
+  "phone.lyric.roma": "ローマ字",
   "phone.lyric.all": "すべて",
   "phone.player.back": "選曲台に戻る",
   "phone.player.idle": "曲が選ばれていません",

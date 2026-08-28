@@ -469,7 +469,7 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
 }
 .page-player .lyric-seg {
   flex: 0 0 auto;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
 }
 .page-player .player-lyrics {
   flex: 1 1 auto;
@@ -617,11 +617,11 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
     top: 0;
     right: 0;
     z-index: 2;
-    width: min(320px, 46%);
+    width: min(360px, 52%);
     margin: 0;
-    opacity: .88;
+    opacity: .92;
   }
-  .page-player .lyric-seg .seg-btn { min-height: 26px; font-size: 11px; }
+  .page-player .lyric-seg .seg-btn { min-height: 28px; font-size: 12px; }
   .page-player .player-lyrics {
     grid-template-rows: minmax(0, 1fr);
     grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr);
@@ -655,7 +655,9 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
 }
 @media (prefers-reduced-motion: reduce) {
   .player-sheet,
-  .player-sheet-chevron { transition: none; }
+  .player-sheet-chevron,
+  .lyric-seg .seg-btn { transition: none; }
+  .lyric-seg .seg-btn:active { transform: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
   .player-sheet {

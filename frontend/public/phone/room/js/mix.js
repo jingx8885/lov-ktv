@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, normLyricMode } from "../../../shared/lyrics/js/paint.js";
+import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -21,15 +21,30 @@ export function paintVocalMix(mix) {
   btn.setAttribute("aria-label", on ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
 }
 
+export { lyricModeForScript, lyricScript };
+
+function lyricModeLabel(key, script) {
+  if (key === "ja") return script === "ja" || !script ? t("phone.lyric.ja") : t("phone.lyric.src");
+  if (key === "zh") return t("phone.lyric.zh");
+  if (key === "roma") return t("phone.lyric.roma");
+  if (key === "all") return t("phone.lyric.all");
+  return "";
+}
+
 export function paintLyricMode(mode, language) {
-  const next = normLyricMode(mode);
-  state.lyricMode = next;
   if (language != null) state.nowLanguage = String(language || "");
-  applyLyricMode(document.body, next);
-  const jaLabel = state.nowLanguage === "ja" ? t("phone.lyric.ja") : t("phone.lyric.src");
+  const script = lyricScript(state.nowLanguage);
+  const next = lyricModeForScript(mode, script);
+  state.lyricMode = next;
+  applyLyricMode(document.body, next, state.nowLanguage);
+  document.querySelectorAll(".lyric-seg").forEach((seg) => {
+    seg.dataset.lyricScript = script;
+  });
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
-    btn.classList.toggle("on", btn.dataset.lyricMode === next);
-    if (btn.dataset.lyricMode === "ja") btn.textContent = jaLabel;
+    const key = btn.dataset.lyricMode || "";
+    btn.hidden = key === "roma" && !!script && script !== "ja";
+    btn.classList.toggle("on", key === next);
+    btn.textContent = lyricModeLabel(key, script);
   });
 }
 

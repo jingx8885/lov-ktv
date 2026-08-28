@@ -9,11 +9,30 @@ export function normLyricMode(value) {
   return LYRIC_MODES.includes(/** @type {LyricMode} */ (mode)) ? /** @type {LyricMode} */ (mode) : "all";
 }
 
+/** @param {unknown} [language] */
+export function lyricScript(language) {
+  const lang = String(language || "").trim().toLowerCase();
+  if (!lang) return "";
+  if (lang === "ja" || lang.startsWith("ja-")) return "ja";
+  if (lang === "en" || lang.startsWith("en-")) return "en";
+  if (lang === "yue" || lang.startsWith("zh")) return "zh";
+  return lang;
+}
+
+/** @param {unknown} mode @param {string} script */
+export function lyricModeForScript(mode, script) {
+  const next = normLyricMode(mode);
+  if (next === "roma" && script && script !== "ja") return "ja";
+  return next;
+}
+
 /** @param {HTMLElement | Document} [root] @param {unknown} [value] */
-export function applyLyricMode(root, value) {
-  const mode = normLyricMode(value);
+export function applyLyricMode(root, value, language) {
   const el = root && "dataset" in root ? root : document.body;
+  const script = language !== undefined ? lyricScript(language) : String(el.dataset.lyricScript || "");
+  const mode = lyricModeForScript(value, script);
   el.dataset.lyricMode = mode;
+  if (language !== undefined) el.dataset.lyricScript = script;
   return mode;
 }
 
@@ -137,6 +156,21 @@ function fitLyricLine(el) {
   }
 }
 
+function pageLyricScript() {
+  if (typeof document === "undefined" || !document.body) return "";
+  return String(document.body.dataset.lyricScript || "");
+}
+
+function tokenRoma(tok) {
+  const script = pageLyricScript();
+  if (script && script !== "ja") return "";
+  const roma = String(tok.romaji || "").trim();
+  const text = String(tok.text || "");
+  if (!roma || roma === text) return "";
+  if (/^[A-Za-z0-9']/.test(text) && roma.toLowerCase() === text.toLowerCase()) return "";
+  return roma;
+}
+
 function rubyHtml(tok) {
   const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
   if (!reading || !isKanjiText(tok.text) || isKanjiText(reading)) return "";
@@ -159,7 +193,7 @@ export function renderCue(cue, t, mode) {
   const html = `<span class="line-words">${tokens.map((tok, i) => {
     const p = Math.round(tokenProgress(tok, t));
     const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
-    const roma = showExtra && tok.romaji && tok.romaji !== tok.text ? String(tok.romaji) : "";
+    const roma = showExtra ? tokenRoma(tok) : "";
     const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
     const gloss = showExtra && tok.zh ? String(tok.zh) : "";
     const glossHtml = gloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";

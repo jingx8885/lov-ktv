@@ -49,8 +49,11 @@ from lovktv.store import (
     delete_session,
     delete_song,
     enqueue,
-    ensure_room,
+    ensure_room_for_host,
     get_login_ticket,
+    host_keys,
+    remember_host_room,
+    room_for_hosts,
     get_song,
     init_db,
     list_songs,
@@ -67,6 +70,8 @@ from lovktv.store import (
 )
 
 WEB = ROOT / "frontend" / "public"
+HOST_COOKIE = "lovktv_host"
+HOST_COOKIE_DAYS = 400
 
 class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -118,6 +123,49 @@ def _set_session(response, token: str, request: Request) -> None:
 
 def _clear_session(response) -> None:
     response.delete_cookie(SESSION_COOKIE, path="/")
+
+
+def _request_ip(request: Request) -> str:
+    for header in ("cf-connecting-ip", "x-real-ip", "x-forwarded-for"):
+        raw = (request.headers.get(header) or "").strip()
+        if raw:
+            return raw.split(",")[0].strip()
+    return request.client.host if request.client else ""
+
+
+def _host_machine(request: Request) -> str:
+    cookie = (request.cookies.get(HOST_COOKIE) or "").strip()
+    header = (request.headers.get("x-lovktv-machine") or "").strip()
+    mid = cookie or header
+    return "".join(ch for ch in mid if ch.isalnum() or ch in "-_")[:64]
+
+
+def _host_keys(request: Request) -> list[str]:
+    return host_keys(_host_machine(request), request.headers.get("user-agent") or "", _request_ip(request))
+
+
+def _bind_host(request: Request, room: str) -> str:
+    machine = _host_machine(request)
+    token = machine if len(machine) >= 8 else store.new_id()
+    keys = host_keys(token, request.headers.get("user-agent") or "", _request_ip(request))
+    remember_host_room(keys, room, request.headers.get("user-agent") or "")
+    return token
+
+
+def _set_host_cookie(response: JSONResponse, request: Request, token: str) -> JSONResponse:
+    if not token:
+        return response
+    secure = request.url.scheme == "https" or public_base().startswith("https")
+    response.set_cookie(
+        HOST_COOKIE,
+        token,
+        max_age=HOST_COOKIE_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=secure,
+    )
+    return response
 
 
 def _fail(request: Request, status: int, key: str, **vars) -> None:
@@ -535,14 +583,29 @@ def api_learn(request: Request, song_id: str) -> dict:
     return quiz
 
 
+@app.get("/api/rooms")
+def api_my_room(request: Request) -> dict:
+    code = room_for_hosts(_host_keys(request))
+    if not code:
+        return {"code": ""}
+    return _room_view(code, lang=request_lang(request))
+
+
 @app.post("/api/rooms")
-def api_create_room() -> dict:
-    return ensure_room()
+def api_create_room(request: Request) -> JSONResponse:
+    ua = request.headers.get("user-agent") or ""
+    machine = _host_machine(request)
+    token = machine if len(machine) >= 8 else store.new_id()
+    room = ensure_room_for_host(host_keys(token, ua, _request_ip(request)), ua)
+    response = JSONResponse(_room_view(room["code"], lang=request_lang(request)))
+    return _set_host_cookie(response, request, token)
 
 
 @app.get("/api/rooms/{code}")
-def api_room(request: Request, code: str) -> dict:
-    return _room_view(code.upper(), lang=request_lang(request))
+def api_room(request: Request, code: str) -> JSONResponse:
+    view = _room_view(code.upper(), lang=request_lang(request))
+    token = _bind_host(request, view["code"])
+    return _set_host_cookie(JSONResponse(view), request, token)
 
 
 @app.post("/api/rooms/{code}/queue")

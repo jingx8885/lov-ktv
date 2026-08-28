@@ -8,8 +8,9 @@
 | POST | `/api/songs` | multipart 本地上传（后备） |
 | GET | `/api/songs` | 曲库 |
 | GET | `/api/songs/{id}` | 含文件列表 |
-| POST | `/api/rooms` | 开房 |
-| GET | `/api/rooms/{code}` | 房间快照 |
+| GET | `/api/rooms` | 本机记住的房间；没有则 `{code:""}` |
+| POST | `/api/rooms` | 开房；同一机器 / UA 会回到上次的房 |
+| GET | `/api/rooms/{code}` | 房间快照，并记住本机 |
 | POST | `/api/rooms/{code}/queue` | `{song_id}` 点歌 |
 | POST | `/api/rooms/{code}/bump` | `{id}` 顶歌 |
 | POST | `/api/rooms/{code}/skip` | 切歌 |

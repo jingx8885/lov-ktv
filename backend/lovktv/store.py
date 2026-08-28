@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import threading
@@ -163,6 +164,57 @@ def ensure_room(code: str | None = None) -> dict[str, Any]:
             execute(conn, "INSERT INTO rooms (code, created_at) VALUES (?,?)", (code, now_ms()))
             row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
     return dict(row)
+
+
+def host_keys(machine: str = "", ua: str = "", ip: str = "") -> list[str]:
+    keys: list[str] = []
+    mid = "".join(ch for ch in str(machine or "") if ch.isalnum() or ch in "-_")[:64]
+    if len(mid) >= 8:
+        keys.append("m:" + mid)
+    ua_n = " ".join(str(ua or "").split())[:240]
+    ip_n = str(ip or "").split("%")[0].strip()
+    if ua_n or ip_n:
+        digest = hashlib.sha256(f"{ua_n}|{ip_n}".encode()).hexdigest()[:32]
+        keys.append("u:" + digest)
+    return keys
+
+
+def room_for_hosts(keys: list[str]) -> str:
+    for key in keys:
+        if not key:
+            continue
+        with connect() as conn:
+            row = execute(conn, "SELECT room FROM hosts WHERE key=?", (key,)).fetchone()
+        if row and row["room"]:
+            return str(row["room"]).upper()
+    return ""
+
+
+def remember_host_room(keys: list[str], room: str, ua: str = "") -> None:
+    code = str(room or "").strip().upper()
+    if not code or not keys:
+        return
+    now = now_ms()
+    ua_n = " ".join(str(ua or "").split())[:240]
+    with _LOCK, connect() as conn:
+        for key in keys:
+            if not key:
+                continue
+            row = execute(conn, "SELECT key FROM hosts WHERE key=?", (key,)).fetchone()
+            if row:
+                execute(conn, "UPDATE hosts SET room=?, ua=?, last_seen=? WHERE key=?", (code, ua_n, now, key))
+            else:
+                execute(
+                    conn,
+                    "INSERT INTO hosts (key, room, ua, created_at, last_seen) VALUES (?,?,?,?,?)",
+                    (key, code, ua_n, now, now),
+                )
+
+
+def ensure_room_for_host(keys: list[str], ua: str = "") -> dict[str, Any]:
+    room = ensure_room(room_for_hosts(keys) or None)
+    remember_host_room(keys, room["code"], ua)
+    return room
 
 
 def room_snapshot(code: str) -> dict[str, Any]:

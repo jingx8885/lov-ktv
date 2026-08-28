@@ -129,8 +129,35 @@
   background: rgba(120, 120, 128, .24);
 }
 .seg-sm { margin-top: 8px; }
-.lyric-seg { margin: 0 0 12px; }
-.lyric-seg .seg-btn { font-size: 11px; min-height: 30px; padding: 0 2px; }
+.seg.lyric-seg {
+  display: flex;
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 12px;
+  background: none;
+  border-radius: 0;
+}
+.lyric-seg .seg-btn {
+  flex: 1 1 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: rgba(235, 235, 245, .58);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+.lyric-seg .seg-btn.on {
+  background: #fff;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+}
+.lyric-seg .seg-btn:active { transform: scale(.97); }
+.lyric-seg .seg-btn[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .lyric-seg .seg-btn:active { transform: none; }
+}
 .seg-btn {
   min-width: 0;
   min-height: 32px;

@@ -57,7 +57,11 @@ export function lyricsFingerprint(data) {
 
 export function paint() {
   const now = state.room && state.room.now_playing;
-  const mode = applyLyricMode(document.body, state.room && state.room.lyric_mode);
+  const mode = applyLyricMode(
+    document.body,
+    state.room && state.room.lyric_mode,
+    now && now.language,
+  );
   if (now && now.status === "ready") {
     const karaoke = $("karaoke");
     const mtv = $("mtv");
