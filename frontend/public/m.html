@@ -130,8 +130,7 @@
           </button>
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
-        <audio id="playerOriginal" preload="auto" playsinline crossorigin="anonymous" hidden></audio>
-        <audio id="playerGuide" preload="metadata" playsinline crossorigin="anonymous" hidden></audio>
+        <audio id="playerGuide" preload="auto" playsinline crossorigin="anonymous" hidden></audio>
         <audio id="phoneIemVoice" autoplay playsinline hidden></audio>
         <div class="player-stage">
           <div class="player-art" id="playerArt">
@@ -345,17 +344,23 @@
     function pausePlayerTracks() {
       playerHeld = true;
       const audio = $("playerAudio");
-      const orig = $("playerOriginal");
       const guide = $("playerGuide");
       if (audio) audio.pause();
-      if (orig) orig.pause();
       if (guide) guide.pause();
       refreshPlayIcon();
+    }
+    function unlockPlayerGesture() {
+      playerHeld = false;
+      const audio = $("playerAudio");
+      if (!audio) return;
+      hookPlayerAudio();
+      audio.play().catch(() => {});
+      const guide = $("playerGuide");
+      if (guide && guide.getAttribute("src") && playerVocal) guide.play().catch(() => {});
     }
     function togglePlayer() {
       if (!playerSong) return alert("先从点歌台听一首");
       const audio = $("playerAudio");
-      const orig = $("playerOriginal");
       hookPlayerAudio();
       if (playerIsPlaying()) {
         pausePlayerTracks();
@@ -363,11 +368,8 @@
         return;
       }
       playerHeld = false;
-      const startOrig = !!(playerVocal && orig && orig.getAttribute("src"));
       setPlayIcon(true);
       audio.play().then(() => {
-        if (startOrig) return orig.play().catch(() => {});
-      }).then(() => {
         applyPlayerVocalMix();
         refreshPlayIcon();
       }).catch(() => {
@@ -383,10 +385,7 @@
         try { audio.currentTime = Math.max(0, ms) / 1000; } catch (err) {}
         syncGuide(Math.max(0, ms) / 1000);
         playerHeld = false;
-        const orig = $("playerOriginal");
         audio.play().then(() => {
-          if (playerVocal && orig && orig.getAttribute("src")) return orig.play().catch(() => {});
-        }).then(() => {
           applyPlayerVocalMix();
           refreshPlayIcon();
         }).catch(() => refreshPlayIcon());
@@ -449,7 +448,7 @@
       }
       if (name === "player") {
         loadPlayerList();
-        if (songId) loadPlayerSong(songId);
+        if (songId) loadPlayerSong(songId, { play: true });
         else bootPlayer();
       }
     }
@@ -936,7 +935,6 @@
     let playerLoad = 0;
     let playerClockHold = null;
     let playerClockHoldAt = 0;
-    let playerOrigWait = false;
     let playerHoldDur = 0;
     const lyricPaint = { prev: "", cur: "", next: "", align: "" };
 
@@ -979,7 +977,8 @@
       `).join("") || "<p class='empty'>曲库还没有可播的歌</p>";
       box.querySelectorAll("[data-pick]").forEach((btn) => {
         btn.onclick = () => {
-          loadPlayerSong(btn.dataset.pick, { play: !$("playerAudio").paused });
+          unlockPlayerGesture();
+          loadPlayerSong(btn.dataset.pick, { play: true });
         };
       });
       const on = box.querySelector(".player-pick.on");
@@ -1124,27 +1123,28 @@
     function syncGuide(forceTime) {
       const audio = $("playerAudio");
       const guide = $("playerGuide");
-      if (!guide || !guide.getAttribute("src") || guide.readyState < 1) return;
-      const t = forceTime != null ? forceTime : (audio.currentTime || 0);
-      try {
-        if (Math.abs((guide.currentTime || 0) - t) > 0.08) guide.currentTime = t;
-      } catch (err) {}
+      if (!guide || !guide.getAttribute("src")) return;
       const editing = document.body.classList.contains("edit-on");
-      // Editor: voice lane is guide.m4a. Don't mute it just because 原唱 is on,
-      // or mix-off + 原唱 becomes total silence.
-      const wantGuide = editing && voiceTrackOn && !(mixTrackOn && playerVocal);
-      guide.muted = !wantGuide;
-      if (wantGuide && audio && !audio.paused && audio.src) {
-        guide.play().catch(() => {});
+      const want = !playerHeld && !!(audio && audio.src) && (editing ? voiceTrackOn : !!playerVocal);
+      const clock = forceTime != null ? forceTime : (audio.currentTime || 0);
+      if (guide.readyState >= 1 && !guide.seeking) {
+        const drift = Math.abs((guide.currentTime || 0) - clock);
+        const slack = forceTime != null ? 0.08 : 0.32;
+        const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.2;
+        if (drift > slack && targetReady) {
+          try { guide.currentTime = clock; } catch (err) {}
+        }
+      }
+      guide.muted = !want;
+      if (want && audio && !audio.paused) {
+        if (guide.paused) guide.play().catch(() => {});
       } else {
         guide.pause();
       }
     }
     function applyKaraokeGain() {
       const editing = document.body.classList.contains("edit-on");
-      let value = 1;
-      if (editing && !mixTrackOn) value = 0;
-      else if (!editing && playerVocal) value = 0;
+      const value = editing && !mixTrackOn ? 0 : 1;
       if (playerHook && playerHook.gain) playerHook.gain.gain.value = value;
     }
     function mediaAhead(el, at) {
@@ -1157,56 +1157,13 @@
       } catch (err) {}
       return 0;
     }
-    function holdPlayerClock(t) {
-      if (playerClockHold == null) {
-        playerClockHold = t;
-        playerClockHoldAt = Date.now();
-      }
-    }
     function releasePlayerClock() {
       playerClockHold = null;
       playerClockHoldAt = 0;
     }
-    function syncOriginal(forceTime) {
-      const audio = $("playerAudio");
-      const orig = $("playerOriginal");
-      if (!orig || !orig.getAttribute("src")) return;
-      const editing = document.body.classList.contains("edit-on");
-      const want = !playerHeld && !editing && !!playerVocal && !!(audio && audio.src);
-      const clock = forceTime != null ? forceTime : (playerClockHold != null ? playerClockHold : (audio.currentTime || 0));
-      orig.muted = !want;
-      if (want) {
-        const started = orig.readyState >= 2;
-        const starving = orig.seeking || playerOrigWait || (started && orig.readyState < 3 && mediaAhead(orig, orig.currentTime || 0) < 0.12);
-        if (started && starving) {
-          holdPlayerClock(audio.paused ? clock : (audio.currentTime || clock));
-          if (!audio.paused) audio.pause();
-        } else if (playerClockHold != null && !orig.seeking && mediaAhead(orig, playerClockHold) >= 0.5) {
-          releasePlayerClock();
-          if (!playerHeld && audio.paused) audio.play().catch(() => {});
-        } else if (playerClockHold != null && Date.now() - playerClockHoldAt > 4000) {
-          releasePlayerClock();
-          if (!playerHeld && audio.paused) audio.play().catch(() => {});
-        }
-      } else if (playerClockHold != null && (!playerVocal || playerHeld)) {
-        releasePlayerClock();
-      }
-      const drift = Math.abs((orig.currentTime || 0) - clock);
-      const slack = forceTime != null ? 0.08 : 0.32;
-      const canSeek = orig.readyState >= 1 && !orig.seeking && drift > slack;
-      const targetReady = forceTime != null || mediaAhead(orig, clock) > 0.2;
-      if (canSeek && targetReady) {
-        try { orig.currentTime = clock; } catch (err) {}
-      }
-      if (want) {
-        if (orig.paused) orig.play().catch(() => {});
-      } else {
-        orig.pause();
-      }
-    }
     function applyPlayerVocalMix() {
       applyKaraokeGain();
-      syncOriginal();
+      syncGuide();
     }
     function hookPlayerAudio() {
       const ctx = ensurePhoneCtx();
@@ -1325,10 +1282,8 @@
       refreshPlayIcon();
       if (hold != null) {
         syncGuide(hold);
-        syncOriginal(hold);
       } else {
         syncGuide();
-        syncOriginal();
       }
       if (!$("playerAlign").hidden) {
         ensureTimeline().sync(t, dur);
@@ -1370,7 +1325,6 @@
     }
     function resetPlayerFace() {
       releasePlayerClock();
-      playerOrigWait = false;
       playerHoldDur = 0;
       selectedCue = 0;
       lyricPaint.prev = "";
@@ -1420,17 +1374,11 @@
       }
       stopPreview();
       const audio = $("playerAudio");
-      const orig = $("playerOriginal");
       const guide = $("playerGuide");
       audio.pause();
-      if (orig) orig.pause();
       if (guide) guide.pause();
       audio.onloadedmetadata = null;
       audio.onerror = null;
-      if (orig) {
-        orig.onloadedmetadata = null;
-        orig.onerror = null;
-      }
       if (guide) {
         guide.onloadedmetadata = null;
         guide.onerror = null;
@@ -1439,7 +1387,6 @@
       playerLyrics = { cues: [] };
       resetPlayerFace();
       try { audio.currentTime = 0; } catch (err) {}
-      try { if (orig) orig.currentTime = 0; } catch (err) {}
       try { if (guide) guide.currentTime = 0; } catch (err) {}
       playerLyrics = await fetch(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`).then((r) => r.ok ? r.json() : { cues: [] });
       if (gen !== playerLoad) return;
@@ -1462,10 +1409,6 @@
           audio.load();
         }
       };
-      if (orig) {
-        orig.src = original;
-        orig.load();
-      }
       const guideUrl = mediaUrl(song.id, "guide.m4a");
       guide.src = guideUrl;
       guide.load();
@@ -1481,7 +1424,6 @@
       const ready = await waitMedia(audio, gen, karaoke);
       if (gen !== playerLoad) return;
       try { audio.currentTime = 0; } catch (err) {}
-      try { if (orig && orig.getAttribute("src") && orig.readyState >= 1) orig.currentTime = 0; } catch (err) {}
       try { if (guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0; } catch (err) {}
       hookPlayerAudio();
       ensureTimeline().render();
@@ -1489,9 +1431,6 @@
         playerHeld = false;
         try {
           await audio.play();
-          if (playerVocal && orig && orig.getAttribute("src")) {
-            await orig.play().catch(() => {});
-          }
           setPlayIcon(true);
           syncGuide(0);
           applyPlayerVocalMix();
@@ -1507,6 +1446,7 @@
       if (!playerRaf) playerRaf = requestAnimationFrame(paintPlayer);
     }
     function openPlayer(songId) {
+      unlockPlayerGesture();
       showPage("player", songId);
     }
     async function bootPlayer() {
@@ -1525,12 +1465,6 @@
     ["play", "pause", "ended"].forEach((name) => {
       $("playerAudio").addEventListener(name, refreshPlayIcon);
     });
-    const origEl = $("playerOriginal");
-    origEl.addEventListener("waiting", () => { playerOrigWait = true; });
-    origEl.addEventListener("stalled", () => { playerOrigWait = true; });
-    ["playing", "canplay", "canplaythrough"].forEach((name) => {
-      origEl.addEventListener(name, () => { playerOrigWait = false; });
-    });
     $("playerVocal").onclick = () => {
       playerVocal = playerVocal ? 0 : 1;
       localStorage.setItem("playerVocal", playerVocal ? "1" : "0");
@@ -1547,7 +1481,6 @@
       const x = Math.max(0, Math.min(1, (event.clientX - box.left) / box.width));
       audio.currentTime = x * audio.duration;
       syncGuide(audio.currentTime);
-      syncOriginal(audio.currentTime);
     }
     $("playerArt").addEventListener("pointerdown", (event) => {
       if (event.button && event.button !== 0) return;
@@ -1907,8 +1840,6 @@
       const guide = $("playerGuide");
       try {
         if (audio && audio.setSinkId) await audio.setSinkId(sink);
-        const orig = $("playerOriginal");
-        if (orig && orig.setSinkId) await orig.setSinkId(sink);
         if (guide && guide.setSinkId) await guide.setSinkId(sink);
         const iem = $("phoneIemVoice");
         if (iem && iem.setSinkId) await iem.setSinkId(sink);

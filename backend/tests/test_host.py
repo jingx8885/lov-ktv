@@ -32,19 +32,32 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["agent"]["model"] == ""
 
 
-def test_phone_player_avoids_hard_seek_on_original():
+def test_phone_player_overlays_guide_on_karaoke():
     from pathlib import Path
 
     html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "m.html").read_text(encoding="utf-8")
-    assert 'id="playerOriginal" preload="auto"' in html
+    assert 'id="playerGuide" preload="auto"' in html
+    assert 'id="playerOriginal"' not in html
+    assert "function syncOriginal" not in html
+    assert "orig.src = original" not in html
+    gain = html.split("function applyKaraokeGain", 1)[1].split("function mediaAhead", 1)[0]
+    assert "playerVocal" not in gain
+    assert "value = editing && !mixTrackOn ? 0 : 1" in gain
+    sync = html.split("function syncGuide", 1)[1].split("function applyKaraokeGain", 1)[0]
+    assert 'mediaUrl(song.id, "guide.m4a")' in html
+    assert "0.32" in sync
+    assert "playerVocal" in sync
     assert "function mediaAhead" in html
-    assert "orig.seeking" in html
-    assert "0.32" in html
-    assert "playerOrigWait" in html
-    sync = html.split("function syncOriginal", 1)[1].split("function applyPlayerVocalMix", 1)[0]
-    assert "orig.currentTime = clock" in sync
-    assert "targetReady" in sync
-    assert "> 0.08" not in sync
+
+
+def test_phone_player_starts_when_song_clicked():
+    from pathlib import Path
+
+    html = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "m.html").read_text(encoding="utf-8")
+    assert "unlockPlayerGesture" in html
+    assert 'loadPlayerSong(btn.dataset.pick, { play: true })' in html
+    assert 'loadPlayerSong(songId, { play: true })' in html
+    assert 'play: !$("playerAudio").paused' not in html
 
 
 def test_tv_page_builds_phone_url_from_host_origin():
