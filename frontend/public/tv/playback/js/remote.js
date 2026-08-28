@@ -4,7 +4,7 @@ import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { unlockAudio } from "../../audio/js/unlock.js";
 import { applyMix } from "./mix.js?v=stall1";
-import { startPlayback, stopPlayback, tick } from "./tick.js?v=paint4";
+import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js?v=paint4";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";
@@ -24,7 +24,7 @@ function startIfNeeded() {
     return true;
   }
   const karaoke = $("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && karaoke.paused) {
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && wantsResume(karaoke)) {
     startPlayback();
     return true;
   }
