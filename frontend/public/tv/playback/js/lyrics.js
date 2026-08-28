@@ -1,5 +1,5 @@
 import { $ } from "../../../shared/ui/js/dom.js";
-import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js?v=paint2";
+import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js?v=paint3";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js?v=stall1";

@@ -17,7 +17,9 @@ def test_tv_lyrics_use_this_morning_small_type():
     assert "font-size: 15px" in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
-    assert 'href="/tv/lyrics/css/lyrics.css?v=split9"' in html
+    assert 'href="/tv/lyrics/css/lyrics.css?v=split10"' in html
+    assert "min-height: 1.15em" in tv
+    assert "min-height: 1.2em" in tv
 
 
 def test_tv_page_has_no_language_picker():

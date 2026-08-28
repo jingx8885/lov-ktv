@@ -9,7 +9,7 @@ import { loadRoom } from "./desk/js/queue.js";
 import { runSearch } from "./search/js/hits.js";
 import { stopPreview, togglePreview } from "./search/js/preview.js";
 import { joinRoom, openTv } from "./room/js/join.js";
-import { paintVocalMix, paintMix } from "./room/js/mix.js?v=mix4";
+import { paintVocalMix, paintMix } from "./room/js/mix.js?v=mix5";
 import { connectRoomRtc } from "./room/js/rtc.js";
 import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/mic.js";
 import {
@@ -20,7 +20,7 @@ import {
   renderAlignList,
   applyEditorTracks,
   syncEditAxis,
-} from "./player/js/align.js";
+} from "./player/js/align.js?v=paint3";
 import {
   setPlayIcon,
   refreshPlayIcon,
@@ -38,7 +38,7 @@ import {
   bootPlayer,
   playNextSong,
   cueIndexAt,
-} from "./player/js/playback.js";
+} from "./player/js/playback.js?v=paint3";
 import { setPlayerSheet } from "./player/js/sheet.js";
 import { enterLearn, exitLearn } from "./player/js/learn.js";
 

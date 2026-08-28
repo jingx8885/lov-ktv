@@ -23,5 +23,5 @@ def test_tv_does_not_restart_on_network_stall():
     assert "restoreResume(karaoke)" in app
     assert "item.song_id !== nowId" in mix
     assert 'if (now && now.status === "ready") add(now.song_id)' not in mix
-    assert 'src="/tv/app.js?v=split14"' in html
-    assert "tick.js?v=stall1" in app
+    assert 'src="/tv/app.js?v=split15"' in html
+    assert "tick.js?v=paint3" in app

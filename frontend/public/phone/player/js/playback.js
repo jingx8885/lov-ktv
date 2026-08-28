@@ -1,8 +1,8 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js?v=paint2";
-import { paintLyricMode } from "../../room/js/mix.js?v=mix4";
+import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js?v=paint3";
+import { paintLyricMode } from "../../room/js/mix.js?v=mix5";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";

@@ -171,10 +171,12 @@ function tokenRoma(tok) {
   return roma;
 }
 
-function rubyHtml(tok) {
+function rubyHtml(tok, keepRow) {
   const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
-  if (!reading || !isKanjiText(tok.text) || isKanjiText(reading)) return "";
-  return `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+  if (reading && isKanjiText(tok.text) && !isKanjiText(reading)) {
+    return `<span class="rt">${[...reading].map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+  }
+  return keepRow ? `<span class="rt"></span>` : "";
 }
 
 /** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
@@ -183,29 +185,34 @@ export function renderCue(cue, t, mode) {
   if (view === "zh") return escapeHtml(String(cue.zh || cueLine(cue)));
   if (view === "roma") return escapeHtml(cueRomaji(cue) || cueLine(cue));
   const tokens = clusterTokens(cue.tokens || []);
+  const script = pageLyricScript();
+  const showExtra = view === "all";
+  const keepRoma = showExtra && (script === "ja" || !script);
+  const keepGloss = showExtra;
+  const keepZh = showExtra;
+  const keepRt = showExtra && (script === "ja" || !script);
   if (!tokens.length) {
     const body = escapeHtml(cueLine(cue));
-    return view === "all" && cue.zh
-      ? `${body}<span class="lyric-zh">${escapeHtml(cue.zh)}</span>`
+    return keepZh
+      ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>`
       : body;
   }
-  const showExtra = view === "all";
   const html = `<span class="line-words">${tokens.map((tok, i) => {
     const p = Math.round(tokenProgress(tok, t));
     const body = `<span class="rb" style="--p:${p}%">${escapeHtml(tok.text)}</span>`;
-    const roma = showExtra ? tokenRoma(tok) : "";
-    const romaHtml = roma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
-    const gloss = showExtra && tok.zh ? String(tok.zh) : "";
-    const glossHtml = gloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
+    const roma = keepRoma ? tokenRoma(tok) : "";
+    const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
+    const gloss = keepGloss && tok.zh ? String(tok.zh) : "";
+    const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
     const latin = /^[A-Za-z0-9']/.test(tok.text || "");
     const next = tokens[i + 1];
     const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
       ? `<span class="tok-space"> </span>`
       : "";
-    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
+    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
   }).join("")}</span>`;
-  return showExtra && cue.zh
-    ? `${html}<span class="lyric-zh">${escapeHtml(cue.zh)}</span>`
+  return keepZh
+    ? `${html}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>`
     : html;
 }
 

@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { paintLine } from "../../../shared/lyrics/js/paint.js?v=paint2";
+import { paintLine } from "../../../shared/lyrics/js/paint.js?v=paint3";
 import { api } from "../../api.js";
 import { state, STEP_MS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";

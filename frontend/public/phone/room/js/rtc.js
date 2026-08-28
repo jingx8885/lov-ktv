@@ -4,7 +4,7 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
-import { paintMix } from "./mix.js?v=mix4";
+import { paintMix } from "./mix.js?v=mix5";
 
 export function connectRoomRtc(code) {
   code = String(code || "").trim().toUpperCase();

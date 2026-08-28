@@ -84,7 +84,7 @@ body.tv .lyrics .next {
   font-size: 11px;
 }
 body.tv .lyrics .anno .roma {
-  min-height: 0.34em;
+  min-height: 1.15em;
   font-size: 14px;
   color: rgba(255, 255, 255, .58);
   letter-spacing: 0.02em;
@@ -92,10 +92,11 @@ body.tv .lyrics .anno .roma {
   line-height: 1.15;
 }
 body.tv .lyrics .anno .gloss {
-  min-height: 0.3em;
+  min-height: 1.15em;
   font-size: 14px;
 }
 body.tv .lyrics .lyric-zh {
+  min-height: 1.2em;
   margin-top: 0.18em;
   font-size: 15px;
 }

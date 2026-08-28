@@ -16,13 +16,17 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert "export { lyricModeForScript, lyricScript }" in mix
     assert 'btn.hidden = key === "roma"' in mix
     assert 'if (!room || !hostVol' in mix
+    assert "keepRoma" in paint
+    assert "keepGloss" in paint
+    assert "keepZh" in paint
+    assert "keepRt" in paint
     app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
     html = (ROOT / "m.html").read_text(encoding="utf-8")
     assert 'getElementById("page-desk")' in app
     assert '$must("page-desk")' not in app
-    assert "mix.js?v=mix4" in app
-    assert "paint.js?v=paint2" in mix
-    assert 'src="/phone/app.js?v=split21"' in html
+    assert "mix.js?v=mix5" in app
+    assert "paint.js?v=paint3" in mix
+    assert 'src="/phone/app.js?v=split22"' in html
     assert 'href="/phone/desk/css/desk.css?v=split9"' in html
 
 

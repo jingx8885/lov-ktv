@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js?v=paint2";
+import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js?v=paint3";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
