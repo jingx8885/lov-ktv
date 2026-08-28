@@ -94,6 +94,8 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
         },
     )
     monkeypatch.setattr(fetch, "fetch_lyric", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease lyric should not run")))
+    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
     monkeypatch.setattr(fetch, "try_netease_download", lambda song_id, path: path.write_bytes(b"x" * 60_000) or True)
     monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
     skeleton = fetch.import_song(query="晴天", out_dir=tmp_path, song_id="1")
@@ -118,6 +120,8 @@ def test_import_song_falls_back_to_netease_lyrics(tmp_path, monkeypatch):
         lambda *args, **kwargs: [{"id": "22689669", "name": "Give a reason", "artist": ["林原めぐみ"]}],
     )
     monkeypatch.setattr(fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]Give a reason")
+    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
     monkeypatch.setattr(fetch, "try_netease_download", lambda song_id, path: path.write_bytes(b"x" * 60_000) or True)
     monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
     skeleton = fetch.import_song(query="Give a reason", out_dir=tmp_path, song_id="22689669")

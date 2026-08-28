@@ -347,6 +347,8 @@ def api_preview(song_id: str, title: str = "", artist: str = "", media: str = ""
     if resp is None:
         raise HTTPException(404, "这首暂时不能试听")
     ctype = str(resp.headers.get("Content-Type") or "audio/mpeg")
+    if source.get("kind") == "bilibili" and "html" not in ctype.lower():
+        ctype = "audio/mp4"
 
     def chunks():
         try:

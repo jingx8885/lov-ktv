@@ -1,7 +1,7 @@
 """Song search + download, following vendor/lovjpn/scripts/fetch_song.py.
 
 Search lists Karaoke Mugen first, then NetEase titles.
-Audio: Mugen → SoundCloud → NetEase eapi → YouTube.
+Audio: Mugen → Bilibili MV → SoundCloud → NetEase eapi → YouTube.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from lovktv.catalog import bilibili
 from lovktv.catalog.http import curl_proxy_args, urlopen, ytdlp_proxy_args
 from lovktv.catalog.kugou import fetch_kugou_lyrics
 from lovktv.catalog.mugen import import_mugen_song, is_mugen_kid, open_mugen_preview, pick_vocal_hit, search_mugen
@@ -416,13 +417,44 @@ def _resolve_netease_source(song_id: str, title: str = "") -> dict[str, Any]:
     return {}
 
 
+def pick_bilibili_mv(title: str, artist: str = "") -> dict[str, Any] | None:
+    return bilibili.pick_mv(title, artist)
+
+
+def try_bilibili_download(bvid: str, mp3_path: Path, video_path: Path | None = None) -> bool:
+    return bilibili.download_mv(bvid, mp3_path, video_path)
+
+
+def open_bilibili_audio(bvid: str, timeout: float = 20):
+    return bilibili.open_audio(bvid, timeout=timeout)
+
+
+def _resolve_bilibili_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
+    hit = pick_bilibili_mv(title, artist)
+    if not hit:
+        return {}
+    urls = bilibili.play_urls(str(hit.get("bvid") or ""))
+    if not urls.get("audio_url"):
+        return {}
+    return remember_audio_source(
+        song_id,
+        {
+            "kind": "bilibili",
+            "bvid": hit["bvid"],
+            "title": str(hit.get("title") or title),
+            "cover": str(hit.get("pic") or urls.get("cover") or ""),
+        },
+    )
+
+
 def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
-    """Mugen is handled by the caller. Then SoundCloud → NetEase → YouTube."""
+    """Mugen is handled by the caller. Then Bilibili → SoundCloud → NetEase → YouTube."""
     cached = peek_audio_source(song_id)
-    if cached.get("kind") in {"netease", "ytdlp"}:
+    if cached.get("kind") in {"bilibili", "netease", "ytdlp"}:
         return cached
     return (
-        _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
+        _resolve_bilibili_source(song_id, title, artist)
+        or _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
         or _resolve_netease_source(song_id, title)
         or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
     )
@@ -444,6 +476,16 @@ def open_preview_stream(song_id: str, title: str = "", artist: str = "", media: 
         resp = open_mugen_preview(song_id, media_name=media)
         return resp, {"kind": "mugen", "title": title}
     source = resolve_audio_source(song_id, title, artist)
+    if source.get("kind") == "bilibili":
+        resp = open_bilibili_audio(str(source.get("bvid") or ""))
+        if resp is not None:
+            return resp, source
+        forget_audio_source(song_id)
+        source = (
+            _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
+            or _resolve_netease_source(song_id, title)
+            or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+        )
     if source.get("kind") == "ytdlp" and source.get("provider") == "soundcloud":
         resp = _open_ytdlp_stream(str(source.get("page") or ""))
         if resp is not None:
@@ -528,15 +570,38 @@ def import_song(
     audio_file = None
     audio_source = "none"
     audio_title = ""
+    audio_bvid = ""
+    has_video = False
     mp3_path = out_dir / "original.mp3"
+    mtv_path = out_dir / "mtv.mp4"
     chosen_id = str(chosen.get("id") or "")
+    pic = str(chosen.get("pic") or "")
     cached = peek_audio_source(chosen_id)
+    if audio_file is None and cached.get("kind") == "bilibili" and cached.get("bvid"):
+        if try_bilibili_download(str(cached["bvid"]), mp3_path, mtv_path):
+            audio_file = "original.mp3"
+            audio_source = "bilibili"
+            audio_title = str(cached.get("title") or "")
+            audio_bvid = str(cached["bvid"])
+            has_video = mtv_path.exists()
+            if not pic and cached.get("cover"):
+                pic = str(cached["cover"])
     if audio_file is None and cached.get("page"):
         if _ytdlp_download(str(cached["page"]), mp3_path):
             audio_file = "original.mp3"
             audio_source = str(cached.get("provider") or "ytdlp")
             audio_title = str(cached.get("title") or "")
     ytdlp_query = f"{chosen.get('name') or ''} {flatten_artists(chosen)}".strip() or query
+    if audio_file is None:
+        hit = pick_bilibili_mv(title_name, artist_name)
+        if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
+            audio_file = "original.mp3"
+            audio_source = "bilibili"
+            audio_title = str(hit.get("title") or "")
+            audio_bvid = str(hit["bvid"])
+            has_video = mtv_path.exists()
+            if not pic and hit.get("pic"):
+                pic = str(hit["pic"])
     if audio_file is None:
         ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "soundcloud")
         if ok:
@@ -553,8 +618,21 @@ def import_song(
             audio_source = "youtube"
             audio_title = got_title
 
+    if has_video:
+        lyrics_path = out_dir / "lyrics.json"
+        if lyrics_path.exists():
+            try:
+                timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
+                if isinstance(timeline, dict):
+                    timeline["native_video"] = True
+                    lyrics_path.write_text(
+                        json.dumps(timeline, ensure_ascii=False, indent=2),
+                        encoding="utf-8",
+                    )
+            except (OSError, json.JSONDecodeError):
+                pass
+
     cover_file = ""
-    pic = str(chosen.get("pic") or "")
     if pic.startswith("http"):
         cover_path = out_dir / "cover.jpg"
         try:
@@ -579,9 +657,11 @@ def import_song(
             "query": query,
             "lyrics": lyric_source,
             "kugou_id": str((kugou or {}).get("candidate", {}).get("id") or ""),
+            "bvid": audio_bvid,
         },
         "audio": {"file": audio_file, "source": audio_source, "title": audio_title},
         "cover": cover_file,
+        "has_video": has_video,
         "sentences": [
             {
                 "id": f"s{index}",

@@ -2,6 +2,10 @@ from lovktv.catalog import fetch
 from lovktv.catalog import http as catalog_http
 
 
+def _no_bilibili(monkeypatch):
+    monkeypatch.setattr(fetch, "_resolve_bilibili_source", lambda *args, **kwargs: {})
+
+
 def test_curl_and_ytdlp_omit_proxy_by_default(monkeypatch):
     monkeypatch.delenv("LOVKTV_HTTPS_PROXY", raising=False)
     assert catalog_http.curl_proxy_args() == []
@@ -16,6 +20,7 @@ def test_curl_and_ytdlp_use_lovktv_https_proxy(monkeypatch):
 
 def test_resolve_prefers_playable_soundcloud(monkeypatch):
     fetch._AUDIO_CACHE.clear()
+    _no_bilibili(monkeypatch)
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
@@ -37,6 +42,7 @@ def test_resolve_prefers_playable_soundcloud(monkeypatch):
 
 def test_resolve_skips_unplayable_ytdlp(monkeypatch):
     fetch._AUDIO_CACHE.clear()
+    _no_bilibili(monkeypatch)
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
     monkeypatch.setattr(
@@ -53,6 +59,7 @@ def test_resolve_skips_unplayable_ytdlp(monkeypatch):
 
 def test_resolve_uses_netease_before_youtube(monkeypatch):
     fetch._AUDIO_CACHE.clear()
+    _no_bilibili(monkeypatch)
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
@@ -69,6 +76,7 @@ def test_resolve_uses_netease_before_youtube(monkeypatch):
 
 def test_resolve_uses_youtube_last(monkeypatch):
     fetch._AUDIO_CACHE.clear()
+    _no_bilibili(monkeypatch)
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 

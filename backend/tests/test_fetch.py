@@ -9,6 +9,8 @@ def _no_mugen(monkeypatch):
     )
     monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
     monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
 
 
 def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
