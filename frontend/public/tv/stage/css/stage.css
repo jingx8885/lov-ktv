@@ -110,11 +110,6 @@
   color: inherit;
   text-decoration: none;
 }
-.qrbox select.lang-picker {
-  width: 100%;
-  max-width: none;
-  margin: 0;
-}
 .tv-ui header {
   padding-left: 228px;
   min-width: 0;

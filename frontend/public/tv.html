@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/shared/ui/css/tokens.css?v=split1" />
   <link rel="stylesheet" href="/shared/ui/css/base.css?v=split4" />
   <link rel="stylesheet" href="/shared/lyrics/css/lyrics.css?v=split6" />
-  <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split2" />
-  <link rel="stylesheet" href="/tv/lyrics/css/lyrics.css?v=split4" />
+  <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split3" />
+  <link rel="stylesheet" href="/tv/lyrics/css/lyrics.css?v=split6" />
   <link rel="stylesheet" href="/tv/gates/css/gates.css?v=split1" />
 </head>
 <body class="tv">
@@ -20,22 +20,10 @@
       <div id="qr" class="qr"></div>
       <span class="qr-cap"><span data-i18n="tv.scan">扫码 · </span><b id="code"></b></span>
     </a>
-    <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
-      <option value="zh">中文</option>
-      <option value="yue">粵語</option>
-      <option value="en">English</option>
-      <option value="ja">日本語</option>
-    </select>
   </div>
   <div class="login-gate" id="loginGate" hidden>
     <div class="login-card">
       <p class="brand">lov-ktv</p>
-      <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
-        <option value="zh">中文</option>
-        <option value="yue">粵語</option>
-        <option value="en">English</option>
-        <option value="ja">日本語</option>
-      </select>
       <h2 data-i18n="tv.loginTitle">微信扫一下</h2>
       <p class="muted" data-i18n="tv.loginLead">扫码直接认号，不用点确认。</p>
       <div id="loginQr" class="qr"></div>
@@ -57,12 +45,6 @@
         <p class="muted" id="meta"></p>
       </div>
       <div class="user-chip">
-        <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
-          <option value="zh">中文</option>
-          <option value="yue">粵語</option>
-          <option value="en">English</option>
-          <option value="ja">日本語</option>
-        </select>
         <img class="avatar" id="tvAvatar" alt="" hidden />
         <span id="tvUser" data-i18n="tv.out">未登录</span>
         <button class="btn" id="tvLoginBtn" type="button" data-i18n="tv.login">登录</button>
