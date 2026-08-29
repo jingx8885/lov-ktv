@@ -180,6 +180,9 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
         encoding="utf-8"
     )
+    mix = (ROOT / "tv" / "playback" / "js" / "media" / "mix.js").read_text(
+        encoding="utf-8"
+    )
 
     # Cold start is explicitly armed by the same button in browser and APK WebView.
     assert 'must("start").onclick' in app
@@ -201,6 +204,10 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "state.mediaStall" in tick
     assert "if (isMediaStalled(el)) return false;" in tick
     assert "state.resumeAt = t;" in tick
+    # The vocal track must not keep seeking back to a stalled karaoke clock;
+    # doing so produces an audible short loop while the master buffers.
+    assert "if (state.mediaStall)" in mix
+    assert "if (!vocal.paused) vocal.pause();" in mix
     assert "if (stamp === state.lastRoomStamp) return;" in tick
     assert "karaoke.readyState >= 3" in tick
     assert "!state.mediaStall" in tick

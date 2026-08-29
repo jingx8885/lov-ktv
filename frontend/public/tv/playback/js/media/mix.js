@@ -102,6 +102,15 @@ export function syncVocal(forceTime) {
   const vocal = $("vocal");
   const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
   if (!vocal || !vocal.getAttribute("src")) return;
+  // Karaoke is the master clock.  While it is buffering, its currentTime can
+  // remain parked at the last buffered second while the vocal track keeps
+  // running.  Re-syncing on every paint frame then seeks the vocal backwards
+  // repeatedly (an audible one-second loop).  Hold the vocal until the master
+  // audio has resumed instead of fighting the media pipeline.
+  if (state.mediaStall) {
+    if (!vocal.paused) vocal.pause();
+    return;
+  }
   if (mix <= 0.01 && forceTime == null) {
     if (!vocal.paused) vocal.pause();
     return;
