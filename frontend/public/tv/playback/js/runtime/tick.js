@@ -222,11 +222,21 @@ export async function applyRoom(room) {
     state.lyricPaint.prev = "";
     state.lyricPaint.cur = "";
     state.lyricPaint.next = "";
-    const lyricsHit = await fetchJson(mediaUrl(now.song_id, "lyrics.json"));
-    const skeletonHit = await fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({
+    // Start the new track immediately. Lyrics/video metadata are secondary
+    // and should never add network latency to a room skip.
+    state.lyrics = { cues: [] };
+    state.skeleton = null;
+    syncNativeMv();
+    startPlayback();
+    const lyricsPromise = fetchJson(mediaUrl(now.song_id, "lyrics.json")).catch(() => ({
+      ok: false,
+      data: { cues: [] }
+    }));
+    const skeletonPromise = fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({
       ok: false,
       data: null
     }));
+    const [lyricsHit, skeletonHit] = await Promise.all([lyricsPromise, skeletonPromise]);
     if (generation !== applyGeneration) return;
     state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
     state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
@@ -243,7 +253,6 @@ export async function applyRoom(room) {
         : new Set();
     if (!nativeMv()) ensureStageFx();
     bindMtv(now.song_id);
-    startPlayback();
   } else {
     applyMix();
     if (nativeMtvAvailable()) {

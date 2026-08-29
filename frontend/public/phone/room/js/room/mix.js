@@ -171,7 +171,9 @@ export function bindMix() {
           : t("phone.room.statEmpty", { code: room.code });
         closeOverlay("mixSheet");
         api.showPage("desk", null, false);
-        await api.loadRoom();
+        // The skip response already contains the fresh room snapshot; avoid
+        // a second GET before repainting the queue and now-playing card.
+        await api.loadRoom({ room });
       } finally {
         $("skip").disabled = false;
       }
