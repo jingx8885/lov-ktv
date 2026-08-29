@@ -1,5 +1,7 @@
 # lov-ktv 架构重构需求与跟踪
 
+> 文档审计：2026-08-30（基于 `0ff3f2d`）。完成状态以当前 `master` 工作树和可重复的测试/构建命令为准；历史批次说明仅作追溯。
+
 > 重构批次标识：`R5-2026.08.29-supervisor-02`
 >
 > 本标识用于串联本轮监工会话、子会话提交与验收记录；后续批次递增末尾序号。
@@ -37,7 +39,9 @@
 
 - [x] 从 `jobs.py` 移除对 `store` 函数的散落直接调用，增加 `SongRepository` 接口。
 - [x] 将恢复任务逻辑变成可注入的 `JobRecovery`，不依赖模块级全局。
-- [ ] 验收：任务处理和恢复测试可使用 fake repository，不需要 SQLite。
+- [x] 验收：任务处理和恢复测试可使用 fake repository，不需要 SQLite。
+
+证据：`backend/tests/test_jobs.py` 的 `test_song_repository_is_replaceable` 与 `test_job_recovery_accepts_repository_and_submitter` 分别替换歌曲仓储和恢复提交器；执行 `PYTHONPATH=backend python -m pytest -q backend/tests/test_jobs.py`（亦包含在本次全量回归中）。
 
 ### R4 存储模块拆分 — 已完成
 
@@ -61,7 +65,8 @@
 - [x] Phone 播放与房间模块分别归档到 `player/js/playback`、`room/js/room`，消除同级文件与二级目录混排。
 - [x] 共享音频与舞台特效按 `aec`、`bands`、`rtc`、`fx/stage` 归档，Phone 不再反向依赖 TV 目录。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
-- [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
+- [ ] Phone/TV 状态 ownership 尚未闭环：`phone/state.js`、`tv/state.js` 仍承载跨域可变状态，需要迁移为各自 room/catalog/player（TV 为 room/playback/audio/platform）store。
+- [x] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
 ### R5A 前端平台边界与 DOM contract — 核心闭环已完成（本批）
 
@@ -73,7 +78,7 @@
 - [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
 - [x] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常（静态契约测试覆盖）。
 
-> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，涉及整页生命周期与后续 R5C 资源拆分；本批不以伪包装器交付，保留为下一批独立改动。其余 R5A adapter、桥隔离、LAN 回调、降级和 DOM contract 均已闭环并有测试。
+> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，涉及整页生命周期；本批不以伪包装器交付，保留为下一批独立改动。其余 R5A adapter、桥隔离、LAN 回调、降级和 DOM contract 均已闭环并有测试。
 
 ### R5B TV 播放运行时收敛 — 已完成
 
@@ -82,20 +87,26 @@
 - [x] 播放、歌词、MTV、恢复、预取沿现有 module controller 协作，未改变 API、WebSocket 或媒体协议。
 - [x] 静态验收覆盖浏览器 TV / TV APK 共用路径、冷启动、暂停恢复、切歌、卡顿恢复和 MTV 降级；TV 播放回归 3 项通过。
 
-### R5C shared 资源与类型边界 — 待开始
+证据：`backend/tests/test_tv_playback.py`、`test_frontend_split.py` 覆盖 module 单入口、播放结束/恢复、房间快照和资源路径；执行 `PYTHONPATH=backend python -m pytest -q backend/tests/test_tv_playback.py backend/tests/test_frontend_split.py` 通过。
+
+### R5C shared 资源与类型边界 — 已完成
 
 - [x] 本批次移除 `timeline.js` 的 TypeScript 排除项，单文件 `tsc` 检查通过。
 - [x] 舞台特效归档到 `shared/fx/js/stage`，Phone 学习模式与 TV 播放共用资源；播放器 timeline 归档到 `phone/player/js/playback`。
-- [ ] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
-- [ ] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
-- [ ] 验收：`npm run check` 绿色，且 phone/tv 入口各有独立模块加载测试。
+- [x] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
+- [x] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
+- [x] 验收：`npm run check` 绿色，且 phone/tv 入口各有独立模块加载测试。
 
-### R5D Web / embedded 资产一致性 — 待开始
+证据：`frontend/tsconfig.json` 已纳入 playback timeline 与 `shared/fx`；`backend/tests/test_frontend_types.py`、`test_stage_fx_split.py` 和 `test_frontend_split.py` 检查类型声明、反向依赖和入口路径。执行 `npm ci --ignore-scripts`、`npm run check`（tsc、ESLint、Prettier）通过。
 
-- [ ] 一次构建生成 `frontend-dist` 和 `manifest.json`，后端静态服务与 Android TV APK 复用同一份产物。
-- [ ] asset revision 改用 git commit/content hash，统一公网与 TV 内嵌资源的缓存语义。
-- [ ] 增加公网文件与 TV 内嵌文件的路径、hash、入口 smoke test，防止 TV APK 提供旧版 `m.html`。
-- [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致。
+### R5D Web / embedded 资产一致性 — 已完成（构建链闭环；真实 APK 对比留项）
+
+- [x] 一次构建生成 `frontend-dist` 和 `manifest.json`，后端静态服务与 Android TV APK 复用同一份产物。
+- [x] asset revision 使用内容 SHA-256（并记录 git commit），后端和 Android `AssetRev` 均从 manifest 读取。
+- [ ] 增加真实公网文件与已构建 TV APK 内嵌文件的路径/hash/入口对比；当前只有源码产物和 manifest 的契约测试，尚未对 APK 解包结果做自动比对。
+- [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致（需真实 APK 产物）。
+
+证据：`scripts/build-frontend-dist.py`、`backend/lovktv/assets.py`、`android-tv/app/src/main/java/com/lovktv/tv/platform/AssetRev.kt` 形成单一 manifest/revision 链；`backend/tests/test_assets.py` 覆盖 manifest、版本注入和 web 产物入口。Android Gradle 任务 `copyWebAssets` 已依赖该构建脚本，但本工作树未提供可复验的 APK/Gradle SDK，因此 APK parity 仍是明确留项。
 
 ### R6 生命周期与部署 — 已完成
 
@@ -110,14 +121,17 @@
 - 删除 `main` 的动态路由再导出、`runtime` 对 `main` 的反向兼容 helper，以及 `store` 的房间函数兼容导出；公网 API 路径与房间 WebSocket 消息格式不变。
 - 房间与时间轴契约归档到 `lovktv/domain/`，根级契约入口同步移除；`domain` 保持纯协议定义，不反向依赖路由或存储。
 
+证据：`cbd2eea` 完成 backend package boundary migration，`2234324` 收紧 domain contract imports；`backend/tests/test_catalog_split.py`、`test_align_modules.py`、`test_room_service.py` 和路由 smoke 覆盖旧入口移除后的调用边界。前端兼容层和旧 Android bridge 也已在 `0ff3f2d` 前合并清理。
+
 ## 当前跟进
 
-当前批次（`R6-2026.08.29-lifespan-01`）在 R5A/B/C 基础上完成 FastAPI lifespan、后台 worker 启停、健康探针、锁定环境测试和公网验收脚本；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
+当前基线为 `0ff3f2d`（2026-08-30）：在 R6 lifespan/部署验收的基础上，R7 backend compatibility cleanup、backend package boundary migration、frontend asset taxonomy 以及 R5B/R5C/R5D 的可运行实现均已合并。R5 仍保持进行中，原因是以下 ownership/发布验收尚未完成：
 
 - R5A：平台能力与页面 DOM contract（已完成 Phone ports、桥隔离、LAN HTTP 回调和降级测试）。
 - R5B：TV 播放运行时收敛（删除 classic/QR 旧入口，统一 module 播放路径，补齐播放转场护栏）。
-- R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
+- R5C：shared 资源与类型边界（已完成；timeline、stage FX、bridge/API 类型均纳入检查）。
+- R5D：Web/embedded 构建与 manifest/revision（构建链已完成，真实 APK hash/revision 对比待补）。
 
-本批次新增验收：`backend/tests/test_lifecycle.py` 覆盖 lifespan、worker 启停和四个公网路径；`scripts/accept-production.py` 可直接对公网运行。锁定环境完整 pytest 通过；`npm run check` 通过。
+本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（335 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
 
-> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，保留为下一批独立改动；本批已闭环 adapter、桥隔离、LAN 回调、降级和 DOM contract。
+> 明确留项（下一批）：`mount(root, deps)` 逐模块重写 DOM 注入；Phone/TV 状态 ownership（room/catalog/player 等 store 迁移）；以及用真实 TV APK 解包产物和公网 bundle 做路径、文件 hash、manifest revision 对比。本批已闭环 adapter、桥隔离、LAN 回调、降级、DOM contract、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。
