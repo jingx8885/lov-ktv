@@ -42,6 +42,14 @@
 - [x] `lovktv.store` 仅保留无 SQL 的迁移导出，业务调用方改用 `room_store`。
 - [x] 验收：事务边界和现有 schema 不变，房间/LAN/schema 回归通过（23 项）。
 
+### R4A 后台目录归类 — 已完成
+
+- [x] `catalog` 按 search、lyrics、audio、importer 拆分，外部 provider 仅由对应模块依赖。
+- [x] `pipeline` 按 processing 阶段拆分为 audio、bounds、clock、energy、matching 等模块。
+- [x] HTTP 路由集中到 `routers/`，应用服务集中到 `services/`，进程状态集中到 `runtime.py`。
+- [x] 房间与时间轴协议契约归档到 `domain/`；删除旧的 `catalog.fetch`、根级契约和路由导出 facade，生产调用方和测试均使用新路径。
+- [x] setuptools、ruff、pyright 配置覆盖新包结构，禁止循环依赖（domain 不依赖 transport）。
+
 ### R5 播放协议与前端状态 — 进行中
 
 - [x] 固化后端房间 action 和 snapshot 字段契约（`contracts.py`）。

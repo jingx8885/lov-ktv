@@ -7,12 +7,24 @@ import threading
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation, line_is_romaji
-from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, translate_lines
-from lovktv.catalog.fetch import import_song, parse_lrc
+from lovktv import store as _store
+from lovktv.agents.ja_lyrics import (
+    annotate_ja_lines,
+    apply_ja_annotation,
+    line_is_romaji,
+)
+from lovktv.agents.translate import (
+    apply_zh_translation,
+    is_chinese_lang,
+    translate_lines,
+)
+from lovktv.catalog.importer import import_song
+from lovktv.catalog.lyrics import parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
 from lovktv.config import MEDIA_DIR
-from lovktv.pipeline.align import align_lyrics, extract_envelope, pack_tokens_to_singing, probe_duration_ms
+from lovktv.pipeline.align import align_lyrics
+from lovktv.pipeline.audio import extract_envelope, probe_duration_ms
+from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.language import resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,
@@ -22,9 +34,8 @@ from lovktv.pipeline.lyrics import (
     write_subtitles,
 )
 from lovktv.pipeline.mtv import compose_mtv
-from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
-from lovktv import store as _store
+from lovktv.pipeline.transcribe import transcribe_words
 
 
 class SongRepository(Protocol):
@@ -57,8 +68,9 @@ class StoreSongRepository:
 
 song_repository: SongRepository = StoreSongRepository()
 
-# Compatibility seams for existing callers/tests.  Worker code calls these
-# names, while the actual persistence dependency is now injected above.
+
+# Repository operations are kept in one place so worker code remains
+# independent from the concrete storage implementation.
 def get_song(song_id: str) -> dict | None:
     return song_repository.get(song_id)
 
@@ -83,6 +95,7 @@ def _publish_ready(song_id: str) -> None:
     except Exception as exc:  # noqa: BLE001
         print(f"[lovktv] oss publish {song_id} skipped: {exc}", flush=True)
 
+
 JobFn = Callable[..., Any]
 
 
@@ -94,12 +107,27 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
     guide = out_dir / "guide.m4a"
     if shutil.which("ffmpeg"):
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "192k", str(karaoke)],
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src),
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                str(karaoke),
+            ],
             check=True,
             timeout=120,
             capture_output=True,
         )
-        subprocess.run(["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)], check=True, timeout=120, capture_output=True)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)],
+            check=True,
+            timeout=120,
+            capture_output=True,
+        )
     else:
         shutil.copy2(src, out_dir / "karaoke.m4a")
         shutil.copy2(src, out_dir / "guide.m4a")
@@ -108,7 +136,9 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
 def _is_mugen_skeleton(skeleton: dict) -> bool:
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
     audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
-    return source.get("provider") == "karaoke-mugen" or str(audio.get("source") or "").startswith("mugen")
+    return source.get("provider") == "karaoke-mugen" or str(
+        audio.get("source") or ""
+    ).startswith("mugen")
 
 
 def _is_mugen_dual(skeleton: dict) -> bool:
@@ -130,17 +160,25 @@ def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
             return "dual"
         _fallback_media(src, out_dir)
         return "dual-fallback"
-    off = is_off_vocal(str(source.get("songname") or ""), str(skeleton.get("title") or ""))
+    off = is_off_vocal(
+        str(source.get("songname") or ""), str(skeleton.get("title") or "")
+    )
     if off:
         if src.exists() and not karaoke.exists():
             _fallback_media(src, out_dir)
-        if attach_vocal_audio(out_dir, skeleton) and karaoke.exists() and original.exists():
+        if (
+            attach_vocal_audio(out_dir, skeleton)
+            and karaoke.exists()
+            and original.exists()
+        ):
             return "off-vocal+vocal"
     separate_vocals(original if original.exists() else src, out_dir)
     return "onnx"
 
 
-def process_import(song_id: str, query: str, netease_id: str = "", language: str | None = None) -> None:
+def process_import(
+    song_id: str, query: str, netease_id: str = "", language: str | None = None
+) -> None:
     out_dir = MEDIA_DIR / song_id
     try:
         update_song(song_id, status="fetching")
@@ -255,7 +293,9 @@ def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
         return False
 
 
-def _translate_foreign_timeline(song_id: str, out_dir: Path, timeline: dict, language: str | None) -> bool:
+def _translate_foreign_timeline(
+    song_id: str, out_dir: Path, timeline: dict, language: str | None
+) -> bool:
     cues = timeline.get("cues") or []
     if not cues or is_chinese_lang(language or timeline.get("language")):
         return False
@@ -296,7 +336,9 @@ def _finish_ready_lyrics(
     timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
     song = get_song(song_id) or {}
     blob = "".join(_cue_source(cue) for cue in timeline.get("cues") or [])
-    lang = resolve_language(blob, language, timeline.get("language"), song.get("language"))
+    lang = resolve_language(
+        blob, language, timeline.get("language"), song.get("language")
+    )
     timeline["language"] = lang
     burned = bool(timeline.get("burned_lyrics"))
     official = _stamp_native_video(timeline, out_dir)
@@ -411,11 +453,17 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
     )
     rows = prepare_lyric_lines(rows, lang)
     src = out_dir / "original.mp3"
-    timeline = rebuild_manual_timeline(rows, existing, probe_duration_ms(src) if src.exists() else None)
+    timeline = rebuild_manual_timeline(
+        rows, existing, probe_duration_ms(src) if src.exists() else None
+    )
     notes_path = out_dir / "ja-annotate.json"
     if lang == "ja":
-        if notes_path.exists() and not any(line_is_romaji(_cue_source(cue)) for cue in timeline.get("cues") or []):
-            apply_ja_annotation(timeline, json.loads(notes_path.read_text(encoding="utf-8")))
+        if notes_path.exists() and not any(
+            line_is_romaji(_cue_source(cue)) for cue in timeline.get("cues") or []
+        ):
+            apply_ja_annotation(
+                timeline, json.loads(notes_path.read_text(encoding="utf-8"))
+            )
         else:
             _annotate_ja_timeline(song_id, out_dir, timeline)
     voice = out_dir / "vocals.wav"
@@ -446,7 +494,9 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
         _publish_ready(song_id)
 
 
-def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool = False) -> None:
+def process_realign(
+    song_id: str, language: str | None = None, rebuild_mtv: bool = False
+) -> None:
     """Re-run the same ASR + lyric pipeline used by import/upload."""
     out_dir = MEDIA_DIR / song_id
     src = out_dir / "original.mp3"
@@ -533,24 +583,25 @@ def _job_key(fn: JobFn, args: tuple) -> str:
 
 
 class JobQueue:
-    """Small single-worker queue with duplicate suppression.
-
-    Keeping queue lifecycle in an object makes the worker independently
-    replaceable in tests or by a process-backed implementation.  The module
-    level :func:`spawn` below remains the compatibility boundary used by API
-    handlers and recovery code.
-    """
+    """Small single-worker queue with duplicate suppression."""
 
     def __init__(self, worker_name: str = "lovktv-jobs") -> None:
-        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = queue.Queue()
+        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = (
+            queue.Queue()
+        )
         self._queued: set[str] = set()
         self._lock = threading.Lock()
         self._worker_started = False
+        self._worker_thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
         self._worker_name = worker_name
 
     def _worker(self) -> None:
-        while True:
-            fn, args, kwargs, key = self._jobs.get()
+        while not self._stop_event.is_set():
+            try:
+                fn, args, kwargs, key = self._jobs.get(timeout=0.2)
+            except queue.Empty:
+                continue
             try:
                 print(f"[lovktv] start {key}", flush=True)
                 fn(*args, **kwargs)
@@ -561,6 +612,61 @@ class JobQueue:
                 with self._lock:
                     self._queued.discard(key)
                 self._jobs.task_done()
+        with self._lock:
+            self._worker_started = False
+            self._worker_thread = None
+
+    def start(self) -> bool:
+        """Start the queue worker once and report whether it was started."""
+        with self._lock:
+            if (
+                self._worker_started
+                and self._worker_thread
+                and self._worker_thread.is_alive()
+            ):
+                return False
+            self._stop_event.clear()
+            self._worker_started = True
+            self._worker_thread = threading.Thread(
+                target=self._worker,
+                name=self._worker_name,
+                daemon=True,
+            )
+            self._worker_thread.start()
+            return True
+
+    def stop(self, timeout: float = 5.0) -> bool:
+        """Stop the worker and discard jobs that have not started yet."""
+        with self._lock:
+            thread = self._worker_thread
+            if not self._worker_started or thread is None:
+                return False
+            self._stop_event.set()
+        thread.join(max(0.0, timeout))
+        if thread.is_alive():
+            return False
+        while True:
+            try:
+                _fn, _args, _kwargs, key = self._jobs.get_nowait()
+            except queue.Empty:
+                break
+            with self._lock:
+                self._queued.discard(key)
+            self._jobs.task_done()
+        with self._lock:
+            self._worker_started = False
+            self._worker_thread = None
+        return True
+
+    def health(self) -> dict[str, Any]:
+        """Return non-secret worker state for readiness and diagnostics."""
+        with self._lock:
+            thread = self._worker_thread
+            return {
+                "running": bool(thread and thread.is_alive()),
+                "queued": len(self._queued),
+                "pending": self._jobs.qsize(),
+            }
 
     def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
         """Queue work and return ``False`` when an identical job is pending."""
@@ -569,10 +675,8 @@ class JobQueue:
             if key in self._queued:
                 return False
             self._queued.add(key)
-            if not self._worker_started:
-                self._worker_started = True
-                threading.Thread(target=self._worker, name=self._worker_name, daemon=True).start()
             self._jobs.put((fn, args, kwargs, key))
+        self.start()
         return True
 
 
@@ -599,7 +703,7 @@ def _has_ready_lyrics(out_dir: Path) -> bool:
 
 
 class _ModuleSongRepository:
-    """Compatibility adapter that keeps monkeypatchable module seams alive."""
+    """Repository adapter backed by this module's configured repository."""
 
     def list(self) -> list[dict]:
         return list_songs()
@@ -634,8 +738,13 @@ class JobRecovery:
             status = str(song.get("status") or "")
             song_id = str(song["id"])
             out_dir = media_dir / song_id
-            has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
-            if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
+            has_audio = (out_dir / "original.mp3").exists() or (
+                out_dir / "vocals.wav"
+            ).exists()
+            if (
+                status in {"aligning", "annotating", "composing", "separating"}
+                and has_audio
+            ):
                 if _has_ready_lyrics(out_dir):
                     pending_finish.append((song_id, out_dir, song.get("language")))
                 else:
@@ -643,7 +752,12 @@ class JobRecovery:
                 continue
             if status in {"queued", "fetching"}:
                 pending_import.append(
-                    (song_id, songs.retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
+                    (
+                        song_id,
+                        songs.retry_query(song),
+                        str(song.get("netease_id") or ""),
+                        song.get("language"),
+                    )
                 )
         for song_id, out_dir, language in pending_finish:
             src = out_dir / "original.mp3"
@@ -657,7 +771,12 @@ class JobRecovery:
             submit(_finish_ready_lyrics, song_id, out_dir, src, language, False)
             resumed += 1
         for song_id, language in pending_align:
-            submit(process_realign, song_id, language, not _has_native_mtv(media_dir / song_id))
+            submit(
+                process_realign,
+                song_id,
+                language,
+                not _has_native_mtv(media_dir / song_id),
+            )
             resumed += 1
         for song_id, query, netease_id, language in pending_import:
             submit(process_import, song_id, query, netease_id, language)
@@ -668,5 +787,5 @@ class JobRecovery:
 
 
 def resume_stuck_jobs() -> int:
-    """Compatibility wrapper for the injectable :class:`JobRecovery`."""
+    """Resume persisted jobs after a process restart."""
     return JobRecovery().resume()

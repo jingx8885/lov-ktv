@@ -7,12 +7,15 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Iterable
 
-from lovktv.config import DB_PATH as DEFAULT_DB_PATH, MEDIA_DIR
+from lovktv.config import DB_PATH as DEFAULT_DB_PATH
+from lovktv.config import MEDIA_DIR
 from lovktv.schema import POSTGRES_DDL, ROOM_MIGRATIONS, SQLITE_DDL
 
 
 def database_url() -> str:
-    return (os.environ.get("LOVKTV_DATABASE_URL") or os.environ.get("DATABASE_URL") or "").strip()
+    return (
+        os.environ.get("LOVKTV_DATABASE_URL") or os.environ.get("DATABASE_URL") or ""
+    ).strip()
 
 
 def is_postgres_url(url: str) -> bool:
@@ -70,7 +73,9 @@ def executescript(conn: Any, sql: str) -> None:
 def _split_sql(sql: str) -> list[str]:
     parts = []
     for chunk in sql.split(";"):
-        stmt = "\n".join(line for line in chunk.splitlines() if not line.strip().startswith("--")).strip()
+        stmt = "\n".join(
+            line for line in chunk.splitlines() if not line.strip().startswith("--")
+        ).strip()
         if stmt:
             parts.append(stmt)
     return parts

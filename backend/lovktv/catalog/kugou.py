@@ -40,7 +40,9 @@ def decode_krc(content: str) -> str:
     raw = base64.b64decode(content)
     if len(raw) <= 4:
         raise ValueError("KRC 太短")
-    decrypted = bytes(byte ^ KRC_KEY[index % len(KRC_KEY)] for index, byte in enumerate(raw[4:]))
+    decrypted = bytes(
+        byte ^ KRC_KEY[index % len(KRC_KEY)] for index, byte in enumerate(raw[4:])
+    )
     plain = zlib.decompress(decrypted)
     if plain.startswith(b"\xef\xbb\xbf"):
         plain = plain[3:]
@@ -90,7 +92,9 @@ def parse_krc(raw: str, title: str = "", artist: str = "") -> list[dict[str, Any
             if int(word_dur) <= 0 and tokens:
                 tokens[-1]["text"] += text
                 continue
-            tokens.append({"text": text, "start_ms": tok_start, "end_ms": tok_end, "reading": ""})
+            tokens.append(
+                {"text": text, "start_ms": tok_start, "end_ms": tok_end, "reading": ""}
+            )
         line_text = "".join(str(token["text"]) for token in tokens).strip()
         if not line_text or _is_banner(line_text, title, artist):
             continue
@@ -98,15 +102,26 @@ def parse_krc(raw: str, title: str = "", artist: str = "") -> list[dict[str, Any
         if tokens:
             start_ms = tokens[0]["start_ms"]
             end_ms = max(end_ms, tokens[-1]["end_ms"])
-        cues.append({"text": line_text, "start_ms": start_ms, "end_ms": end_ms, "tokens": tokens})
+        cues.append(
+            {
+                "text": line_text,
+                "start_ms": start_ms,
+                "end_ms": end_ms,
+                "tokens": tokens,
+            }
+        )
     return cues
 
 
-def timeline_from_krc(raw: str, title: str = "", artist: str = "", language: str | None = None) -> dict[str, Any]:
+def timeline_from_krc(
+    raw: str, title: str = "", artist: str = "", language: str | None = None
+) -> dict[str, Any]:
     cues = parse_krc(raw, title=title, artist=artist)
     if not cues:
         raise RuntimeError("酷狗歌词是空的")
-    lang = detect_language("".join(str(cue.get("text") or "") for cue in cues), language)
+    lang = detect_language(
+        "".join(str(cue.get("text") or "") for cue in cues), language
+    )
     return {
         "language": lang,
         "alignment": "kugou",
@@ -121,7 +136,9 @@ def lrc_from_cues(cues: list[dict[str, Any]]) -> str:
         ms = int(cue.get("start_ms") or 0)
         minutes, rem = divmod(ms, 60_000)
         seconds, milli = divmod(rem, 1000)
-        lines.append(f"[{minutes:02d}:{seconds:02d}.{milli:03d}]{cue.get('text') or ''}")
+        lines.append(
+            f"[{minutes:02d}:{seconds:02d}.{milli:03d}]{cue.get('text') or ''}"
+        )
     return "\n".join(lines) + "\n"
 
 
@@ -208,7 +225,9 @@ def fetch_kugou_lyrics(
         candidates = search_kugou_lyrics(keyword, duration_ms=duration_ms)
         if not candidates and artist:
             candidates = search_kugou_lyrics(title, duration_ms=duration_ms)
-        chosen = pick_candidate(candidates, title=title, artist=artist, duration_ms=duration_ms)
+        chosen = pick_candidate(
+            candidates, title=title, artist=artist, duration_ms=duration_ms
+        )
         if not chosen:
             return None
         raw = download_kugou_krc(chosen)

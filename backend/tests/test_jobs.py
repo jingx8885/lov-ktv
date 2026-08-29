@@ -77,9 +77,9 @@ def test_song_repository_is_replaceable(monkeypatch):
             return "fake query"
 
     monkeypatch.setattr(jobs, "song_repository", FakeSongs())
-    assert jobs.get_song("s1")["status"] == "ready"
-    assert jobs.list_songs() == [{"id": "s1"}]
-    assert jobs.retry_query({}) == "fake query"
+    assert jobs.song_repository.get("s1")["status"] == "ready"
+    assert jobs.song_repository.list() == [{"id": "s1"}]
+    assert jobs.song_repository.retry_query({}) == "fake query"
 
 
 def test_job_recovery_accepts_repository_and_submitter(tmp_path):

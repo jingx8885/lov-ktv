@@ -23,7 +23,9 @@ GITLAB_ARCHIVE = (
     f"https://gitlab.com/api/v4/projects/{GITLAB_PROJECT}/repository/archive.zip"
     "?sha=master&path={path}"
 )
-GITLAB_KARA = "https://gitlab.com/kara.moe/karaokebase/-/raw/master/karaokes/{kid}.kara.json"
+GITLAB_KARA = (
+    "https://gitlab.com/kara.moe/karaokebase/-/raw/master/karaokes/{kid}.kara.json"
+)
 GITLAB_LYRICS = "https://gitlab.com/kara.moe/karaokebase/-/raw/master/lyrics/{name}"
 INDEX_TTL_SEC = 7 * 24 * 3600
 LANG_FROM_TAG = {
@@ -78,7 +80,11 @@ def _norm(text: str) -> str:
 
 def _tag_names(tag: dict[str, Any]) -> list[str]:
     i18n = tag.get("i18n") if isinstance(tag.get("i18n"), dict) else {}
-    values = [tag.get("name"), *(i18n.values() if i18n else ()), *(tag.get("aliases") or [])]
+    values = [
+        tag.get("name"),
+        *(i18n.values() if i18n else ()),
+        *(tag.get("aliases") or []),
+    ]
     out: list[str] = []
     seen: set[str] = set()
     for value in values:
@@ -102,7 +108,9 @@ def parse_tag_file(raw: dict[str, Any]) -> tuple[str, dict[str, Any]] | None:
     }
 
 
-def _names_for(tag_ids: dict[str, Any], key: str, tags: dict[str, dict[str, Any]]) -> list[str]:
+def _names_for(
+    tag_ids: dict[str, Any], key: str, tags: dict[str, dict[str, Any]]
+) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for tid in tag_ids.get(key) or []:
@@ -130,7 +138,9 @@ def artist_from_songname(songname: str) -> str:
     return ""
 
 
-def kara_to_item(raw: dict[str, Any], tags: dict[str, dict[str, Any]] | None = None) -> dict[str, Any] | None:
+def kara_to_item(
+    raw: dict[str, Any], tags: dict[str, dict[str, Any]] | None = None
+) -> dict[str, Any] | None:
     from lovktv.catalog.mugen import is_off_vocal
 
     data = raw.get("data") if isinstance(raw.get("data"), dict) else raw
@@ -141,13 +151,18 @@ def kara_to_item(raw: dict[str, Any], tags: dict[str, dict[str, Any]] | None = N
     songname = str(data.get("songname") or "")
     tag_ids = data.get("tags") if isinstance(data.get("tags"), dict) else {}
     tag_map = tags or {}
-    artists = _names_for(tag_ids, "singergroups", tag_map) + _names_for(tag_ids, "singers", tag_map)
+    artists = _names_for(tag_ids, "singergroups", tag_map) + _names_for(
+        tag_ids, "singers", tag_map
+    )
     if not artists:
         parsed = artist_from_songname(songname)
         if parsed:
             artists = [parsed]
     medias = raw.get("medias") if isinstance(raw.get("medias"), list) else []
-    media = next((item for item in medias if isinstance(item, dict) and item.get("default")), None)
+    media = next(
+        (item for item in medias if isinstance(item, dict) and item.get("default")),
+        None,
+    )
     if media is None:
         media = next((item for item in medias if isinstance(item, dict)), {})
     lyrics = ""
@@ -196,7 +211,9 @@ def load_json_bytes(raw: bytes) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-def build_items_from_zip(kara_zip: Path, tag_zip: Path | None = None) -> list[dict[str, Any]]:
+def build_items_from_zip(
+    kara_zip: Path, tag_zip: Path | None = None
+) -> list[dict[str, Any]]:
     tags: dict[str, dict[str, Any]] = {}
     if tag_zip and tag_zip.exists():
         with zipfile.ZipFile(tag_zip) as archive:
@@ -223,7 +240,9 @@ def build_items_from_zip(kara_zip: Path, tag_zip: Path | None = None) -> list[di
     return items
 
 
-def build_items_from_files(kara_files: list[dict[str, Any]], tag_files: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def build_items_from_files(
+    kara_files: list[dict[str, Any]], tag_files: list[dict[str, Any]] | None = None
+) -> list[dict[str, Any]]:
     tags: dict[str, dict[str, Any]] = {}
     for raw in tag_files or []:
         row = parse_tag_file(raw)
@@ -257,7 +276,9 @@ def _score(item: dict[str, Any], needle: str) -> int | None:
     return None
 
 
-def search_items(items: list[dict[str, Any]], query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
+def search_items(
+    items: list[dict[str, Any]], query: str, count: int = 10, page: int = 1
+) -> dict[str, Any]:
     page = max(1, int(page))
     count = max(1, min(int(count), 30))
     needle = _norm(query).strip()
@@ -268,7 +289,17 @@ def search_items(items: list[dict[str, Any]], query: str, count: int = 10, page:
             if score is None:
                 continue
             ranked.append((score, item))
-        ranked.sort(key=lambda row: (row[0], bool(row[1].get("off_vocal")), str((row[1].get("titles") or {}).get("jpn") or row[1].get("songname") or "")))
+        ranked.sort(
+            key=lambda row: (
+                row[0],
+                bool(row[1].get("off_vocal")),
+                str(
+                    (row[1].get("titles") or {}).get("jpn")
+                    or row[1].get("songname")
+                    or ""
+                ),
+            )
+        )
         matched = [item for _, item in ranked]
     else:
         matched = list(items)
@@ -312,7 +343,10 @@ def write_cache(items: list[dict[str, Any]], root: Path | None = None) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".json.part")
     tmp.write_text(
-        json.dumps({"built_at": time.time(), "count": len(items), "items": items}, ensure_ascii=False),
+        json.dumps(
+            {"built_at": time.time(), "count": len(items), "items": items},
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
     tmp.replace(path)
@@ -331,7 +365,10 @@ def cached_items(root: Path | None = None) -> list[dict[str, Any]]:
 
 
 def _allow_download() -> bool:
-    if os.environ.get("PYTEST_CURRENT_TEST") and os.environ.get("LOVKTV_MUGEN_INDEX_DOWNLOAD") != "1":
+    if (
+        os.environ.get("PYTEST_CURRENT_TEST")
+        and os.environ.get("LOVKTV_MUGEN_INDEX_DOWNLOAD") != "1"
+    ):
         return False
     return os.environ.get("LOVKTV_MUGEN_INDEX_DOWNLOAD", "1") != "0"
 
@@ -343,9 +380,13 @@ def _download_archives(root: Path) -> list[dict[str, Any]]:
     work.mkdir(parents=True, exist_ok=True)
     kara_zip = work / "karaokes.zip"
     tag_zip = work / "tags.zip"
-    download_file(GITLAB_ARCHIVE.format(path="karaokes"), kara_zip, timeout=90, min_size=1_000_000)
+    download_file(
+        GITLAB_ARCHIVE.format(path="karaokes"), kara_zip, timeout=90, min_size=1_000_000
+    )
     try:
-        download_file(GITLAB_ARCHIVE.format(path="tags"), tag_zip, timeout=90, min_size=100_000)
+        download_file(
+            GITLAB_ARCHIVE.format(path="tags"), tag_zip, timeout=90, min_size=100_000
+        )
     except Exception:
         tag_zip = Path()
     try:

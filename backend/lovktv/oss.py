@@ -97,7 +97,9 @@ def _content_type(name: str) -> str:
 
 
 def _endpoint_host() -> str:
-    host = ALIYUN_OSS_ENDPOINT.removeprefix("https://").removeprefix("http://").strip("/")
+    host = (
+        ALIYUN_OSS_ENDPOINT.removeprefix("https://").removeprefix("http://").strip("/")
+    )
     return host
 
 
@@ -120,9 +122,15 @@ def _sign(
             canonical += f"{name.lower()}:{extra[name]}\n"
     if content_type:
         headers["Content-Type"] = content_type
-    resource = f"/{ALIYUN_OSS_BUCKET_NAME}/{key}" if key else f"/{ALIYUN_OSS_BUCKET_NAME}/"
+    resource = (
+        f"/{ALIYUN_OSS_BUCKET_NAME}/{key}" if key else f"/{ALIYUN_OSS_BUCKET_NAME}/"
+    )
     if subresource:
-        resource = f"/{ALIYUN_OSS_BUCKET_NAME}/{key}?{subresource}" if key else f"/{ALIYUN_OSS_BUCKET_NAME}/?{subresource}"
+        resource = (
+            f"/{ALIYUN_OSS_BUCKET_NAME}/{key}?{subresource}"
+            if key
+            else f"/{ALIYUN_OSS_BUCKET_NAME}/?{subresource}"
+        )
     string = f"{method}\n{content_md5}\n{content_type}\n{date}\n{canonical}{resource}"
     digest = hmac.new(
         ALIYUN_OSS_ACCESS_KEY_SECRET.encode("utf-8"),
@@ -165,7 +173,10 @@ def cors_allows_media(xml: str) -> bool:
                 origins.add(value)
             elif name == "AllowedMethod":
                 methods.add(value.upper())
-        if origins.intersection({"*", "https://ktv.lovbrowser.com"}) and "GET" in methods:
+        if (
+            origins.intersection({"*", "https://ktv.lovbrowser.com"})
+            and "GET" in methods
+        ):
             return True
     return False
 
@@ -200,7 +211,9 @@ def ensure_bucket_cors() -> str:
             return "already"
         raw = body.encode("utf-8")
         digest = base64.b64encode(hashlib.md5(raw).digest()).decode("ascii")
-        put_headers = _sign("PUT", "", "application/xml", content_md5=digest, subresource="cors")
+        put_headers = _sign(
+            "PUT", "", "application/xml", content_md5=digest, subresource="cors"
+        )
         put_headers["Content-Length"] = str(len(raw))
         res = client.put(_object_url("", "cors"), headers=put_headers, content=raw)
         res.raise_for_status()
@@ -252,7 +265,9 @@ def write_marker(song_id: str, names: list[str]) -> Path:
         except (OSError, json.JSONDecodeError):
             native = False
     if not native:
-        native = (MEDIA_DIR / song_id / "mugen.mp4").exists() or (MEDIA_DIR / song_id / "mugen.webm").exists()
+        native = (MEDIA_DIR / song_id / "mugen.mp4").exists() or (
+            MEDIA_DIR / song_id / "mugen.webm"
+        ).exists()
     from lovktv.store import media_rev
 
     payload = {"files": names, "native_video": native, "media_rev": media_rev(song_id)}
@@ -302,7 +317,9 @@ def remote_native(song_id: str) -> bool:
     marker = folder / "oss.json"
     if marker.exists():
         try:
-            return bool(json.loads(marker.read_text(encoding="utf-8")).get("native_video"))
+            return bool(
+                json.loads(marker.read_text(encoding="utf-8")).get("native_video")
+            )
         except (OSError, json.JSONDecodeError):
             return False
     return head_object(song_id, "mtv.mp4") or head_object(song_id, "lyrics.json")

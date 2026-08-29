@@ -30,9 +30,65 @@ VIEW_URL = "https://api.bilibili.com/x/web-interface/view"
 PLAYURL = "https://api.bilibili.com/x/player/playurl"
 PAGE_ORIGIN = "https://www.bilibili.com"
 WBI_MIXIN = [
-    46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
-    33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40,
-    61, 26, 17, 0, 1, 60, 51, 30, 4, 54, 52, 22, 25, 20, 56, 34, 21, 11, 44, 6,
+    46,
+    47,
+    18,
+    2,
+    53,
+    8,
+    23,
+    32,
+    15,
+    50,
+    10,
+    31,
+    58,
+    3,
+    45,
+    35,
+    27,
+    43,
+    5,
+    49,
+    33,
+    9,
+    42,
+    19,
+    29,
+    28,
+    14,
+    39,
+    12,
+    38,
+    41,
+    13,
+    37,
+    48,
+    7,
+    16,
+    24,
+    55,
+    40,
+    61,
+    26,
+    17,
+    0,
+    1,
+    60,
+    51,
+    30,
+    4,
+    54,
+    52,
+    22,
+    25,
+    20,
+    56,
+    34,
+    21,
+    11,
+    44,
+    6,
 ]
 BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -136,11 +192,18 @@ def mixin_key(img_key: str, sub_key: str) -> str:
     return "".join(raw[index] for index in WBI_MIXIN if index < len(raw))[:32]
 
 
-def sign_wbi(params: dict[str, Any], img_key: str, sub_key: str, ts: int | None = None) -> dict[str, Any]:
-    signed = {str(key): "".join(ch for ch in str(value) if ch not in "!'()*") for key, value in params.items()}
+def sign_wbi(
+    params: dict[str, Any], img_key: str, sub_key: str, ts: int | None = None
+) -> dict[str, Any]:
+    signed = {
+        str(key): "".join(ch for ch in str(value) if ch not in "!'()*")
+        for key, value in params.items()
+    }
     signed["wts"] = int(ts if ts is not None else time.time())
     query = urllib.parse.urlencode(dict(sorted(signed.items())))
-    signed["w_rid"] = hashlib.md5((query + mixin_key(img_key, sub_key)).encode()).hexdigest()
+    signed["w_rid"] = hashlib.md5(
+        (query + mixin_key(img_key, sub_key)).encode()
+    ).hexdigest()
     return signed
 
 
@@ -153,7 +216,11 @@ def wbi_keys() -> tuple[str, str]:
         data = api_get(NAV_URL, timeout=8)
     except Exception:
         data = {}
-    img = ((data.get("data") or {}).get("wbi_img") or {}) if isinstance(data, dict) else {}
+    img = (
+        ((data.get("data") or {}).get("wbi_img") or {})
+        if isinstance(data, dict)
+        else {}
+    )
     img_key = _wbi_filename(str(img.get("img_url") or ""))
     sub_key = _wbi_filename(str(img.get("sub_url") or ""))
     if img_key and sub_key:
@@ -176,7 +243,12 @@ def _video_items(payload: dict[str, Any]) -> list[dict[str, Any]]:
         return []
     data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
     result = data.get("result") or []
-    if isinstance(result, list) and result and isinstance(result[0], dict) and result[0].get("bvid"):
+    if (
+        isinstance(result, list)
+        and result
+        and isinstance(result[0], dict)
+        and result[0].get("bvid")
+    ):
         return [item for item in result if isinstance(item, dict)]
     if isinstance(result, list):
         for block in result:
@@ -203,7 +275,9 @@ def _search_wbi(query: str, count: int, page: int) -> list[dict[str, Any]]:
         sub_key,
     )
     try:
-        return _video_items(_search_payload(f"{WBI_SEARCH}?{urllib.parse.urlencode(params)}"))
+        return _video_items(
+            _search_payload(f"{WBI_SEARCH}?{urllib.parse.urlencode(params)}")
+        )
     except Exception:
         return []
 
@@ -255,7 +329,11 @@ def search_videos(query: str, count: int = 20, page: int = 1) -> list[dict[str, 
     count = max(1, min(int(count), 30))
     raw: list[dict[str, Any]] = []
     for attempt in range(3):
-        raw = _search_wbi(query, count, page) or _search_type(query, count, page) or _search_all(query, page)
+        raw = (
+            _search_wbi(query, count, page)
+            or _search_type(query, count, page)
+            or _search_all(query, page)
+        )
         if raw:
             break
         if attempt < 2:
@@ -295,7 +373,11 @@ def score_hit(hit: dict[str, Any], title: str, artist: str = "") -> int:
     if title and not title_in_video(video_title, title):
         return -1
     author = str(hit.get("author") or "")
-    if artist and artist.casefold() not in video_title.casefold() and artist.casefold() not in author.casefold():
+    if (
+        artist
+        and artist.casefold() not in video_title.casefold()
+        and artist.casefold() not in author.casefold()
+    ):
         return -1
     typename = str(hit.get("typename") or "")
     score = 0
@@ -380,7 +462,9 @@ def play_urls(bvid: str, timeout: float = 12) -> dict[str, str]:
     if not bvid:
         return {}
     try:
-        view = api_get(f"{VIEW_URL}?{urllib.parse.urlencode({'bvid': bvid})}", timeout=timeout)
+        view = api_get(
+            f"{VIEW_URL}?{urllib.parse.urlencode({'bvid': bvid})}", timeout=timeout
+        )
     except Exception:
         return {}
     data = view.get("data") if int(view.get("code") or 0) == 0 else None
@@ -396,7 +480,11 @@ def play_urls(bvid: str, timeout: float = 12) -> dict[str, str]:
         play = api_get(f"{PLAYURL}?{query}", timeout=timeout)
     except Exception:
         return {}
-    dash = ((play.get("data") or {}).get("dash") or {}) if int(play.get("code") or 0) == 0 else {}
+    dash = (
+        ((play.get("data") or {}).get("dash") or {})
+        if int(play.get("code") or 0) == 0
+        else {}
+    )
     audio = _pick_audio(dash.get("audio") or [])
     video = _pick_video(dash.get("video") or [])
     audio_url = _dash_url(audio) if audio else ""
@@ -443,10 +531,16 @@ def _curl_download(url: str, dest: Path, timeout: int = 180) -> bool:
         url,
     ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 10, check=False)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout + 10, check=False
+        )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
-    ok = (result.stdout or "").strip().startswith("2") and dest.exists() and dest.stat().st_size > 20_000
+    ok = (
+        (result.stdout or "").strip().startswith("2")
+        and dest.exists()
+        and dest.stat().st_size > 20_000
+    )
     if not ok and dest.exists():
         dest.unlink()
     return ok
@@ -456,7 +550,9 @@ def _ffmpeg(*args: str, timeout: int = 300) -> bool:
     if not shutil.which("ffmpeg"):
         return False
     try:
-        subprocess.run(["ffmpeg", "-y", *args], check=True, timeout=timeout, capture_output=True)
+        subprocess.run(
+            ["ffmpeg", "-y", *args], check=True, timeout=timeout, capture_output=True
+        )
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return False
     return True
@@ -469,40 +565,48 @@ def _to_mp3(src: Path, dest: Path) -> bool:
 
 
 def _to_mtv(src: Path, dest: Path) -> bool:
-    if _ffmpeg(
-        "-i",
-        str(src),
-        "-map",
-        "0:v:0",
-        "-c:v",
-        "copy",
-        "-an",
-        "-movflags",
-        "+faststart",
-        str(dest),
-    ) and dest.exists() and dest.stat().st_size > 1000:
+    if (
+        _ffmpeg(
+            "-i",
+            str(src),
+            "-map",
+            "0:v:0",
+            "-c:v",
+            "copy",
+            "-an",
+            "-movflags",
+            "+faststart",
+            str(dest),
+        )
+        and dest.exists()
+        and dest.stat().st_size > 1000
+    ):
         return True
     if dest.exists():
         dest.unlink()
-    if _ffmpeg(
-        "-i",
-        str(src),
-        "-map",
-        "0:v:0",
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-preset",
-        "veryfast",
-        "-crf",
-        "20",
-        "-an",
-        "-movflags",
-        "+faststart",
-        str(dest),
-        timeout=600,
-    ) and dest.exists() and dest.stat().st_size > 1000:
+    if (
+        _ffmpeg(
+            "-i",
+            str(src),
+            "-map",
+            "0:v:0",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-an",
+            "-movflags",
+            "+faststart",
+            str(dest),
+            timeout=600,
+        )
+        and dest.exists()
+        and dest.stat().st_size > 1000
+    ):
         return True
     if dest.exists():
         dest.unlink()

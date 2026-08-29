@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from lovktv.catalog import fetch, mugen
+from lovktv import host_volume, main, store
+from lovktv.catalog import audio, importer, mugen, search
+from lovktv.routers import songs as songs_router
 from lovktv import jobs
 
 
@@ -180,7 +182,6 @@ def test_open_mugen_preview_uses_mediafile(monkeypatch):
 def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from fastapi.testclient import TestClient
-    from lovktv import host_volume, main, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -201,7 +202,7 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
             pass
 
     monkeypatch.setattr(
-        main,
+        songs_router,
         "open_preview_stream",
         lambda *args, **kwargs: (FakeResp(), {"kind": "mugen", "title": "群青"}),
     )
@@ -216,7 +217,7 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
 
 def test_search_songs_puts_mugen_first(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [
@@ -235,14 +236,14 @@ def test_search_songs_puts_mugen_first(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda query, count=8, page=1: [
             {"id": "BV1xx", "title": "B站兜底", "artist": "UP", "source": "bilibili", "is_mv": True}
         ],
     )
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("NIGHT DANCER", count=10, page=1)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("NIGHT DANCER", count=10, page=1)
     assert result["hits"][0]["source"] == "mugen"
     assert result["hits"][0]["title"] == "NIGHT DANCER"
     assert result["hits"][1]["source"] == "bilibili"
@@ -274,10 +275,10 @@ def test_search_songs_queries_channels_together(monkeypatch):
         called.append("bilibili")
         return [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}]
 
-    monkeypatch.setattr(fetch, "search_mugen", fake_mugen)
-    monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("群青", count=10, page=1)
+    monkeypatch.setattr(search, "search_mugen", fake_mugen)
+    monkeypatch.setattr(search, "search_bilibili_hits", fake_bili)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("群青", count=10, page=1)
     assert set(called) == {"mugen", "bilibili"}
     assert result["hits"][0]["source"] == "mugen"
     assert any(hit["source"] == "bilibili" for hit in result["hits"])
@@ -286,7 +287,7 @@ def test_search_songs_queries_channels_together(monkeypatch):
 
 def test_search_songs_keeps_mugen_when_others_fail(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [{"id": "kid", "title": "群青", "source": "mugen", "is_mv": True}],
@@ -295,19 +296,19 @@ def test_search_songs_keeps_mugen_when_others_fail(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("down")),
     )
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("群青", count=10, page=1)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("群青", count=10, page=1)
     assert result["hits"][0]["title"] == "群青"
     assert result["hits"][0]["source"] == "mugen"
 
 
 def test_search_songs_shows_remaining_channels(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [{"id": "kid", "title": "Mugen", "source": "mugen", "is_mv": True}],
@@ -316,18 +317,18 @@ def test_search_songs_shows_remaining_channels(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda query, count=8, page=1: [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}],
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_ytdlp_hits",
         lambda query, provider, count=5, page=1: [
             {"id": "soundcloud_abc", "title": "sc", "artist": "", "source": "soundcloud", "is_mv": False}
         ],
     )
-    result = fetch.search_songs("晴天", count=10, page=1)
+    result = search.search_songs("晴天", count=10, page=1)
     assert [hit["source"] for hit in result["hits"]] == ["mugen", "bilibili", "soundcloud"]
     assert result["sources"] == ["mugen", "bilibili", "soundcloud"]
 
@@ -348,9 +349,9 @@ def test_import_song_prefers_vocal_mugen_hit(tmp_path, monkeypatch):
         (out_dir / "original.mp3").write_bytes(b"x" * 1000)
         return {"title": "群青", "source": {"provider": "karaoke-mugen", "kid": kid}}
 
-    monkeypatch.setattr(fetch, "search_mugen", fake_search)
-    monkeypatch.setattr(fetch, "import_mugen_song", fake_import)
-    fetch.import_song(query="群青 YOASOBI", out_dir=tmp_path)
+    monkeypatch.setattr(importer.mugen_provider, "search_mugen", fake_search)
+    monkeypatch.setattr(importer.mugen_provider, "import_mugen_song", fake_import)
+    importer.import_song(query="群青 YOASOBI", out_dir=tmp_path)
     assert called["kid"] == "88bbec95-58e2-4407-adf2-74d7c6e4ac1d"
 
 
@@ -363,8 +364,8 @@ def test_import_song_uses_mugen_kid(tmp_path, monkeypatch):
         (out_dir / "original.mp3").write_bytes(b"x" * 1000)
         return {"title": "NIGHT DANCER", "source": {"provider": "karaoke-mugen", "kid": kid}}
 
-    monkeypatch.setattr(fetch, "import_mugen_song", fake_import)
-    skeleton = fetch.import_song(
+    monkeypatch.setattr(importer.mugen_provider, "import_mugen_song", fake_import)
+    skeleton = importer.import_song(
         query="NIGHT DANCER",
         out_dir=tmp_path,
         song_id="13393b41-9204-42ca-b014-e548bd60ca9f",
@@ -743,16 +744,16 @@ def test_complete_mugen_audio_keeps_lyrics_when_media_missing(tmp_path, monkeypa
         "needs_separate": True,
     }
     monkeypatch.setattr(
-        fetch,
+        importer.audio_provider,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1xx", "title": "群青 MV"},
     )
     monkeypatch.setattr(
-        fetch,
+        importer.audio_provider,
         "try_bilibili_download",
         lambda bvid, mp3, video: mp3.write_bytes(b"a" * 2000) or True,
     )
-    filled = fetch._complete_mugen_audio(skeleton, tmp_path, "群青")
+    filled = importer._complete_mugen_audio(skeleton, tmp_path, "群青")
     assert filled["audio"]["source"] == "mugen-bilibili"
     assert (tmp_path / "original.mp3").exists()
     assert filled["source"]["provider"] == "karaoke-mugen"

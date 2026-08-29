@@ -9,7 +9,9 @@ STEM_AUDIO = {".wav", ".flac", ".mp3", ".m4a", ".ogg"}
 
 
 def _ffmpeg(*args: str) -> None:
-    subprocess.run(["ffmpeg", "-y", *args], check=True, timeout=180, capture_output=True)
+    subprocess.run(
+        ["ffmpeg", "-y", *args], check=True, timeout=180, capture_output=True
+    )
 
 
 def _mean_volume_db(path: Path) -> float:
@@ -35,7 +37,9 @@ def named_stem(out_dir: Path, label: str) -> Path | None:
     hits = [
         path
         for path in out_dir.iterdir()
-        if path.is_file() and path.suffix.lower() in STEM_AUDIO and key in path.name.lower()
+        if path.is_file()
+        and path.suffix.lower() in STEM_AUDIO
+        and key in path.name.lower()
     ]
     if not hits:
         return None

@@ -1,12 +1,31 @@
-from lovktv.pipeline.align import pack_tokens_to_singing
-from lovktv.pipeline.lyrics import rebuild_manual_timeline, shift_cues, validate_timeline
+from lovktv.pipeline.bounds import pack_tokens_to_singing
+from lovktv.pipeline.lyrics import (
+    rebuild_manual_timeline,
+    shift_cues,
+    validate_timeline,
+)
 
 
 def test_shift_one_line_keeps_neighbors():
     cues = [
-        {"text": "a", "start_ms": 1000, "end_ms": 2000, "tokens": [{"text": "a", "start_ms": 1000, "end_ms": 2000, "reading": ""}]},
-        {"text": "b", "start_ms": 2000, "end_ms": 3000, "tokens": [{"text": "b", "start_ms": 2000, "end_ms": 3000, "reading": ""}]},
-        {"text": "c", "start_ms": 3000, "end_ms": 4000, "tokens": [{"text": "c", "start_ms": 3000, "end_ms": 4000, "reading": ""}]},
+        {
+            "text": "a",
+            "start_ms": 1000,
+            "end_ms": 2000,
+            "tokens": [{"text": "a", "start_ms": 1000, "end_ms": 2000, "reading": ""}],
+        },
+        {
+            "text": "b",
+            "start_ms": 2000,
+            "end_ms": 3000,
+            "tokens": [{"text": "b", "start_ms": 2000, "end_ms": 3000, "reading": ""}],
+        },
+        {
+            "text": "c",
+            "start_ms": 3000,
+            "end_ms": 4000,
+            "tokens": [{"text": "c", "start_ms": 3000, "end_ms": 4000, "reading": ""}],
+        },
     ]
     out = shift_cues(cues, 1, 200)
     assert out[0]["start_ms"] == 1000
@@ -17,9 +36,24 @@ def test_shift_one_line_keeps_neighbors():
 
 def test_shift_rest_moves_later_lines():
     cues = [
-        {"text": "a", "start_ms": 1000, "end_ms": 2000, "tokens": [{"text": "a", "start_ms": 1000, "end_ms": 2000}]},
-        {"text": "b", "start_ms": 2000, "end_ms": 3000, "tokens": [{"text": "b", "start_ms": 2000, "end_ms": 3000}]},
-        {"text": "c", "start_ms": 3000, "end_ms": 4000, "tokens": [{"text": "c", "start_ms": 3000, "end_ms": 4000}]},
+        {
+            "text": "a",
+            "start_ms": 1000,
+            "end_ms": 2000,
+            "tokens": [{"text": "a", "start_ms": 1000, "end_ms": 2000}],
+        },
+        {
+            "text": "b",
+            "start_ms": 2000,
+            "end_ms": 3000,
+            "tokens": [{"text": "b", "start_ms": 2000, "end_ms": 3000}],
+        },
+        {
+            "text": "c",
+            "start_ms": 3000,
+            "end_ms": 4000,
+            "tokens": [{"text": "c", "start_ms": 3000, "end_ms": 4000}],
+        },
     ]
     out = shift_cues(cues, 1, -200, rest=True)
     assert out[1]["start_ms"] == 1800
@@ -37,14 +71,21 @@ def test_manual_timeline_holds_until_next_line():
                 "end_ms": 90810,
                 "tokens": [
                     {"text": "Get", "start_ms": 86300, "end_ms": 87400, "reading": ""},
-                    {"text": "along", "start_ms": 87400, "end_ms": 90810, "reading": ""},
+                    {
+                        "text": "along",
+                        "start_ms": 87400,
+                        "end_ms": 90810,
+                        "reading": "",
+                    },
                 ],
             },
             {
                 "text": "next",
                 "start_ms": 94210,
                 "end_ms": 97000,
-                "tokens": [{"text": "next", "start_ms": 94210, "end_ms": 97000, "reading": ""}],
+                "tokens": [
+                    {"text": "next", "start_ms": 94210, "end_ms": 97000, "reading": ""}
+                ],
             },
         ],
     }

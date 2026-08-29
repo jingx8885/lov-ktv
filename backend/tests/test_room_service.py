@@ -3,9 +3,9 @@ import pytest
 from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_service import RoomService
 from lovktv.room_store import SqliteRoomStore
-from lovktv.contracts import RoomAction, RoomSnapshot
-from lovktv.room_contract import normalize_playback_event, normalize_room_code
-from lovktv.timeline_contract import normalize_timeline
+from lovktv.domain.contracts import RoomAction, RoomSnapshot
+from lovktv.domain.room_contract import normalize_playback_event, normalize_room_code
+from lovktv.domain.timeline import normalize_timeline
 
 
 def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):

@@ -35,7 +35,9 @@ def public_base(request_base: str = "") -> str:
     return PUBLIC_URL or request_base.rstrip("/")
 
 
-def wechat_authorize_url(redirect_uri: str, state: str, quick: bool = False, silent: bool = False) -> str:
+def wechat_authorize_url(
+    redirect_uri: str, state: str, quick: bool = False, silent: bool = False
+) -> str:
     if (quick or silent) and wechat_ready("mp"):
         app_id = WECHAT_MP_APP_ID
         scope = "snsapi_base" if silent else "snsapi_userinfo"
@@ -64,16 +66,13 @@ def exchange_wechat_code(code: str, quick: bool = False, silent: bool = False) -
     secret = WECHAT_MP_APP_SECRET if use_mp else WECHAT_APP_SECRET
     if not app_id or not secret:
         raise ValueError("还没配置微信开放平台 AppID")
-    token_url = (
-        "https://api.weixin.qq.com/sns/oauth2/access_token?"
-        + urlencode(
-            {
-                "appid": app_id,
-                "secret": secret,
-                "code": code,
-                "grant_type": "authorization_code",
-            }
-        )
+    token_url = "https://api.weixin.qq.com/sns/oauth2/access_token?" + urlencode(
+        {
+            "appid": app_id,
+            "secret": secret,
+            "code": code,
+            "grant_type": "authorization_code",
+        }
     )
     with httpx.Client(timeout=12) as client:
         token = client.get(token_url).json()
@@ -110,7 +109,9 @@ def in_wechat(user_agent: str) -> bool:
     return "MicroMessenger" in (user_agent or "")
 
 
-def scan_login_url(base: str, ticket: str = "", room: str = "", next_path: str = "") -> str:
+def scan_login_url(
+    base: str, ticket: str = "", room: str = "", next_path: str = ""
+) -> str:
     query = []
     if ticket:
         query.append(f"ticket={quote(ticket)}")

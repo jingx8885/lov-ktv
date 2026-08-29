@@ -1,12 +1,12 @@
 import json
 
 from lovktv.agents.ja_lyrics import (
+    _parse_payload,
     apply_ja_annotation,
     expand_units,
     japanese_from_units,
     line_is_romaji,
     lyric_source_key,
-    _parse_payload,
 )
 from lovktv.pipeline.lyrics import ja_token_specs, tokenize
 
@@ -49,14 +49,20 @@ def test_expand_does_not_copy_kanji_label_onto_okurigana():
 
 
 def test_expand_keeps_etymology_kanji_on_sung_kana():
-    assert expand_units([{"sing": "もがいてる", "label": "藻掻", "romaji": "mogaiteru"}]) == [
-        ("藻掻", "もがいてる")
-    ]
+    assert expand_units(
+        [{"sing": "もがいてる", "label": "藻掻", "romaji": "mogaiteru"}]
+    ) == [("藻掻", "もがいてる")]
 
 
 def test_expand_merges_okurigana_leftover_after_compound():
     specs = expand_units(
-        [{"sing": "だいじにしていた", "label": "大事にしていた", "romaji": "daiji ni shite ita"}],
+        [
+            {
+                "sing": "だいじにしていた",
+                "label": "大事にしていた",
+                "romaji": "daiji ni shite ita",
+            }
+        ],
         source="まだ忘れず 大事にしていた",
     )
     assert specs[0] == ("大事", "だいじ")
@@ -95,7 +101,12 @@ def test_latin_words_stay_whole_in_japanese_line():
     assert "Give" in sung
     assert "reason" in sung
     assert "G" not in sung
-    assert tokenize("Here we go! go! 走り続ける", "ja")[:4] == ["Here", "we", "go!", "go!"]
+    assert tokenize("Here we go! go! 走り続ける", "ja")[:4] == [
+        "Here",
+        "we",
+        "go!",
+        "go!",
+    ]
 
 
 def test_expand_strips_numbered_sing_and_splits_compound_kanji():
@@ -142,7 +153,9 @@ def test_apply_matches_numbered_agent_source():
                 "text": "Here we go! go! 走り続ける",
                 "start_ms": 1000,
                 "end_ms": 2000,
-                "tokens": [{"text": "H", "start_ms": 1000, "end_ms": 2000, "reading": ""}],
+                "tokens": [
+                    {"text": "H", "start_ms": 1000, "end_ms": 2000, "reading": ""}
+                ],
             }
         ],
     }
@@ -168,8 +181,13 @@ def test_apply_matches_numbered_agent_source():
     texts = [tok["text"] for tok in timeline["cues"][0]["tokens"]]
     assert texts[:4] == ["Here", "we", "go!", "go!"]
     assert "H" not in texts
-    assert ("走り", "はしり") in [(tok["text"], tok["reading"]) for tok in timeline["cues"][0]["tokens"]]
-    assert lyric_source_key("14. Here we go! go! 走り続ける") == "Here we go! go! 走り続ける"
+    assert ("走り", "はしり") in [
+        (tok["text"], tok["reading"]) for tok in timeline["cues"][0]["tokens"]
+    ]
+    assert (
+        lyric_source_key("14. Here we go! go! 走り続ける")
+        == "Here we go! go! 走り続ける"
+    )
 
 
 def test_apply_annotation_replaces_tokens_and_keeps_line_time():
@@ -180,7 +198,9 @@ def test_apply_annotation_replaces_tokens_and_keeps_line_time():
                 "text": "溢れるメモリー",
                 "start_ms": 1000,
                 "end_ms": 3000,
-                "tokens": [{"text": "溢", "start_ms": 1000, "end_ms": 3000, "reading": ""}],
+                "tokens": [
+                    {"text": "溢", "start_ms": 1000, "end_ms": 3000, "reading": ""}
+                ],
             }
         ],
     }
@@ -217,7 +237,9 @@ def test_apply_annotation_uses_sing_end_not_hold():
                 "start_ms": 1000,
                 "end_ms": 5000,
                 "sing_end_ms": 2200,
-                "tokens": [{"text": "溢", "start_ms": 1000, "end_ms": 5000, "reading": ""}],
+                "tokens": [
+                    {"text": "溢", "start_ms": 1000, "end_ms": 5000, "reading": ""}
+                ],
             }
         ],
     }
@@ -246,12 +268,14 @@ def test_romaji_line_becomes_japanese_with_labels():
     assert line_is_romaji("aa, itsumo no you ni")
     assert not line_is_romaji("いつものように")
     assert not line_is_romaji("Here we go! 走り続ける")
-    assert japanese_from_units(
-        [{"sing": "いつもの"}, {"sing": "ように"}]
-    ) == "いつものように"
-    assert japanese_from_units(
-        [{"sing": "Give"}, {"sing": "a"}, {"sing": "reason"}]
-    ) == "Give a reason"
+    assert (
+        japanese_from_units([{"sing": "いつもの"}, {"sing": "ように"}])
+        == "いつものように"
+    )
+    assert (
+        japanese_from_units([{"sing": "Give"}, {"sing": "a"}, {"sing": "reason"}])
+        == "Give a reason"
+    )
 
     timeline = {
         "language": "ja",
@@ -260,7 +284,9 @@ def test_romaji_line_becomes_japanese_with_labels():
                 "text": "aa, itsumo no you ni",
                 "start_ms": 1000,
                 "end_ms": 3000,
-                "tokens": [{"text": "aa", "start_ms": 1000, "end_ms": 3000, "reading": ""}],
+                "tokens": [
+                    {"text": "aa", "start_ms": 1000, "end_ms": 3000, "reading": ""}
+                ],
             }
         ],
     }
@@ -339,7 +365,8 @@ def test_apply_keeps_kanji_line_and_rematch_source_text():
     )
     assert timeline["cues"][0]["text"] == "ああ、君"
     assert ("君", "きみ", "kimi") in [
-        (tok["text"], tok["reading"], tok["romaji"]) for tok in timeline["cues"][0]["tokens"]
+        (tok["text"], tok["reading"], tok["romaji"])
+        for tok in timeline["cues"][0]["tokens"]
     ]
 
 
@@ -370,7 +397,12 @@ def test_apply_annotation_keeps_line_and_word_zh():
                     "source": "溢れるメモリー",
                     "zh": "满溢的记忆",
                     "units": [
-                        {"sing": "あふれる", "label": "溢", "romaji": "afureru", "zh": "满溢"},
+                        {
+                            "sing": "あふれる",
+                            "label": "溢",
+                            "romaji": "afureru",
+                            "zh": "满溢",
+                        },
                         {"sing": "メモリー", "label": "memory", "zh": "记忆"},
                     ],
                 }
@@ -391,7 +423,9 @@ def test_apply_skips_truncated_romaji_restore():
                 "source_text": "me magurushii jikan no mure ga",
                 "start_ms": 0,
                 "end_ms": 1000,
-                "tokens": [{"text": "me", "start_ms": 0, "end_ms": 1000, "reading": ""}],
+                "tokens": [
+                    {"text": "me", "start_ms": 0, "end_ms": 1000, "reading": ""}
+                ],
             }
         ],
     }
@@ -404,7 +438,12 @@ def test_apply_skips_truncated_romaji_restore():
                     "zh": "纷乱的时间群涌而来",
                     "units": [
                         {"sing": "め", "label": "", "romaji": "me", "zh": "我"},
-                        {"sing": "まぐるしい", "label": "", "romaji": "magurushii", "zh": "纷乱"},
+                        {
+                            "sing": "まぐるしい",
+                            "label": "",
+                            "romaji": "magurushii",
+                            "zh": "纷乱",
+                        },
                     ],
                 }
             ],
@@ -437,8 +476,16 @@ def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
     monkeypatch.setattr(restore_ja, "update_song", lambda *args, **kwargs: None)
     published: list[str] = []
     packed: list[str] = []
-    monkeypatch.setattr(restore_ja, "_publish_lyrics", lambda sid: published.append(sid) or ["lyrics.json"])
-    monkeypatch.setattr(restore_ja, "pack_timeline_to_voice", lambda timeline, out_dir: packed.append(out_dir.name) or True)
+    monkeypatch.setattr(
+        restore_ja,
+        "_publish_lyrics",
+        lambda sid: published.append(sid) or ["lyrics.json"],
+    )
+    monkeypatch.setattr(
+        restore_ja,
+        "pack_timeline_to_voice",
+        lambda timeline, out_dir: packed.append(out_dir.name) or True,
+    )
     result = restore_ja.restore_song("s1", publish=True, reapply=True)
     assert result["ok"] is True
     assert published == ["s1"]
@@ -461,7 +508,7 @@ def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
         seen["path"] = path.name
         return [20.0] * 50 + [800.0] * 80 + [10.0] * 200, 20
 
-    monkeypatch.setattr("lovktv.pipeline.align.extract_envelope", fake_env)
+    monkeypatch.setattr("lovktv.pipeline.audio.extract_envelope", fake_env)
     timeline = {
         "cues": [
             {
@@ -469,7 +516,12 @@ def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
                 "start_ms": 1000,
                 "end_ms": 7000,
                 "tokens": [
-                    {"text": "ポケモン", "start_ms": 1000, "end_ms": 3000, "reading": "pokemon"},
+                    {
+                        "text": "ポケモン",
+                        "start_ms": 1000,
+                        "end_ms": 3000,
+                        "reading": "pokemon",
+                    },
                     {"text": "GET", "start_ms": 3000, "end_ms": 5000, "reading": ""},
                     {"text": "だぜ!", "start_ms": 5000, "end_ms": 7000, "reading": ""},
                 ],
@@ -480,7 +532,10 @@ def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
     assert seen["path"] == "vocals.wav"
     assert timeline["cues"][0]["end_ms"] == 7000
     assert timeline["cues"][0]["sing_end_ms"] < 4000
-    assert timeline["cues"][0]["tokens"][-1]["end_ms"] == timeline["cues"][0]["sing_end_ms"]
+    assert (
+        timeline["cues"][0]["tokens"][-1]["end_ms"]
+        == timeline["cues"][0]["sing_end_ms"]
+    )
 
 
 def test_needs_romaji_restore():
@@ -494,4 +549,6 @@ def test_needs_romaji_restore():
         {"language": "ja", "cues": [{"text": "いつもの", "source_text": "itsumo no"}]}
     )
     assert not needs_romaji_restore({"language": "en", "cues": [{"text": "hello"}]})
-    assert not needs_romaji_restore({"language": "ja", "cues": [{"text": "いつものように"}]})
+    assert not needs_romaji_restore(
+        {"language": "ja", "cues": [{"text": "いつものように"}]}
+    )

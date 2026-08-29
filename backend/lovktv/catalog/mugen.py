@@ -51,7 +51,14 @@ LANG_MAP = {
     "kor": "ko",
     "ko": "ko",
 }
-KARAOKE_HINTS = ("instrumental", "karaoke", "off vocal", "off-vocal", "inst", "no vocal")
+KARAOKE_HINTS = (
+    "instrumental",
+    "karaoke",
+    "off vocal",
+    "off-vocal",
+    "inst",
+    "no vocal",
+)
 VOCAL_HINTS = ("vocal", "guide", "original", "full", "with vocal")
 OFF_VOCAL_MARKERS = (
     "off vocal",
@@ -71,7 +78,11 @@ def is_mugen_kid(value: str | None) -> bool:
 
 
 def _request(url: str, timeout: float = 20) -> urllib.request.Request:
-    host = urllib.parse.urlparse(url).scheme + "://" + (urllib.parse.urlparse(url).netloc or "kara.moe")
+    host = (
+        urllib.parse.urlparse(url).scheme
+        + "://"
+        + (urllib.parse.urlparse(url).netloc or "kara.moe")
+    )
     return urllib.request.Request(
         url,
         headers={
@@ -97,7 +108,10 @@ def download_file(
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
     try:
-        with urlopen(_request(url), timeout=timeout, via_proxy=via_proxy) as resp, tmp.open("wb") as handle:
+        with (
+            urlopen(_request(url), timeout=timeout, via_proxy=via_proxy) as resp,
+            tmp.open("wb") as handle,
+        ):
             shutil.copyfileobj(resp, handle)
         if tmp.stat().st_size < min_size:
             raise RuntimeError(f"下载太小：{url}")
@@ -107,7 +121,9 @@ def download_file(
             tmp.unlink(missing_ok=True)
 
 
-def download_file_resilient(url: str, dest: Path, timeout: float = 60, min_size: int = 200) -> None:
+def download_file_resilient(
+    url: str, dest: Path, timeout: float = 60, min_size: int = 200
+) -> None:
     try:
         download_file(url, dest, timeout=timeout, min_size=min_size, via_proxy=False)
         return
@@ -165,7 +181,9 @@ def is_off_vocal(*parts: str) -> bool:
 
 
 def pick_vocal_hit(hits: list[dict[str, Any]]) -> dict[str, Any] | None:
-    vocal = next((hit for hit in hits if hit.get("id") and not hit.get("off_vocal")), None)
+    vocal = next(
+        (hit for hit in hits if hit.get("id") and not hit.get("off_vocal")), None
+    )
     if vocal:
         return vocal
     return next((hit for hit in hits if hit.get("id")), None)
@@ -205,7 +223,14 @@ def map_hit(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def _empty_search(query: str, page: int, count: int) -> dict[str, Any]:
-    return {"query": query, "page": page, "count": count, "has_more": False, "hits": [], "total": 0}
+    return {
+        "query": query,
+        "page": page,
+        "count": count,
+        "has_more": False,
+        "hits": [],
+        "total": 0,
+    }
 
 
 def _search_mugen_api(query: str, count: int, page: int) -> dict[str, Any]:
@@ -214,7 +239,11 @@ def _search_mugen_api(query: str, count: int, page: int) -> dict[str, Any]:
     data = get_json(f"{MUGEN_SEARCH}?{params}", timeout=5)
     content = data.get("content") if isinstance(data, dict) else []
     infos = data.get("infos") if isinstance(data, dict) else {}
-    hits = [map_hit(item) for item in content or [] if isinstance(item, dict) and item.get("kid")]
+    hits = [
+        map_hit(item)
+        for item in content or []
+        if isinstance(item, dict) and item.get("kid")
+    ]
     hits.sort(key=lambda hit: (bool(hit.get("off_vocal")), str(hit.get("title") or "")))
     total = int((infos or {}).get("count") or len(hits))
     return {
@@ -237,7 +266,9 @@ def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
         items = mugen_index.ensure_index(wait=25)
     if items:
         result = mugen_index.search_items(items, query, count, page)
-        result["hits"] = [map_hit(mugen_index.item_to_kara(item)) for item in result["hits"]]
+        result["hits"] = [
+            map_hit(mugen_index.item_to_kara(item)) for item in result["hits"]
+        ]
         return result
     try:
         return _search_mugen_api(query, count, page)
@@ -385,7 +416,14 @@ def parse_ass(raw: str) -> list[dict[str, Any]]:
         else:
             line_text = OVERRIDE.sub("", _decode_ass(body)).strip()
             if line_text:
-                tokens = [{"text": line_text, "start_ms": start_ms, "end_ms": max(end_ms, start_ms + 200), "reading": ""}]
+                tokens = [
+                    {
+                        "text": line_text,
+                        "start_ms": start_ms,
+                        "end_ms": max(end_ms, start_ms + 200),
+                        "reading": "",
+                    }
+                ]
         if not line_text:
             continue
         cue = {
@@ -432,14 +470,18 @@ def lrc_from_cues(cues: list[dict[str, Any]]) -> str:
         ms = int(cue.get("start_ms") or 0)
         minutes, rem = divmod(ms, 60_000)
         seconds, milli = divmod(rem, 1000)
-        lines.append(f"[{minutes:02d}:{seconds:02d}.{milli:03d}]{cue.get('text') or ''}")
+        lines.append(
+            f"[{minutes:02d}:{seconds:02d}.{milli:03d}]{cue.get('text') or ''}"
+        )
     return "\n".join(lines) + "\n"
 
 
 def _ffmpeg(*args: str, timeout: int = 300) -> None:
     if not shutil.which("ffmpeg"):
         raise RuntimeError("需要 ffmpeg")
-    subprocess.run(["ffmpeg", "-y", *args], check=True, timeout=timeout, capture_output=True)
+    subprocess.run(
+        ["ffmpeg", "-y", *args], check=True, timeout=timeout, capture_output=True
+    )
 
 
 def probe_streams(path: Path) -> list[dict[str, Any]]:
@@ -462,8 +504,7 @@ def probe_streams(path: Path) -> list[dict[str, Any]]:
 def _stream_label(stream: dict[str, Any]) -> str:
     tags = stream.get("tags") if isinstance(stream.get("tags"), dict) else {}
     return " ".join(
-        str(tags.get(key) or "")
-        for key in ("title", "handler_name", "language")
+        str(tags.get(key) or "") for key in ("title", "handler_name", "language")
     ).lower()
 
 
@@ -552,7 +593,9 @@ def prepare_media(src: Path, out_dir: Path) -> dict[str, Any]:
     original = out_dir / "original.mp3"
     streams = probe_streams(src)
     dual = classify_dual_audio(streams)
-    video = any(item.get("codec_type") == "video" for item in streams) or src.suffix.lower() in {".mp4", ".mkv", ".webm"}
+    video = any(
+        item.get("codec_type") == "video" for item in streams
+    ) or src.suffix.lower() in {".mp4", ".mkv", ".webm"}
     if dual:
         extract_audio(src, out_dir / "karaoke.m4a", dual["karaoke"])
         extract_audio(src, original, dual["vocal"])
@@ -607,20 +650,32 @@ def import_mugen_song(kid: str, out_dir: Path, query: str = "") -> dict[str, Any
         download_file(GITLAB_LYRICS.format(name=quoted), ass_path, timeout=30)
     except Exception:
         download_file_resilient(MUGEN_LYRICS.format(name=quoted), ass_path, timeout=20)
-    timeline = timeline_from_ass(ass_path.read_text(encoding="utf-8", errors="replace"), language)
+    timeline = timeline_from_ass(
+        ass_path.read_text(encoding="utf-8", errors="replace"), language
+    )
     write_subtitles(timeline, out_dir)
-    (out_dir / "lyrics.lrc").write_text(lrc_from_cues(timeline["cues"]), encoding="utf-8")
+    (out_dir / "lyrics.lrc").write_text(
+        lrc_from_cues(timeline["cues"]), encoding="utf-8"
+    )
 
     media_name = str(kara.get("mediafile") or "")
     media_path = out_dir / f"mugen{Path(media_name).suffix.lower() or '.mp4'}"
-    audio = {"file": "", "source": "mugen", "dual_audio": False, "needs_separate": True, "has_video": False}
+    audio = {
+        "file": "",
+        "source": "mugen",
+        "dual_audio": False,
+        "needs_separate": True,
+        "has_video": False,
+    }
     if media_name:
         media_url = MUGEN_MEDIA.format(name=urllib.parse.quote(media_name))
         try:
             try:
                 download_file(media_url, media_path, timeout=45, min_size=20_000)
             except Exception:
-                download_file_resilient(media_url, media_path, timeout=45, min_size=20_000)
+                download_file_resilient(
+                    media_url, media_path, timeout=45, min_size=20_000
+                )
             audio = prepare_media(media_path, out_dir)
         except Exception as exc:
             print(f"[lovktv] mugen media skipped: {exc}", flush=True)

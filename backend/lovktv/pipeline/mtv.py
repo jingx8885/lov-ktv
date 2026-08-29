@@ -32,23 +32,43 @@ TRANSITIONS = {
 PROFILES = {
     "cinematic": {
         "style": "coldwave cinematic stills",
-        "colors": [("#0b1020", "#2a1848"), ("#101828", "#3d2a1a"), ("#12101c", "#1c3a4a")],
+        "colors": [
+            ("#0b1020", "#2a1848"),
+            ("#101828", "#3d2a1a"),
+            ("#12101c", "#1c3a4a"),
+        ],
     },
     "dream": {
         "style": "soft bloom night haze",
-        "colors": [("#1a1030", "#3a5a7a"), ("#201028", "#4a3070"), ("#102030", "#2a6070")],
+        "colors": [
+            ("#1a1030", "#3a5a7a"),
+            ("#201028", "#4a3070"),
+            ("#102030", "#2a6070"),
+        ],
     },
     "poster": {
         "style": "warm poster grain",
-        "colors": [("#2a1810", "#8a3a20"), ("#201810", "#6a4020"), ("#301810", "#a05030")],
+        "colors": [
+            ("#2a1810", "#8a3a20"),
+            ("#201810", "#6a4020"),
+            ("#301810", "#a05030"),
+        ],
     },
     "glitch": {
         "style": "neon signal scan",
-        "colors": [("#081018", "#00c8c8"), ("#100818", "#c02080"), ("#081010", "#40f0a0")],
+        "colors": [
+            ("#081018", "#00c8c8"),
+            ("#100818", "#c02080"),
+            ("#081010", "#40f0a0"),
+        ],
     },
     "minimal": {
         "style": "quiet paper light",
-        "colors": [("#16141a", "#3a3840"), ("#141820", "#2a3038"), ("#1a1814", "#3a3428")],
+        "colors": [
+            ("#16141a", "#3a3840"),
+            ("#141820", "#2a3038"),
+            ("#1a1814", "#3a3428"),
+        ],
     },
 }
 
@@ -114,16 +134,23 @@ def group_scenes(
         if scenes and end_ms - scenes[-1]["end_ms"] < min_ms:
             scenes[-1]["end_ms"] = end_ms
             scenes[-1]["lines"].extend(item.get("text") or "" for item in bucket)
-            scenes[-1]["text"] = " / ".join(part for part in scenes[-1]["lines"] if part)[:80]
+            scenes[-1]["text"] = " / ".join(
+                part for part in scenes[-1]["lines"] if part
+            )[:80]
         else:
             scenes.append(_scene_from_bucket(len(scenes) + 1, start_ms, end_ms, bucket))
 
     while len(scenes) > max_scenes:
-        idx = min(range(len(scenes) - 1), key=lambda i: scenes[i]["end_ms"] - scenes[i]["start_ms"])
+        idx = min(
+            range(len(scenes) - 1),
+            key=lambda i: scenes[i]["end_ms"] - scenes[i]["start_ms"],
+        )
         nxt = scenes[idx + 1]
         scenes[idx]["end_ms"] = nxt["end_ms"]
         scenes[idx]["lines"].extend(nxt["lines"])
-        scenes[idx]["text"] = " / ".join(part for part in scenes[idx]["lines"] if part)[:80]
+        scenes[idx]["text"] = " / ".join(part for part in scenes[idx]["lines"] if part)[
+            :80
+        ]
         del scenes[idx + 1]
     for index, scene in enumerate(scenes, start=1):
         scene["index"] = index
@@ -132,7 +159,9 @@ def group_scenes(
     return scenes
 
 
-def _scene_from_bucket(index: int, start_ms: int, end_ms: int, bucket: list[dict[str, Any]]) -> dict[str, Any]:
+def _scene_from_bucket(
+    index: int, start_ms: int, end_ms: int, bucket: list[dict[str, Any]]
+) -> dict[str, Any]:
     lines = [str(item.get("text") or "") for item in bucket if item.get("text")]
     return {
         "index": index,
@@ -177,10 +206,14 @@ def write_project_files(
             for scene in scenes
         ],
     }
-    (out_dir / "visual_config.json").write_text(json.dumps(visual, ensure_ascii=False, indent=2), encoding="utf-8")
-    (out_dir / "timeline.json").write_text(json.dumps(timeline, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "visual_config.json").write_text(
+        json.dumps(visual, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (out_dir / "timeline.json").write_text(
+        json.dumps(timeline, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     cards = "\n".join(
-        f"<article><h2>Scene {scene['index']}</h2><p>{scene['start_ms']/1000:.1f}s – {scene['end_ms']/1000:.1f}s</p>"
+        f"<article><h2>Scene {scene['index']}</h2><p>{scene['start_ms'] / 1000:.1f}s – {scene['end_ms'] / 1000:.1f}s</p>"
         f"<p>{_escape(scene['text'])}</p></article>"
         for scene in scenes
     )
@@ -197,7 +230,9 @@ def hero_fragment(text: str, *, kind: str = "lyric") -> str:
     raw = unicodedata.normalize("NFKC", str(text or "")).strip()
     if not raw:
         return ""
-    latin = bool(re.search(r"[A-Za-z]", raw)) and not re.search(r"[\u3040-\u30ff\u3400-\u9fff]", raw)
+    latin = bool(re.search(r"[A-Za-z]", raw)) and not re.search(
+        r"[\u3040-\u30ff\u3400-\u9fff]", raw
+    )
     if kind == "title" or latin:
         return raw.split()[0][:12]
     compact = re.sub(r"[\s/·]+", "", raw)
@@ -207,7 +242,9 @@ def hero_fragment(text: str, *, kind: str = "lyric") -> str:
     return compact[:4]
 
 
-def overflow_anchor(width: int, height: int, layout: int, count: int = 4) -> tuple[int, int]:
+def overflow_anchor(
+    width: int, height: int, layout: int, count: int = 4
+) -> tuple[int, int]:
     """Park giant type so about half a glyph hangs off one edge."""
     step = max(width / max(count, 1), 1)
     if layout % 4 == 0:
@@ -268,13 +305,17 @@ def render_scene_image(
     motif = seed % 4
     if motif == 0:
         draw.rectangle((0, HEIGHT - 280, 18, HEIGHT), fill=(245, 193, 108, 210))
-        draw.ellipse((WIDTH - 520, -180, WIDTH + 80, 420), outline=(255, 255, 255, 40), width=10)
+        draw.ellipse(
+            (WIDTH - 520, -180, WIDTH + 80, 420), outline=(255, 255, 255, 40), width=10
+        )
     elif motif == 1:
         draw.rectangle((WIDTH - 28, 0, WIDTH, HEIGHT), fill=(255, 77, 141, 160))
         draw.line((120, 180, WIDTH - 160, 220), fill=(255, 255, 255, 50), width=6)
     elif motif == 2:
         draw.ellipse((80, 120, 420, 460), outline=(245, 193, 108, 70), width=8)
-        draw.rectangle((80, HEIGHT - 160, WIDTH - 80, HEIGHT - 148), fill=(255, 255, 255, 45))
+        draw.rectangle(
+            (80, HEIGHT - 160, WIDTH - 80, HEIGHT - 148), fill=(255, 255, 255, 45)
+        )
     else:
         draw.polygon([(0, 0), (420, 0), (0, 280)], fill=(255, 255, 255, 18))
         draw.rectangle((0, 0, WIDTH, 16), fill=(245, 193, 108, 150))
@@ -287,20 +328,35 @@ def render_scene_image(
     type_layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
     type_draw = ImageDraw.Draw(type_layer)
     if kind == "title":
-        title_font = ImageFont.truetype(font_path, 120) if font_path else ImageFont.load_default()
+        title_font = (
+            ImageFont.truetype(font_path, 120)
+            if font_path
+            else ImageFont.load_default()
+        )
         kick_font = ImageFont.truetype(font_path, 36) if font_path else title_font
         if kicker:
             type_draw.text((96, 318), kicker, font=kick_font, fill=(255, 255, 255, 200))
         if headline:
-            type_draw.text((90, 372), headline, font=title_font, fill=(255, 255, 255, 245))
+            type_draw.text(
+                (90, 372), headline, font=title_font, fill=(255, 255, 255, 245)
+            )
     elif headline:
         fragment = hero_fragment(headline, kind=kind)
         size = 300 if not re.search(r"[A-Za-z]", fragment) else 240
-        hero_font = ImageFont.truetype(font_path, size) if font_path else ImageFont.load_default()
+        hero_font = (
+            ImageFont.truetype(font_path, size)
+            if font_path
+            else ImageFont.load_default()
+        )
         box = _text_box(fragment, hero_font)
         tw, th = box[2] - box[0], box[3] - box[1]
         x, y = overflow_anchor(tw, th, layout, count=max(len(fragment), 1))
-        type_draw.text((x - box[0], y - box[1]), fragment, font=hero_font, fill=(255, 255, 255, 118))
+        type_draw.text(
+            (x - box[0], y - box[1]),
+            fragment,
+            font=hero_font,
+            fill=(255, 255, 255, 118),
+        )
     image = Image.alpha_composite(image, type_layer).convert("RGB")
     overlay = Image.new("RGB", (WIDTH, HEIGHT), (0, 0, 0))
     image = Image.blend(image, overlay, 0.10)
@@ -329,7 +385,14 @@ def compose_mtv(
     lyrics = " ".join(str(cue.get("text") or "") for cue in cues)
     profile = pick_profile(title, lyrics)
     scenes = group_scenes(cues, duration_ms)
-    write_project_files(out_dir, title=title, artist=artist, profile=profile, scenes=scenes, duration_ms=duration_ms)
+    write_project_files(
+        out_dir,
+        title=title,
+        artist=artist,
+        profile=profile,
+        scenes=scenes,
+        duration_ms=duration_ms,
+    )
 
     images_dir = out_dir / "mtv-scenes"
     images_dir.mkdir(parents=True, exist_ok=True)
@@ -347,7 +410,11 @@ def compose_mtv(
             continue
         color_a, color_b = colors[offset % len(colors)]
         dest = images_dir / f"scene_{scene['index']:02d}.png"
-        headline = title if scene.get("kind") == "title" else (scene.get("lines") or [scene.get("text") or ""])[0]
+        headline = (
+            title
+            if scene.get("kind") == "title"
+            else (scene.get("lines") or [scene.get("text") or ""])[0]
+        )
         kicker = artist if scene.get("kind") == "title" else title
         render_scene_image(
             dest,
@@ -366,8 +433,17 @@ def compose_mtv(
 
     timings = _scene_timings(scenes, duration_ms, len(image_paths))
     output = out_dir / "mtv.mp4"
-    _xfade_compose(image_paths, timings, output, profile=profile, duration_ms=duration_ms)
-    write_project_files(out_dir, title=title, artist=artist, profile=profile, scenes=scenes, duration_ms=duration_ms)
+    _xfade_compose(
+        image_paths, timings, output, profile=profile, duration_ms=duration_ms
+    )
+    write_project_files(
+        out_dir,
+        title=title,
+        artist=artist,
+        profile=profile,
+        scenes=scenes,
+        duration_ms=duration_ms,
+    )
     return {
         "file": "mtv.mp4",
         "profile": profile,
@@ -376,7 +452,9 @@ def compose_mtv(
     }
 
 
-def _scene_timings(scenes: list[dict[str, Any]], duration_ms: int, count: int) -> list[dict[str, float]]:
+def _scene_timings(
+    scenes: list[dict[str, Any]], duration_ms: int, count: int
+) -> list[dict[str, float]]:
     if scenes and len(scenes) == count:
         rows = []
         for scene in scenes:
@@ -426,7 +504,9 @@ def _xfade_compose(
         cumulative = timings[0]["duration"]
         label = "vout" if len(images) == 2 else "vt1"
         first_tr = styles[0]
-        filters.append(f"[v0][v1]xfade=transition={first_tr}:duration={fade:.3f}:offset={cumulative:.3f}[{label}]")
+        filters.append(
+            f"[v0][v1]xfade=transition={first_tr}:duration={fade:.3f}:offset={cumulative:.3f}[{label}]"
+        )
         for index in range(2, len(images)):
             cumulative += timings[index - 1]["duration"]
             out = "vout" if index == len(images) - 1 else f"vt{index}"
@@ -464,12 +544,22 @@ def _xfade_compose(
         _concat_fallback(images, timings, output, duration_ms)
 
 
-def _concat_fallback(images: list[Path], timings: list[dict[str, float]], output: Path, duration_ms: int) -> None:
+def _concat_fallback(
+    images: list[Path], timings: list[dict[str, float]], output: Path, duration_ms: int
+) -> None:
     parts: list[str] = []
     for index, image in enumerate(images):
-        parts.extend(["-loop", "1", "-t", f"{timings[index]['duration']:.3f}", "-i", str(image)])
-    concat = "".join(f"[{index}:v]scale={WIDTH}:{HEIGHT},setsar=1,fps=24[v{index}];" for index in range(len(images)))
-    concat += "".join(f"[v{index}]" for index in range(len(images))) + f"concat=n={len(images)}:v=1:a=0[vout]"
+        parts.extend(
+            ["-loop", "1", "-t", f"{timings[index]['duration']:.3f}", "-i", str(image)]
+        )
+    concat = "".join(
+        f"[{index}:v]scale={WIDTH}:{HEIGHT},setsar=1,fps=24[v{index}];"
+        for index in range(len(images))
+    )
+    concat += (
+        "".join(f"[v{index}]" for index in range(len(images)))
+        + f"concat=n={len(images)}:v=1:a=0[vout]"
+    )
     result = subprocess.run(
         [
             "ffmpeg",
@@ -555,7 +645,12 @@ def _scene_font() -> str:
 
 
 def _drawtext(font: str, text: str, x: str, y: str, size: int, color: str) -> str:
-    cleaned = re.sub(r"[\r\n]+", " ", text).replace("\\", "").replace("'", "").replace(":", " ")
+    cleaned = (
+        re.sub(r"[\r\n]+", " ", text)
+        .replace("\\", "")
+        .replace("'", "")
+        .replace(":", " ")
+    )
     font_esc = font.replace("\\", "\\\\").replace(":", "\\:").replace("'", "\\'")
     return (
         f"drawtext=fontfile='{font_esc}':text='{cleaned}':x={x}:y={y}:"

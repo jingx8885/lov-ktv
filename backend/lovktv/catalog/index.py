@@ -135,7 +135,8 @@ def prefer_native_library(songs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     native_keys = {
         display_title(song).casefold()
         for song in songs
-        if song.get("native_video") or str(song.get("audio_source") or "").startswith("mugen")
+        if song.get("native_video")
+        or str(song.get("audio_source") or "").startswith("mugen")
     }
     return [
         song
@@ -201,5 +202,7 @@ def query_library(
         "by": by,
         "letter": key,
         "after": after_id,
-        "letters": [{"key": item, "count": counts[item]} for item in LETTERS if counts[item]],
+        "letters": [
+            {"key": item, "count": counts[item]} for item in LETTERS if counts[item]
+        ],
     }

@@ -1,30 +1,33 @@
-from lovktv.pipeline.align import (
+from lovktv.pipeline.align import align_lyrics
+from lovktv.pipeline.audio import energy_token_spans, snap_to_onset, vocal_regions
+from lovktv.pipeline.bounds import (
     align_lines_to_asr,
-    asr_token_spans,
-    restore_short_official_gaps,
-    align_lyrics,
     assign_plain_lines,
+    restore_short_official_gaps,
+)
+from lovktv.pipeline.clock import consensus_line_start
+from lovktv.pipeline.energy import guard_early_next_starts, merge_with_energy
+from lovktv.pipeline.lyrics import timeline_from_lrc, tokenize
+from lovktv.pipeline.matching import (
+    asr_token_spans,
     best_asr_span,
-    consensus_line_start,
-    energy_token_spans,
     estimate_lrc_offset,
-    guard_early_next_starts,
     match_score,
     match_threshold,
-    merge_with_energy,
-    snap_to_onset,
     vocal_phrases,
-    vocal_regions,
 )
-from lovktv.pipeline.lyrics import timeline_from_lrc, tokenize
 
 
-def _pulse(seconds: float, hop_ms: int = 20, bursts: list[tuple[float, float]] | None = None) -> list[float]:
+def _pulse(
+    seconds: float, hop_ms: int = 20, bursts: list[tuple[float, float]] | None = None
+) -> list[float]:
     n = int(seconds * 1000 / hop_ms)
     env = [8.0] * n
     for start, end in bursts or []:
         for i in range(int(start * 1000 / hop_ms), min(n, int(end * 1000 / hop_ms))):
-            progress = (i - int(start * 1000 / hop_ms)) / max(int((end - start) * 1000 / hop_ms), 1)
+            progress = (i - int(start * 1000 / hop_ms)) / max(
+                int((end - start) * 1000 / hop_ms), 1
+            )
             env[i] = 220.0 if progress < 0.35 else 90.0
     return env
 
@@ -75,7 +78,10 @@ def test_zh_ja_en_monotonic_and_full_text():
 
 def test_english_does_not_use_cjk_threshold():
     assert match_threshold("en") > match_threshold("zh")
-    asr = [{"text": "你好", "start_ms": 0, "end_ms": 900}, {"text": "世界", "start_ms": 900, "end_ms": 1600}]
+    asr = [
+        {"text": "你好", "start_ms": 0, "end_ms": 900},
+        {"text": "世界", "start_ms": 900, "end_ms": 1600},
+    ]
     assert best_asr_span("I see you", asr, "en") is None
     assert match_score("I see you", "你好世界", "en") == 0.0
     assert best_asr_span("你好世界", asr, "zh") == (0, 1600)
@@ -146,7 +152,10 @@ def test_snap_and_regions():
     regions = vocal_regions(env, 20)
     assert regions
     assert regions[0][0] >= 1800
-    assert snap_to_onset(2500, regions) == regions[0][0] or 1800 <= snap_to_onset(2500, regions) <= 2600
+    assert (
+        snap_to_onset(2500, regions) == regions[0][0]
+        or 1800 <= snap_to_onset(2500, regions) <= 2600
+    )
 
 
 def test_repeated_chorus_maps_to_later_asr():
@@ -217,12 +226,16 @@ def test_late_vocals_shift_official_lrc():
 
 
 def test_timeline_from_lrc_still_covers_fixtures():
-    ja = timeline_from_lrc([{"ms": 0, "text": "こんにちは"}, {"ms": 1000, "text": "世界"}], "ja")
+    ja = timeline_from_lrc(
+        [{"ms": 0, "text": "こんにちは"}, {"ms": 1000, "text": "世界"}], "ja"
+    )
     assert [tok["text"] for tok in ja["cues"][0]["tokens"]] == list("こんにちは")
     world = ja["cues"][1]["tokens"]
     assert "".join(tok["text"] for tok in world) == "".join(tokenize("世界", "ja"))
     assert any(tok["text"] == "世界" and tok["reading"] == "せかい" for tok in world)
-    en = timeline_from_lrc([{"ms": 0, "text": "hello world"}, {"ms": 2000, "text": "again"}], "en")
+    en = timeline_from_lrc(
+        [{"ms": 0, "text": "hello world"}, {"ms": 2000, "text": "again"}], "en"
+    )
     assert [tok["text"] for tok in en["cues"][0]["tokens"]] == ["hello", "world"]
 
 
@@ -335,7 +348,10 @@ def test_ja_simplified_lrc_matches_whisper_kanji():
         asr,
         "ja",
     )
-    assert [row["text"] for row in bounds] == ["目まぐるしい 時間の群れが", "走り抜ける"]
+    assert [row["text"] for row in bounds] == [
+        "目まぐるしい 時間の群れが",
+        "走り抜ける",
+    ]
     assert bounds[0]["start_ms"] == 33750
 
 
@@ -684,8 +700,18 @@ def test_energy_does_not_chop_previous_end():
     env = _pulse(160, hop, [(149.9, 151.3), (153.7, 159.7)])
     merged = merge_with_energy(
         [
-            {"text": "力合わせ遥か先", "start_ms": 149920, "end_ms": 153720, "from_asr": True},
-            {"text": "未来に向かい步き続けて行く", "start_ms": 151620, "end_ms": 159580, "from_asr": True},
+            {
+                "text": "力合わせ遥か先",
+                "start_ms": 149920,
+                "end_ms": 153720,
+                "from_asr": True,
+            },
+            {
+                "text": "未来に向かい步き続けて行く",
+                "start_ms": 151620,
+                "end_ms": 159580,
+                "from_asr": True,
+            },
         ],
         env,
         hop,
@@ -699,8 +725,18 @@ def test_guard_delays_next_line_started_in_a_hole():
     env = _pulse(95, hop, [(76.0, 83.8), (86.16, 90.0)])
     bounds = guard_early_next_starts(
         [
-            {"text": "限りないほど", "start_ms": 82460, "end_ms": 85000, "from_asr": True},
-            {"text": "Get along Try again", "start_ms": 85000, "end_ms": 93480, "from_asr": True},
+            {
+                "text": "限りないほど",
+                "start_ms": 82460,
+                "end_ms": 85000,
+                "from_asr": True,
+            },
+            {
+                "text": "Get along Try again",
+                "start_ms": 85000,
+                "end_ms": 93480,
+                "from_asr": True,
+            },
         ],
         [
             {"ms": 83100, "text": "限りないほど"},
@@ -719,7 +755,12 @@ def test_guard_does_not_pull_back_official_hole():
     bounds = guard_early_next_starts(
         [
             {"text": "2人刻もう", "start_ms": 91060, "end_ms": 93900, "from_asr": True},
-            {"text": "透き通った白い肌も", "start_ms": 112460, "end_ms": 116700, "from_asr": True},
+            {
+                "text": "透き通った白い肌も",
+                "start_ms": 112460,
+                "end_ms": 116700,
+                "from_asr": True,
+            },
         ],
         [
             {"ms": 87150, "text": "2人刻もう"},
@@ -762,6 +803,12 @@ def test_align_lyrics_uses_asr_word_times():
         envelope=[],
     )
     tokens = timeline["cues"][0]["tokens"]
-    assert [tok["text"] for tok in tokens] == ["Gotta", "change", "my", "answering", "machine"]
+    assert [tok["text"] for tok in tokens] == [
+        "Gotta",
+        "change",
+        "my",
+        "answering",
+        "machine",
+    ]
     assert tokens[1]["end_ms"] == 20020
     assert tokens[3]["start_ms"] == 20320

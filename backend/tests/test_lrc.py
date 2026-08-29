@@ -1,4 +1,5 @@
-from lovktv.catalog.fetch import is_clean_title, parse_lrc
+from lovktv.catalog.search import is_clean_title
+from lovktv.catalog.lyrics import parse_lrc
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
     drop_credit_lines,

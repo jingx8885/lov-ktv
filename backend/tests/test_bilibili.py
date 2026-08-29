@@ -1,6 +1,6 @@
 import hashlib
 
-from lovktv.catalog import bilibili, fetch
+from lovktv.catalog import audio, bilibili, importer, kugou, mugen, search, lyrics
 
 
 def test_score_rejects_title_inside_longer_name():
@@ -144,40 +144,40 @@ def test_pick_mv_uses_ranked_search(monkeypatch):
 
 
 def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
-    fetch.remember_audio_source(
+    audio._AUDIO_CACHE.clear()
+    audio.remember_audio_source(
         "186016",
         {"kind": "ytdlp", "page": "https://youtube.com/watch?v=wrong", "title": "花海 DJ", "provider": "youtube"},
     )
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
-        fetch,
+        audio,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
-    source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
+    monkeypatch.setattr(bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = audio.resolve_audio_source("186016", "晴天", "周杰伦")
     assert source["kind"] == "bilibili"
     assert source["bvid"] == "BV1UZhK61E9z"
 
 
 def test_resolve_uses_netease_before_bilibili(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     monkeypatch.setattr(
-        fetch,
+        audio,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
-    source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
+    monkeypatch.setattr(bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: True)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    source = audio.resolve_audio_source("186016", "晴天", "周杰伦")
     assert source["kind"] == "netease"
     assert source["id"] == "186016"
 
 
 def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     seen = []
 
     def fake_pick(title, artist=""):
@@ -186,45 +186,45 @@ def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
             return {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""}
         return None
 
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
-    monkeypatch.setattr(fetch, "pick_bilibili_mv", fake_pick)
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
-    source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio, "pick_bilibili_mv", fake_pick)
+    monkeypatch.setattr(bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = audio.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
     assert ("晴天(深情版)", "Lucky小爱") in seen
     assert ("晴天", "") in seen
     assert source["bvid"] == "BV1UZhK61E9z"
 
 
 def test_resolve_uses_bilibili_when_netease_empty(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    audio._AUDIO_CACHE.clear()
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
-        fetch,
+        audio,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
-    source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
+    monkeypatch.setattr(bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    source = audio.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
     assert source["kind"] == "bilibili"
     assert source["bvid"] == "BV1UZhK61E9z"
 
 
 def test_import_uses_bilibili_before_soundcloud(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        mugen,
         "search_mugen",
         lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
     )
-    monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
-    monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(mugen, "is_mugen_kid", lambda value: False)
+    monkeypatch.setattr(kugou, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_tonzhon",
         lambda *args, **kwargs: [{"id": "186016", "name": "晴天", "artist": ["周杰伦"]}],
     )
-    monkeypatch.setattr(fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]故事的小黄花")
+    monkeypatch.setattr(lyrics, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]故事的小黄花")
     monkeypatch.setattr(
-        fetch,
+        audio,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
     )
@@ -235,10 +235,10 @@ def test_import_uses_bilibili_before_soundcloud(tmp_path, monkeypatch):
             video_path.write_bytes(b"v" * 2000)
         return True
 
-    monkeypatch.setattr(fetch, "try_bilibili_download", fake_download)
-    monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("ytdlp")))
-    monkeypatch.setattr(fetch, "try_netease_download", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease")))
-    skeleton = fetch.import_song(query="晴天", out_dir=tmp_path, song_id="186016")
+    monkeypatch.setattr(audio, "try_bilibili_download", fake_download)
+    monkeypatch.setattr(audio, "try_ytdlp_search", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("ytdlp")))
+    monkeypatch.setattr(audio, "try_netease_download", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease")))
+    skeleton = importer.import_song(query="晴天", out_dir=tmp_path, song_id="186016")
     assert skeleton["audio"]["source"] == "bilibili"
     assert skeleton["has_video"] is True
     assert skeleton["source"]["bvid"] == "BV1UZhK61E9z"

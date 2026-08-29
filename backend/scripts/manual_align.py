@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
 from lovktv.jobs import apply_locked_manual, load_lyric_lines
-from lovktv.pipeline.align import extract_envelope, vocal_regions
+from lovktv.pipeline.audio import extract_envelope, vocal_regions
 from lovktv.pipeline.lyrics import is_credit_lyric, write_manual_lrc
 
 HOP = 20

@@ -1,4 +1,3 @@
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -25,9 +24,7 @@ def test_frontend_tsc_no_emit():
     tsc = FRONTEND / "node_modules" / ".bin" / "tsc"
     if tsc.exists():
         cmd = [str(tsc), "-p", str(FRONTEND), "--noEmit"]
-    elif shutil.which("npx"):
-        cmd = ["npx", "--yes", "typescript@5.9.2", "tsc", "-p", str(FRONTEND), "--noEmit"]
     else:
-        pytest.skip("需要 Node，才能跑 frontend 的 tsc 检查")
+        pytest.skip("frontend TypeScript toolchain is not installed locally")
     result = subprocess.run(cmd, cwd=FRONTEND, capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stdout + result.stderr
