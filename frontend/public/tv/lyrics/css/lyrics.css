@@ -57,16 +57,17 @@ body.tv .lyric-plate.bare .next {
     0 4px 12px rgba(0, 0, 0, 0.7);
 }
 body.tv .lyrics .line {
-  font-size: 17px !important;
+  /* Keep a readable baseline on TV panels; 17px was too small at couch distance. */
+  font-size: 24px !important;
 }
 body.tv .lyrics .prev,
 body.tv .lyrics .next {
-  font-size: 11px !important;
+  font-size: 15px !important;
 }
 body.tv .lyrics .anno .rt,
 body.tv .lyrics .anno .rt i {
-  min-height: 12px;
-  font-size: 12px !important;
+  min-height: 15px;
+  font-size: 15px !important;
   line-height: 1.1;
   font-weight: 700;
   font-style: normal;
@@ -83,8 +84,8 @@ body.tv .lyrics .anno .roma,
 body.tv .lyrics .anno .gloss {
   width: auto;
   min-width: 100%;
-  min-height: 12px;
-  font-size: 12px !important;
+  min-height: 15px;
+  font-size: 15px !important;
   line-height: 1.1;
   transform: none !important;
   overflow: visible;
@@ -96,7 +97,7 @@ body.tv .lyrics .anno .roma {
   font-weight: 600;
 }
 body.tv .lyrics .lyric-zh {
-  min-height: 13px;
+  min-height: 16px;
   margin-top: 0.1em;
-  font-size: 13px !important;
+  font-size: 16px !important;
 }

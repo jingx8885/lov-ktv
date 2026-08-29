@@ -3,7 +3,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 
-def test_tv_lyrics_use_this_morning_small_type():
+def test_tv_lyrics_use_readable_fixed_type():
     shared = (ROOT / "shared" / "lyrics" / "css" / "lyrics.css").read_text(
         encoding="utf-8"
     )
@@ -13,8 +13,8 @@ def test_tv_lyrics_use_this_morning_small_type():
     assert "clamp(28px, 4.6vw, 58px)" in shared
     assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
-    assert "font-size: 17px !important" in tv
-    assert "font-size: 11px !important" in tv
+    assert "font-size: 24px !important" in tv
+    assert "font-size: 15px !important" in tv
     assert "clamp(" not in tv
     assert "font-size: 42px" not in tv
     assert "clamp(18px, 2.8vw, 34px)" not in tv
@@ -23,10 +23,9 @@ def test_tv_lyrics_use_this_morning_small_type():
     assert "body.tv .lyrics .anno .rt" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
-    assert "font-size: 12px !important" in tv
-    assert "font-size: 13px !important" in tv
+    assert "font-size: 15px !important" in tv
+    assert "font-size: 16px !important" in tv
     assert "font-size: 14px" not in tv
-    assert "font-size: 15px" not in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
     assert "backdrop-filter" not in tv
@@ -39,8 +38,8 @@ def test_tv_lyrics_use_this_morning_small_type():
     assert "body.tv.is-waiting .lyric-plate" in shared
     assert "body.tv.is-waiting .wait-art" in stage
     assert 'href="/tv/stage/css/stage.css"' in html
-    assert "min-height: 12px" in tv
-    assert "min-height: 13px" in tv
+    assert "min-height: 15px" in tv
+    assert "min-height: 16px" in tv
     paint = (ROOT / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
