@@ -106,7 +106,7 @@
 - [ ] 增加真实公网文件与已构建 TV APK 内嵌文件的路径/hash/入口对比；当前只有源码产物和 manifest 的契约测试，尚未对 APK 解包结果做自动比对。
 - [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致（需真实 APK 产物）。
 
-证据：`scripts/build-frontend-dist.py`、`backend/lovktv/assets.py`、`android-tv/app/src/main/java/com/lovktv/tv/platform/AssetRev.kt` 形成单一 manifest/revision 链；`backend/tests/test_assets.py` 覆盖 manifest、版本注入和 web 产物入口。Android Gradle 任务 `copyWebAssets` 已依赖该构建脚本，但本工作树未提供可复验的 APK/Gradle SDK，因此 APK parity 仍是明确留项。
+证据：`scripts/build-frontend-dist.py`、`backend/lovktv/media/assets.py`、`android-tv/app/src/main/java/com/lovktv/tv/platform/AssetRev.kt` 形成单一 manifest/revision 链；`backend/tests/test_assets.py` 覆盖 manifest、版本注入和 web 产物入口。Android Gradle 任务 `copyWebAssets` 已依赖该构建脚本，但本工作树未提供可复验的 APK/Gradle SDK，因此 APK parity 仍是明确留项。
 
 ### R6 生命周期与部署 — 已完成
 
