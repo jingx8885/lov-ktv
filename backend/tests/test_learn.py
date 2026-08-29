@@ -211,16 +211,18 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnFx"' in html
     shell = (root / "phone" / "player" / "js" / "learn.js").read_text(encoding="utf-8")
     css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
-    quiz = (root / "phone" / "player" / "js" / "learn-quiz.js").read_text(
+    quiz = (root / "phone" / "player" / "js" / "learn" / "quiz.js").read_text(
         encoding="utf-8"
     )
-    tap = (root / "phone" / "player" / "js" / "learn-tap.js").read_text(
+    tap = (root / "phone" / "player" / "js" / "learn" / "tap.js").read_text(
         encoding="utf-8"
     )
-    echo = (root / "phone" / "player" / "js" / "learn-echo.js").read_text(
+    echo = (root / "phone" / "player" / "js" / "learn" / "echo.js").read_text(
         encoding="utf-8"
     )
-    fx = (root / "phone" / "player" / "js" / "learn-fx.js").read_text(encoding="utf-8")
+    fx = (root / "phone" / "player" / "js" / "learn" / "fx.js").read_text(
+        encoding="utf-8"
+    )
     assert ".learn-body[hidden]" in css
     assert "learnTapGo" not in shell
     assert "learnTapGo" not in html
@@ -253,7 +255,7 @@ def test_phone_learn_shell_is_wired():
     assert "kickPlayerPaint" in (
         root / "phone" / "player" / "js" / "lyrics.js"
     ).read_text(encoding="utf-8")
-    play = (root / "phone" / "player" / "js" / "learn-play.js").read_text(
+    play = (root / "phone" / "player" / "js" / "learn" / "play.js").read_text(
         encoding="utf-8"
     )
     assert "setLearnDiff" in play
