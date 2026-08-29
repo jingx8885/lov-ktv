@@ -75,9 +75,6 @@ function bindStallGuard(el) {
   el.addEventListener("playing", () => {
     state.mediaStall = 0;
   });
-  el.addEventListener("canplay", () => {
-    state.mediaStall = 0;
-  });
 }
 
 function recoverSameSrc(el) {

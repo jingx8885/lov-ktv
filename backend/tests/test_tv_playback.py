@@ -204,6 +204,9 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "state.mediaStall" in tick
     assert "if (isMediaStalled(el)) return false;" in tick
     assert "state.resumeAt = t;" in tick
+    # canplay may fire before playback actually resumes; only playing should
+    # clear the stall guard so the vocal cannot restart during that gap.
+    assert 'el.addEventListener("canplay"' not in tick
     # The vocal track must not keep seeking back to a stalled karaoke clock;
     # doing so produces an audible short loop while the master buffers.
     assert "if (state.mediaStall)" in mix
