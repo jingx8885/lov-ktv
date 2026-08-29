@@ -33,6 +33,22 @@ def _publish_lyrics(song_id: str) -> list[str]:
     return uploaded
 
 
+def pack_timeline_to_voice(timeline: dict, out_dir) -> bool:
+    """Sweep karaoke tokens over the sung burst, not the hold until the next line."""
+    from lovktv.pipeline.align import extract_envelope, pack_tokens_to_singing
+
+    for name in ("vocals.wav", "karaoke.m4a", "original.mp3"):
+        audio = out_dir / name
+        if not audio.exists():
+            continue
+        envelope, hop_ms = extract_envelope(audio)
+        if not envelope:
+            continue
+        pack_tokens_to_singing(timeline.get("cues") or [], envelope, hop_ms)
+        return True
+    return False
+
+
 def cue_source(cue: dict) -> str:
     return str(cue.get("source_text") or cue.get("text") or "")
 
@@ -83,6 +99,7 @@ def restore_song(
             force=force or needs_romaji_restore(timeline),
         )
     apply_ja_annotation(timeline, notes)
+    pack_timeline_to_voice(timeline, out_dir)
     write_subtitles(timeline, out_dir)
     previous = str(song.get("error") or "")
     if "注音降级" in previous:

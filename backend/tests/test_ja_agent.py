@@ -436,16 +436,51 @@ def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
     monkeypatch.setattr(restore_ja, "get_song", lambda sid: {"title": "x", "error": ""})
     monkeypatch.setattr(restore_ja, "update_song", lambda *args, **kwargs: None)
     published: list[str] = []
+    packed: list[str] = []
     monkeypatch.setattr(restore_ja, "_publish_lyrics", lambda sid: published.append(sid) or ["lyrics.json"])
+    monkeypatch.setattr(restore_ja, "pack_timeline_to_voice", lambda timeline, out_dir: packed.append(out_dir.name) or True)
     result = restore_ja.restore_song("s1", publish=True, reapply=True)
     assert result["ok"] is True
     assert published == ["s1"]
+    assert packed == ["s1"]
     assert result["published"] == ["lyrics.json"]
     timeline = json.loads((song_dir / "lyrics.json").read_text(encoding="utf-8"))
     tokens = timeline["cues"][0]["tokens"]
     assert "".join(tok["text"] for tok in tokens) == "溢れるメモリー"
     assert any(tok["reading"] == "memory" for tok in tokens)
     assert any("あふれ" in str(tok["reading"]) for tok in tokens)
+
+
+def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
+    from lovktv import restore_ja
+
+    (tmp_path / "vocals.wav").write_bytes(b"x")
+    seen = {}
+
+    def fake_env(path, hop_ms=20):
+        seen["path"] = path.name
+        return [20.0] * 50 + [800.0] * 80 + [10.0] * 200, 20
+
+    monkeypatch.setattr("lovktv.pipeline.align.extract_envelope", fake_env)
+    timeline = {
+        "cues": [
+            {
+                "text": "ポケモンGETだぜ!",
+                "start_ms": 1000,
+                "end_ms": 7000,
+                "tokens": [
+                    {"text": "ポケモン", "start_ms": 1000, "end_ms": 3000, "reading": "pokemon"},
+                    {"text": "GET", "start_ms": 3000, "end_ms": 5000, "reading": ""},
+                    {"text": "だぜ!", "start_ms": 5000, "end_ms": 7000, "reading": ""},
+                ],
+            }
+        ]
+    }
+    assert restore_ja.pack_timeline_to_voice(timeline, tmp_path) is True
+    assert seen["path"] == "vocals.wav"
+    assert timeline["cues"][0]["end_ms"] == 7000
+    assert timeline["cues"][0]["sing_end_ms"] < 4000
+    assert timeline["cues"][0]["tokens"][-1]["end_ms"] == timeline["cues"][0]["sing_end_ms"]
 
 
 def test_needs_romaji_restore():

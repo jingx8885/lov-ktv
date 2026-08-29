@@ -196,6 +196,9 @@ def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
             force=force,
         )
         apply_ja_annotation(timeline, notes)
+        from lovktv.restore_ja import pack_timeline_to_voice
+
+        pack_timeline_to_voice(timeline, out_dir)
         previous = str((get_song(song_id) or {}).get("error") or "")
         if "注音降级" in previous:
             update_song(song_id, error="")
