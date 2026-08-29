@@ -22,7 +22,6 @@ class PrefsTest {
         assertEquals("http://10.0.0.4:8787", Prefs.normalize("http://10.0.0.4:8787"))
         assertTrue(Prefs.looksLocal("lov-ktv.local"))
         assertFalse(Prefs.looksLocal("ktv.lovbrowser.com"))
-        assertTrue(Prefs.isLegacyDefault("http://lov-ktv.local:8787"))
     }
 
     @Test

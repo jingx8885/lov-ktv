@@ -39,21 +39,6 @@ class TvBridge(private val host: TvHost) {
     fun playing(): Boolean = host.mtvPlaying()
 
     @JavascriptInterface
-    fun setCover(url: String) {
-        host.runOnUi { host.showCover(url) }
-    }
-
-    @JavascriptInterface
-    fun setLyrics(cur: String, zh: String, next: String) {
-        host.runOnUi { host.showLyrics(cur, zh, next) }
-    }
-
-    @JavascriptInterface
-    fun clearLyrics() {
-        host.runOnUi { host.showLyrics("", "", "") }
-    }
-
-    @JavascriptInterface
     fun openSetup() {
         host.runOnUi { host.openSetup() }
     }
@@ -69,17 +54,5 @@ interface TvHost {
     fun mtvPositionMs(): Int
     fun mtvDurationMs(): Int
     fun mtvPlaying(): Boolean
-    fun showCover(url: String)
-    fun showLyrics(cur: String, zh: String, next: String)
     fun openSetup()
-}
-
-object LyricOverlay {
-    fun visibleText(cur: String, zh: String): String {
-        val main = cur.trim()
-        val trans = zh.trim()
-        if (main.isEmpty()) return trans
-        if (trans.isEmpty() || trans == main) return main
-        return "$main\n$trans"
-    }
 }

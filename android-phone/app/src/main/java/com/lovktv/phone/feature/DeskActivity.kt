@@ -25,7 +25,6 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.webkit.CookieManager
-import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -88,7 +87,6 @@ class DeskActivity : Activity() {
             displayZoomControls = false
             userAgentString = "$userAgentString LovKtvAndroidPhone/1.0"
         }
-        webView.addJavascriptInterface(NativeBridge(), "LovKtvNative")
         webView.addJavascriptInterface(PhoneBridge(this), "LovKtvPhone")
         webView.webChromeClient = object : WebChromeClient() {
             override fun onPermissionRequest(request: PermissionRequest) {
@@ -471,19 +469,6 @@ class DeskActivity : Activity() {
         if (pendingWebPerm === request) pendingWebPerm = null
     }
 
-    private fun startNativeMic() {
-        if (!hasLanMic()) {
-            notifyJs(false, getString(R.string.mic_need_tv))
-            return
-        }
-        if (!hasAudio(this)) {
-            requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_NATIVE_MIC)
-            return
-        }
-        MicService.start(this, micHost, micPort, micRate)
-        notifyJs(true, "")
-    }
-
     private fun askPhoneMicPermission() {
         val needed = mutableListOf(Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= 33 &&
@@ -492,15 +477,6 @@ class DeskActivity : Activity() {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)
         }
         requestPermissions(needed.toTypedArray(), REQ_PHONE_MIC)
-    }
-
-    private fun notifyJs(ok: Boolean, err: String) {
-        if (!::webView.isInitialized) return
-        val safe = err.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ")
-        webView.evaluateJavascript(
-            "window.LovKtvOnMic && window.LovKtvOnMic(${if (ok) "true" else "false"}, '$safe')",
-            null,
-        )
     }
 
     private fun dispatchMicEvent(name: String) {
@@ -518,14 +494,6 @@ class DeskActivity : Activity() {
                 val req = pendingWebPerm
                 if (granted && req != null) grantWebPermission(req)
                 else denyWebPermission(req)
-            }
-            REQ_NATIVE_MIC -> {
-                if (granted) {
-                    MicService.start(this, micHost, micPort, micRate)
-                    notifyJs(true, "")
-                } else {
-                    notifyJs(false, getString(R.string.mic_denied))
-                }
             }
             REQ_PHONE_MIC -> {
                 if (granted && hasAudio(this)) {
@@ -585,24 +553,6 @@ class DeskActivity : Activity() {
         return super.onKeyDown(keyCode, event)
     }
 
-    inner class NativeBridge {
-        @JavascriptInterface
-        fun hasLanMic(): Boolean = this@DeskActivity.hasLanMic()
-
-        @JavascriptInterface
-        fun isMicLive(): Boolean = MicService.running
-
-        @JavascriptInterface
-        fun startMic() {
-            runOnUiThread { startNativeMic() }
-        }
-
-        @JavascriptInterface
-        fun stopMic() {
-            runOnUiThread { MicService.stop(this@DeskActivity) }
-        }
-    }
-
     companion object {
         const val EXTRA_SERVER = "server"
         const val EXTRA_ROOM = "room"
@@ -612,8 +562,7 @@ class DeskActivity : Activity() {
         const val EXTRA_MIC_RATE = "mic_rate"
         private const val REQ_FILE = 22
         private const val REQ_WEB_MIC = 23
-        private const val REQ_NATIVE_MIC = 24
-        private const val REQ_PHONE_MIC = 25
+        private const val REQ_PHONE_MIC = 24
 
         fun hasAudio(activity: Activity): Boolean {
             return activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED

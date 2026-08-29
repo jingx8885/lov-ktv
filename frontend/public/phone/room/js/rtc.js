@@ -23,34 +23,11 @@ function nativeError(err) {
 }
 
 function nativeStartMic() {
-  return new Promise((resolve, reject) => {
-    if (!hasNativeMic()) {
-      reject(new Error(t("phone.mic.fail")));
-      return;
-    }
-    const caps = nativeCapabilities();
-    if (!caps.host || !caps.port) {
-      reject(new Error(t("phone.mic.needTv")));
-      return;
-    }
-    const timer = window.setTimeout(() => {
-      if (window.LovKtvOnMic === done) window.LovKtvOnMic = null;
-      reject(new Error(t("phone.mic.fail")));
-    }, 20000);
-    const done = (ok, err) => {
-      clearTimeout(timer);
-      if (window.LovKtvOnMic === done) window.LovKtvOnMic = null;
-      if (ok) resolve();
-      else reject(new Error(err || t("phone.mic.fail")));
-    };
-    window.LovKtvOnMic = done;
-    try {
-      nativeCall("startTvMic")
-        .then(() => done(true))
-        .catch((err) => done(false, nativeError(err)));
-    } catch (err) {
-      done(false, nativeError(err));
-    }
+  if (!hasNativeMic()) return Promise.reject(new Error(t("phone.mic.fail")));
+  const caps = nativeCapabilities();
+  if (!caps.host || !caps.port) return Promise.reject(new Error(t("phone.mic.needTv")));
+  return nativeCall("startTvMic").catch((err) => {
+    throw new Error(nativeError(err));
   });
 }
 

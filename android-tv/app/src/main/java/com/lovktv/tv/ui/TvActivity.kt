@@ -7,7 +7,6 @@ import com.lovktv.tv.media.SilentMtv
 import com.lovktv.tv.feature.host.HostRuntime
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
 import android.view.KeyEvent
@@ -21,29 +20,17 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.app.Activity
 import android.view.SurfaceView
-import android.widget.ImageView
-import android.widget.TextView
 import android.widget.Toast
-import java.net.URL
-import java.util.concurrent.Executors
 
 class TvActivity : Activity(), TvHost {
     private lateinit var webView: WebView
-    private lateinit var coverView: ImageView
-    private lateinit var lyricsView: TextView
     private lateinit var silentMtv: SilentMtv
-
-    private val io = Executors.newSingleThreadExecutor { runnable ->
-        Thread(runnable, "lovktv-cover").apply { isDaemon = true }
-    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tv)
         webView = findViewById(R.id.webview)
-        coverView = findViewById(R.id.mtvCover)
-        lyricsView = findViewById(R.id.nativeLyrics)
         silentMtv = SilentMtv(findViewById<SurfaceView>(R.id.mtvNative))
 
         runCatching {
@@ -108,13 +95,10 @@ class TvActivity : Activity(), TvHost {
 
     override fun playMtv(url: String) {
         silentMtv.play(url)
-        if (silentMtv.url.isNotBlank()) coverView.visibility = View.GONE
     }
 
     override fun stopMtv() {
         silentMtv.stop()
-        coverView.visibility = View.GONE
-        coverView.setImageDrawable(null)
     }
 
     override fun pauseMtv() {
@@ -134,30 +118,6 @@ class TvActivity : Activity(), TvHost {
     override fun mtvDurationMs(): Int = silentMtv.durationMs()
 
     override fun mtvPlaying(): Boolean = silentMtv.isPlaying()
-
-    override fun showCover(url: String) {
-        val next = url.trim()
-        if (next.isBlank()) {
-            coverView.visibility = View.GONE
-            coverView.setImageDrawable(null)
-            return
-        }
-        io.execute {
-            val bmp = runCatching {
-                URL(next).openStream().use { BitmapFactory.decodeStream(it) }
-            }.getOrNull()
-            runOnUiThread {
-                if (bmp == null) return@runOnUiThread
-                coverView.setImageBitmap(bmp)
-                if (!silentMtv.isPlaying()) coverView.visibility = View.VISIBLE
-            }
-        }
-    }
-
-    override fun showLyrics(cur: String, zh: String, next: String) {
-        lyricsView.text = ""
-        lyricsView.visibility = View.GONE
-    }
 
     override fun openSetup() {
         startActivity(
@@ -228,7 +188,6 @@ class TvActivity : Activity(), TvHost {
         stopMtv()
         webView.removeJavascriptInterface("LovKtvNative")
         webView.destroy()
-        io.shutdownNow()
         super.onDestroy()
     }
 }

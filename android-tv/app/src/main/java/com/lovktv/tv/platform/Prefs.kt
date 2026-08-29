@@ -8,7 +8,7 @@ object Prefs {
     private const val FILE = "lovktv"
     private const val KEY_SERVER = "server_url"
     private const val KEY_ROOM = "room_code"
-    private const val LEGACY_DEFAULT = "http://lov-ktv.local:8787"
+    private const val LEGACY_DEFAULT_SERVER = "http://lov-ktv.local:8787"
     private val ROOM_RE = Regex("^[A-Z0-9]{4,12}$")
 
     fun serverUrl(context: Context): String {
@@ -19,7 +19,7 @@ object Prefs {
 
     fun migrate(context: Context) {
         val raw = serverUrl(context).trim()
-        if (raw.isEmpty() || isLegacyDefault(raw)) {
+        if (raw.isEmpty()) {
             saveServer(context, DEFAULT_SERVER)
             return
         }
@@ -61,7 +61,9 @@ object Prefs {
 
     fun normalize(raw: String): String {
         var value = raw.trim().trimEnd('/')
-        if (value.isEmpty() || isLegacyDefault(value)) {
+        if (value.isEmpty() || value.equals(LEGACY_DEFAULT_SERVER, ignoreCase = true) ||
+            value.equals("lov-ktv.local:8787", ignoreCase = true)
+        ) {
             return DEFAULT_SERVER
         }
         if (!value.startsWith("http://") && !value.startsWith("https://")) {
@@ -90,8 +92,4 @@ object Prefs {
         return false
     }
 
-    fun isLegacyDefault(raw: String): Boolean {
-        val value = raw.trim().trimEnd('/').lowercase()
-        return value == LEGACY_DEFAULT || value == "lov-ktv.local:8787"
-    }
 }

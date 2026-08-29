@@ -9,7 +9,7 @@ import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
 import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room/state.js";
-import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
+import { nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
 
 export { roomWsLive, watchRoom };
 
@@ -164,7 +164,6 @@ export function stopPlayback() {
   state.boundMtvSong = "";
   document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player");
   stopNativeMtv();
-  clearNativeLyrics();
   state.lastFxCue = -1;
   state.hookLines = new Set();
   if (state.stageFx) state.stageFx.clear();

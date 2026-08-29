@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">lov-ktv 点歌</string>
-    <string name="brand">lov-ktv</string>
-    <string name="join_title">点歌台</string>
-    <string name="join_hint">扫电视上的二维码，或只填房间号。电视会把局域网地址报到处理服务器。</string>
-    <string name="scan_need_qr">请扫电视上的二维码进房</string>
-    <string name="room_hint">房间码</string>
-    <string name="server_hint">https://ktv.lovbrowser.com</string>
-    <string name="enter_room">进入</string>
-    <string name="scan">扫码</string>
-    <string name="scan_join">扫码进房</string>
     <string name="scan_bind">绑定电视</string>
     <string name="scan_rebind">重新绑定电视</string>
     <string name="scan_hint">对准电视上的二维码</string>
@@ -17,30 +8,9 @@
     <string name="scan_need_camera">需要摄像头权限才能扫码</string>
     <string name="scan_invalid">不是进房二维码，请扫电视上的码</string>
     <string name="scan_joining">正在进房…</string>
-    <string name="search">搜歌</string>
-    <string name="queue">已点</string>
-    <string name="library">曲库</string>
-    <string name="mic_off">开麦</string>
-    <string name="mic_on">关麦</string>
-    <string name="mic_need_tv">低延时麦需要同一 WiFi 上的 Android 电视 App</string>
-    <string name="mic_denied">需要麦克风权限才能开麦</string>
     <string name="mic_channel">低延时麦</string>
-    <string name="import_hit">入库</string>
-    <string name="queue_song">点歌</string>
-    <string name="making">制作中</string>
-    <string name="queued">已点</string>
-    <string name="bump">顶歌</string>
-    <string name="bumped">已顶到下一首</string>
-    <string name="play_this">切到这</string>
-    <string name="skip">切歌</string>
-    <string name="vocal_on">原唱</string>
-    <string name="vocal_off">伴唱</string>
-    <string name="volume">音量</string>
-    <string name="now">在唱</string>
-    <string name="idle">还没开始唱</string>
     <string name="splash_desc">lov-ktv 启动</string>
     <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码或填房间号。</string>
-    <string name="lan_desk_retry">先用手机</string>
     <string name="tv_reconnecting">正在重连电视…</string>
     <string name="tv_reconnected">已重新连上电视</string>
 </resources>
