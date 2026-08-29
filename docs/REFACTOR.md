@@ -52,8 +52,37 @@
 - [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
 - [x] 手机端播放顺序决策提取到独立 `player/state.js`。
 - [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/state.js`。
+- [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room-state.js`。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
+
+### R5A 前端平台边界与 DOM contract — 待开始
+
+- [ ] 定义 `Platform`、`HttpPort`、`MediaPort`、`MicPort`、`RemotePort`、`ScannerPort`，浏览器 / Android Phone / Android TV 各有 adapter。
+- [ ] 原生桥调用和回调集中到 adapter；业务模块不再直接访问 `window.LovKtvNative`、`window.LovKtvPhone`、`window.LovMic`、`window.LovAec`。
+- [ ] `m.html`、`tv.html` 建立必需节点清单和启动 smoke test；功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
+- [ ] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
+- [ ] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常。
+
+### R5B TV 播放运行时收敛 — 待开始
+
+- [ ] module 播放器稳定后删除 `tv/boot-play.js` 的 classic fallback、重复 timer 和第二套 `LovKtvRemote`。
+- [ ] 播放、歌词、MTV、恢复、预取通过单一 controller / 事件协作，`tick.js` 不再承担所有生命周期职责。
+- [ ] 验收：浏览器 TV 与 TV APK 只走同一播放路径，覆盖冷启动、暂停恢复、切歌、卡顿恢复和 MTV 降级。
+
+### R5C shared 资源与类型边界 — 待开始
+
+- [ ] `stage-fx.js`、`timeline.js` 改为 ESM，Phone 学习模式不再从 `tv/` 目录加载资源。
+- [ ] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
+- [ ] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
+- [ ] 验收：`npm run check` 绿色，且 phone/tv 入口各有独立模块加载测试。
+
+### R5D Web / embedded 资产一致性 — 待开始
+
+- [ ] 一次构建生成 `frontend-dist` 和 `manifest.json`，后端静态服务与 Android TV APK 复用同一份产物。
+- [ ] asset revision 改用 git commit/content hash，统一公网与 TV 内嵌资源的缓存语义。
+- [ ] 增加公网文件与 TV 内嵌文件的路径、hash、入口 smoke test，防止 TV APK 提供旧版 `m.html`。
+- [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致。
 
 ### R6 生命周期与部署 — 待开始
 
@@ -63,4 +92,4 @@
 
 ## 当前跟进
 
-下一项是 R5：继续拆分前端播放状态模块，并补协议 smoke test；每完成一个可回滚的小步骤就更新本文件并提交。
+下一项是 R5：继续拆分前端播放状态模块，并按 [`docs/FRONTEND_COUPLING.md`](FRONTEND_COUPLING.md) 推进平台边界、TV 播放收敛、类型检查和 Web/embedded 资产一致性；每完成一个可回滚的小步骤就更新本文件并提交。
