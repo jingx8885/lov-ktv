@@ -120,7 +120,8 @@ export function bindMtv(songId) {
     document.body.classList.remove("has-mtv-cover");
     document.body.style.backgroundImage = "";
     syncNativeMv();
-    if (api.canPlay()) mtv.play().catch(() => {});
+    // The karaoke audio is the master clock. Paint starts the video only after
+    // audio is actually live, preventing a buffered video from running ahead.
   };
   mtv.src = htmlSrc;
   silenceMtv(mtv);

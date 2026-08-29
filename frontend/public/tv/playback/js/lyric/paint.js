@@ -131,7 +131,7 @@ export function paint() {
       }
     } else {
       silenceMtv(mtv);
-      const audioLive = !karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.05;
+      const audioLive = !karaoke.paused && !state.mediaStall && karaoke.readyState >= 3 && karaoke.currentTime > 0.05;
       if (
         !mtv.hidden &&
         mtv.src &&

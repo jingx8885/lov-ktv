@@ -202,6 +202,8 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "if (isMediaStalled(el)) return false;" in tick
     assert "state.resumeAt = t;" in tick
     assert "if (stamp === state.lastRoomStamp) return;" in tick
+    assert "karaoke.readyState >= 3" in tick
+    assert "!state.mediaStall" in tick
     # Browser MTV failure degrades to a cover; native MTV remains the same bind path.
     assert "mtv.onerror = () =>" in mtv
     assert 'classList.add("has-mtv-cover")' in mtv
@@ -233,3 +235,8 @@ def test_tv_runtime_lifecycle_and_rendering_are_bounded():
     assert "if (stamp === roomWsStamp) return;" in room
     assert "const drawLyrics = frameNow - lastLyricPaintAt >= 33;" in paint
     assert "if (paintActive) paintFrame = requestAnimationFrame(paint);" in paint
+    mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
+        encoding="utf-8"
+    )
+    loaded = mtv.split("mtv.onloadeddata = () =>", 1)[1].split("mtv.src =", 1)[0]
+    assert ".play()" not in loaded

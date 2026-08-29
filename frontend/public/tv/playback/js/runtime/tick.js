@@ -311,14 +311,28 @@ export function startPlayback() {
     } else if (!karaoke.paused) {
       $("gate").hidden = true;
     }
-    if (vocal.paused && !isMediaStalled(vocal)) api.playEl(vocal).catch(() => {});
+    if (!karaoke.paused && !state.mediaStall && vocal.paused && !isMediaStalled(vocal)) {
+      api.playEl(vocal).catch(() => {});
+    }
     const mtv = $("mtv");
-    if (mtv && mtv.paused && karaoke.currentTime > 0.05 && !isMediaStalled(mtv)) api.playEl(mtv).catch(() => {});
+    if (
+      mtv &&
+      mtv.paused &&
+      !karaoke.paused &&
+      !state.mediaStall &&
+      karaoke.readyState >= 3 &&
+      karaoke.currentTime > 0.05 &&
+      !isMediaStalled(mtv)
+    ) {
+      api.playEl(mtv).catch(() => {});
+    }
     return;
   }
   state.resumeAt = 0;
   state.mediaFallback = "";
   state.mediaStall = 0;
+  karaoke.preload = "auto";
+  vocal.preload = "auto";
   karaoke.src = mediaUrl(songId, "karaoke.m4a");
   vocal.src = mediaUrl(songId, "original.mp3");
   bindKaraokeFallback(karaoke, vocal, songId);
@@ -338,11 +352,10 @@ export function startPlayback() {
     .playEl(karaoke)
     .then(() => {
       $("gate").hidden = true;
+      return api.playEl(vocal).catch(() => {});
     })
     .catch(() => {
       if (state.audioUnlocked) api.schedulePlayRetries();
       else $("gate").hidden = false;
     });
-  api.playEl(vocal).catch(() => {});
-  api.playEl($("mtv")).catch(() => {});
 }
