@@ -6,7 +6,9 @@ import { api } from "../../api.js";
 import { state, STEP_MS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
-import { setPlayIcon, syncGuide, playFromMs, cueIndexAt, applyKaraokeGain, togglePlayOrder } from "./playback.js";
+import { setPlayIcon, syncGuide, playFromMs, applyKaraokeGain } from "./controls.js";
+import { cueIndexAt } from "./lyrics.js";
+import { togglePlayOrder } from "./queue.js";
 
 export function fmtMs(ms) {
   const n = Math.max(0, Math.floor(ms || 0));

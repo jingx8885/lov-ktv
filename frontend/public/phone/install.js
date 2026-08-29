@@ -32,13 +32,10 @@ import {
   syncGuide,
   applyPlayerVocalMix,
   hookPlayerAudio,
-  loadPlayerList,
-  loadPlayerSong,
-  openPlayer,
-  bootPlayer,
-  playNextSong,
-  cueIndexAt,
-} from "./player/js/playback.js";
+} from "./player/js/controls.js";
+import { loadPlayerList, playNextSong } from "./player/js/queue.js";
+import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/song.js";
+import { cueIndexAt } from "./player/js/lyrics.js";
 import { setPlayerSheet } from "./player/js/sheet.js";
 import { enterLearn, exitLearn } from "./player/js/learn.js";
 
