@@ -37,6 +37,14 @@ class RoomRepository(Protocol):
         paused: bool | None = None,
     ) -> dict[str, Any]: ...
 
+    def set_room_lan(
+        self,
+        code: str,
+        origin: str,
+        mic_port: int | None = None,
+        mic_sample_rate: int | None = None,
+    ) -> dict[str, Any]: ...
+
 
 class SqliteRoomStore:
     """Persistence implementation used by the default room service."""
@@ -66,3 +74,21 @@ class SqliteRoomStore:
         paused: bool | None = None,
     ) -> dict[str, Any]:
         return store.set_mix(code, vocal_mix, volume, mic_gain, lyric_mode, paused)
+
+    def set_room_lan(
+        self,
+        code: str,
+        origin: str,
+        mic_port: int | None = None,
+        mic_sample_rate: int | None = None,
+    ) -> dict[str, Any]:
+        """Persist LAN host metadata when the host feature is available.
+
+        The method is optional during the rolling migration: older store
+        modules simply do not expose it, in which case callers get a clear
+        capability error instead of an obscure attribute failure.
+        """
+        setter = getattr(store, "set_room_lan", None)
+        if setter is None:
+            raise NotImplementedError("当前存储实现不支持局域网房间")
+        return setter(code, origin, mic_port, mic_sample_rate)

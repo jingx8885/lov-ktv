@@ -9,6 +9,20 @@ def test_sqlite_adapter_has_stable_compatibility_alias():
     assert StoreRoomRepository is SqliteRoomStore
 
 
+def test_sqlite_adapter_forwards_optional_lan_metadata(monkeypatch):
+    seen = {}
+
+    def fake_set_room_lan(*args):
+        seen["args"] = args
+        return {"code": "R1"}
+
+    from lovktv import store
+
+    monkeypatch.setattr(store, "set_room_lan", fake_set_room_lan, raising=False)
+    assert SqliteRoomStore().set_room_lan("r1", "http://192.168.1.2:8790", 9000, 48000) == {"code": "R1"}
+    assert seen["args"] == ("r1", "http://192.168.1.2:8790", 9000, 48000)
+
+
 def test_command_parsing_normalizes_transport_payload():
     command = RoomCommand.from_payload(
         "mix",
