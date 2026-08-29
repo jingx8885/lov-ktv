@@ -141,7 +141,7 @@
     border-radius: 8px;
   }
 
-  body.phone:not([data-page="player"]) .page {
+  body.phone .page {
     width: calc(100% - 176px);
     margin-left: 128px;
     margin-right: 48px;
@@ -149,7 +149,7 @@
     padding-right: 0;
   }
 
-  body.phone:not([data-page="player"]) .tabbar {
+  body.phone .tabbar {
     position: fixed;
     left: 24px;
     right: auto;
@@ -170,18 +170,18 @@
     -webkit-backdrop-filter: blur(18px);
   }
 
-  body.phone:not([data-page="player"]) .tabbar button {
+  body.phone .tabbar button {
     flex: 0 0 64px;
     min-height: 64px;
     border-radius: 8px;
     font-size: 11px;
   }
 
-  body.phone:not([data-page="player"]) .tabbar button.on {
+  body.phone .tabbar button.on {
     background: rgba(255, 55, 95, .16);
   }
 
-  body.phone:not([data-page="player"]) .tabbar svg {
+  body.phone .tabbar svg {
     width: 20px;
     height: 20px;
   }

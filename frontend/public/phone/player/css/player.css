@@ -609,7 +609,7 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   color: #fff;
   background: var(--accent);
 }
-@media (orientation: landscape) {
+@media (orientation: landscape) and (max-width: 899px) {
   body.phone[data-page="player"] .tabbar { display: none; }
   body.phone[data-page="player"] .page-player {
     padding-left: max(16px, env(safe-area-inset-left));

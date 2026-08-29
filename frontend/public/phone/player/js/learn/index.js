@@ -182,6 +182,11 @@ export async function enterLearn() {
 export function bindLearn() {
   document.querySelectorAll("[data-enter-learn]").forEach((btn) => {
     btn.onclick = () => {
+      // 没有可玩的歌曲时不要先切到播放器，避免“游戏”点击看起来像跳到了听歌页。
+      if (!state.playerSong) return showToast(t("phone.player.needSong"));
+      if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
+        return showToast(t("learn.needLyrics"));
+      }
       if (state.currentPage !== "player") api.showPage("player");
       enterLearn();
     };
