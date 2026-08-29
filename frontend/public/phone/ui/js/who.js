@@ -12,9 +12,11 @@ export function loginQs() {
 }
 
 export async function loadWho() {
-  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({ data: { user: null } }));
+  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({
+    data: { user: null }
+  }));
   const user = data.user;
-  $("whoName").textContent = user ? (user.sid || user.nickname || t("phone.who.in")) : t("phone.who.out");
+  $("whoName").textContent = user ? user.sid || user.nickname || t("phone.who.in") : t("phone.who.out");
   $("whoHint").textContent = user ? (user.wechat ? t("phone.who.wechat") : t("phone.who.device")) : t("phone.who.hint");
   $("whoLogin").hidden = !!user;
   $("whoLogin").href = loginQs();
@@ -37,4 +39,3 @@ export function bindWho() {
   };
   loadWho();
 }
-

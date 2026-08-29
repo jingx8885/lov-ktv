@@ -11,7 +11,9 @@ export function normLyricMode(value) {
 
 /** @param {unknown} [language] */
 export function lyricScript(language) {
-  const lang = String(language || "").trim().toLowerCase();
+  const lang = String(language || "")
+    .trim()
+    .toLowerCase();
   if (!lang) return "";
   if (lang === "ja" || lang.startsWith("ja-")) return "ja";
   if (lang === "en" || lang.startsWith("en-")) return "en";
@@ -83,11 +85,7 @@ export function clusterTokens(tokens) {
   for (const tok of tokens || []) {
     const cur = Object.assign({}, tok, { text: String(tok.text || "") });
     const prev = out[out.length - 1];
-    const join = prev
-      && isKanaText(prev.text)
-      && isKanaText(cur.text)
-      && tokenHasAnno(prev)
-      && !tokenHasAnno(cur);
+    const join = prev && isKanaText(prev.text) && isKanaText(cur.text) && tokenHasAnno(prev) && !tokenHasAnno(cur);
     if (join) {
       prev.text += cur.text;
       prev.end_ms = cur.end_ms;
@@ -180,7 +178,9 @@ function tokenRoma(tok) {
 function rubyHtml(tok, keepRow) {
   const reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
   if (reading && isKanjiText(tok.text) && !isKanjiText(reading)) {
-    return `<span class="rt">${Array.from(reading).map((ch) => `<i>${escapeHtml(ch)}</i>`).join("")}</span>`;
+    return `<span class="rt">${Array.from(reading)
+      .map((ch) => `<i>${escapeHtml(ch)}</i>`)
+      .join("")}</span>`;
   }
   return keepRow ? `<span class="rt"></span>` : "";
 }
@@ -204,27 +204,23 @@ export function renderCue(cue, t, mode) {
   const keepRt = showExtra && (script === "ja" || !script);
   if (!tokens.length) {
     const body = karaokeSpan(cueLine(cue), Math.round(tokenProgress(cue, t)));
-    return keepZh
-      ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>`
-      : body;
+    return keepZh ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>` : body;
   }
-  const html = `<span class="line-words">${tokens.map((tok, i) => {
-    const p = Math.round(tokenProgress(tok, t));
-    const body = karaokeSpan(tok.text, p);
-    const roma = keepRoma ? tokenRoma(tok) : "";
-    const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
-    const gloss = keepGloss && tok.zh ? String(tok.zh) : "";
-    const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
-    const latin = /^[A-Za-z0-9']/.test(tok.text || "");
-    const next = tokens[i + 1];
-    const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "")
-      ? `<span class="tok-space"> </span>`
-      : "";
-    return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
-  }).join("")}</span>`;
-  return keepZh
-    ? `${html}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>`
-    : html;
+  const html = `<span class="line-words">${tokens
+    .map((tok, i) => {
+      const p = Math.round(tokenProgress(tok, t));
+      const body = karaokeSpan(tok.text, p);
+      const roma = keepRoma ? tokenRoma(tok) : "";
+      const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
+      const gloss = keepGloss && tok.zh ? String(tok.zh) : "";
+      const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
+      const latin = /^[A-Za-z0-9']/.test(tok.text || "");
+      const next = tokens[i + 1];
+      const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "") ? `<span class="tok-space"> </span>` : "";
+      return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
+    })
+    .join("")}</span>`;
+  return keepZh ? `${html}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>` : html;
 }
 
 /**
@@ -284,5 +280,5 @@ export function cueIndexAt(cues, t) {
   const idx = list.findIndex((c) => t >= c.start_ms && t < c.end_ms);
   if (idx >= 0) return idx;
   const upcoming = list.findIndex((c) => t < c.start_ms);
-  return upcoming >= 0 ? upcoming : (list.length ? list.length - 1 : -1);
+  return upcoming >= 0 ? upcoming : list.length ? list.length - 1 : -1;
 }

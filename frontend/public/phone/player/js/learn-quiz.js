@@ -9,7 +9,7 @@ import {
   isLineHold,
   needsLineHold,
   paintLearnLine,
-  playCueWindow,
+  playCueWindow
 } from "./learn-play.js";
 
 let syncRaf = 0;
@@ -23,7 +23,7 @@ const session = {
   combo: 0,
   maxCombo: 0,
   locked: false,
-  jump: -1,
+  jump: -1
 };
 
 /** @param {LearnQuiz} quiz */
@@ -100,16 +100,16 @@ function paintQuestion(line) {
   const listen = !!(item && item.kind === "listen");
   const prompt = $("learnQuizPrompt");
   if (prompt) {
-    prompt.textContent = listen ? t("learn.quizListen") : ((item && item.prompt) || "");
+    prompt.textContent = listen ? t("learn.quizListen") : (item && item.prompt) || "";
     prompt.hidden = !prompt.textContent;
   }
   paintLearnLine({
     src: "learnQuizSrc",
     roma: "learnQuizRoma",
-    text: listen ? "" : ((item && item.kind === "word" && item.stem) || (line && line.text) || ""),
+    text: listen ? "" : (item && item.kind === "word" && item.stem) || (line && line.text) || "",
     romaji: listen ? "" : stemRoma(line, item),
     hideSrc: listen,
-    hideZh: true,
+    hideZh: true
   });
   const box = $("learnQuizQs");
   if (!item) {
@@ -118,9 +118,13 @@ function paintQuestion(line) {
   }
   box.innerHTML = `
     <div class="learn-choices">
-      ${(item.choices || []).map((choice) => `
+      ${(item.choices || [])
+        .map(
+          (choice) => `
         <button type="button" class="learn-choice" data-cid="${choice.id}">${escapeHtml(choice.text)}</button>
-      `).join("")}
+      `
+        )
+        .join("")}
     </div>
   `;
   box.querySelectorAll(".learn-choice").forEach((btn) => {
@@ -133,12 +137,14 @@ function paintQuestion(line) {
 }
 
 function markChoices(item, picked) {
-  $("learnQuizQs").querySelectorAll(".learn-choice").forEach((btn) => {
-    const cid = Number(btn.dataset.cid);
-    btn.disabled = true;
-    btn.classList.toggle("is-ok", cid === item.answer);
-    btn.classList.toggle("is-no", cid === picked && picked !== item.answer);
-  });
+  $("learnQuizQs")
+    .querySelectorAll(".learn-choice")
+    .forEach((btn) => {
+      const cid = Number(btn.dataset.cid);
+      btn.disabled = true;
+      btn.classList.toggle("is-ok", cid === item.answer);
+      btn.classList.toggle("is-no", cid === picked && picked !== item.answer);
+    });
 }
 
 function showLine(index) {
@@ -353,16 +359,18 @@ export function skipQuizLine() {
 export function quizScoreView(score, grade) {
   const counts = score.counts || {};
   const bits = [];
-  if (counts.meaning && counts.meaning[1]) bits.push(t("learn.score.meaning", { ok: counts.meaning[0], n: counts.meaning[1] }));
+  if (counts.meaning && counts.meaning[1])
+    bits.push(t("learn.score.meaning", { ok: counts.meaning[0], n: counts.meaning[1] }));
   if (counts.word && counts.word[1]) bits.push(t("learn.score.word", { ok: counts.word[0], n: counts.word[1] }));
-  if (counts.listen && counts.listen[1]) bits.push(t("learn.score.listen", { ok: counts.listen[0], n: counts.listen[1] }));
+  if (counts.listen && counts.listen[1])
+    bits.push(t("learn.score.listen", { ok: counts.listen[0], n: counts.listen[1] }));
   if (score.maxCombo) bits.push(`COMBO ${score.maxCombo}`);
   return {
     title: t("learn.score.quiz"),
     again: t("learn.again.quiz"),
     sub: `${grade(score.pct)} · ${score.ok}/${score.total}`,
     detail: bits.join(" · "),
-    celebrate: score.pct >= 70,
+    celebrate: score.pct >= 70
   };
 }
 

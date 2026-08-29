@@ -11,9 +11,9 @@ export function liveCtxs() {
 }
 
 export function resumeCtxs() {
-  return Promise.all(liveCtxs().map((ctx) => (
-    ctx.state === "suspended" ? ctx.resume().catch(() => {}) : Promise.resolve()
-  )));
+  return Promise.all(
+    liveCtxs().map((ctx) => (ctx.state === "suspended" ? ctx.resume().catch(() => {}) : Promise.resolve()))
+  );
 }
 
 export function hookAudio() {
@@ -53,4 +53,3 @@ export function playEl(el) {
     .then(() => el.play())
     .catch(() => resumeCtxs().then(() => el.play()));
 }
-

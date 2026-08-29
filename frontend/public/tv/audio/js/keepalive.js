@@ -109,4 +109,3 @@ export function schedulePlayRetries() {
   state.playRetryTimer = setTimeout(step, delays[n]);
   n += 1;
 }
-

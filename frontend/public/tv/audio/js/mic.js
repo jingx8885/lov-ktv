@@ -6,7 +6,7 @@ import { hasNativeTv } from "../../platform.js";
 
 export function micGainValue() {
   const hostMac = state.room && state.room.host_volume_kind === "mac";
-  const vol = hostMac ? 1 : (((state.room && state.room.volume) != null ? state.room.volume : 80) / 100);
+  const vol = hostMac ? 1 : ((state.room && state.room.volume) != null ? state.room.volume : 80) / 100;
   const micGain = ((state.room && state.room.mic_gain) != null ? state.room.mic_gain : 80) / 100;
   return Math.max(0, Math.min(1, vol * micGain));
 }
@@ -33,7 +33,7 @@ export async function bindLiveMic(stream) {
       karaoke: $("karaoke"),
       vocal: $("vocal"),
       hook: state.audioHook,
-      gain: micGainValue(),
+      gain: micGainValue()
     });
     api.applyMix();
     if (!ok) playRawMic(stream);
@@ -81,7 +81,6 @@ export function bindRoomRtc(code) {
         api.applyMix();
       }
     },
-    onStream: bindLiveMic,
+    onStream: bindLiveMic
   });
 }
-

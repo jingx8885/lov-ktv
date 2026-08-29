@@ -1,12 +1,4 @@
-type SongStatus =
-  | "queued"
-  | "fetching"
-  | "separating"
-  | "aligning"
-  | "annotating"
-  | "composing"
-  | "ready"
-  | "failed";
+type SongStatus = "queued" | "fetching" | "separating" | "aligning" | "annotating" | "composing" | "ready" | "failed";
 
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";

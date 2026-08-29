@@ -73,7 +73,7 @@ export function paintMix(room) {
   if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
   paintPaused(!!room.paused);
-  const vol = room.host_volume != null ? room.host_volume : (room.volume != null ? room.volume : 80);
+  const vol = room.host_volume != null ? room.host_volume : room.volume != null ? room.volume : 80;
   const gain = room.mic_gain != null ? room.mic_gain : 80;
   hostVol.value = String(vol);
   hostVolVal.textContent = String(vol);
@@ -105,11 +105,13 @@ export function postMix(body) {
   return fetchJson(roomUrl(`/api/rooms/${code}/mix`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }).then(({ data: room }) => {
-    paintMix(room);
-    return room;
-  }).catch(() => {});
+    body: JSON.stringify(body)
+  })
+    .then(({ data: room }) => {
+      paintMix(room);
+      return room;
+    })
+    .catch(() => {});
 }
 
 export function bindMixSlider(id, key) {
@@ -134,42 +136,44 @@ export function bindMix() {
       postMix({ lyric_mode: btn.dataset.lyricMode });
     };
   });
-  if ($("vocalMix")) $("vocalMix").onclick = () => {
-    const next = $("vocalMix").classList.contains("on") ? 0 : 1;
-    paintVocalMix(next);
-    postMix({ vocal_mix: next });
-  };
+  if ($("vocalMix"))
+    $("vocalMix").onclick = () => {
+      const next = $("vocalMix").classList.contains("on") ? 0 : 1;
+      paintVocalMix(next);
+      postMix({ vocal_mix: next });
+    };
   if ($("mixVocal")) $("mixVocal").onclick = () => $("vocalMix") && $("vocalMix").click();
   if ($("mixSkip")) $("mixSkip").onclick = () => $("skip") && $("skip").click();
-  if ($("deskPause")) $("deskPause").onclick = () => {
-    if (api.needTvOrRoom && api.needTvOrRoom()) return;
-    const next = !$("deskPause").classList.contains("on");
-    paintPaused(next);
-    postMix({ paused: next });
-  };
-  if ($("skip")) $("skip").onclick = async () => {
-    const code = $("room").value.trim().toUpperCase();
-    $("room").value = code;
-    if (api.needTvOrRoom && api.needTvOrRoom()) return;
-    $("skip").disabled = true;
-    try {
-      /** @type {{ ok: boolean, data: Room }} */
-      const skipHit = await fetchJson(roomUrl(`/api/rooms/${code}/skip`), { method: "POST" });
-      if (!skipHit.ok || !skipHit.data || !skipHit.data.code) {
-        showToast(lanOrigin() ? t("phone.room.lanFail") : (skipHit.data.detail || t("phone.desk.cantQueue")));
-        return;
+  if ($("deskPause"))
+    $("deskPause").onclick = () => {
+      if (api.needTvOrRoom && api.needTvOrRoom()) return;
+      const next = !$("deskPause").classList.contains("on");
+      paintPaused(next);
+      postMix({ paused: next });
+    };
+  if ($("skip"))
+    $("skip").onclick = async () => {
+      const code = $("room").value.trim().toUpperCase();
+      $("room").value = code;
+      if (api.needTvOrRoom && api.needTvOrRoom()) return;
+      $("skip").disabled = true;
+      try {
+        /** @type {{ ok: boolean, data: Room }} */
+        const skipHit = await fetchJson(roomUrl(`/api/rooms/${code}/skip`), { method: "POST" });
+        if (!skipHit.ok || !skipHit.data || !skipHit.data.code) {
+          showToast(lanOrigin() ? t("phone.room.lanFail") : skipHit.data.detail || t("phone.desk.cantQueue"));
+          return;
+        }
+        const room = skipHit.data;
+        const now = room.now_playing;
+        $("roomState").textContent = now
+          ? t("phone.room.statNow", { code: room.code, title: now.title })
+          : t("phone.room.statEmpty", { code: room.code });
+        closeOverlay("mixSheet");
+        api.showPage("desk", null, false);
+        await api.loadRoom();
+      } finally {
+        $("skip").disabled = false;
       }
-      const room = skipHit.data;
-      const now = room.now_playing;
-      $("roomState").textContent = now
-        ? t("phone.room.statNow", { code: room.code, title: now.title })
-        : t("phone.room.statEmpty", { code: room.code });
-      closeOverlay("mixSheet");
-      api.showPage("desk", null, false);
-      await api.loadRoom();
-    } finally {
-      $("skip").disabled = false;
-    }
-  };
+    };
 }
-

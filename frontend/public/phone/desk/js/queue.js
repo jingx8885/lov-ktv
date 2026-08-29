@@ -18,7 +18,8 @@ export async function loadRoom(opts) {
   const code = $("room").value.trim();
   if (!code) {
     if ($("nowCard") && !$("nowCard").innerHTML.trim()) {
-      $("nowCard").innerHTML = `<div class="now-idle"><span class="now-cover">${ICO.listen}</span><div><b>${t("phone.desk.idle")}</b><p class="tiny">${t("phone.desk.idleHint")}</p></div></div>`;
+      $("nowCard").innerHTML =
+        `<div class="now-idle"><span class="now-cover">${ICO.listen}</span><div><b>${t("phone.desk.idle")}</b><p class="tiny">${t("phone.desk.idleHint")}</p></div></div>`;
     }
     return;
   }
@@ -29,7 +30,9 @@ export async function loadRoom(opts) {
     ({ ok, data: room } = await fetchRoom(code));
     if ((!ok || !room.code) && lanOrigin()) {
       for (let i = 0; i < 3 && (!ok || !room.code); i++) {
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        await new Promise((resolve) => {
+          setTimeout(resolve, 200);
+        });
         ({ ok, data: room } = await fetchRoom(code));
       }
     }
@@ -63,7 +66,7 @@ export async function loadRoom(opts) {
     ? `<button type="button" class="now-hit" id="nowToPlayer" ${now.status === "ready" ? "" : "disabled"}>
             <span class="now-cover">${now.status === "ready" ? ICO.play : escapeHtml(songInitial(now.title))}</span>
             <div>
-              <p class="kicker">${now.status === "ready" ? t("phone.desk.now") : (STATUS[now.status] || now.status)}</p>
+              <p class="kicker">${now.status === "ready" ? t("phone.desk.now") : STATUS[now.status] || now.status}</p>
               <b>${escapeHtml(now.title)}</b>
               <p class="tiny">${escapeHtml(now.artist || "")}</p>
             </div>
@@ -75,33 +78,38 @@ export async function loadRoom(opts) {
           </div>`;
   const toPlayer = $("nowToPlayer");
   if (toPlayer && now && now.status === "ready") toPlayer.onclick = () => api.openPlayer(now.song_id);
-  $("queue").innerHTML = room.queue.map((item, i) => {
-    const playing = i === room.now_index;
-    const ready = item.status === "ready";
-    return `
+  $("queue").innerHTML =
+    room.queue
+      .map((item, i) => {
+        const playing = i === room.now_index;
+        const ready = item.status === "ready";
+        return `
         <div class="desk-row ${playing ? "on" : ""}">
           <span class="desk-index ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1)}</span>
           <div class="desk-copy">
             <b>${escapeHtml(item.title)}</b>
-            <span class="tiny">${playing ? t("phone.desk.now") : (ready ? t("phone.desk.nextQueued") : (STATUS[item.status] || item.status))}</span>
+            <span class="tiny">${playing ? t("phone.desk.now") : ready ? t("phone.desk.nextQueued") : STATUS[item.status] || item.status}</span>
           </div>
           <div class="desk-actions">
             <button class="row-action ${playing ? "on" : "ghost"}" data-play="${item.id}" aria-label="${t("phone.desk.playThis")}">${ICO.play}</button>
           </div>
         </div>`;
-  }).join("") || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyQueue")}</p><button class="btn primary" type="button" data-go-lib>${t("phone.desk.goLib")}</button></div>`;
-  $("queue").querySelectorAll("[data-play]").forEach((btn) => {
-    btn.onclick = async () => {
-      const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/play`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: btn.dataset.play }),
-      });
-      if (!ok) showToast(data.detail || t("phone.desk.cantQueue"));
-      loadRoom({ room: data });
-    };
-  });
+      })
+      .join("") ||
+    `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyQueue")}</p><button class="btn primary" type="button" data-go-lib>${t("phone.desk.goLib")}</button></div>`;
+  $("queue")
+    .querySelectorAll("[data-play]")
+    .forEach((btn) => {
+      btn.onclick = async () => {
+        const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/play`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: btn.dataset.play })
+        });
+        if (!ok) showToast(data.detail || t("phone.desk.cantQueue"));
+        loadRoom({ room: data });
+      };
+    });
   const goLib = $("queue").querySelector("[data-go-lib]");
   if (goLib) goLib.onclick = () => showDeskPane("lib");
 }
-

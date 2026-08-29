@@ -6,7 +6,17 @@ import { bootAuth, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
 import { bindRoomRtc } from "./audio/js/mic.js";
 import { applyMix } from "./playback/js/mix.js";
-import { tick, applyRoom, watchRoom, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js";
+import {
+  tick,
+  applyRoom,
+  watchRoom,
+  startPlayback,
+  pauseAudio,
+  pageVisible,
+  restoreResume,
+  songReallyEnded,
+  wantsResume
+} from "./playback/js/tick.js";
 import { paint } from "./playback/js/lyrics.js";
 import { bindRemote, skipSong, toggleVocal, paintSettings } from "./playback/js/remote.js";
 
@@ -68,16 +78,18 @@ $must("karaoke").addEventListener("ended", () => {
 });
 bindRemote();
 
-bootAuth().then(() => {
-  bindRoomRtc(state.room.code);
-  watchRoom(state.room.code, applyRoom);
-  tick();
-  setInterval(tick, 1500);
-  requestAnimationFrame(paint);
-}).catch((err) => {
-  const qr = document.getElementById("qr");
-  if (qr && qr.querySelector("canvas, img, svg")) return;
-  const code = document.getElementById("code");
-  if (code) code.textContent = "开房失败";
-  if (qr) qr.textContent = (err && err.message) || "请按菜单键检查处理服务器";
-});
+bootAuth()
+  .then(() => {
+    bindRoomRtc(state.room.code);
+    watchRoom(state.room.code, applyRoom);
+    tick();
+    setInterval(tick, 1500);
+    requestAnimationFrame(paint);
+  })
+  .catch((err) => {
+    const qr = document.getElementById("qr");
+    if (qr && qr.querySelector("canvas, img, svg")) return;
+    const code = document.getElementById("code");
+    if (code) code.textContent = "开房失败";
+    if (qr) qr.textContent = (err && err.message) || "请按菜单键检查处理服务器";
+  });

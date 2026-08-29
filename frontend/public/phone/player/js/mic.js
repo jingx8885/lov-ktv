@@ -60,7 +60,7 @@ export function phoneMicAudioConstraints() {
   if (state.phoneIem) {
     return [
       { echoCancellation: false, noiseSuppression: false, autoGainControl: false, latency: 0.01, channelCount: 1 },
-      { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     ];
   }
   return [{ echoCancellation: true, noiseSuppression: true, autoGainControl: true }];
@@ -84,8 +84,14 @@ export async function acquirePhoneMic() {
 }
 
 export function disconnectPhoneMicGraph() {
-  if (state.phoneMicSrc) try { state.phoneMicSrc.disconnect(); } catch (err) {}
-  if (state.phoneMicGain) try { state.phoneMicGain.disconnect(); } catch (err) {}
+  if (state.phoneMicSrc)
+    try {
+      state.phoneMicSrc.disconnect();
+    } catch (err) {}
+  if (state.phoneMicGain)
+    try {
+      state.phoneMicGain.disconnect();
+    } catch (err) {}
   state.phoneMicSrc = state.phoneMicGain = null;
   const el = $("phoneIemVoice");
   if (el) {
@@ -116,7 +122,10 @@ export function applyPhoneMonitor() {
 export function paintPhoneMic() {
   const btn = $("playerMic");
   if (!btn) return;
-  const on = !!(state.phoneNativeLive || (state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live")));
+  const on = !!(
+    state.phoneNativeLive ||
+    (state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live"))
+  );
   btn.classList.toggle("on", on);
   btn.classList.toggle("live", on);
   btn.setAttribute("aria-label", on ? t("common.micOff") : t("phone.player.micSing"));
@@ -164,9 +173,14 @@ export async function headphoneState() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return { kind: "unknown", sink: "" };
   const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
   const outs = devices.filter((item) => item.kind === "audiooutput");
-  const hp = outs.find((item) => /headphone|headset|airpod|earbud|earphone|usb audio|lightning|耳机|耳麦/i.test(item.label || ""));
+  const hp = outs.find((item) =>
+    /headphone|headset|airpod|earbud|earphone|usb audio|lightning|耳机|耳麦/i.test(item.label || "")
+  );
   if (hp) return { kind: "headphones", sink: hp.deviceId || "" };
-  const text = outs.map((item) => item.label || "").join(" ").toLowerCase();
+  const text = outs
+    .map((item) => item.label || "")
+    .join(" ")
+    .toLowerCase();
   if (outs.length && /speaker|扬声器/.test(text) && !/head|ear|耳机/.test(text)) {
     return { kind: "speaker", sink: "" };
   }
@@ -225,7 +239,7 @@ export async function startPhoneMic(opts) {
     const go = await showActionSheet({
       title: t("phone.mic.headphoneTitle"),
       message: t("phone.mic.headphoneMsg"),
-      confirm: t("phone.mic.headphoneGo"),
+      confirm: t("phone.mic.headphoneGo")
     });
     if (!go) throw new Error(t("phone.mic.headphoneNeed"));
   }
@@ -264,25 +278,26 @@ export function bindPhoneMic() {
     $("playerMicVal").textContent = String(state.phoneMicLevel);
     $("playerMicGain").oninput = () => setPhoneMicGain($("playerMicGain").value);
   }
-  if ($("playerIem")) $("playerIem").onclick = async () => {
-    state.phoneIem = !state.phoneIem;
-    localStorage.setItem("phoneIem", state.phoneIem ? "1" : "0");
-    paintPhoneMic();
-    if (!state.phoneMic && !state.phoneNativeLive) return;
-    holdMicHint(true, t("phone.mic.allowIem"));
-    try {
-      await startPhoneMic({ restart: true });
-      holdMicHint(false);
-      showToast(t("phone.mic.opened"));
-    } catch (err) {
-      stopPhoneMic();
-      const msg = micErrorText(err) || t("phone.mic.iemFail");
-      holdMicHint(true, msg);
-      showToast(msg);
-    } finally {
+  if ($("playerIem"))
+    $("playerIem").onclick = async () => {
+      state.phoneIem = !state.phoneIem;
+      localStorage.setItem("phoneIem", state.phoneIem ? "1" : "0");
       paintPhoneMic();
-    }
-  };
+      if (!state.phoneMic && !state.phoneNativeLive) return;
+      holdMicHint(true, t("phone.mic.allowIem"));
+      try {
+        await startPhoneMic({ restart: true });
+        holdMicHint(false);
+        showToast(t("phone.mic.opened"));
+      } catch (err) {
+        stopPhoneMic();
+        const msg = micErrorText(err) || t("phone.mic.iemFail");
+        holdMicHint(true, msg);
+        showToast(msg);
+      } finally {
+        paintPhoneMic();
+      }
+    };
   btn.onclick = async () => {
     if (btn.classList.contains("busy")) return;
     btn.classList.add("busy");
@@ -308,4 +323,3 @@ export function bindPhoneMic() {
     }
   };
 }
-

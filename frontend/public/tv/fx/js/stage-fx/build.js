@@ -11,7 +11,7 @@
             delay: i * 0.05,
             rEnd: minD * (0.13 + rng() * 0.29),
             w: 5 + rng() * 9,
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
         inst.dotR = minD * 0.07;
@@ -22,14 +22,14 @@
         [
           [0.46, C.amber, 0],
           [0.3, C.gray, 0.09],
-          [0.17, C.amber, 0.18],
+          [0.17, C.amber, 0.18]
         ].forEach(([s, color, d], i) => {
           inst.shapes.push({
             sides,
             delay: d,
             color,
             rEnd: minD * Number(s),
-            w: minD * (0.034 - i * 0.007),
+            w: minD * (0.034 - i * 0.007)
           });
         });
       },
@@ -41,7 +41,7 @@
             rad: 6 + i * minD * 0.0125,
             size: minD * (0.009 + i * 0.0008),
             delay: i * 0.018,
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
       },
@@ -55,7 +55,7 @@
             w: 0.09 + rng() * 0.13,
             len: minD * (0.36 + rng() * 0.1),
             delay: rng() * 0.12,
-            color: rng() < 0.12 ? ACCENTS[(rng() * 3) | 0] : i % 2 ? C.gray : C.amber,
+            color: rng() < 0.12 ? ACCENTS[(rng() * 3) | 0] : i % 2 ? C.gray : C.amber
           });
         }
       },
@@ -71,7 +71,7 @@
             spin: inst.dir * (1 + rng() * 2) * 2.2,
             delay: rng() * 0.18,
             kind: kinds[(rng() * 4) | 0],
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
       },
@@ -85,12 +85,12 @@
           if (horiz) {
             pts.push({
               x: -fxW * 0.08 + f * fxW * 1.16,
-              y: fxH * (i % 2 ? 0.72 + rng() * 0.14 : 0.14 + rng() * 0.14),
+              y: fxH * (i % 2 ? 0.72 + rng() * 0.14 : 0.14 + rng() * 0.14)
             });
           } else {
             pts.push({
               x: fxW * (i % 2 ? 0.7 + rng() * 0.16 : 0.14 + rng() * 0.16),
-              y: -fxH * 0.08 + f * fxH * 1.16,
+              y: -fxH * 0.08 + f * fxH * 1.16
             });
           }
         }
@@ -114,7 +114,7 @@
             delay: rng() * 0.28,
             rot: rng() * Math.PI,
             kind: kinds[(rng() * kinds.length) | 0],
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
       },
@@ -124,7 +124,7 @@
         inst.shapes.push({
           size,
           w: size * (0.14 + rng() * 0.08),
-          color: rng() < 0.2 ? ACCENTS[(rng() * 3) | 0] : C.amber,
+          color: rng() < 0.2 ? ACCENTS[(rng() * 3) | 0] : C.amber
         });
       },
       orbit(inst, rng, fxW, fxH) {
@@ -138,7 +138,7 @@
             size: minD * (0.026 + rng() * 0.032),
             delay: rng() * 0.15,
             kind: kinds[i % 4],
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
         inst.coreR = minD * 0.055;
@@ -154,7 +154,7 @@
             th: minD * (0.07 + rng() * 0.06),
             side: i % 2 ? 1 : -1,
             delay: i * 0.08,
-            color: rng() < 0.12 ? ACCENTS[(rng() * 3) | 0] : i % 2 ? C.gray : C.amber,
+            color: rng() < 0.12 ? ACCENTS[(rng() * 3) | 0] : i % 2 ? C.gray : C.amber
           });
         }
       },
@@ -167,7 +167,7 @@
             r: minD * (0.034 + rng() * 0.055),
             delay: rng() * 0.25,
             rot: rng() * Math.PI,
-            color: pickColor(rng),
+            color: pickColor(rng)
           });
         }
       },
@@ -181,11 +181,11 @@
             y: (i - (n - 1) / 2) * ((radius * 2) / n),
             w: 4.5 + ((i * 7) % 3) * 4,
             delay: i * 0.045,
-            color: i % 2 ? C.gray : C.amber,
+            color: i % 2 ? C.gray : C.amber
           });
         }
         inst.shapes.push({ radius, lines });
-      },
+      }
     };
   }
 

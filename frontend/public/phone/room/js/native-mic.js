@@ -3,7 +3,7 @@ import {
   nativeCapabilities,
   nativeMicState,
   setNativeGain,
-  nativeCall,
+  nativeCall
 } from "../../platform.js";
 
 // Explicit wrappers preserve the original feature-module API while routing
@@ -13,11 +13,6 @@ export function hasNativeMic() {
   return platformHasNativeMic();
 }
 
-export {
-  nativeCapabilities,
-  nativeMicState,
-  setNativeGain,
-  nativeCall,
-};
+export { nativeCapabilities, nativeMicState, setNativeGain, nativeCall };
 
 export const nativeCaps = nativeCapabilities;

@@ -26,19 +26,22 @@ export function showDeskPane(name) {
 
 export function renderLibIndex(letters) {
   const have = new Map((letters || []).map((item) => [item.key, item.count]));
-  $("libIndex").innerHTML = `<button type="button" class="lib-letter ${state.libState.letter ? "" : "on"}" data-lib-letter="">${t("phone.desk.letterAll")}</button>` +
+  $("libIndex").innerHTML =
+    `<button type="button" class="lib-letter ${state.libState.letter ? "" : "on"}" data-lib-letter="">${t("phone.desk.letterAll")}</button>` +
     LIB_LETTERS.map((key) => {
       const n = have.get(key) || 0;
       const on = state.libState.letter === key ? "on" : "";
       return `<button type="button" class="lib-letter ${on}" data-lib-letter="${key}" ${n ? "" : "disabled"}>${key}</button>`;
     }).join("");
-  $("libIndex").querySelectorAll("[data-lib-letter]").forEach((btn) => {
-    btn.onclick = () => {
-      state.libState.letter = btn.dataset.libLetter || "";
-      state.libState.page = 1;
-      loadSongs(false);
-    };
-  });
+  $("libIndex")
+    .querySelectorAll("[data-lib-letter]")
+    .forEach((btn) => {
+      btn.onclick = () => {
+        state.libState.letter = btn.dataset.libLetter || "";
+        state.libState.page = 1;
+        loadSongs(false);
+      };
+    });
 }
 
 function songRow(song) {
@@ -81,51 +84,62 @@ function renderLibTail(page, pages, total) {
 }
 
 function bindSongActions() {
-  $("songs").querySelectorAll("[data-queue]").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
-    btn.onclick = async (event) => {
-      event.stopPropagation();
-      const code = $("room").value.trim();
-      if (api.needTvOrRoom && api.needTvOrRoom()) return;
-      btn.disabled = true;
-      const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/queue`), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ song_id: btn.dataset.queue }),
-      });
-      btn.disabled = false;
-      if (!ok) {
-        showToast(lanOrigin() ? t("phone.room.lanFail") : (data.detail || t("phone.desk.cantQueue")));
+  $("songs")
+    .querySelectorAll("[data-queue]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = async (event) => {
+        event.stopPropagation();
+        const code = $("room").value.trim();
+        if (api.needTvOrRoom && api.needTvOrRoom()) return;
+        btn.disabled = true;
+        const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/queue`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ song_id: btn.dataset.queue })
+        });
+        btn.disabled = false;
+        if (!ok) {
+          showToast(lanOrigin() ? t("phone.room.lanFail") : data.detail || t("phone.desk.cantQueue"));
+          loadSongs(false);
+          return;
+        }
+        btn.classList.add("on");
+        api.loadRoom({ room: data });
+      };
+    });
+  $("songs")
+    .querySelectorAll("[data-retry]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = async (event) => {
+        event.stopPropagation();
+        btn.disabled = true;
+        await fetch(`/api/songs/${btn.dataset.retry}/retry`, { method: "POST" });
         loadSongs(false);
-        return;
-      }
-      btn.classList.add("on");
-      api.loadRoom({ room: data });
-    };
-  });
-  $("songs").querySelectorAll("[data-retry]").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
-    btn.onclick = async (event) => {
-      event.stopPropagation();
-      btn.disabled = true;
-      await fetch(`/api/songs/${btn.dataset.retry}/retry`, { method: "POST" });
-      loadSongs(false);
-    };
-  });
-  $("songs").querySelectorAll("[data-del]").forEach((btn) => {
-    if (btn.dataset.bound === "1") return;
-    btn.dataset.bound = "1";
-    btn.onclick = async (event) => {
-      event.stopPropagation();
-      const go = await showActionSheet({ title: t("phone.desk.deleteTitle"), message: t("phone.desk.deleteMsg"), confirm: t("phone.desk.delete"), danger: true });
-      if (!go) return;
-      btn.disabled = true;
-      await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
-      loadSongs(false);
-    };
-  });
+      };
+    });
+  $("songs")
+    .querySelectorAll("[data-del]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = async (event) => {
+        event.stopPropagation();
+        const go = await showActionSheet({
+          title: t("phone.desk.deleteTitle"),
+          message: t("phone.desk.deleteMsg"),
+          confirm: t("phone.desk.delete"),
+          danger: true
+        });
+        if (!go) return;
+        btn.disabled = true;
+        await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
+        loadSongs(false);
+      };
+    });
   const goSearch = $("songs").querySelector("[data-go-search]");
   if (goSearch) goSearch.onclick = () => api.showPage("search");
   const clear = $("songs").querySelector("[data-lib-clear]");
@@ -163,7 +177,7 @@ export async function loadSongs(append = false) {
     by: state.libState.by,
     letter: state.libState.letter,
     page: String(nextPage),
-    count: "8",
+    count: "8"
   });
   if (after) params.set("after", after);
   /** @type {{ data: SongListPage } | null} */
@@ -173,19 +187,23 @@ export async function loadSongs(append = false) {
   const data = loaded.data;
   const songs = data.songs || [];
   state.libPages = Math.max(1, data.pages || 1);
-  if ($("libCount")) $("libCount").textContent = (data.lib_total || data.total) ? String(data.lib_total || data.total) : "";
+  if ($("libCount"))
+    $("libCount").textContent = data.lib_total || data.total ? String(data.lib_total || data.total) : "";
   const filterKey = JSON.stringify({
     q: state.libState.q,
     by: state.libState.by,
-    letter: state.libState.letter,
+    letter: state.libState.letter
   });
   if (!append) {
-    const stamp = filterKey + ":" + JSON.stringify({
-      pages: data.pages,
-      total: data.total,
-      letters: data.letters,
-      rows: songs.map((song) => [song.id, song.status, song.error, song.title]),
-    });
+    const stamp =
+      filterKey +
+      ":" +
+      JSON.stringify({
+        pages: data.pages,
+        total: data.total,
+        letters: data.letters,
+        rows: songs.map((song) => [song.id, song.status, song.error, song.title])
+      });
     if (stamp === state.libStamp && $("songs").querySelector(".desk-row")) return;
     state.libStamp = stamp;
     state.libState.page = Number(data.page) || 1;
@@ -238,7 +256,12 @@ export function bindLibrary() {
       document.querySelectorAll("[data-lib-by]").forEach((item) => {
         item.classList.toggle("on", item === btn);
       });
-      $("libQ").placeholder = state.libState.by === "artist" ? t("phone.desk.libPhArtist") : state.libState.by === "title" ? t("phone.desk.libPhTitle") : t("phone.desk.libPh");
+      $("libQ").placeholder =
+        state.libState.by === "artist"
+          ? t("phone.desk.libPhArtist")
+          : state.libState.by === "title"
+            ? t("phone.desk.libPhTitle")
+            : t("phone.desk.libPh");
       state.libState.page = 1;
       loadSongs(false);
     };

@@ -6,7 +6,12 @@ import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
-import { hasNativeScan as platformHasNativeScan, scanTv as platformScanTv, lanFetchReady, nativeHttpReady } from "../../platform.js";
+import {
+  hasNativeScan as platformHasNativeScan,
+  scanTv as platformScanTv,
+  lanFetchReady,
+  nativeHttpReady
+} from "../../platform.js";
 
 export function hasNativeScan() {
   return platformHasNativeScan();
@@ -56,7 +61,9 @@ export function openTv(code) {
   $("openTv").href = url;
   try {
     if (!window.LovKtvPlatform?.remote?.open(url)) window.open(url, "lovktv-tv");
-  } catch (_) { window.open(url, "lovktv-tv"); }
+  } catch (_) {
+    window.open(url, "lovktv-tv");
+  }
 }
 
 function lanReady() {
@@ -144,4 +151,3 @@ export function bindJoin() {
     joinRoom(false, true);
   });
 }
-

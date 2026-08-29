@@ -10,11 +10,13 @@ export function stopPreview() {
   audio.pause();
   audio.removeAttribute("src");
   state.previewId = "";
-  $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
-    btn.classList.remove("on", "busy");
-    btn.setAttribute("aria-label", t("phone.search.preview"));
-    btn.innerHTML = ICO.play;
-  });
+  $("hits")
+    .querySelectorAll("[data-preview]")
+    .forEach((btn) => {
+      btn.classList.remove("on", "busy");
+      btn.setAttribute("aria-label", t("phone.search.preview"));
+      btn.innerHTML = ICO.play;
+    });
 }
 
 export function previewParams(hit) {
@@ -50,4 +52,3 @@ export async function togglePreview(hit, btn) {
   });
   audio.onended = stopPreview;
 }
-

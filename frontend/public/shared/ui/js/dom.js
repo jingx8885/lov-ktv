@@ -13,5 +13,8 @@ export function $must(id) {
 
 /** @param {unknown} text */
 export function escapeHtml(text) {
-  return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return String(text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }

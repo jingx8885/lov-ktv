@@ -7,7 +7,9 @@ import { showToast } from "../../ui/js/toast.js";
 import { mediaAhead } from "./media.js";
 
 let paintPlayerCallback = null;
-export function registerPaintPlayer(fn) { paintPlayerCallback = fn; }
+export function registerPaintPlayer(fn) {
+  paintPlayerCallback = fn;
+}
 
 export function setPlayIcon(playing) {
   const icon = playing ? ICO.pause : ICO.play;
@@ -27,7 +29,9 @@ export function playerIsPlaying() {
   return !!(audio && audio.src && !audio.paused);
 }
 
-export function refreshPlayIcon() { setPlayIcon(playerIsPlaying()); }
+export function refreshPlayIcon() {
+  setPlayIcon(playerIsPlaying());
+}
 
 export function pausePlayerTracks() {
   state.playerHeld = true;
@@ -60,13 +64,16 @@ export function togglePlayer() {
   state.playerHeld = false;
   setPlayIcon(true);
   kickPlayerPaint();
-  audio.play().then(() => {
-    applyPlayerVocalMix();
-    refreshPlayIcon();
-  }).catch(() => {
-    pausePlayerTracks();
-    showToast(t("phone.player.needTap"));
-  });
+  audio
+    .play()
+    .then(() => {
+      applyPlayerVocalMix();
+      refreshPlayIcon();
+    })
+    .catch(() => {
+      pausePlayerTracks();
+      showToast(t("phone.player.needTap"));
+    });
 }
 
 export function playFromMs(ms) {
@@ -74,13 +81,18 @@ export function playFromMs(ms) {
   const audio = $("playerAudio");
   const start = () => {
     hookPlayerAudio();
-    try { audio.currentTime = Math.max(0, ms) / 1000; } catch (err) {}
+    try {
+      audio.currentTime = Math.max(0, ms) / 1000;
+    } catch (err) {}
     syncGuide(Math.max(0, ms) / 1000);
     state.playerHeld = false;
-    audio.play().then(() => {
-      applyPlayerVocalMix();
-      refreshPlayIcon();
-    }).catch(() => refreshPlayIcon());
+    audio
+      .play()
+      .then(() => {
+        applyPlayerVocalMix();
+        refreshPlayIcon();
+      })
+      .catch(() => refreshPlayIcon());
     kickPlayerPaint();
   };
   if (audio.readyState >= 1) start();
@@ -114,13 +126,15 @@ export function syncGuide(forceTime) {
   if (!guide || !guide.getAttribute("src")) return;
   const editing = document.body.classList.contains("edit-on");
   const want = !state.playerHeld && !!(audio && audio.src) && (editing ? state.voiceTrackOn : !!state.playerVocal);
-  const clock = forceTime != null ? forceTime : (audio.currentTime || 0);
+  const clock = forceTime != null ? forceTime : audio.currentTime || 0;
   if (guide.readyState >= 1 && !guide.seeking) {
     const drift = Math.abs((guide.currentTime || 0) - clock);
     const slack = forceTime != null ? 0.08 : 0.32;
     const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.2;
     if (drift > slack && targetReady) {
-      try { guide.currentTime = clock; } catch (err) {}
+      try {
+        guide.currentTime = clock;
+      } catch (err) {}
     }
   }
   guide.muted = !want;

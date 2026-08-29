@@ -22,7 +22,7 @@
       let sum = 0;
       const n = Math.min(48, freq.length);
       for (let i = 2; i < n; i += 1) sum += freq[i];
-      return clamp((sum / Math.max(1, n - 2)) / 255, 0, 1);
+      return clamp(sum / Math.max(1, n - 2) / 255, 0, 1);
     }
     return 0;
   }
@@ -107,9 +107,11 @@
       sourceUrl = url;
       overview = null;
       const id = (loadId += 1);
-      decodeOverview(url).then((peaks) => {
-        if (id === loadId) overview = peaks;
-      }).catch(() => {});
+      decodeOverview(url)
+        .then((peaks) => {
+          if (id === loadId) overview = peaks;
+        })
+        .catch(() => {});
     }
 
     function roundBar(ctx, x, y, bw, bh, r) {
@@ -137,7 +139,7 @@
       const playX = duration > 0 ? (playMs / duration) * w : 0;
       const slot = w / bars;
       const barW = Math.max(1.6 * dpr, slot * 0.58);
-      const pulse = 0.55 + 0.45 * Math.sin((playMs / 180) + live * 4);
+      const pulse = 0.55 + 0.45 * Math.sin(playMs / 180 + live * 4);
 
       ctx.clearRect(0, 0, w, h);
       const night = ctx.createLinearGradient(0, 0, 0, h);
@@ -252,11 +254,7 @@
           const on = index === selected;
           const past = playMs >= Number(cue.end_ms || 0);
           const width = Math.max(3 * dpr, x1 - x0 - dpr);
-          ctx.fillStyle = on
-            ? "rgba(255,77,141,0.92)"
-            : past
-              ? "rgba(255,77,141,0.28)"
-              : "rgba(150,168,210,0.22)";
+          ctx.fillStyle = on ? "rgba(255,77,141,0.92)" : past ? "rgba(255,77,141,0.28)" : "rgba(150,168,210,0.22)";
           if (on) {
             ctx.shadowColor = "rgba(255,77,141,0.7)";
             ctx.shadowBlur = 10 * dpr;
@@ -332,7 +330,15 @@
     try {
       source = ctx.createMediaElementSource(audio);
     } catch (err) {
-      return prev || { audio, ctx, analyser, freq: new Uint8Array(analyser.frequencyBinCount), time: new Uint8Array(analyser.fftSize) };
+      return (
+        prev || {
+          audio,
+          ctx,
+          analyser,
+          freq: new Uint8Array(analyser.frequencyBinCount),
+          time: new Uint8Array(analyser.fftSize)
+        }
+      );
     }
     const gain = ctx.createGain();
     gain.gain.value = 1;
@@ -349,7 +355,7 @@
       gain,
       analyser,
       freq: new Uint8Array(analyser.frequencyBinCount),
-      time: new Uint8Array(analyser.fftSize),
+      time: new Uint8Array(analyser.fftSize)
     };
   }
 

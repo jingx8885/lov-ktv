@@ -44,7 +44,9 @@ export function exitEdit() {
   document.body.classList.remove("edit-on");
   $("playerAlign").hidden = true;
   $("playerAudio").muted = false;
-  try { screen.orientation.unlock(); } catch (err) {}
+  try {
+    screen.orientation.unlock();
+  } catch (err) {}
   syncEditAxis();
   syncGuide();
 }
@@ -57,7 +59,9 @@ export function enterEdit() {
   state.voiceTrackOn = true;
   applyEditorTracks();
   syncEditAxis();
-  try { screen.orientation.lock("landscape"); } catch (err) {}
+  try {
+    screen.orientation.lock("landscape");
+  } catch (err) {}
   setPlayIcon(!$("playerAudio").paused);
   syncGuide();
   requestAnimationFrame(() => {
@@ -92,7 +96,7 @@ export function ensureTimeline() {
     onChange: () => {
       state.lyricsDirty = true;
       updateAlignNow();
-    },
+    }
   });
   return state.alignTl;
 }
@@ -189,7 +193,7 @@ export function bindAlign() {
       const { ok, data } = await fetchJson(`/api/songs/${state.playerSong.id}/lyrics`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(state.playerLyrics),
+        body: JSON.stringify(state.playerLyrics)
       });
       if (!ok) throw new Error(data.detail || t("common.saveFailed"));
       state.lyricsDirty = false;
@@ -219,4 +223,3 @@ export function bindAlign() {
     ensureTimeline().render();
   });
 }
-

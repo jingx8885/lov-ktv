@@ -13,6 +13,6 @@ export function guardState(value, label) {
       }
       /** @type {any} */ (target)[key] = next;
       return true;
-    },
+    }
   });
 }

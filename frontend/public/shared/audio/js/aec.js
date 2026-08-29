@@ -43,7 +43,9 @@
 
   function disconnect(item) {
     if (!item) return;
-    try { item.disconnect(); } catch (err) {}
+    try {
+      item.disconnect();
+    } catch (err) {}
   }
 
   function clearGraph() {
@@ -86,7 +88,9 @@
     const ready = await ensureCtx();
     if (!ready || !next) return false;
     if (ctx.state === "suspended") {
-      try { await ctx.resume(); } catch (err) {}
+      try {
+        await ctx.resume();
+      } catch (err) {}
     }
     if (ctx.state === "suspended") return false;
     clearGraph();
@@ -96,7 +100,7 @@
         numberOfOutputs: 1,
         outputChannelCount: [1],
         channelCount: 1,
-        channelCountMode: "explicit",
+        channelCountMode: "explicit"
       });
     } catch (err) {
       return false;

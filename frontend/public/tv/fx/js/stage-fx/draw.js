@@ -1,6 +1,7 @@
 (function (global) {
   "use strict";
-  const { C, easeOutCubic, easeOutBack, easeOutElastic, prog, tracePoly, drawPiece, strokePartial } = global.LovStageFxPrimitives;
+  const { C, easeOutCubic, easeOutBack, easeOutElastic, prog, tracePoly, drawPiece, strokePartial } =
+    global.LovStageFxPrimitives;
 
   function makeDraw() {
     return {
@@ -55,7 +56,7 @@
             inst.cx + Math.cos(a) * r,
             inst.cy + Math.sin(a) * r,
             s.size * k * (1 + beatP * 0.25),
-            a,
+            a
           );
         });
       },
@@ -124,7 +125,7 @@
             s.x,
             s.y + Math.sin(t * 2 + i * 1.7) * 7,
             s.size * k * (1 + beatP * 0.2),
-            s.rot + t * 0.4 * inst.dir + beatP * 0.08 * inst.dir,
+            s.rot + t * 0.4 * inst.dir + beatP * 0.08 * inst.dir
           );
         });
       },
@@ -166,7 +167,7 @@
             inst.cx + Math.cos(a) * R,
             inst.cy + Math.sin(a) * R,
             s.size * (0.6 + 0.4 * k) * (1 + beatP * 0.15),
-            t * 1.2 * inst.dir,
+            t * 1.2 * inst.dir
           );
         });
         const ck = easeOutBack(prog(t, 0));
@@ -236,7 +237,7 @@
           g.arc(inst.cx, inst.cy, R * ok, 0, 7);
           g.stroke();
         }
-      },
+      }
     };
   }
 

@@ -56,7 +56,7 @@ function spawnBurst(x, y, kind) {
       decay: 0.011 + Math.random() * 0.014,
       r: 2.1 + Math.random() * 3.4,
       color: COLORS[i % COLORS.length],
-      star: i % 3 === 0,
+      star: i % 3 === 0
     });
   }
   fx.rings.push({ x, y, r: 12, grow: kind === "line" ? 7.8 : 5.8, life: 1 });
@@ -242,11 +242,11 @@ export function runCountdown() {
   const steps = reduced()
     ? [{ text: "GO", ms: 160 }]
     : [
-      { text: "3", ms: 620 },
-      { text: "2", ms: 620 },
-      { text: "1", ms: 620 },
-      { text: "GO", ms: 360 },
-    ];
+        { text: "3", ms: 620 },
+        { text: "2", ms: 620 },
+        { text: "1", ms: 620 },
+        { text: "GO", ms: 360 }
+      ];
   return new Promise((resolve) => {
     let i = 0;
     const step = () => {

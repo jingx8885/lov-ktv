@@ -34,8 +34,12 @@ export async function loadPlayerSong(songId, opts) {
   state.playerSong = song;
   state.playerLyrics = { cues: [] };
   resetPlayerFace();
-  try { audio.currentTime = 0; } catch (err) {}
-  try { if (guide) guide.currentTime = 0; } catch (err) {}
+  try {
+    audio.currentTime = 0;
+  } catch (err) {}
+  try {
+    if (guide) guide.currentTime = 0;
+  } catch (err) {}
   const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
   state.playerLyrics = lyrics.ok ? lyrics.data : { cues: [] };
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
@@ -75,8 +79,12 @@ export async function loadPlayerSong(songId, opts) {
   renderPlayerList();
   const ready = await waitMedia(audio, gen, karaoke);
   if (gen !== state.playerLoad) return;
-  try { audio.currentTime = 0; } catch (err) {}
-  try { if (guide && guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0; } catch (err) {}
+  try {
+    audio.currentTime = 0;
+  } catch (err) {}
+  try {
+    if (guide && guide.getAttribute("src") && guide.readyState >= 1) guide.currentTime = 0;
+  } catch (err) {}
   hookPlayerAudio();
   api.ensureTimeline().render();
   if (ready && wantPlay) {

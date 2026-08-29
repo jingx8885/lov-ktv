@@ -41,4 +41,3 @@ export function bindOverlays() {
   $("topWho").onclick = () => openOverlay("whoSheet");
   $("nowMore").onclick = () => openOverlay("mixSheet");
 }
-

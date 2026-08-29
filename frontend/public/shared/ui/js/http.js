@@ -29,7 +29,9 @@ function privateHttpHost(url) {
   try {
     const parsed = new URL(url, typeof location !== "undefined" ? location.href : undefined);
     if (parsed.protocol !== "http:") return false;
-    const name = String(parsed.hostname || "").trim().toLowerCase();
+    const name = String(parsed.hostname || "")
+      .trim()
+      .toLowerCase();
     if (name === "localhost" || name.endsWith(".local")) return true;
     const parts = name.split(".");
     if (parts.length !== 4) return false;

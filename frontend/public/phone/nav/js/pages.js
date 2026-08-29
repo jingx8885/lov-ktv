@@ -19,7 +19,9 @@ export function showPage(name, songId, push) {
   }
   state.currentPage = name;
   document.body.dataset.page = name;
-  PAGES.forEach((id) => { $("page-" + id).hidden = id !== name; });
+  PAGES.forEach((id) => {
+    $("page-" + id).hidden = id !== name;
+  });
   document.querySelectorAll("[data-nav]").forEach((b) => b.classList.toggle("on", b.dataset.nav === name));
   $("topTitle").textContent = pageTitle(name) || pageTitle("desk");
   paintTopRoom();
@@ -62,4 +64,3 @@ export function bindNav() {
     showPage(hash || "desk", null, false);
   });
 }
-

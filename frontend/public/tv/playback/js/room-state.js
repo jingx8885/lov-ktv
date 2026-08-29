@@ -15,7 +15,9 @@ export function roomWsLive() {
  * remain in the caller.
  */
 export function watchRoom(code, onRoom) {
-  const next = String(code || "").trim().toUpperCase();
+  const next = String(code || "")
+    .trim()
+    .toUpperCase();
   if (!next) return;
   if (roomWs && roomWsCode === next && roomWs.readyState <= 1) return;
   closeRoomWs();
@@ -34,7 +36,9 @@ export function watchRoom(code, onRoom) {
       if (msg && msg.type === "snapshot" && msg.room && typeof onRoom === "function") onRoom(msg.room);
     } catch (err) {}
   };
-  sock.onopen = () => { roomWsRetry = 0; };
+  sock.onopen = () => {
+    roomWsRetry = 0;
+  };
   sock.onclose = () => {
     if (roomWs !== sock) return;
     roomWs = null;
@@ -53,12 +57,17 @@ export function closeRoomWs() {
   roomWs = null;
   roomWsCode = "";
   if (!sock) return;
-  try { sock.onclose = null; sock.close(); } catch (err) {}
+  try {
+    sock.onclose = null;
+    sock.close();
+  } catch (err) {}
 }
 
 /** @param {string} code */
 export function fetchRoomSnapshot(code) {
-  const next = String(code || "").trim().toUpperCase();
+  const next = String(code || "")
+    .trim()
+    .toUpperCase();
   if (!next) return Promise.resolve({ ok: false, data: null });
   return fetchJson("/api/rooms/" + encodeURIComponent(next));
 }

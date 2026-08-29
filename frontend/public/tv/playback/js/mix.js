@@ -35,7 +35,9 @@ export function prefetchUrl(url) {
         if (step.done) break;
       }
     })
-    .catch(() => { state.prefetched.delete(url); })
+    .catch(() => {
+      state.prefetched.delete(url);
+    })
     .finally(() => {
       state.prefetchBusy = Math.max(0, state.prefetchBusy - 1);
       const next = state.prefetchWait.shift();
@@ -65,7 +67,7 @@ export function prefetchQueue(snap) {
 
 export function roomLine(snap) {
   const mix = Math.round(((snap && snap.vocal_mix) || 0) * 100);
-  const vol = (snap && snap.volume != null) ? snap.volume : 80;
+  const vol = snap && snap.volume != null ? snap.volume : 80;
   const n = ((snap && snap.queue) || []).length;
   const mic = snap && snap.mic_on ? t("tv.queueMic") : "";
   return t("tv.queue", { n, mix, vol }) + mic;
@@ -74,7 +76,7 @@ export function roomLine(snap) {
 export function applyMix() {
   const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
   const hostMac = state.room && state.room.host_volume_kind === "mac";
-  const vol = hostMac ? 1 : (((state.room && state.room.volume) != null ? state.room.volume : 80) / 100);
+  const vol = hostMac ? 1 : ((state.room && state.room.volume) != null ? state.room.volume : 80) / 100;
   const micGain = ((state.room && state.room.mic_gain) != null ? state.room.mic_gain : 80) / 100;
   const karaoke = $("karaoke");
   const vocal = $("vocal");
@@ -105,7 +107,7 @@ export function syncVocal(forceTime) {
     return;
   }
   if (vocal.readyState < 1) return;
-  const t = forceTime != null ? forceTime : (karaoke.currentTime || 0);
+  const t = forceTime != null ? forceTime : karaoke.currentTime || 0;
   const now = Date.now();
   if (forceTime == null && now - state.lastVocalSync < 400) return;
   state.lastVocalSync = now;
@@ -118,4 +120,3 @@ export function syncVocal(forceTime) {
     vocal.pause();
   }
 }
-

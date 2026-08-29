@@ -11,7 +11,7 @@ export function roomStamp(room) {
     paused: room && room.paused,
     now: room && room.now_playing && (room.now_playing.id || room.now_playing.song_id),
     nowStatus: room && room.now_playing && room.now_playing.status,
-    q: (room && room.queue ? room.queue : []).map((item) => [item.id, item.song_id, item.status, item.title]),
+    q: (room && room.queue ? room.queue : []).map((item) => [item.id, item.song_id, item.status, item.title])
   });
 }
 

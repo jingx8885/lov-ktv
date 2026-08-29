@@ -3,10 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsc --noEmit",
+    "check": "tsc --noEmit && npm run lint && npm run format:check",
+    "lint": "eslint \"public/**/*.js\"",
+    "format": "prettier --write \"public/**/*.js\" \"types/**/*.d.ts\" \"*.json\"",
+    "format:check": "prettier --check \"public/**/*.js\" \"types/**/*.d.ts\" \"*.json\"",
     "build:dist": "python ../scripts/build-frontend-dist.py --source public --output frontend-dist"
   },
   "devDependencies": {
+    "eslint": "^10.9.1",
+    "prettier": "^3.9.6",
     "typescript": "^5.9.2"
   }
 }

@@ -81,7 +81,14 @@ function startIfNeeded() {
     return true;
   }
   const karaoke = $("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && wantsResume(karaoke) && !roomPaused()) {
+  if (
+    state.room &&
+    state.room.now_playing &&
+    state.room.now_playing.status === "ready" &&
+    karaoke &&
+    wantsResume(karaoke) &&
+    !roomPaused()
+  ) {
     startPlayback();
     return true;
   }
@@ -116,7 +123,7 @@ export async function toggleVocal() {
   const { data } = await fetchJson("/api/rooms/" + code + "/mix", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ vocal_mix: next }),
+    body: JSON.stringify({ vocal_mix: next })
   });
   if (!data || !data.code) return;
   state.room = /** @type {Room} */ (data);
@@ -130,7 +137,7 @@ export async function setPaused(paused) {
   const { data } = await fetchJson("/api/rooms/" + code + "/mix", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ paused: !!paused }),
+    body: JSON.stringify({ paused: !!paused })
   });
   if (!data || !data.code) return;
   state.room = /** @type {Room} */ (data);
@@ -155,7 +162,7 @@ export async function nudgeVolume(delta) {
   const { data } = await fetchJson("/api/rooms/" + code + "/mix", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ volume: next }),
+    body: JSON.stringify({ volume: next })
   });
   if (!data || !data.code) return;
   state.room = /** @type {Room} */ (data);
@@ -280,13 +287,19 @@ export function bindRemote() {
     skip: skipSong,
     toggleVocal,
     togglePaused,
-    volumeUp: () => { if (settingsOpen()) moveSettings(-1); else nudgeVolume(10); },
-    volumeDown: () => { if (settingsOpen()) moveSettings(1); else nudgeVolume(-10); },
+    volumeUp: () => {
+      if (settingsOpen()) moveSettings(-1);
+      else nudgeVolume(10);
+    },
+    volumeDown: () => {
+      if (settingsOpen()) moveSettings(1);
+      else nudgeVolume(-10);
+    },
     confirm,
     start: startIfNeeded,
     settings: toggleSettings,
     back,
-    __module: true,
+    __module: true
   };
   if ($("tvSkip")) $("tvSkip").onclick = () => skipSong();
   if ($("tvVocal")) $("tvVocal").onclick = () => toggleVocal();

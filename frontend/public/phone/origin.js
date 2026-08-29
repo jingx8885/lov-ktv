@@ -12,7 +12,9 @@ function query() {
 }
 
 function trimOrigin(value) {
-  return String(value || "").trim().replace(/\/$/, "");
+  return String(value || "")
+    .trim()
+    .replace(/\/$/, "");
 }
 
 export function lanOrigin() {
@@ -24,7 +26,9 @@ export function processOrigin() {
 }
 
 function privateHost(host) {
-  const name = String(host || "").trim().toLowerCase();
+  const name = String(host || "")
+    .trim()
+    .toLowerCase();
   if (name === "localhost" || name.endsWith(".local")) return true;
   const parts = name.split(".");
   if (parts.length !== 4) return false;

@@ -8,56 +8,61 @@ import { showToast } from "../../ui/js/toast.js";
 import { stopPreview, togglePreview } from "./preview.js";
 
 export function bindSearchHits(q) {
-  $("hits").querySelectorAll("[data-preview]").forEach((btn) => {
-    btn.onclick = () => {
-      const hit = JSON.parse(btn.parentElement.querySelector("[data-import]").dataset.import);
-      togglePreview(hit, btn);
-    };
-  });
-  $("hits").querySelectorAll("[data-import]").forEach((btn) => {
-    btn.onclick = async () => {
-      const hit = JSON.parse(btn.dataset.import);
-      stopPreview();
-      btn.disabled = true;
-      btn.classList.add("busy");
-      const body = {
-        query: q,
-        id: hit.id,
-        title: hit.title,
-        artist: hit.artist,
-        language: hit.language || "",
-        source: hit.source || "",
+  $("hits")
+    .querySelectorAll("[data-preview]")
+    .forEach((btn) => {
+      btn.onclick = () => {
+        const hit = JSON.parse(btn.parentElement.querySelector("[data-import]").dataset.import);
+        togglePreview(hit, btn);
       };
-      const { data: created } = await fetchJson("/api/songs/import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!created.id) {
-        btn.disabled = false;
-        btn.classList.remove("busy");
-        showToast(created.detail || t("phone.search.importFailed"));
-        return;
-      }
-      btn.classList.add("on");
-      btn.setAttribute("aria-label", t("phone.search.added"));
-      showToast(t("phone.search.addedToast"));
-      api.loadSongs();
-    };
-  });
+    });
+  $("hits")
+    .querySelectorAll("[data-import]")
+    .forEach((btn) => {
+      btn.onclick = async () => {
+        const hit = JSON.parse(btn.dataset.import);
+        stopPreview();
+        btn.disabled = true;
+        btn.classList.add("busy");
+        const body = {
+          query: q,
+          id: hit.id,
+          title: hit.title,
+          artist: hit.artist,
+          language: hit.language || "",
+          source: hit.source || ""
+        };
+        const { data: created } = await fetchJson("/api/songs/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        if (!created.id) {
+          btn.disabled = false;
+          btn.classList.remove("busy");
+          showToast(created.detail || t("phone.search.importFailed"));
+          return;
+        }
+        btn.classList.add("on");
+        btn.setAttribute("aria-label", t("phone.search.added"));
+        showToast(t("phone.search.addedToast"));
+        api.loadSongs();
+      };
+    });
 }
 
 export function searchCard(hit) {
   const isMv = hit.is_mv === true || hit.source === "mugen" || hit.source === "bilibili";
-  const channel = ({
-    mugen: "Mugen",
-    bilibili: t("phone.search.bilibili"),
-    soundcloud: "SoundCloud",
-  })[hit.source] || "";
+  const channel =
+    {
+      mugen: "Mugen",
+      bilibili: t("phone.search.bilibili"),
+      soundcloud: "SoundCloud"
+    }[hit.source] || "";
   const bits = [
     escapeHtml(hit.artist || t("common.unknownArtist")),
     channel ? `<span class="source-tag ${escapeHtml(hit.source)}">${escapeHtml(channel)}</span>` : "",
-    isMv ? "MV" : t("phone.search.song"),
+    isMv ? "MV" : t("phone.search.song")
   ].filter(Boolean);
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
@@ -72,8 +77,9 @@ export function searchCard(hit) {
 
 export function paintSearchHits(q, hasMore) {
   state.searchHasMore = !!hasMore;
-  const cards = state.searchHits.map(searchCard).join("")
-    || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.none")}</p><span class="tiny">${t("phone.search.noneHint")}</span></div>`;
+  const cards =
+    state.searchHits.map(searchCard).join("") ||
+    `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.none")}</p><span class="tiny">${t("phone.search.noneHint")}</span></div>`;
   const tail = hasMore
     ? `<div class="list-more list-sentinel" data-page="${state.searchPage + 1}">${t("common.loading")}</div>`
     : "";
@@ -113,7 +119,8 @@ export async function runSearch(page, append = false) {
       showToast(data.detail || t("common.loadFailed"));
       return;
     }
-    $("hits").innerHTML = `<div class="empty-state"><p>${escapeHtml(data.detail || t("api.search_failed", { exc: "" }))}</p></div>`;
+    $("hits").innerHTML =
+      `<div class="empty-state"><p>${escapeHtml(data.detail || t("api.search_failed", { exc: "" }))}</p></div>`;
     return;
   }
   const hits = data.hits || [];
@@ -191,4 +198,3 @@ export function bindSearch() {
     }
   };
 }
-

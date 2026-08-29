@@ -24,8 +24,5 @@
     "public/login/**/*.js",
     "public/landing/**/*.js"
   ],
-  "exclude": [
-    "public/vendor/**",
-    "public/shared/audio/**"
-  ]
+  "exclude": ["public/vendor/**", "public/shared/audio/**"]
 }

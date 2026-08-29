@@ -341,7 +341,8 @@ export default {
   "landing.hero.badge": "搵歌名 · 人聲分離 · 掃色歌詞",
   "landing.hero.h1a": "任意一首歌，",
   "landing.hero.h1b": "當場變成包廂。",
-  "landing.hero.lead": "搵歌名入庫，人聲當場拆走，歌詞按字掃色。電視當舞台，手機掃碼點歌。唔使搵檔案。網頁都能唱；盒子裝電視版，手機裝點歌版。曲庫留喺自己屋企。",
+  "landing.hero.lead":
+    "搵歌名入庫，人聲當場拆走，歌詞按字掃色。電視當舞台，手機掃碼點歌。唔使搵檔案。網頁都能唱；盒子裝電視版，手機裝點歌版。曲庫留喺自己屋企。",
   "landing.hero.tv": "開電視",
   "landing.hero.phone": "手機點歌",
   "landing.hero.fine": "瀏覽器都開得。盒子請落電視 App，點歌請落手機 App。先等電視出碼。",
@@ -439,5 +440,5 @@ export default {
   "landing.foot.note": "僅供個人或家庭局域網。唔好公開發布曲庫。",
   "landing.foot.tv": "電視",
   "landing.foot.phone": "點歌",
-  "landing.foot.login": "認號",
+  "landing.foot.login": "認號"
 };

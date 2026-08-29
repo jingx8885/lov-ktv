@@ -206,14 +206,18 @@ export default {
   "phone.mic.headphoneMsg": "Speaker playback feeds the backing into the mic. Turn the mic on anyway?",
   "phone.mic.headphoneGo": "Turn mic on anyway",
   "phone.mic.headphoneNeed": "Put on headphones before turning the mic on",
-  "phone.mic.hintIemWired": "Monitor on: echo cancel is off, so wired headphones hear you sooner. Slide mic to 0 for backing only",
+  "phone.mic.hintIemWired":
+    "Monitor on: echo cancel is off, so wired headphones hear you sooner. Slide mic to 0 for backing only",
   "phone.mic.hintIemBt": "Monitor on. Use wired headphones — Bluetooth adds more lag. Slide mic to 0 for backing only",
   "phone.mic.hintSpeaker": "Mic is on — vocals and backing play from this phone",
-  "phone.mic.idleIem": "Use wired headphones. Monitor turns echo cancel off so you hear yourself sooner. Bluetooth adds more lag.",
-  "phone.mic.idleSpeaker": "Sing on this phone — backing and vocals come from the speaker. Turn on monitor if echo is loud.",
+  "phone.mic.idleIem":
+    "Use wired headphones. Monitor turns echo cancel off so you hear yourself sooner. Bluetooth adds more lag.",
+  "phone.mic.idleSpeaker":
+    "Sing on this phone — backing and vocals come from the speaker. Turn on monitor if echo is loud.",
 
   "learn.title": "Game",
-  "learn.lead": "Pick a mode. Quiz and tap: Easy waits for you after each line, Normal pauses 5 seconds, Hard does not pause. Tap a mode and the countdown starts.",
+  "learn.lead":
+    "Pick a mode. Quiz and tap: Easy waits for you after each line, Normal pauses 5 seconds, Hard does not pause. Tap a mode and the countdown starts.",
   "learn.diff": "Difficulty",
   "learn.diff.easy": "Easy",
   "learn.diff.easyMeta": "0.8× · confirm",
@@ -330,8 +334,10 @@ export default {
   "login.deviceFail": "Could not claim this device",
 
   "landing.title": "lov-ktv · Any song, a private room on the spot",
-  "landing.desc": "Search a title and sing. Vocals split instantly, lyrics color by word. TV is the stage, phone is the queue. Self-hosted KTV for home and private rooms.",
-  "landing.ogDesc": "Search a title into the library, split the backing on the spot, lyrics follow your mouth. Sing in the browser, or install the TV and phone apps.",
+  "landing.desc":
+    "Search a title and sing. Vocals split instantly, lyrics color by word. TV is the stage, phone is the queue. Self-hosted KTV for home and private rooms.",
+  "landing.ogDesc":
+    "Search a title into the library, split the backing on the spot, lyrics follow your mouth. Sing in the browser, or install the TV and phone apps.",
   "landing.nav.ritual": "How to sing",
   "landing.nav.features": "Features",
   "landing.nav.versus": "Compare",
@@ -341,10 +347,12 @@ export default {
   "landing.hero.badge": "Search · vocal split · colored lyrics",
   "landing.hero.h1a": "Any song,",
   "landing.hero.h1b": "a private room on the spot.",
-  "landing.hero.lead": "Search a title into the library, split vocals on the spot, color lyrics by word. TV is the stage, phone scans in to queue. No files to hunt. Sing in the browser; install the TV app on the box and the phone app to queue. The library stays at home.",
+  "landing.hero.lead":
+    "Search a title into the library, split vocals on the spot, color lyrics by word. TV is the stage, phone scans in to queue. No files to hunt. Sing in the browser; install the TV app on the box and the phone app to queue. The library stays at home.",
   "landing.hero.tv": "Open TV",
   "landing.hero.phone": "Queue on phone",
-  "landing.hero.fine": "The browser works too. Download the TV app for the box, the phone app to queue. Let the TV show a code first.",
+  "landing.hero.fine":
+    "The browser works too. Download the TV app for the box, the phone app to queue. Let the TV show a code first.",
   "landing.apps.tv": "Download TV app",
   "landing.apps.phone": "Download phone app",
   "landing.apps.ver": "{version} · {size}",
@@ -362,11 +370,14 @@ export default {
   "landing.trust.host": "Self-hosted",
   "landing.hooks.label": "Why it clicks",
   "landing.hook1.h": "No karaoke files to hunt",
-  "landing.hook1.p": "Most phones have no masters. The main path is search: preview, then drop it in the library. Processing finishes itself.",
+  "landing.hook1.p":
+    "Most phones have no masters. The main path is search: preview, then drop it in the library. Processing finishes itself.",
   "landing.hook2.h": "The backing is split, not borrowed",
-  "landing.hook2.p": "UVR ONNX removes the vocal. Keep the karaoke track; flip the original back on anytime. No settling for random online instrumentals.",
+  "landing.hook2.p":
+    "UVR ONNX removes the vocal. Keep the karaoke track; flip the original back on anytime. No settling for random online instrumentals.",
   "landing.hook3.h": "Lyrics follow your mouth",
-  "landing.hook3.p": "Official timing first. Chinese and Japanese color by character, English by word, Japanese with kana. Readable on a ten-foot TV.",
+  "landing.hook3.p":
+    "Official timing first. Chinese and Japanese color by character, English by word, Japanese with kana. Readable on a ten-foot TV.",
   "landing.ritual.eye": "Three steps to open a room",
   "landing.ritual.h": "TV shows a code, phone searches, the wall starts singing.",
   "landing.ritual.1h": "Open a room on TV",
@@ -374,21 +385,28 @@ export default {
   "landing.ritual.2h": "Search on the phone",
   "landing.ritual.2p": "Scan into the same room. Preview first, then drop the song into the library queue.",
   "landing.ritual.3h": "Color up and sing",
-  "landing.ritual.3p": "Backing, vocals, and lyrics are ready. Flip original and karaoke anytime — the next line is already lit.",
+  "landing.ritual.3p":
+    "Backing, vocals, and lyrics are ready. Flip original and karaoke anytime — the next line is already lit.",
   "landing.feat.eye": "What you actually use on stage",
   "landing.feat.h": "Every step is a button. The room wires them together.",
   "landing.feat.1h": "Search a title — don’t upload first",
-  "landing.feat.1p": "Titles go into the library. NetEase links, then SoundCloud, then YouTube. Upload is only a fallback.",
+  "landing.feat.1p":
+    "Titles go into the library. NetEase links, then SoundCloud, then YouTube. Upload is only a fallback.",
   "landing.feat.2h": "Vocal split without Torch",
-  "landing.feat.2p": "onnxruntime splits the track on the spot. Results cache on the box, so you can still sing if the processor drops.",
+  "landing.feat.2p":
+    "onnxruntime splits the track on the spot. Results cache on the box, so you can still sing if the processor drops.",
   "landing.feat.3h": "Three color grammars: ZH, JA, EN",
-  "landing.feat.3p": "Current line plus the next. Japanese readings sit on the characters. ASS / LRC / JSON stay as sidecar captions — not burned in.",
+  "landing.feat.3p":
+    "Current line plus the next. Japanese readings sit on the characters. ASS / LRC / JSON stay as sidecar captions — not burned in.",
   "landing.feat.4h": "Sing in the browser, or install the apps",
-  "landing.feat.4p": "This page has the TV and phone APKs. Scanning from a browser still joins the room. Queue, bump, skip — whoever arrives can pick.",
+  "landing.feat.4p":
+    "This page has the TV and phone APKs. Scanning from a browser still joins the room. Queue, bump, skip — whoever arrives can pick.",
   "landing.feat.5h": "Android TV hosts the LAN",
-  "landing.feat.5p": "Install on the box and open a room. Finished tracks cache locally so a living-room outage still finishes the night.",
+  "landing.feat.5p":
+    "Install on the box and open a room. Finished tracks cache locally so a living-room outage still finishes the night.",
   "landing.feat.6h": "Phone mic can mix onto the TV",
-  "landing.feat.6p": "Volume sliders run the room. WeChat IDs are optional — sing with a device identity if it is not set up.",
+  "landing.feat.6p":
+    "Volume sliders run the room. WeChat IDs are optional — sing with a device identity if it is not set up.",
   "landing.vs.eye": "Not another karaoke app",
   "landing.vs.h": "USB sticks, membership catalogs, online instrumentals — all hunting someone else’s karaoke.",
   "landing.vs.diy": "Find your own files",
@@ -414,15 +432,18 @@ export default {
   "landing.house.1h": "Guests at home",
   "landing.house.1p": "TV is the stage, sofa is the booth. No more huddling phones at a Bluetooth speaker.",
   "landing.house.2h": "Friends in a room",
-  "landing.house.2p": "Scan in on the LAN. Whoever arrives can queue. The list is on the TV; the phone mic can mix in too.",
+  "landing.house.2p":
+    "Scan in on the LAN. Whoever arrives can queue. The list is on the TV; the phone mic can mix in too.",
   "landing.house.3h": "Practice alone",
-  "landing.house.3p": "Japanese kana, English word-level color — finish a line, then the next. Processed songs stay offline.",
+  "landing.house.3p":
+    "Japanese kana, English word-level color — finish a line, then the next. Processed songs stay offline.",
   "landing.faq.eye": "Questions before you go on",
   "landing.faq.h": "Clear the usual snags first.",
   "landing.faq.1q": "Do I need an Android TV?",
   "landing.faq.1a": "No. Open the TV page in a browser and sing. Android TV just puts the host and cache in a box.",
   "landing.faq.2q": "Where do songs come from?",
-  "landing.faq.2a": "Search by title: NetEase links, then SoundCloud, then YouTube. For your room only — no redistribution.",
+  "landing.faq.2a":
+    "Search by title: NetEase links, then SoundCloud, then YouTube. For your room only — no redistribution.",
   "landing.faq.3q": "What if there is no official lyric?",
   "landing.faq.3a": "Paste lyrics. If still none, we transcribe. Official LRC wins when it exists.",
   "landing.faq.4q": "Do I install Torch locally?",
@@ -432,12 +453,14 @@ export default {
   "landing.faq.6q": "Can this be a public catalog site?",
   "landing.faq.6a": "No. This is home / private-room self-hosting. Do not publish media files.",
   "landing.faq.7q": "Where do I get the TV and phone apps?",
-  "landing.faq.7a": "Download both from this page. The browser still works. Install the TV build on the box, the phone build to queue, then scan the code on the wall.",
+  "landing.faq.7a":
+    "Download both from this page. The browser still works. Install the TV build on the box, the phone build to queue, then scan the code on the wall.",
   "landing.close.eye": "There can be a song tonight",
   "landing.close.h": "The first song hits the queue, and the living room is no longer just a living room.",
-  "landing.close.p": "Install the TV app on the box and the phone app to queue. Let the TV show a code, then search what you want tonight.",
+  "landing.close.p":
+    "Install the TV app on the box and the phone app to queue. Let the TV show a code, then search what you want tonight.",
   "landing.foot.note": "Personal or home LAN only. Do not publish the library.",
   "landing.foot.tv": "TV",
   "landing.foot.phone": "Queue",
-  "landing.foot.login": "Sign in",
+  "landing.foot.login": "Sign in"
 };

@@ -106,7 +106,9 @@
       const next = clamp(ms, 0, Math.max(0, max));
       playMs = next;
       if (a && a.duration) {
-        try { a.currentTime = next / 1000; } catch (err) {}
+        try {
+          a.currentTime = next / 1000;
+        } catch (err) {}
       }
       applyOffset();
       if (opts.onSeek) opts.onSeek(next);
@@ -160,7 +162,8 @@
       const a = audio();
       const url = a && (a.currentSrc || a.src);
       paintLane(wave, peekOverview(url), mixOn ? "rgba(255,77,141,0.78)" : "rgba(255,77,141,0.18)");
-      if (voice) paintLane(voice, peekOverview(voiceUrl), voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)");
+      if (voice)
+        paintLane(voice, peekOverview(voiceUrl), voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)");
       waveUrl = url || "";
       lastZoom = pxPerSec;
       lastDur = duration;
@@ -183,19 +186,26 @@
       const list = cues();
       const selected = opts.selected ? opts.selected() : -1;
       track.style.width = contentWidth() + "px";
-      track.innerHTML = list.map((cue, index) => {
-        const w = Math.max(8, xOf(cue.end_ms - cue.start_ms));
-        const on = index === selected ? " on" : "";
-        const now = playMs >= cue.start_ms && playMs < cue.end_ms ? " now" : "";
-        return `<div class="tl-clip${on}${now}" data-cue="${index}" style="left:${xOf(cue.start_ms)}px;width:${w}px">` +
-          `<span class="tl-handle tl-l" data-edge="start"></span>` +
-          `<span class="tl-clip-text">${escape(cue.text)}</span>` +
-          `<span class="tl-handle tl-r" data-edge="end"></span></div>`;
-      }).join("");
+      track.innerHTML = list
+        .map((cue, index) => {
+          const w = Math.max(8, xOf(cue.end_ms - cue.start_ms));
+          const on = index === selected ? " on" : "";
+          const now = playMs >= cue.start_ms && playMs < cue.end_ms ? " now" : "";
+          return (
+            `<div class="tl-clip${on}${now}" data-cue="${index}" style="left:${xOf(cue.start_ms)}px;width:${w}px">` +
+            `<span class="tl-handle tl-l" data-edge="start"></span>` +
+            `<span class="tl-clip-text">${escape(cue.text)}</span>` +
+            `<span class="tl-handle tl-r" data-edge="end"></span></div>`
+          );
+        })
+        .join("");
     }
 
     function escape(text) {
-      return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
     }
 
     function layoutChrome() {
@@ -213,7 +223,12 @@
       layoutChrome();
       renderRuler();
       renderClips();
-      if (pxPerSec !== lastZoom || (a && (a.currentSrc || a.src) !== waveUrl) || Math.abs(duration - lastDur) > 250 || !wave.width) {
+      if (
+        pxPerSec !== lastZoom ||
+        (a && (a.currentSrc || a.src) !== waveUrl) ||
+        Math.abs(duration - lastDur) > 250 ||
+        !wave.width
+      ) {
         drawWave();
       }
     }
@@ -281,7 +296,7 @@
           startX,
           startMs: cue.start_ms,
           endMs: cue.end_ms,
-          moved: false,
+          moved: false
         };
         if (opts.onGrab) opts.onGrab();
       } else {
@@ -289,7 +304,7 @@
           kind: "scrub",
           startX,
           playMs,
-          moved: false,
+          moved: false
         };
       }
       surface.setPointerCapture(event.pointerId);
@@ -355,7 +370,11 @@
       highlight();
       const a = audio();
       const url = a && (a.currentSrc || a.src);
-      if ((url && url !== waveUrl && global.LovBands && LovBands.getOverview(url)) || Math.abs(duration - lastDur) > 250) drawWave();
+      if (
+        (url && url !== waveUrl && global.LovBands && LovBands.getOverview(url)) ||
+        Math.abs(duration - lastDur) > 250
+      )
+        drawWave();
     }
 
     function zoom(dir) {

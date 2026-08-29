@@ -9,7 +9,7 @@
     party = global.confetti.create(canvas, {
       resize: true,
       useWorker: false,
-      disableForReducedMotion: true,
+      disableForReducedMotion: true
     });
     return party;
   }

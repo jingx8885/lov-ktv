@@ -12,7 +12,7 @@ import {
   nativeMtvPositionMs,
   pauseNativeMtv,
   resumeNativeMtv,
-  seekNativeMtv,
+  seekNativeMtv
 } from "../../platform.js";
 
 let nativeLyricsCleared = false;
@@ -71,7 +71,7 @@ export function liveBeat() {
   }
   if (freq && freq.length) {
     for (let i = 2; i < Math.min(48, freq.length); i += 1) sum += freq[i];
-    return Math.max(0, Math.min(1, (sum / 46) / 255));
+    return Math.max(0, Math.min(1, sum / 46 / 255));
   }
   return 0;
 }
@@ -99,11 +99,7 @@ export function lyricsFingerprint(data) {
 
 export function paint() {
   const now = state.room && state.room.now_playing;
-  const mode = applyLyricMode(
-    document.body,
-    (state.room && state.room.lyric_mode) || "all",
-    now && now.language,
-  );
+  const mode = applyLyricMode(document.body, (state.room && state.room.lyric_mode) || "all", now && now.language);
   if (now && now.status === "ready") {
     const karaoke = $("karaoke");
     const mtv = $("mtv");
@@ -117,11 +113,20 @@ export function paint() {
     } else {
       silenceMtv(mtv);
       const audioLive = !karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.05;
-      if (!mtv.hidden && mtv.src && Number.isFinite(mtv.duration) && mtv.readyState >= 2 && !mtv.seeking && !karaoke.seeking) {
+      if (
+        !mtv.hidden &&
+        mtv.src &&
+        Number.isFinite(mtv.duration) &&
+        mtv.readyState >= 2 &&
+        !mtv.seeking &&
+        !karaoke.seeking
+      ) {
         const target = Math.min(karaoke.currentTime || 0, Math.max(0, mtv.duration - 0.05));
         if (audioLive && Math.abs(mtv.currentTime - target) > 2 && Date.now() - state.lastMtvSeek > 1500) {
           state.lastMtvSeek = Date.now();
-          try { mtv.currentTime = target; } catch (err) {}
+          try {
+            mtv.currentTime = target;
+          } catch (err) {}
         }
         if (karaoke.paused) mtv.pause();
         else if (audioLive && mtv.paused && !mtv.ended) mtv.play().catch(() => {});
@@ -155,7 +160,7 @@ export function paint() {
   if (state.stageFx && !nativeMv()) {
     state.stageFx.draw({
       beat: now && now.status === "ready" ? liveBeat() : 0,
-      now: performance.now() / 1000,
+      now: performance.now() / 1000
     });
   }
   requestAnimationFrame(paint);

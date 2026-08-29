@@ -17,7 +17,9 @@ function killHtmlMtv(mtv) {
   mtv.pause();
   if (mtv.getAttribute("src") || mtv.src) {
     mtv.removeAttribute("src");
-    try { mtv.load(); } catch (err) {}
+    try {
+      mtv.load();
+    } catch (err) {}
   }
 }
 
@@ -44,9 +46,9 @@ export function silenceMtv(mtv) {
 
 export function nativeMv() {
   return !!(
-    (state.skeleton && state.skeleton.has_video)
-    || (state.lyrics && state.lyrics.native_video === true)
-    || document.body.classList.contains("has-native-player")
+    (state.skeleton && state.skeleton.has_video) ||
+    (state.lyrics && state.lyrics.native_video === true) ||
+    document.body.classList.contains("has-native-player")
   );
 }
 
@@ -56,7 +58,16 @@ export function syncNativeMv() {
   const plate = $("lyricPlate");
   if (!plate) return;
   plate.classList.toggle("bare", on);
-  ["background", "backgroundImage", "border", "borderRadius", "boxShadow", "backdropFilter", "webkitBackdropFilter", "padding"].forEach((key) => {
+  [
+    "background",
+    "backgroundImage",
+    "border",
+    "borderRadius",
+    "boxShadow",
+    "backdropFilter",
+    "webkitBackdropFilter",
+    "padding"
+  ].forEach((key) => {
     plate.style[key] = "";
   });
   if (on) {
@@ -114,4 +125,3 @@ export function bindMtv(songId) {
   mtv.src = htmlSrc;
   silenceMtv(mtv);
 }
-

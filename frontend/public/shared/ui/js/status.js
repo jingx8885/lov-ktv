@@ -6,9 +6,12 @@ export function statusLabel(status) {
 }
 
 /** @type {Record<string, string>} */
-export const STATUS = new Proxy({}, {
-  get(_target, key) {
-    if (typeof key !== "string") return undefined;
-    return statusLabel(key);
-  },
-});
+export const STATUS = new Proxy(
+  {},
+  {
+    get(_target, key) {
+      if (typeof key !== "string") return undefined;
+      return statusLabel(key);
+    }
+  }
+);

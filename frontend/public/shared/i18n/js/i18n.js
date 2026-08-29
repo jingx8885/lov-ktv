@@ -15,7 +15,9 @@ let booted = false;
 
 /** @param {string} raw */
 export function parseLang(raw) {
-  const text = String(raw || "").trim().toLowerCase();
+  const text = String(raw || "")
+    .trim()
+    .toLowerCase();
   if (!text) return "";
   if (LOCALES.includes(text)) return text;
   if (text.startsWith("yue") || text.startsWith("zh-hk") || text.startsWith("zh-mo")) return "yue";
@@ -50,9 +52,7 @@ export function t(key, vars) {
   if (text == null) text = zh[key];
   if (text == null) text = key;
   if (vars) {
-    text = String(text).replace(/\{(\w+)\}/g, (_, name) => (
-      vars[name] == null ? `{${name}}` : String(vars[name])
-    ));
+    text = String(text).replace(/\{(\w+)\}/g, (_, name) => (vars[name] == null ? `{${name}}` : String(vars[name])));
   }
   return text;
 }

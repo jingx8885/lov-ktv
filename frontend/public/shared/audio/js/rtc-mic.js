@@ -45,7 +45,10 @@
       const proto = location.protocol === "https:" ? "wss:" : "ws:";
       const url = proto + "//" + location.host + "/ws/rooms/" + encodeURIComponent(code);
       if (ws) {
-        try { ws.onclose = null; ws.close(); } catch (err) {}
+        try {
+          ws.onclose = null;
+          ws.close();
+        } catch (err) {}
       }
       ws = new WebSocket(url);
       ws.onopen = () => {
@@ -55,7 +58,11 @@
       };
       ws.onmessage = (event) => {
         let msg = null;
-        try { msg = JSON.parse(event.data); } catch (err) { return; }
+        try {
+          msg = JSON.parse(event.data);
+        } catch (err) {
+          return;
+        }
         if (!msg) return;
         if (msg.type === "snapshot" && handlers.onSnapshot) handlers.onSnapshot(msg.room);
         if (msg.type === "peer" && handlers.onPeer) handlers.onPeer(msg);
@@ -74,7 +81,9 @@
       closed = true;
       outbox = [];
       if (ws) {
-        try { ws.close(); } catch (err) {}
+        try {
+          ws.close();
+        } catch (err) {}
         ws = null;
       }
     }
@@ -143,7 +152,9 @@
         pendingIce.push(msg.candidate);
         return;
       }
-      try { await pc.addIceCandidate(msg.candidate); } catch (err) {}
+      try {
+        await pc.addIceCandidate(msg.candidate);
+      } catch (err) {}
     }
 
     async function makeOffer() {
@@ -167,9 +178,9 @@
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          channelCount: 1,
+          channelCount: 1
         },
-        video: false,
+        video: false
       });
       await makeOffer();
       send({ action: "mic", on: true, from: peerId });
@@ -191,9 +202,8 @@
       pc = new RTCPeerConnection({ iceServers: ICE });
       bindIce();
       pc.ontrack = (event) => {
-        const stream = event.streams && event.streams[0]
-          ? event.streams[0]
-          : new MediaStream(event.track ? [event.track] : []);
+        const stream =
+          event.streams && event.streams[0] ? event.streams[0] : new MediaStream(event.track ? [event.track] : []);
         if (handlers.onStream) handlers.onStream(stream);
       };
       await pc.setRemoteDescription(msg.sdp);
@@ -229,7 +239,7 @@
       handleOffer,
       addIce,
       resetPc,
-      isLive,
+      isLive
     };
   }
 

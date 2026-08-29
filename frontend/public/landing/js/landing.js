@@ -23,11 +23,15 @@ if (hero && !reduced) {
 }
 
 document.querySelectorAll(".lp-features article").forEach((card) => {
-  card.addEventListener("pointermove", /** @param {PointerEvent} event */ (event) => {
-    const box = card.getBoundingClientRect();
-    card.style.setProperty("--mx", `${event.clientX - box.left}px`);
-    card.style.setProperty("--my", `${event.clientY - box.top}px`);
-  }, { passive: true });
+  card.addEventListener(
+    "pointermove",
+    /** @param {PointerEvent} event */ (event) => {
+      const box = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${event.clientX - box.left}px`);
+      card.style.setProperty("--my", `${event.clientY - box.top}px`);
+    },
+    { passive: true }
+  );
 });
 
 bootI18n();
@@ -43,8 +47,8 @@ const songs = [
     queue: [
       { role: "now", artist: "周杰伦" },
       { role: "next", artist: "imase" },
-      { role: "wait", artist: "Ed Sheeran" },
-    ],
+      { role: "wait", artist: "Ed Sheeran" }
+    ]
   },
   {
     song: "NIGHT DANCER",
@@ -56,8 +60,8 @@ const songs = [
     queue: [
       { role: "now", artist: "imase" },
       { role: "next", artist: "Ed Sheeran" },
-      { role: "wait", artist: "周杰伦" },
-    ],
+      { role: "wait", artist: "周杰伦" }
+    ]
   },
   {
     song: "Shape of You",
@@ -69,9 +73,9 @@ const songs = [
     queue: [
       { role: "now", artist: "Ed Sheeran" },
       { role: "next", artist: "周杰伦" },
-      { role: "wait", artist: "imase" },
-    ],
-  },
+      { role: "wait", artist: "imase" }
+    ]
+  }
 ];
 
 const ROLE_KEY = { now: "landing.demo.now", next: "landing.demo.next", wait: "landing.demo.wait" };
@@ -151,4 +155,3 @@ fetch("/api/apps")
     paintAppDownloads(appCatalog);
   })
   .catch(() => paintAppDownloads(null));
-

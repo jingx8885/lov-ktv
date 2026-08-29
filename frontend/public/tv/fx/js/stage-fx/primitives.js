@@ -2,8 +2,18 @@
   "use strict";
 
   const EFFECTS = [
-    "rings", "poly", "spiral", "rays", "confetti", "zigzag",
-    "pop", "cross", "orbit", "wave", "stars", "grid",
+    "rings",
+    "poly",
+    "spiral",
+    "rays",
+    "confetti",
+    "zigzag",
+    "pop",
+    "cross",
+    "orbit",
+    "wave",
+    "stars",
+    "grid"
   ];
   const C = { amber: "#f5c16c", gray: "rgba(244,241,234,.55)", ink: "rgba(11,16,32,.0)" };
   const ACCENTS = ["#ff4d8d", "#6ec8ff", "#ffffff"];
@@ -140,9 +150,23 @@
   }
 
   global.LovStageFxPrimitives = {
-    EFFECTS, C, ACCENTS, FX_IN, FX_OUT, MAX_LAYERS,
-    mulberry32, clamp01, smooth, easeOutCubic, easeOutBack,
-    easeOutElastic, prog, pickColor, tracePoly, traceStar,
-    drawPiece, strokePartial,
+    EFFECTS,
+    C,
+    ACCENTS,
+    FX_IN,
+    FX_OUT,
+    MAX_LAYERS,
+    mulberry32,
+    clamp01,
+    smooth,
+    easeOutCubic,
+    easeOutBack,
+    easeOutElastic,
+    prog,
+    pickColor,
+    tracePoly,
+    traceStar,
+    drawPiece,
+    strokePartial
   };
 })(window);

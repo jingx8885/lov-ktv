@@ -25,7 +25,9 @@ if (params.get("login")) {
 }
 const roomFromUrl = (params.get("room") || "").toUpperCase();
 if (roomFromUrl) {
-  try { localStorage.setItem("room", roomFromUrl); } catch (_) {}
+  try {
+    localStorage.setItem("room", roomFromUrl);
+  } catch (_) {}
 }
 $must("room").value = (roomFromUrl || localStorage.getItem("room") || "").toUpperCase();
 
@@ -34,7 +36,8 @@ onLangChange(() => {
   applyDom();
   $must("topTitle").textContent = pageTitle(state.currentPage);
   const by = state.libState.by;
-  $must("libQ").placeholder = by === "artist" ? t("phone.desk.libPhArtist") : by === "title" ? t("phone.desk.libPhTitle") : t("phone.desk.libPh");
+  $must("libQ").placeholder =
+    by === "artist" ? t("phone.desk.libPhArtist") : by === "title" ? t("phone.desk.libPhTitle") : t("phone.desk.libPh");
   loadWho();
   loadRoom();
   loadSongs();
@@ -51,10 +54,16 @@ onLangChange(() => {
   updatePlayOrderBtns();
   syncPlayerSheetMeta();
   $must("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
-  $must("playerVocal").setAttribute("aria-label", state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
+  $must("playerVocal").setAttribute(
+    "aria-label",
+    state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff")
+  );
   if (state.playerSong) {
     $must("playerTitle").textContent = state.playerSong.title;
-    $must("playerMeta").textContent = state.playerSong.artist && !String(state.playerSong.title).includes(state.playerSong.artist) ? state.playerSong.artist : "";
+    $must("playerMeta").textContent =
+      state.playerSong.artist && !String(state.playerSong.title).includes(state.playerSong.artist)
+        ? state.playerSong.artist
+        : "";
   }
   $must("tlChain").textContent = state.chainRest ? t("phone.align.chainRest") : t("phone.align.chain");
   updateAlignNow();

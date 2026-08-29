@@ -25,7 +25,7 @@ export function roomItemIdentity(item) {
   if (!item) return { itemKey: "", mediaRev: "" };
   return {
     itemKey: String(item.id || item.song_id || ""),
-    mediaRev: String(item.media_rev || ""),
+    mediaRev: String(item.media_rev || "")
   };
 }
 
@@ -35,6 +35,8 @@ export function roomItemIdentity(item) {
  */
 export function shouldReloadRoomItem(previousItemKey, previousMediaRev, item) {
   const next = roomItemIdentity(item);
-  return next.itemKey !== String(previousItemKey || "")
-    || (!!next.mediaRev && next.mediaRev !== String(previousMediaRev || ""));
+  return (
+    next.itemKey !== String(previousItemKey || "") ||
+    (!!next.mediaRev && next.mediaRev !== String(previousMediaRev || ""))
+  );
 }

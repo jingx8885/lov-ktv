@@ -4,14 +4,16 @@ import { state } from "../../state.js";
 /** Build a versioned URL for a song asset. */
 export function mediaUrl(songId, name) {
   const song = state.playerSong;
-  const rev = (song && (song.id === songId || song.song_id === songId) && song.media_rev)
-    || state.songMediaRev
-    || "";
+  const rev = (song && (song.id === songId || song.song_id === songId) && song.media_rev) || state.songMediaRev || "";
   return `/media/${songId}/${name}` + (rev ? `?v=${encodeURIComponent(rev)}` : "");
 }
 
 export function mediaPath(src) {
-  try { return new URL(src, location.href).pathname; } catch (err) { return String(src || "").split("?")[0]; }
+  try {
+    return new URL(src, location.href).pathname;
+  } catch (err) {
+    return String(src || "").split("?")[0];
+  }
 }
 
 export function mediaAhead(el, at) {
@@ -68,6 +70,9 @@ export function waitMedia(el, gen, wantSrc) {
     el.addEventListener("loadedmetadata", onOk);
     el.addEventListener("error", onErr, { once: true });
     if (isNew()) finish(true);
-    else setTimeout(() => { if (isNew()) finish(true); }, 0);
+    else
+      setTimeout(() => {
+        if (isNew()) finish(true);
+      }, 0);
   });
 }

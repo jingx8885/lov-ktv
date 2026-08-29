@@ -206,14 +206,18 @@ export default {
   "phone.mic.headphoneMsg": "スピーカー再生だと伴奏がマイクに戻ります。それでもマイクをオンにしますか？",
   "phone.mic.headphoneGo": "そのままオン",
   "phone.mic.headphoneNeed": "イヤホンをつけてからマイクオン",
-  "phone.mic.hintIemWired": "モニターオン：エコーキャンセルはオフ。有線なら自分の声がかなり速い。マイクを0にすると伴奏だけ",
-  "phone.mic.hintIemBt": "モニターオン。有線イヤホンを使ってください。Bluetoothはさらに遅れます。マイクを0にすると伴奏だけ",
+  "phone.mic.hintIemWired":
+    "モニターオン：エコーキャンセルはオフ。有線なら自分の声がかなり速い。マイクを0にすると伴奏だけ",
+  "phone.mic.hintIemBt":
+    "モニターオン。有線イヤホンを使ってください。Bluetoothはさらに遅れます。マイクを0にすると伴奏だけ",
   "phone.mic.hintSpeaker": "マイクオン。声と伴奏はこのスマホから出ます",
-  "phone.mic.idleIem": "有線イヤホンを。モニターはエコーキャンセルを切るので、自分の声が速くなります。Bluetoothはさらに遅れます。",
+  "phone.mic.idleIem":
+    "有線イヤホンを。モニターはエコーキャンセルを切るので、自分の声が速くなります。Bluetoothはさらに遅れます。",
   "phone.mic.idleSpeaker": "この端末で歌うと、伴奏と声がスピーカーから出ます。ハウリングが大きければモニターをオン。",
 
   "learn.title": "ゲーム",
-  "learn.lead": "遊び方を選んでください。クイズとタップ：ゆっくりは各行で確認待ち、標準は5秒停止、むずかしいは止まらない。タップするとカウントダウンで始まります。",
+  "learn.lead":
+    "遊び方を選んでください。クイズとタップ：ゆっくりは各行で確認待ち、標準は5秒停止、むずかしいは止まらない。タップするとカウントダウンで始まります。",
   "learn.diff": "難易度",
   "learn.diff.easy": "ゆっくり",
   "learn.diff.easyMeta": "0.8× · 確認",
@@ -330,8 +334,10 @@ export default {
   "login.deviceFail": "この端末のID取得に失敗しました",
 
   "landing.title": "lov-ktv · どの曲でも、その場で個室カラオケに",
-  "landing.desc": "曲名を探せば歌える。ボーカルはその場で分離し、歌詞は文字単位で色が走る。テレビがステージ、スマホが選曲台。家庭も個室も使える自ホストKTV。",
-  "landing.ogDesc": "曲名で曲庫へ。伴奏はその場で分離し、歌詞は口に合わせて進む。ブラウザでも歌える。テレビとスマホのアプリも置いてある。",
+  "landing.desc":
+    "曲名を探せば歌える。ボーカルはその場で分離し、歌詞は文字単位で色が走る。テレビがステージ、スマホが選曲台。家庭も個室も使える自ホストKTV。",
+  "landing.ogDesc":
+    "曲名で曲庫へ。伴奏はその場で分離し、歌詞は口に合わせて進む。ブラウザでも歌える。テレビとスマホのアプリも置いてある。",
   "landing.nav.ritual": "歌い方",
   "landing.nav.features": "できること",
   "landing.nav.versus": "比較",
@@ -341,10 +347,12 @@ export default {
   "landing.hero.badge": "曲名検索 · ボーカル分離 · 色つき歌詞",
   "landing.hero.h1a": "どの曲でも、",
   "landing.hero.h1b": "その場で個室になる。",
-  "landing.hero.lead": "曲名で曲庫へ入れ、ボーカルはその場で分離、歌詞は文字単位で色が走る。テレビがステージ、スマホはスキャンして選曲。ファイル探しは不要。ブラウザでも歌える。ボックスにはテレビ版、選曲にはスマホ版。曲庫は自宅に残る。",
+  "landing.hero.lead":
+    "曲名で曲庫へ入れ、ボーカルはその場で分離、歌詞は文字単位で色が走る。テレビがステージ、スマホはスキャンして選曲。ファイル探しは不要。ブラウザでも歌える。ボックスにはテレビ版、選曲にはスマホ版。曲庫は自宅に残る。",
   "landing.hero.tv": "テレビを開く",
   "landing.hero.phone": "スマホで選曲",
-  "landing.hero.fine": "ブラウザでも開けます。ボックスはテレビ App、選曲はスマホ App。先にテレビでコードを出してください。",
+  "landing.hero.fine":
+    "ブラウザでも開けます。ボックスはテレビ App、選曲はスマホ App。先にテレビでコードを出してください。",
   "landing.apps.tv": "テレビ App をダウンロード",
   "landing.apps.phone": "スマホ App をダウンロード",
   "landing.apps.ver": "{version} · {size}",
@@ -362,11 +370,14 @@ export default {
   "landing.trust.host": "自ホスト",
   "landing.hooks.label": "決め手",
   "landing.hook1.h": "伴奏ファイルを探さなくていい",
-  "landing.hook1.p": "スマホにマスター音源はまず無い。本線は曲名検索：試聴して確認し、曲庫へ入れる。処理は自動で終わる。",
+  "landing.hook1.p":
+    "スマホにマスター音源はまず無い。本線は曲名検索：試聴して確認し、曲庫へ入れる。処理は自動で終わる。",
   "landing.hook2.h": "伴奏は分離して作る",
-  "landing.hook2.p": "UVR ONNX がボーカルを外す。カラオケトラックはあなた用。原曲を重ねたいときはいつでも切替。ネットの伴奏に妥協しない。",
+  "landing.hook2.p":
+    "UVR ONNX がボーカルを外す。カラオケトラックはあなた用。原曲を重ねたいときはいつでも切替。ネットの伴奏に妥協しない。",
   "landing.hook3.h": "歌詞が口に合わせて進む",
-  "landing.hook3.p": "公式タイムライン優先。中日は文字単位、英語は単語単位、日本語は仮名付き。10フィートのテレビでも読める。",
+  "landing.hook3.p":
+    "公式タイムライン優先。中日は文字単位、英語は単語単位、日本語は仮名付き。10フィートのテレビでも読める。",
   "landing.ritual.eye": "3ステップで開室",
   "landing.ritual.h": "テレビがコードを出し、スマホが曲を探し、壁で歌い始める。",
   "landing.ritual.1h": "テレビで開室",
@@ -384,7 +395,8 @@ export default {
   "landing.feat.3h": "中日英、3つの色つけ文法",
   "landing.feat.3p": "今の行と次の行。日本語の読みは字の上。ASS / LRC / JSONは残し、字幕は焼き込まない。",
   "landing.feat.4h": "ブラウザでも歌える。テレビとスマホに App を入れてもいい",
-  "landing.feat.4p": "このページにテレビ版とスマホ版がある。ブラウザでスキャンしても入室できる。予約、トップ、曲送り。来た人が選ぶ。",
+  "landing.feat.4p":
+    "このページにテレビ版とスマホ版がある。ブラウザでスキャンしても入室できる。予約、トップ、曲送り。来た人が選ぶ。",
   "landing.feat.5h": "Android TVがLANホスト",
   "landing.feat.5p": "ボックスに入れて開室。完成ファイルはローカルキャッシュ。リビングが切れても今夜は歌い切れる。",
   "landing.feat.6h": "スマホマイクをテレビに混ぜられる",
@@ -420,7 +432,8 @@ export default {
   "landing.faq.eye": "本番前に聞きたくなること",
   "landing.faq.h": "つまずきやすいところを先に。",
   "landing.faq.1q": "Androidテレビ必須ですか？",
-  "landing.faq.1a": "いいえ。ブラウザでテレビページを開けば歌えます。Android TVはホストとキャッシュをボックスに入れるだけ。",
+  "landing.faq.1a":
+    "いいえ。ブラウザでテレビページを開けば歌えます。Android TVはホストとキャッシュをボックスに入れるだけ。",
   "landing.faq.2q": "曲はどこから？",
   "landing.faq.2a": "曲名検索：NetEase外リンク、次にSoundCloud、YouTube。自分の部屋専用。再配布しない。",
   "landing.faq.3q": "公式歌詞が無いときは？",
@@ -432,12 +445,13 @@ export default {
   "landing.faq.6q": "公開曲庫サイトにできますか？",
   "landing.faq.6a": "できません。家庭 / 個室の自ホストです。メディアファイルを公開しないでください。",
   "landing.faq.7q": "テレビとスマホの App はどこから？",
-  "landing.faq.7a": "このページからテレビ版とスマホ版をダウンロードできます。ブラウザでも歌えます。ボックスにはテレビ版、選曲にはスマホ版を入れ、壁のコードをスキャンしてください。",
+  "landing.faq.7a":
+    "このページからテレビ版とスマホ版をダウンロードできます。ブラウザでも歌えます。ボックスにはテレビ版、選曲にはスマホ版を入れ、壁のコードをスキャンしてください。",
   "landing.close.eye": "今夜、曲がある",
   "landing.close.h": "1曲目が予約に入った瞬間、リビングはもうリビングではない。",
   "landing.close.p": "ボックスにテレビ App、選曲にスマホ App。先にテレビでコードを出し、今夜歌いたい1曲を探す。",
   "landing.foot.note": "個人または家庭LAN専用。曲庫を公開しないでください。",
   "landing.foot.tv": "テレビ",
   "landing.foot.phone": "選曲",
-  "landing.foot.login": "ID取得",
+  "landing.foot.login": "ID取得"
 };

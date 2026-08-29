@@ -53,7 +53,9 @@ export function wantsResume(el) {
 export function restoreResume(el) {
   const t = state.resumeAt || 0;
   if (!el || t <= 1 || (el.currentTime || 0) >= 1) return;
-  try { el.currentTime = t; } catch (err) {}
+  try {
+    el.currentTime = t;
+  } catch (err) {}
 }
 
 function bindStallGuard(el) {
@@ -62,10 +64,18 @@ function bindStallGuard(el) {
   el.addEventListener("timeupdate", () => {
     if ((el.currentTime || 0) > 0.25) state.resumeAt = el.currentTime;
   });
-  el.addEventListener("waiting", () => { state.mediaStall = Date.now(); });
-  el.addEventListener("stalled", () => { state.mediaStall = Date.now(); });
-  el.addEventListener("playing", () => { state.mediaStall = 0; });
-  el.addEventListener("canplay", () => { state.mediaStall = 0; });
+  el.addEventListener("waiting", () => {
+    state.mediaStall = Date.now();
+  });
+  el.addEventListener("stalled", () => {
+    state.mediaStall = Date.now();
+  });
+  el.addEventListener("playing", () => {
+    state.mediaStall = 0;
+  });
+  el.addEventListener("canplay", () => {
+    state.mediaStall = 0;
+  });
 }
 
 function recoverSameSrc(el) {
@@ -75,10 +85,14 @@ function recoverSameSrc(el) {
   if (Date.now() - state.lastRecoverAt < 4000) return;
   state.lastRecoverAt = Date.now();
   el.load();
-  el.addEventListener("loadedmetadata", () => {
-    restoreResume(el);
-    api.playEl(el).catch(() => {});
-  }, { once: true });
+  el.addEventListener(
+    "loadedmetadata",
+    () => {
+      restoreResume(el);
+      api.playEl(el).catch(() => {});
+    },
+    { once: true }
+  );
 }
 
 function bindKaraokeFallback(karaoke, vocal, songId) {
@@ -208,7 +222,10 @@ export async function applyRoom(room) {
     state.lyricPaint.next = "";
     const lyricsHit = await fetchJson(mediaUrl(now.song_id, "lyrics.json"));
     state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
-    const skeletonHit = await fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({ ok: false, data: null }));
+    const skeletonHit = await fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({
+      ok: false,
+      data: null
+    }));
     state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;
@@ -216,7 +233,11 @@ export async function applyRoom(room) {
     state.lastVocalSync = 0;
     state.boundMtvSong = "";
     syncNativeMv();
-    state.hookLines = nativeMv() ? new Set() : (window.LovStageFxTextHooks ? LovStageFxTextHooks.hookTexts(state.lyrics.cues) : new Set());
+    state.hookLines = nativeMv()
+      ? new Set()
+      : window.LovStageFxTextHooks
+        ? LovStageFxTextHooks.hookTexts(state.lyrics.cues)
+        : new Set();
     if (!nativeMv()) ensureStageFx();
     bindMtv(now.song_id);
     startPlayback();
@@ -272,10 +293,15 @@ export function startPlayback() {
     if (karaoke.error) {
       recoverSameSrc(karaoke);
     } else if (karaoke.paused && !isMediaStalled(karaoke) && !songReallyEnded(karaoke)) {
-      api.playEl(karaoke).then(() => { $("gate").hidden = true; }).catch(() => {
-        if (state.audioUnlocked) api.schedulePlayRetries();
-        else $("gate").hidden = false;
-      });
+      api
+        .playEl(karaoke)
+        .then(() => {
+          $("gate").hidden = true;
+        })
+        .catch(() => {
+          if (state.audioUnlocked) api.schedulePlayRetries();
+          else $("gate").hidden = false;
+        });
     } else if (!karaoke.paused) {
       $("gate").hidden = true;
     }
@@ -302,11 +328,15 @@ export function startPlayback() {
   };
   karaoke.onloadedmetadata = ready;
   vocal.onloadedmetadata = ready;
-  api.playEl(karaoke).then(() => { $("gate").hidden = true; }).catch(() => {
-    if (state.audioUnlocked) api.schedulePlayRetries();
-    else $("gate").hidden = false;
-  });
+  api
+    .playEl(karaoke)
+    .then(() => {
+      $("gate").hidden = true;
+    })
+    .catch(() => {
+      if (state.audioUnlocked) api.schedulePlayRetries();
+      else $("gate").hidden = false;
+    });
   api.playEl(vocal).catch(() => {});
   api.playEl($("mtv")).catch(() => {});
 }
-

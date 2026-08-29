@@ -18,7 +18,9 @@ let errorRaw = "";
 function deviceId() {
   let id = localStorage.getItem(deviceKey);
   if (!id) {
-    id = (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "")) || String(Date.now()) + Math.random().toString(16).slice(2);
+    id =
+      (crypto.randomUUID && crypto.randomUUID().replace(/-/g, "")) ||
+      String(Date.now()) + Math.random().toString(16).slice(2);
     localStorage.setItem(deviceKey, id);
   }
   return id;
@@ -75,7 +77,10 @@ async function loadMe() {
 
 async function confirmTicket() {
   if (!ticket) return true;
-  const { ok, data } = await fetchJson("/api/auth/qr/" + ticket + "/confirm", { method: "POST", credentials: "same-origin" });
+  const { ok, data } = await fetchJson("/api/auth/qr/" + ticket + "/confirm", {
+    method: "POST",
+    credentials: "same-origin"
+  });
   if (ok) return true;
   showError(data.detail || t("login.qrExpired"));
   return false;
@@ -86,7 +91,7 @@ async function deviceLogin() {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ device_id: deviceId() }),
+    body: JSON.stringify({ device_id: deviceId() })
   });
   if (!ok) {
     showError(data.detail || t("login.deviceFail"));

@@ -5,7 +5,14 @@ import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
 import { paintMix } from "./mix.js";
-import { hasNativeMic, nativeCapabilities, nativeMicState, nativeCall, webMicApi, micErrorText } from "../../platform.js";
+import {
+  hasNativeMic,
+  nativeCapabilities,
+  nativeMicState,
+  nativeCall,
+  webMicApi,
+  micErrorText
+} from "../../platform.js";
 
 export function usesNativeMic() {
   return hasNativeMic();
@@ -38,7 +45,9 @@ function nativeStartMic() {
     };
     window.LovKtvOnMic = done;
     try {
-      nativeCall("startTvMic").then(() => done(true)).catch((err) => done(false, nativeError(err)));
+      nativeCall("startTvMic")
+        .then(() => done(true))
+        .catch((err) => done(false, nativeError(err)));
     } catch (err) {
       done(false, nativeError(err));
     }
@@ -65,12 +74,14 @@ function createNativeRtc() {
     handleAnswer: async () => {},
     handleOffer: async () => {},
     addIce: async () => {},
-    resetPc: async () => {},
+    resetPc: async () => {}
   };
 }
 
 export function connectRoomRtc(code) {
-  code = String(code || "").trim().toUpperCase();
+  code = String(code || "")
+    .trim()
+    .toUpperCase();
   if (!code) return;
   if (usesNativeMic()) {
     if (state.roomRtc && state.roomRtc.native && state.roomRtcCode === code) return;
@@ -108,7 +119,7 @@ export function connectRoomRtc(code) {
       if (!micHint) return;
       if (rtcState === "connected") micHint.textContent = t("phone.mic.liveTv");
       else if (rtcState === "failed") micHint.textContent = t("phone.mic.tvFail");
-    },
+    }
   });
 }
 

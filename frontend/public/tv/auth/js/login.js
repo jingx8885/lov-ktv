@@ -45,7 +45,7 @@ export async function hostOrigin() {
 export function renderUserChip(user) {
   if (user !== undefined) lastUser = user;
   const who = lastUser;
-  $("tvUser").textContent = who ? (who.sid || who.nickname || t("tv.in")) : t("tv.out");
+  $("tvUser").textContent = who ? who.sid || who.nickname || t("tv.in") : t("tv.out");
   $("tvLoginBtn").textContent = who ? t("tv.switch") : t("tv.login");
   if (who && who.avatar) {
     $("tvAvatar").hidden = false;
@@ -57,13 +57,17 @@ export function renderUserChip(user) {
 }
 
 export async function currentUser() {
-  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({ data: { user: null } }));
+  const { data } = await fetchJson("/api/auth/me", { credentials: "same-origin" }).catch(() => ({
+    data: { user: null }
+  }));
   return data.user;
 }
 
 export async function pollLogin() {
   if (!state.loginTicket) return;
-  const { ok, data } = await fetchJson("/api/auth/qr/" + state.loginTicket + "?claim=1", { credentials: "same-origin" });
+  const { ok, data } = await fetchJson("/api/auth/qr/" + state.loginTicket + "?claim=1", {
+    credentials: "same-origin"
+  });
   if (!ok) return;
   if (data.status === "expired") {
     setLoginHint("tv.loginHintExp");
@@ -84,7 +88,7 @@ export async function startLoginQr() {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ room: state.room ? state.room.code : roomCode() }),
+    body: JSON.stringify({ room: state.room ? state.room.code : roomCode() })
   });
   state.loginTicket = data.ticket;
   renderQr(data.url, "loginQr");
@@ -147,4 +151,3 @@ export async function bootAuth() {
     if (state.loginTimer) clearInterval(state.loginTimer);
   };
 }
-

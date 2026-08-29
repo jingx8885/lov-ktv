@@ -2,12 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
-import {
-  applyPlayerVocalMix,
-  refreshPlayIcon,
-  seekPlayerRatio,
-  togglePlayer,
-} from "./controls.js";
+import { applyPlayerVocalMix, refreshPlayIcon, seekPlayerRatio, togglePlayer } from "./controls.js";
 import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {

@@ -59,7 +59,7 @@
         outT0: 0,
         rot0: rng() * Math.PI * 2,
         dir: rng() < 0.5 ? -1 : 1,
-        shapes: [],
+        shapes: []
       };
       BUILD[name](inst, rng, fxW, fxH);
       list.push(inst);
@@ -105,9 +105,16 @@
 
     resize();
     global.addEventListener("resize", resize);
-    return { spawn, draw, clear, resize, setBeat: (p) => { beatP = clamp01(p); } };
+    return {
+      spawn,
+      draw,
+      clear,
+      resize,
+      setBeat: (p) => {
+        beatP = clamp01(p);
+      }
+    };
   }
-
 
   global.LovStageFxRuntime = { create, reduceMotion };
 })(window);

@@ -26,7 +26,11 @@ interface BandsViz {
 
 interface LovBandsApi {
   create(el: HTMLElement | null): BandsViz;
-  hookAnalyser(audio: HTMLMediaElement | null, prev?: BandsHook | null, opts?: { ctx?: AudioContext; latencyHint?: string }): BandsHook | null;
+  hookAnalyser(
+    audio: HTMLMediaElement | null,
+    prev?: BandsHook | null,
+    opts?: { ctx?: AudioContext; latencyHint?: string }
+  ): BandsHook | null;
   pull(hooked?: BandsHook | null): Uint8Array | null;
   getOverview(url: string): Float32Array | null;
   decodeOverview(url: string): Promise<Float32Array>;
@@ -151,9 +155,29 @@ interface LovStageFxPrimitivesApi {
   prog(t: number, delay: number, duration?: number): number;
   pickColor(rng: () => number): string;
   tracePoly(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, sides: number, rotation: number): void;
-  traceStar(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, points: number, rotation: number): void;
-  drawPiece(ctx: CanvasRenderingContext2D, kind: string, color: string, x: number, y: number, radius: number, rotation: number): void;
-  strokePartial(ctx: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>, lengths: number[], visible: number): { x: number; y: number };
+  traceStar(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    radius: number,
+    points: number,
+    rotation: number
+  ): void;
+  drawPiece(
+    ctx: CanvasRenderingContext2D,
+    kind: string,
+    color: string,
+    x: number,
+    y: number,
+    radius: number,
+    rotation: number
+  ): void;
+  strokePartial(
+    ctx: CanvasRenderingContext2D,
+    points: Array<{ x: number; y: number }>,
+    lengths: number[],
+    visible: number
+  ): { x: number; y: number };
 }
 
 interface LovStageFxBuildApi {
@@ -161,7 +185,15 @@ interface LovStageFxBuildApi {
 }
 
 interface LovStageFxDrawApi {
-  [name: string]: (ctx: CanvasRenderingContext2D, instance: any, t: number, fade: number, beat: number, width: number, height: number) => void;
+  [name: string]: (
+    ctx: CanvasRenderingContext2D,
+    instance: any,
+    t: number,
+    fade: number,
+    beat: number,
+    width: number,
+    height: number
+  ) => void;
 }
 
 interface LovStageFxRuntimeApi {
@@ -216,7 +248,9 @@ interface HttpPort {
   fetchJson(url: string, opts?: RequestInit): Promise<any> | null;
 }
 
-interface MediaPort { url(path: string): string; }
+interface MediaPort {
+  url(path: string): string;
+}
 interface MicPort {
   hasNative(): boolean;
   capabilities(): Record<string, unknown>;
@@ -224,8 +258,14 @@ interface MicPort {
   call(method: string): Promise<string>;
   setGain(value: number): void;
 }
-interface RemotePort { open(url: string): boolean; }
-interface ScannerPort { available(): boolean; scan(): boolean; useLan(lan: string, room: string): boolean; }
+interface RemotePort {
+  open(url: string): boolean;
+}
+interface ScannerPort {
+  available(): boolean;
+  scan(): boolean;
+  useLan(lan: string, room: string): boolean;
+}
 
 interface PhonePlatform {
   mic: MicPort;
@@ -319,7 +359,10 @@ declare const LovStageFxRuntime: LovStageFxRuntimeApi;
 declare const LovStageFxParty: LovStageFxPartyApi;
 declare const LovStageFxTextHooks: LovStageFxTextHooksApi;
 
-declare function qrcode(typeNumber: number, errorCorrectionLevel: string): {
+declare function qrcode(
+  typeNumber: number,
+  errorCorrectionLevel: string
+): {
   addData(data: string): void;
   make(): void;
   createSvgTag(cellSize?: number, margin?: number): string;

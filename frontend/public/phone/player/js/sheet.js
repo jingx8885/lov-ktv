@@ -64,7 +64,7 @@ function applySheet(y, anim, hard = true) {
 }
 
 function project(velocity, decel = 0.998) {
-  return (velocity / 1000) * decel / (1 - decel);
+  return ((velocity / 1000) * decel) / (1 - decel);
 }
 
 function rubber(overshoot, dim, constant = 0.55) {
@@ -129,14 +129,16 @@ export function bindPlayerSheet() {
       origin: startY,
       startClientY: e.clientY,
       target: capture || grab,
-      moved: false,
+      moved: false
     };
     samples.length = 0;
     pushSample(startY, e.timeStamp);
     sheet.classList.add("is-drag");
     sheet.classList.remove("is-anim");
     if (capture !== false) {
-      try { (capture || grab).setPointerCapture(e.pointerId); } catch (err) {}
+      try {
+        (capture || grab).setPointerCapture(e.pointerId);
+      } catch (err) {}
     }
   };
 
@@ -180,19 +182,25 @@ export function bindPlayerSheet() {
       if (e.button || sheet.dataset.snap !== "open" || list.scrollTop > 1) return;
       startDrag(e, "list", false);
     });
-    list.addEventListener("pointermove", (e) => {
-      if (!drag || drag.from !== "list" || e.pointerId !== drag.id) return;
-      if (!drag.moved && e.clientY < drag.startClientY) {
-        drag = null;
-        sheet.classList.remove("is-drag");
-        return;
-      }
-      if (!drag.moved && e.clientY - drag.startClientY >= HYSTERESIS) {
-        try { list.setPointerCapture(e.pointerId); } catch (err) {}
-      }
-      moveDrag(e);
-      if (drag && drag.moved) e.preventDefault();
-    }, { passive: false });
+    list.addEventListener(
+      "pointermove",
+      (e) => {
+        if (!drag || drag.from !== "list" || e.pointerId !== drag.id) return;
+        if (!drag.moved && e.clientY < drag.startClientY) {
+          drag = null;
+          sheet.classList.remove("is-drag");
+          return;
+        }
+        if (!drag.moved && e.clientY - drag.startClientY >= HYSTERESIS) {
+          try {
+            list.setPointerCapture(e.pointerId);
+          } catch (err) {}
+        }
+        moveDrag(e);
+        if (drag && drag.moved) e.preventDefault();
+      },
+      { passive: false }
+    );
     list.addEventListener("pointerup", endDrag);
     list.addEventListener("pointercancel", endDrag);
   }
