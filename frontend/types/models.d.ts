@@ -11,6 +11,7 @@ type SongStatus =
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
 type LyricMode = "ja" | "zh" | "roma" | "all";
+type RoomAction = "enqueue" | "bump" | "skip" | "play" | "mix";
 type LearnMode = "quiz" | "tap" | "echo";
 type LearnQuestionKind = "meaning" | "word" | "listen";
 
@@ -59,6 +60,18 @@ interface Room {
   detail?: string;
 }
 
+interface RoomCommand {
+  action: RoomAction;
+  id?: string;
+  item_id?: string;
+  song_id?: string;
+  vocal_mix?: number;
+  volume?: number;
+  mic_gain?: number;
+  lyric_mode?: LyricMode | string;
+  paused?: boolean | number | string;
+}
+
 interface LyricToken {
   text: string;
   start_ms: number;
@@ -81,6 +94,10 @@ interface LyricCue {
 interface LyricsDoc {
   cues: LyricCue[];
   native_video?: boolean;
+  language?: string;
+  alignment?: string;
+  alignment_source?: string;
+  duration_ms?: number;
 }
 
 interface MtvSkeleton {
