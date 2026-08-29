@@ -203,6 +203,14 @@ export const phonePlatform = {
   }
 };
 
+/** Install a host-provided port bundle for mount(root, deps) tests/embedders. */
+export function installPlatform(next) {
+  if (!next || typeof next !== "object") return phonePlatform;
+  Object.assign(phonePlatform, next);
+  if (typeof window !== "undefined") window.LovKtvPlatform = phonePlatform;
+  return phonePlatform;
+}
+
 phonePlatform.__onHttp = function (msg) {
   const pending = pendingHttp[msg && msg.id];
   if (pending) pending(msg);

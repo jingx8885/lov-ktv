@@ -128,3 +128,10 @@ export const tvPlatform = {
   remote: { available: hasNativeTv },
   scanner: { available: () => false }
 };
+
+/** Replace individual platform ports when mounting the TV in an embedder. */
+export function installPlatform(next) {
+  if (!next || typeof next !== "object") return tvPlatform;
+  Object.assign(tvPlatform, next);
+  return tvPlatform;
+}

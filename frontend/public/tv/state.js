@@ -1,44 +1,29 @@
 import { guardState } from "../shared/ui/js/guard.js";
+import { roomState } from "./room/state.js";
+import { playbackState } from "./playback/state.js";
+import { audioState } from "./audio/state.js";
+import { platformState } from "./platform-state.js";
+
+function ownSlice(target, slice) {
+  Object.keys(slice).forEach((key) => {
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => slice[key],
+      set: (value) => {
+        slice[key] = value;
+      }
+    });
+  });
+}
+
+const tvState = {};
+ownSlice(tvState, roomState);
+ownSlice(tvState, playbackState);
+ownSlice(tvState, audioState);
+ownSlice(tvState, platformState);
 
 /** @type {TvState} */
-export const state = guardState(
-  {
-    room: null,
-    lyrics: { cues: [] },
-    lastItem: "",
-    prefetched: new Set(),
-    prefetchBusy: 0,
-    prefetchWait: [],
-    armed: false,
-    tabId: Math.random().toString(36).slice(2),
-    audioBus: "BroadcastChannel" in window ? new BroadcastChannel("lovktv-audio") : null,
-    isLeader: true,
-    lastLyricsAt: 0,
-    lastMediaRev: "",
-    lyricPaint: { prev: "", cur: "", next: "" },
-    audioHook: null,
-    stageFx: null,
-    lastFxCue: -1,
-    lastCelebrateAt: 0,
-    hookLines: new Set(),
-    roomRtc: null,
-    lastMtvSeek: 0,
-    lastVocalSync: 0,
-    boundMtvSong: "",
-    skeleton: null,
-    loginTicket: "",
-    loginTimer: 0,
-    pendingMic: null,
-    audioUnlocked: false,
-    keepAliveTimer: 0,
-    keepAliveSrc: "",
-    keepAliveTone: null,
-    playRetryTimer: 0,
-    resumeAt: 0,
-    emptyNow: 0,
-    mediaStall: 0,
-    mediaFallback: "",
-    lastRecoverAt: 0
-  },
-  "tv"
-);
+/** Compatibility facade; ownership lives in the room/playback/audio slices. */
+export const state = guardState(tvState, "tv");
+export { roomState, playbackState, audioState, platformState };
