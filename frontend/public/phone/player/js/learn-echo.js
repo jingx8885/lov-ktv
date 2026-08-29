@@ -3,8 +3,8 @@ import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { mediaUrl } from "./playback.js";
-import { acquirePhoneMic, startPhoneMic, stopPhoneMic } from "./mic.js";
-import { cancelCueWindow, playCueWindow } from "./learn-play.js";
+import { startPhoneMic, stopPhoneMic } from "./mic.js";
+import { cancelCueWindow, paintLearnLine, playCueWindow } from "./learn-play.js";
 
 export const SING_PAD_MS = 1600;
 export const SING_MIN_MS = 4200;
@@ -72,11 +72,14 @@ function paintEchoLine() {
   const total = session.lines.length;
   $("learnTitle").textContent = t("learn.echo");
   $("learnMeta").textContent = line ? `${session.index + 1} / ${total}` : "";
-  $("learnEchoSrc").textContent = line ? line.text : "";
-  $("learnEchoRoma").textContent = (line && line.romaji) || "";
-  $("learnEchoRoma").hidden = !(line && line.romaji);
-  $("learnEchoZh").textContent = (line && line.zh) || "";
-  $("learnEchoZh").hidden = !(line && line.zh);
+  paintLearnLine({
+    src: "learnEchoSrc",
+    roma: "learnEchoRoma",
+    zh: "learnEchoZh",
+    text: line ? line.text : "",
+    romaji: line ? line.romaji : "",
+    zhText: line ? line.zh : "",
+  });
   const bar = $("learnEchoBar");
   if (bar) bar.style.width = total ? `${Math.round((session.index / total) * 100)}%` : "0";
 }
@@ -369,9 +372,9 @@ export async function runEcho() {
   $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = false;
   try {
-    await startPhoneMic();
-    const stream = state.phoneMic || await acquirePhoneMic();
-    if (!stream) throw new Error(t("phone.mic.fail"));
+    if (!state.phoneMic) await startPhoneMic();
+    const stream = state.phoneMic;
+    if (!stream) throw new Error(t("learn.noRec"));
     for (session.index = 0; session.index < session.lines.length; session.index += 1) {
       if (!session.running) break;
       const line = session.lines[session.index];
@@ -434,7 +437,7 @@ export function stopEcho() {
 
 export function paintEchoHome() {
   paintEchoLine();
-  setPhase("wait", t("learn.echoWait"));
+  setPhase("wait", t("learn.echoListen"));
   showReviewDock(false);
   $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = true;

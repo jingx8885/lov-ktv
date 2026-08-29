@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="/phone/shell/css/shell.css?v=split6" />
   <link rel="stylesheet" href="/phone/search/css/search.css?v=split5" />
   <link rel="stylesheet" href="/phone/desk/css/desk.css?v=split9" />
-  <link rel="stylesheet" href="/phone/player/css/player.css?v=split16" />
-  <link rel="stylesheet" href="/phone/player/css/learn.css?v=learn9" />
+  <link rel="stylesheet" href="/phone/player/css/player.css?v=split18" />
+  <link rel="stylesheet" href="/phone/player/css/learn.css?v=learn11" />
   <link rel="stylesheet" href="/phone/player/css/learn-quiz.css?v=learn8" />
   <link rel="stylesheet" href="/phone/player/css/learn-tap.css?v=learn8" />
   <link rel="stylesheet" href="/phone/player/css/learn-echo.css?v=learn9" />
@@ -301,21 +301,27 @@
           </div>
           <span></span>
         </header>
+        <div class="seg seg-sm lyric-seg learn-lyric-seg" id="learnLyricMode" hidden role="tablist" data-i18n-aria="phone.lyric.mode">
+          <button type="button" class="seg-btn on" data-lyric-mode="ja" data-i18n="phone.lyric.ja">日语</button>
+          <button type="button" class="seg-btn" data-lyric-mode="zh" data-i18n="phone.lyric.zh">翻译</button>
+          <button type="button" class="seg-btn" data-lyric-mode="roma" data-i18n="phone.lyric.roma">罗马音</button>
+          <button type="button" class="seg-btn" data-lyric-mode="all" data-i18n="phone.lyric.all">全部</button>
+        </div>
         <div class="learn-body" id="learnHome">
           <p class="learn-song" id="learnSong"></p>
-          <p class="learn-lead" data-i18n="learn.lead">选一种玩法。难度只改原曲速度，点下去倒计时就开始。</p>
+          <p class="learn-lead" data-i18n="learn.lead">选一种玩法。测验和点词：轻松每句等你确认，标准停 5 秒，困难不停。点下去倒计时就开始。</p>
           <div class="learn-diff" id="learnDiff" role="radiogroup" data-i18n-aria="learn.diff">
             <button type="button" data-learn-diff="easy">
               <em data-i18n="learn.diff.easy">轻松</em>
-              <small>0.8×</small>
+              <small data-i18n="learn.diff.easyMeta">0.8× · 确认</small>
             </button>
             <button type="button" data-learn-diff="normal" class="on">
               <em data-i18n="learn.diff.normal">标准</em>
-              <small>1.0×</small>
+              <small data-i18n="learn.diff.normalMeta">1.0× · 5秒</small>
             </button>
             <button type="button" data-learn-diff="hard">
-              <em data-i18n="learn.diff.hard">加速</em>
-              <small>1.25×</small>
+              <em data-i18n="learn.diff.hard">困难</em>
+              <small data-i18n="learn.diff.hardMeta">1.0× · 不停</small>
             </button>
           </div>
           <button type="button" class="learn-mode is-quiz" data-learn-mode="quiz">
@@ -352,22 +358,33 @@
         <div class="learn-body is-play" id="learnQuiz" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnQuizBar"></i></div>
           <p class="learn-combo" id="learnQuizCombo">COMBO 0</p>
+          <p class="learn-prompt" id="learnQuizPrompt"></p>
           <div class="learn-line">
             <p class="learn-src" id="learnQuizSrc"></p>
             <p class="learn-roma" id="learnQuizRoma"></p>
           </div>
           <div class="learn-qs" id="learnQuizQs"></div>
-          <button class="learn-skip" id="learnQuizSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+          <div class="learn-hold-row">
+            <button class="learn-skip" id="learnQuizSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+            <button class="btn primary learn-next" id="learnQuizNext" type="button" hidden data-i18n="learn.next">下一句</button>
+          </div>
         </div>
         <div class="learn-body is-play" id="learnTap" hidden>
           <canvas class="learn-tap-fx" id="learnTapFx" aria-hidden="true"></canvas>
           <div class="learn-tap-wash" aria-hidden="true"></div>
           <div class="learn-progress" aria-hidden="true"><i id="learnTapBar"></i></div>
           <p class="learn-combo" id="learnTapCombo">COMBO 0</p>
-          <p class="tiny learn-tap-zh" id="learnTapZh"></p>
+          <div class="learn-line">
+            <p class="learn-src" id="learnTapSrc"></p>
+            <p class="learn-roma" id="learnTapRoma"></p>
+            <p class="learn-zh" id="learnTapZh"></p>
+          </div>
           <div class="learn-tap-field" id="learnTapField"></div>
           <div class="learn-tap-strip" id="learnTapStrip" aria-live="polite"></div>
-          <button class="learn-skip" id="learnTapSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+          <div class="learn-hold-row">
+            <button class="learn-skip" id="learnTapSkip" type="button" disabled data-i18n="learn.skip">跳过这句</button>
+            <button class="btn primary learn-next" id="learnTapNext" type="button" hidden data-i18n="learn.next">下一句</button>
+          </div>
         </div>
         <div class="learn-body is-play" id="learnEcho" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnEchoBar"></i></div>
@@ -499,6 +516,6 @@
   <script src="/shared/audio/js/bands.js?v=wave8"></script>
   <script src="/phone/player/js/timeline.js?v=tl7"></script>
   <script src="/shared/audio/js/rtc-mic.js?v=mic8"></script>
-  <script type="module" src="/phone/app.js?v=split22"></script>
+  <script type="module" src="/phone/app.js?v=split25"></script>
 </body>
 </html>

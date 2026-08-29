@@ -3,7 +3,16 @@ import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { hookPlayerAudio } from "./playback.js";
-import { cancelCueWindow, playCueWindow } from "./learn-play.js";
+import {
+  cancelCueWindow,
+  cancelLineHold,
+  confirmLineHold,
+  holdAfterLine,
+  isLineHold,
+  needsLineHold,
+  paintLearnLine,
+  playCueWindow,
+} from "./learn-play.js?v=hold2";
 import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
 
 const TILE_SKINS = [
@@ -32,6 +41,7 @@ const session = {
   perfect: 0,
   lineMisses: 0,
   done: new Set(),
+  jump: -1,
 };
 let tapSync = 0;
 
@@ -48,6 +58,7 @@ export function resetTap(lines) {
   session.perfect = 0;
   session.lineMisses = 0;
   session.done = new Set();
+  session.jump = -1;
 }
 
 export function tapBusy() {
@@ -84,9 +95,14 @@ function paintProgress() {
 }
 
 function paintHint(line) {
-  const zh = $("learnTapZh");
-  if (!zh) return;
-  zh.textContent = (line && line.zh) || (session.running ? t("learn.tapListen") : "");
+  paintLearnLine({
+    src: "learnTapSrc",
+    roma: "learnTapRoma",
+    zh: "learnTapZh",
+    text: line ? line.text : "",
+    romaji: line ? line.romaji : "",
+    zhText: (line && line.zh) || "",
+  });
 }
 
 function appendStrip(text) {
@@ -371,7 +387,9 @@ export function paintTapHome() {
   paintHint(null);
   clearBoard();
   $("learnTapCombo").textContent = t("learn.tapHintLine");
+  $("learnTapSkip").textContent = t("learn.skip");
   $("learnTapSkip").disabled = true;
+  if ($("learnTapNext")) $("learnTapNext").hidden = true;
   kickTapFx();
   burstTapFx();
 }
@@ -390,13 +408,38 @@ export async function runTap() {
   session.perfect = 0;
   session.done = new Set();
   session.index = -1;
+  session.jump = -1;
   $("learnTapSkip").disabled = false;
+  $("learnTapSkip").textContent = t("learn.skip");
   const list = session.lines;
   enterLine(0);
   try {
-    const playing = playCueWindow(list[0].start_ms, list[list.length - 1].end_ms, { vocal: true });
     startTapClock();
-    await playing;
+    if (!needsLineHold()) {
+      const playing = playCueWindow(list[0].start_ms, list[list.length - 1].end_ms, { vocal: true });
+      await playing;
+    } else {
+      for (let i = 0; i < list.length; i += 1) {
+        if (!session.running) return null;
+        if (session.jump >= 0) {
+          i = session.jump;
+          session.jump = -1;
+        }
+        enterLine(i);
+        const line = list[i];
+        const played = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
+        if (!session.running) return null;
+        finishLine(i);
+        if (session.jump >= 0) continue;
+        if (!played) return null;
+        if (i < list.length - 1) {
+          const go = await holdAfterLine({ button: $("learnTapNext"), restore: t("learn.next") });
+          if (!session.running) return null;
+          if (session.jump >= 0) continue;
+          if (!go) return null;
+        }
+      }
+    }
     if (!session.running) return null;
     onClock(list[list.length - 1].end_ms);
     const bar = $("learnTapBar");
@@ -413,28 +456,42 @@ export async function runTap() {
     };
   } finally {
     session.running = false;
+    session.jump = -1;
     stopTapClock();
+    cancelLineHold();
+    $("learnTapSkip").textContent = t("learn.skip");
     $("learnTapSkip").disabled = true;
+    if ($("learnTapNext")) $("learnTapNext").hidden = true;
   }
 }
 
 export function skipTapLine() {
-  const audio = $("playerAudio");
   const list = session.lines;
-  if (!session.running || !audio || !list.length) return;
-  const ms = (audio.currentTime || 0) * 1000;
+  if (!session.running || !list.length) return;
+  if (isLineHold()) {
+    confirmLineHold();
+    return;
+  }
+  const audio = $("playerAudio");
+  const ms = ((audio && audio.currentTime) || 0) * 1000;
   const live = lineAt(ms);
   const idx = live >= 0 ? live : Math.max(0, session.index);
   finishLine(idx);
+  if (needsLineHold()) {
+    session.jump = idx + 1;
+    cancelCueWindow();
+    return;
+  }
   const next = list[idx + 1];
   try {
-    audio.currentTime = (next ? next.start_ms : list[idx].end_ms) / 1000;
+    if (audio) audio.currentTime = (next ? next.start_ms : list[idx].end_ms) / 1000;
   } catch (err) {}
 }
 
 export function stopTap() {
   session.running = false;
   stopTapClock();
+  cancelLineHold();
   cancelCueWindow();
   stopTapFx();
 }
@@ -459,4 +516,5 @@ export function tapScoreView(score, grade) {
 
 export function bindTap() {
   $("learnTapSkip").onclick = () => skipTapLine();
+  if ($("learnTapNext")) $("learnTapNext").onclick = () => confirmLineHold();
 }

@@ -21,6 +21,7 @@
     <string name="mic_off">开麦</string>
     <string name="mic_on">关麦</string>
     <string name="mic_need_tv">低延时麦需要同一 WiFi 上的 Android 电视 App</string>
+    <string name="mic_denied">需要麦克风权限才能开麦</string>
     <string name="mic_channel">低延时麦</string>
     <string name="import_hit">入库</string>
     <string name="queue_song">点歌</string>

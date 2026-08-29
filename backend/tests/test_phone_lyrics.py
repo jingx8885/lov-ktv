@@ -26,8 +26,18 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert '$must("page-desk")' not in app
     assert "mix.js?v=mix5" in app
     assert "paint.js?v=paint3" in mix
-    assert 'src="/phone/app.js?v=split22"' in html
+    assert 'src="/phone/app.js?v=split25"' in html
     assert 'href="/phone/desk/css/desk.css?v=split9"' in html
+    assert 'from "./player/js/mic.js?v=mic2"' in app
+    css = (ROOT / "phone" / "player" / "css" / "player.css").read_text(encoding="utf-8")
+    mic = (ROOT / "phone" / "player" / "js" / "mic.js").read_text(encoding="utf-8")
+    assert ".player-dock.is-hint .player-hint" in css
+    assert ".player-hint[data-hold] { display: block; }" in css
+    assert "btn.classList.add(\"busy\")" in mic
+    assert "btn.disabled = true" not in mic
+    for name in ("zh", "yue", "en", "ja"):
+        loc = (ROOT / "shared" / "i18n" / "locales" / f"{name}.js").read_text(encoding="utf-8")
+        assert '"phone.mic.opened"' in loc
 
 
 def test_english_lyric_labels_are_not_abbreviated():

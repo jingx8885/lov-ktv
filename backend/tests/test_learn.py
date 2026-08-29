@@ -162,9 +162,17 @@ def test_phone_learn_shell_is_wired():
     assert "learnTapGo" not in html
     assert "learnQuizGo" not in html
     assert "learnEchoGo" not in html
-    assert "learnQuizNext" not in shell
-    assert "learnQuizNext" not in html
+    assert 'id="learnQuizNext"' in html
+    assert 'id="learnTapNext"' in html
+    assert "learnQuizNext" in quiz
+    assert "learnTapNext" in tap
+    assert "confirmLineHold" in quiz
+    assert "holdAfterLine" not in echo
     assert 'id="learnCount"' in html
+    assert 'id="learnLyricMode"' in html
+    assert 'id="learnQuizPrompt"' in html
+    assert 'id="learnTapSrc"' in html
+    assert 'id="learnTapRoma"' in html
     assert "data-learn-diff" in html
     assert "runCountdown" in fx
     assert "kickPlayerPaint" in shell
@@ -175,8 +183,27 @@ def test_phone_learn_shell_is_wired():
     assert "fitLyricLine" in paint
     assert "line-words" in paint
     assert "kickPlayerPaint" in (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
-    assert "setLearnDiff" in (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
-    assert "playbackRate" in (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
+    play = (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
+    assert "setLearnDiff" in play
+    assert "playbackRate" in play
+    assert "export function paintLearnLine" in play
+    assert 'hold: "confirm"' in play
+    assert "hold: 5000" in play
+    assert "rate: 1.25" not in play
+    assert "export function holdAfterLine" in play
+    assert "needsLineHold" in quiz
+    assert "needsLineHold" in tap
+    assert "holdAfterLine" in quiz
+    assert "holdAfterLine" in tap
+    rtc = (root / "phone" / "room" / "js" / "rtc.js").read_text(encoding="utf-8")
+    assert "LovKtvNative" in rtc
+    assert "usesNativeMic" in rtc
+    assert "phone.mic.needTv" in rtc
+    assert "paintLearnLine" in quiz
+    assert "item.prompt" in quiz
+    assert "paintLearnLine" in tap
+    assert "learnTapSrc" in tap
+    assert "paintLearnLine" in echo
     assert "learnEchoGo" not in shell
     assert "bindQuiz" in quiz
     assert "lineAt" in quiz
@@ -199,6 +226,9 @@ def test_phone_learn_shell_is_wired():
     zh = (root / "shared" / "i18n" / "locales" / "zh.js").read_text(encoding="utf-8")
     assert '"phone.player.learn": "游戏"' in zh
     assert '"learn.title": "游戏"' in zh
+    assert '"learn.next": "下一句"' in zh
+    assert '"learn.holdWait"' in zh
+    assert '"phone.mic.opened"' in zh
     assert '"learn.echo": "翻唱挑战"' in zh
     assert "celebrateCorrect" in quiz
     assert "SFX_GAIN = 0.068" in fx

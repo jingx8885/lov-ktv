@@ -10,7 +10,7 @@ import { runSearch } from "./search/js/hits.js";
 import { stopPreview, togglePreview } from "./search/js/preview.js";
 import { joinRoom, openTv } from "./room/js/join.js";
 import { paintVocalMix, paintMix } from "./room/js/mix.js?v=mix5";
-import { connectRoomRtc } from "./room/js/rtc.js";
+import { connectRoomRtc } from "./room/js/rtc.js?v=mix6";
 import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/mic.js";
 import {
   exitEdit,

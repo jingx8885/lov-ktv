@@ -4,13 +4,13 @@ import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { acquirePhoneMic } from "./mic.js";
+import { startPhoneMic } from "./mic.js?v=mic2";
 import { applyPlayerVocalMix, kickPlayerPaint, pausePlayer, unlockPlayerGesture } from "./playback.js";
-import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js";
+import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js?v=hold2";
 import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn-fx.js";
-import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js?v=hold2";
 import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn-echo.js";
-import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js";
+import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js?v=hold2";
 
 /** @type {{ mode: LearnMode | "", pack: LearnQuiz | null, vocalWas: number, boot: number }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };
@@ -29,6 +29,8 @@ function showPane(id) {
     const el = $(name);
     if (el) el.hidden = name !== id;
   });
+  const lyric = $("learnLyricMode");
+  if (lyric) lyric.hidden = id === "learnHome" || id === "learnScore";
 }
 
 function restoreVocal() {
@@ -151,9 +153,10 @@ async function startMode(mode) {
   showPane(spec.pane);
   spec.setup(pack);
   if (ui.mode === "echo") {
-    const stream = await acquirePhoneMic();
-    if (!stream) {
-      showToast(t("learn.noRec"));
+    try {
+      await startPhoneMic();
+    } catch (err) {
+      showToast((err && err.message) || t("learn.noRec"));
       ui.mode = "";
       showPane("learnHome");
       return;

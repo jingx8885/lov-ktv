@@ -175,6 +175,7 @@ interface LearnSession {
   quiz: LearnQuiz | null;
   line: number;
   answers: Record<string, number>;
+  jump?: number;
 }
 
 interface LearnEchoClip {
@@ -216,6 +217,7 @@ interface LearnTapSession {
   maxCombo: number;
   perfect: number;
   lineMisses: number;
+  jump?: number;
 }
 
 interface LearnFxDot {

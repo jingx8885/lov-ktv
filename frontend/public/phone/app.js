@@ -1,6 +1,6 @@
 import "./install.js?v=paint3";
 import { $must } from "../shared/ui/js/dom.js";
-import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js";
+import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js?v=i18n3";
 import { PAGES, state, pageTitle, searchEmpty } from "./state.js";
 import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho, loadWho } from "./ui/js/who.js";
@@ -11,12 +11,12 @@ import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin } from "./room/js/join.js";
 import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=mix5";
-import { bindRoomRtc } from "./room/js/rtc.js?v=mix5";
+import { bindRoomRtc } from "./room/js/rtc.js?v=mix6";
 import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js?v=paint3";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
 import { bindAlign, updateAlignNow } from "./player/js/align.js?v=paint3";
-import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js";
-import { bindLearn } from "./player/js/learn.js";
+import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js?v=mic2";
+import { bindLearn } from "./player/js/learn.js?v=learn2";
 
 const params = new URLSearchParams(location.search);
 if (params.get("login")) {

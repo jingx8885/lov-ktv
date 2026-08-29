@@ -1,8 +1,42 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
+import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./playback.js";
+
+const MIC_WAIT_MS = 12000;
+
+function micErrorText(err) {
+  return (window.LovMic && LovMic.micErrorText(err)) || (err && err.message) || t("phone.mic.fail");
+}
+
+function holdMicHint(on, text) {
+  const hint = $("playerMicHint");
+  const dock = $("playerKtv");
+  if (hint) {
+    if (on) hint.dataset.hold = "1";
+    else delete hint.dataset.hold;
+    if (text != null) hint.textContent = text;
+  }
+  if (dock) dock.classList.toggle("is-hint", !!(on || (hint && hint.dataset.hold)));
+}
+
+function withTimeout(task, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(t("phone.mic.fail"))), ms);
+    Promise.resolve()
+      .then(task)
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
 
 export function phoneMicHintIdle() {
   return state.phoneIem ? t("phone.mic.idleIem") : t("phone.mic.idleSpeaker");
@@ -31,15 +65,20 @@ export function phoneMicAudioConstraints() {
 }
 
 export async function acquirePhoneMic() {
-  let last = null;
-  for (const audio of phoneMicAudioConstraints()) {
-    try {
-      return await navigator.mediaDevices.getUserMedia({ audio, video: false });
-    } catch (err) {
-      last = err;
-    }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    throw new Error(t("mic.noDevice"));
   }
-  throw last || new Error(t("phone.mic.fail"));
+  return withTimeout(async () => {
+    let last = null;
+    for (const audio of phoneMicAudioConstraints()) {
+      try {
+        return await navigator.mediaDevices.getUserMedia({ audio, video: false });
+      } catch (err) {
+        last = err;
+      }
+    }
+    throw last || new Error(t("phone.mic.fail"));
+  }, MIC_WAIT_MS);
 }
 
 export function disconnectPhoneMicGraph() {
@@ -73,19 +112,22 @@ export function applyPhoneMonitor() {
 }
 
 export function paintPhoneMic() {
+  const btn = $("playerMic");
+  if (!btn) return;
   const on = !!(state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live"));
-  $("playerMic").classList.toggle("on", on);
-  $("playerMic").classList.toggle("live", on);
-  $("playerMic").setAttribute("aria-label", on ? t("common.micOff") : t("phone.player.micSing"));
-  $("playerMicLabel").textContent = on ? t("phone.player.micOn") : t("common.micOn");
-  $("playerMicRow").hidden = !on;
-  $("playerKtv").classList.toggle("live", on);
-  $("playerIem").classList.toggle("on", state.phoneIem);
-  $("playerIem").setAttribute("aria-pressed", state.phoneIem ? "true" : "false");
-  $("playerArt").classList.toggle("is-sing", on);
-  if (!on && !$("playerMicHint").dataset.hold) {
-    $("playerMicHint").textContent = phoneMicHintIdle();
+  btn.classList.toggle("on", on);
+  btn.classList.toggle("live", on);
+  btn.setAttribute("aria-label", on ? t("common.micOff") : t("phone.player.micSing"));
+  if ($("playerMicLabel")) $("playerMicLabel").textContent = on ? t("phone.player.micOn") : t("common.micOn");
+  if ($("playerMicRow")) $("playerMicRow").hidden = !on;
+  if ($("playerKtv")) $("playerKtv").classList.toggle("live", on);
+  if ($("playerIem")) {
+    $("playerIem").classList.toggle("on", state.phoneIem);
+    $("playerIem").setAttribute("aria-pressed", state.phoneIem ? "true" : "false");
   }
+  if ($("playerArt")) $("playerArt").classList.toggle("is-sing", on);
+  const hint = $("playerMicHint");
+  if (hint && !on && !hint.dataset.hold) hint.textContent = phoneMicHintIdle();
 }
 
 export function setPhoneMicGain(value) {
@@ -140,9 +182,9 @@ export async function startPhoneMic(opts) {
   const restart = !!(opts && opts.restart);
   if (!restart && state.roomRtc && state.roomRtc.isLive()) {
     await state.roomRtc.stopMic();
-    $("micHint").textContent = "";
-    $("micToggle").classList.remove("live", "on");
-    $("micGainRow").hidden = true;
+    if ($("micHint")) $("micHint").textContent = "";
+    if ($("micToggle")) $("micToggle").classList.remove("live", "on");
+    if ($("micGainRow")) $("micGainRow").hidden = true;
   }
   const jack = await headphoneState();
   if (!restart && state.phoneIem && jack.kind === "speaker") {
@@ -176,44 +218,54 @@ export async function startPhoneMic(opts) {
 }
 
 export function bindPhoneMic() {
+  const btn = $("playerMic");
+  if (!btn) return;
   paintPhoneMic();
-  $("playerMicGain").value = String(state.phoneMicLevel);
-  $("playerMicVal").textContent = String(state.phoneMicLevel);
-  $("playerMicGain").oninput = () => setPhoneMicGain($("playerMicGain").value);
-  $("playerIem").onclick = async () => {
+  if ($("playerMicGain")) {
+    $("playerMicGain").value = String(state.phoneMicLevel);
+    $("playerMicVal").textContent = String(state.phoneMicLevel);
+    $("playerMicGain").oninput = () => setPhoneMicGain($("playerMicGain").value);
+  }
+  if ($("playerIem")) $("playerIem").onclick = async () => {
     state.phoneIem = !state.phoneIem;
     localStorage.setItem("phoneIem", state.phoneIem ? "1" : "0");
     paintPhoneMic();
     if (!state.phoneMic) return;
-    $("playerMicHint").dataset.hold = "1";
+    holdMicHint(true, t("phone.mic.allowIem"));
     try {
       await startPhoneMic({ restart: true });
+      holdMicHint(false);
+      showToast(t("phone.mic.opened"));
     } catch (err) {
       stopPhoneMic();
-      $("playerMicHint").textContent = (err && err.message) || t("phone.mic.iemFail");
+      const msg = micErrorText(err) || t("phone.mic.iemFail");
+      holdMicHint(true, msg);
+      showToast(msg);
     } finally {
-      delete $("playerMicHint").dataset.hold;
       paintPhoneMic();
     }
   };
-  $("playerMic").onclick = async () => {
-    const btn = $("playerMic");
-    btn.disabled = true;
-    $("playerMicHint").dataset.hold = "1";
+  btn.onclick = async () => {
+    if (btn.classList.contains("busy")) return;
+    btn.classList.add("busy");
     try {
       if (state.phoneMic) {
         stopPhoneMic();
-        $("playerMicHint").textContent = phoneMicHintIdle();
+        holdMicHint(false, phoneMicHintIdle());
+        showToast(t("common.micOff"));
       } else {
-        $("playerMicHint").textContent = state.phoneIem ? t("phone.mic.allowIem") : t("phone.mic.allow");
+        holdMicHint(true, state.phoneIem ? t("phone.mic.allowIem") : t("phone.mic.allow"));
         await startPhoneMic();
+        holdMicHint(false);
+        showToast(t("phone.mic.opened"));
       }
     } catch (err) {
       stopPhoneMic();
-      $("playerMicHint").textContent = (window.LovMic && LovMic.micErrorText(err)) || (err && err.message) || t("phone.mic.fail");
+      const msg = micErrorText(err);
+      holdMicHint(true, msg);
+      showToast(msg);
     } finally {
-      delete $("playerMicHint").dataset.hold;
-      btn.disabled = false;
+      btn.classList.remove("busy");
       paintPhoneMic();
     }
   };

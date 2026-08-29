@@ -6,9 +6,86 @@ import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
 import { paintMix } from "./mix.js?v=mix5";
 
+function nativeMic() {
+  return window.LovKtvNative;
+}
+
+export function usesNativeMic() {
+  const n = nativeMic();
+  return !!(n && typeof n.startMic === "function");
+}
+
+function nativeError(err) {
+  return (err && err.message) || t("phone.mic.fail");
+}
+
+function nativeStartMic() {
+  return new Promise((resolve, reject) => {
+    const n = nativeMic();
+    if (!n || typeof n.startMic !== "function") {
+      reject(new Error(t("phone.mic.fail")));
+      return;
+    }
+    if (typeof n.hasLanMic === "function" && !n.hasLanMic()) {
+      reject(new Error(t("phone.mic.needTv")));
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (window.LovKtvOnMic === done) window.LovKtvOnMic = null;
+      reject(new Error(t("phone.mic.fail")));
+    }, 20000);
+    const done = (ok, err) => {
+      clearTimeout(timer);
+      if (window.LovKtvOnMic === done) window.LovKtvOnMic = null;
+      if (ok) resolve();
+      else reject(new Error(err || t("phone.mic.fail")));
+    };
+    window.LovKtvOnMic = done;
+    try {
+      n.startMic();
+    } catch (err) {
+      done(false, nativeError(err));
+    }
+  });
+}
+
+function createNativeRtc() {
+  return {
+    native: true,
+    isLive() {
+      const n = nativeMic();
+      return !!(n && typeof n.isMicLive === "function" && n.isMicLive());
+    },
+    startMic: nativeStartMic,
+    async stopMic() {
+      const n = nativeMic();
+      if (n && typeof n.stopMic === "function") n.stopMic();
+    },
+    disconnect() {
+      const n = nativeMic();
+      if (n && typeof n.stopMic === "function") n.stopMic();
+    },
+    connect() {},
+    makeOffer: async () => {},
+    handleAnswer() {},
+    addIce() {},
+  };
+}
+
 export function connectRoomRtc(code) {
   code = String(code || "").trim().toUpperCase();
-  if (!code || !window.LovMic) return;
+  if (!code) return;
+  if (usesNativeMic()) {
+    if (state.roomRtc && state.roomRtc.native && state.roomRtcCode === code) return;
+    if (state.roomRtc) {
+      state.roomRtc.stopMic().catch(() => {});
+      state.roomRtc.disconnect();
+    }
+    state.roomRtcCode = code;
+    state.roomRtc = createNativeRtc();
+    return;
+  }
+  if (!window.LovMic) return;
   if (state.roomRtc && state.roomRtcCode === code) return;
   if (state.roomRtc) {
     state.roomRtc.stopMic().catch(() => {});
@@ -37,6 +114,10 @@ export function connectRoomRtc(code) {
   });
 }
 
+function micFailText(err) {
+  return (window.LovMic && LovMic.micErrorText(err)) || nativeError(err);
+}
+
 export function bindRoomRtc() {
   const micToggle = $("micToggle");
   if (!micToggle) return;
@@ -48,24 +129,35 @@ export function bindRoomRtc() {
       return showToast(t("phone.mic.needRoom"));
     }
     connectRoomRtc(code);
+    if (!state.roomRtc) {
+      showToast(t("phone.mic.fail"));
+      return;
+    }
     const btn = micToggle;
     const micHint = $("micHint");
+    if (btn.classList.contains("busy")) return;
+    btn.classList.add("busy");
     btn.disabled = true;
     if (micHint) micHint.dataset.hold = "1";
     try {
-      if (state.roomRtc && state.roomRtc.isLive()) {
+      if (state.roomRtc.isLive()) {
         await state.roomRtc.stopMic();
         if (micHint) micHint.textContent = "";
+        showToast(t("common.micOff"));
       } else {
         api.stopPhoneMic();
         if (micHint) micHint.textContent = t("phone.mic.allow");
         await state.roomRtc.startMic();
         if (micHint) micHint.textContent = t("phone.mic.phoneOut");
+        showToast(t("phone.mic.opened"));
       }
     } catch (err) {
-      if (micHint) micHint.textContent = LovMic.micErrorText(err);
+      const msg = micFailText(err);
+      if (micHint) micHint.textContent = msg;
+      showToast(msg);
     } finally {
       if (micHint) delete micHint.dataset.hold;
+      btn.classList.remove("busy");
       btn.disabled = false;
       const live = !!(state.roomRtc && state.roomRtc.isLive());
       btn.classList.toggle("live", live);
@@ -75,4 +167,3 @@ export function bindRoomRtc() {
     }
   };
 }
-

@@ -1,11 +1,20 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
-import { cancelCueWindow, playCueWindow } from "./learn-play.js";
+import {
+  cancelCueWindow,
+  cancelLineHold,
+  confirmLineHold,
+  holdAfterLine,
+  isLineHold,
+  needsLineHold,
+  paintLearnLine,
+  playCueWindow,
+} from "./learn-play.js?v=hold2";
 
 let syncRaf = 0;
 
-/** @type {LearnSession & { running: boolean, combo: number, maxCombo: number, locked: boolean }} */
+/** @type {LearnSession & { running: boolean, combo: number, maxCombo: number, locked: boolean, jump: number }} */
 const session = {
   quiz: null,
   line: 0,
@@ -14,6 +23,7 @@ const session = {
   combo: 0,
   maxCombo: 0,
   locked: false,
+  jump: -1,
 };
 
 /** @param {LearnQuiz} quiz */
@@ -25,6 +35,7 @@ export function resetQuiz(quiz) {
   session.combo = 0;
   session.maxCombo = 0;
   session.locked = false;
+  session.jump = -1;
 }
 
 export function quizBusy() {
@@ -87,11 +98,19 @@ function stemRoma(line, item) {
 function paintQuestion(line) {
   const item = currentQuestion(line);
   const listen = !!(item && item.kind === "listen");
-  $("learnQuizSrc").textContent = listen ? t("learn.quizListen") : ((item && item.stem) || (line && line.text) || "");
-  const roma = $("learnQuizRoma");
-  const romaText = listen ? "" : stemRoma(line, item);
-  roma.textContent = romaText;
-  roma.hidden = !romaText;
+  const prompt = $("learnQuizPrompt");
+  if (prompt) {
+    prompt.textContent = listen ? t("learn.quizListen") : ((item && item.prompt) || "");
+    prompt.hidden = !prompt.textContent;
+  }
+  paintLearnLine({
+    src: "learnQuizSrc",
+    roma: "learnQuizRoma",
+    text: listen ? "" : ((item && item.kind === "word" && item.stem) || (line && line.text) || ""),
+    romaji: listen ? "" : stemRoma(line, item),
+    hideSrc: listen,
+    hideZh: true,
+  });
   const box = $("learnQuizQs");
   if (!item) {
     box.innerHTML = "";
@@ -203,12 +222,17 @@ export function paintQuizHome() {
   session.locked = false;
   paintMeta();
   paintClock(0);
-  $("learnQuizSrc").textContent = "";
-  $("learnQuizRoma").textContent = "";
-  $("learnQuizRoma").hidden = true;
+  const prompt = $("learnQuizPrompt");
+  if (prompt) {
+    prompt.textContent = "";
+    prompt.hidden = true;
+  }
+  paintLearnLine({ src: "learnQuizSrc", roma: "learnQuizRoma", hideZh: true });
   $("learnQuizQs").innerHTML = "";
   $("learnQuizCombo").textContent = t("learn.quizLive");
+  $("learnQuizSkip").textContent = t("learn.skip");
   $("learnQuizSkip").disabled = true;
+  if ($("learnQuizNext")) $("learnQuizNext").hidden = true;
 }
 
 export async function runQuiz() {
@@ -221,12 +245,37 @@ export async function runQuiz() {
   session.combo = 0;
   session.maxCombo = 0;
   session.locked = false;
+  session.jump = -1;
   $("learnQuizSkip").disabled = false;
+  $("learnQuizSkip").textContent = t("learn.skip");
   showLine(0);
   try {
-    const playing = playCueWindow(list[0].start_ms, list[list.length - 1].end_ms, { vocal: true });
     startClock();
-    await playing;
+    if (!needsLineHold()) {
+      const playing = playCueWindow(list[0].start_ms, list[list.length - 1].end_ms, { vocal: true });
+      await playing;
+    } else {
+      for (let i = 0; i < list.length; i += 1) {
+        if (!session.running) return null;
+        if (session.jump >= 0) {
+          i = session.jump;
+          session.jump = -1;
+        }
+        showLine(i);
+        const line = list[i];
+        const played = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
+        if (!session.running) return null;
+        flushEnded(line.end_ms);
+        if (session.jump >= 0) continue;
+        if (!played) return null;
+        if (i < list.length - 1) {
+          const go = await holdAfterLine({ button: $("learnQuizNext"), restore: t("learn.next") });
+          if (!session.running) return null;
+          if (session.jump >= 0) continue;
+          if (!go) return null;
+        }
+      }
+    }
     if (!session.running) return null;
     flushEnded(list[list.length - 1].end_ms);
     const bar = $("learnQuizBar");
@@ -235,8 +284,12 @@ export async function runQuiz() {
   } finally {
     session.running = false;
     session.locked = false;
+    session.jump = -1;
     stopClock();
+    cancelLineHold();
+    $("learnQuizSkip").textContent = t("learn.skip");
     $("learnQuizSkip").disabled = true;
+    if ($("learnQuizNext")) $("learnQuizNext").hidden = true;
   }
 }
 
@@ -268,21 +321,31 @@ export function startQuiz(pack) {
 export function stopQuiz() {
   session.running = false;
   stopClock();
+  cancelLineHold();
   cancelCueWindow();
 }
 
 export function skipQuizLine() {
-  const audio = $("playerAudio");
   const list = lines();
-  if (!session.running || !audio || !list.length) return;
-  const ms = (audio.currentTime || 0) * 1000;
+  if (!session.running || !list.length) return;
+  if (isLineHold()) {
+    confirmLineHold();
+    return;
+  }
+  const audio = $("playerAudio");
+  const ms = ((audio && audio.currentTime) || 0) * 1000;
   const live = lineAt(ms);
   const idx = live >= 0 ? live : session.line;
   const item = currentQuestion(list[idx]);
   if (item && session.answers[item.id] == null) missQuestion(item);
+  if (needsLineHold()) {
+    session.jump = idx + 1;
+    cancelCueWindow();
+    return;
+  }
   const next = list[idx + 1];
   try {
-    audio.currentTime = (next ? next.start_ms : list[idx].end_ms) / 1000;
+    if (audio) audio.currentTime = (next ? next.start_ms : list[idx].end_ms) / 1000;
   } catch (err) {}
 }
 
@@ -305,4 +368,5 @@ export function quizScoreView(score, grade) {
 
 export function bindQuiz() {
   $("learnQuizSkip").onclick = () => skipQuizLine();
+  if ($("learnQuizNext")) $("learnQuizNext").onclick = () => confirmLineHold();
 }
