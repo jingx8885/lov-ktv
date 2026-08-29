@@ -4,6 +4,8 @@ import json
 import shutil
 from pathlib import Path
 
+from urllib.parse import quote
+
 from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -781,18 +783,27 @@ async def ws_room(ws: WebSocket, code: str) -> None:
 
 
 @app.get("/media/{song_id}/{name}")
-def media(song_id: str, name: str):
+def media(song_id: str, name: str, request: Request):
     root = MEDIA_DIR.resolve()
     path = (root / song_id / name).resolve()
     if root not in path.parents:
         raise HTTPException(404)
+    rev = (request.query_params.get("v") or "").strip()
+    cache = (
+        "public, max-age=31536000, immutable"
+        if rev
+        else "no-cache, must-revalidate"
+    )
     if path.exists():
         return FileResponse(
             path,
-            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache, must-revalidate"},
+            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache},
         )
     if oss_ready():
-        return RedirectResponse(public_url(song_id, name), status_code=302)
+        url = public_url(song_id, name)
+        if rev:
+            url = f"{url}?v={quote(rev, safe='')}"
+        return RedirectResponse(url, status_code=302)
     raise HTTPException(404)
 
 

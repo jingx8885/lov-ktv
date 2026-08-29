@@ -13,6 +13,7 @@ export const state = guardState({
   audioBus: "BroadcastChannel" in window ? new BroadcastChannel("lovktv-audio") : null,
   isLeader: true,
   lastLyricsAt: 0,
+  lastMediaRev: "",
   lyricPaint: { prev: "", cur: "", next: "" },
   audioHook: null,
   stageFx: null,

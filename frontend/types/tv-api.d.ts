@@ -44,6 +44,7 @@ interface TvState {
   audioBus: BroadcastChannel | null;
   isLeader: boolean;
   lastLyricsAt: number;
+  lastMediaRev: string;
   lyricPaint: LyricPaintSlots;
   audioHook: BandsHook | null;
   stageFx: StageFxHandle | null;

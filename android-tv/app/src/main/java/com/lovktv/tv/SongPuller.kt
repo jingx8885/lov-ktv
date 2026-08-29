@@ -55,6 +55,23 @@ class SongPuller(
                 for (i in 0 until files.length()) add(files.optString(i))
             }
         }
+        val remoteRev = detail.optString("media_rev")
+        val cached = cache.getSong(songId)
+        val stale = remoteRev.isNotBlank() && cached?.mediaRev != remoteRev
+        val wanted = MediaCache.wantedFiles(remoteFiles).ifEmpty { MediaCache.WANTED }
+        var complete = true
+        for (name in wanted) {
+            val dest = cache.file(songId, name)
+            if (dest == null) {
+                complete = false
+                continue
+            }
+            val have = dest.exists() && dest.length() > 0
+            if (!(have && ((remoteRev.isNotBlank() && !stale) || (remoteRev.isBlank() && name != "lyrics.json")))) {
+                download(origin, songId, name, remoteRev)
+            }
+            if (!dest.exists() || dest.length() <= 0) complete = false
+        }
         cache.writeMeta(
             mapOf(
                 "id" to songId,
@@ -62,19 +79,15 @@ class SongPuller(
                 "artist" to detail.optString("artist", seed?.optString("artist").orEmpty()),
                 "language" to detail.optString("language", seed?.optString("language", "zh").orEmpty()),
                 "status" to "ready",
+                "media_rev" to if (complete) remoteRev else cached?.mediaRev.orEmpty(),
             ),
-            MediaCache.wantedFiles(remoteFiles).ifEmpty { MediaCache.WANTED },
+            wanted,
         )
-        val wanted = MediaCache.wantedFiles(remoteFiles).ifEmpty { MediaCache.WANTED }
-        for (name in wanted) {
-            val dest = cache.file(songId, name) ?: continue
-            if (dest.exists() && dest.length() > 0 && name != "lyrics.json") continue
-            download(origin, songId, name)
-        }
     }
 
-    private fun download(origin: String, songId: String, name: String) {
-        val url = HostGateway.remoteUrl(origin, "/media/$songId/$name", null)
+    private fun download(origin: String, songId: String, name: String, rev: String) {
+        val query = if (rev.isNotBlank()) "v=$rev" else null
+        val url = HostGateway.remoteUrl(origin, "/media/$songId/$name", query)
         val request = Request.Builder().url(url).build()
         http.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return

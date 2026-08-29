@@ -52,6 +52,7 @@ class MediaCacheTest {
                 "artist" to "YOASOBI",
                 "language" to "ja",
                 "status" to "ready",
+                "media_rev" to "abc123def456",
             ),
             files = mapOf(
                 "karaoke.m4a" to "AUDIO".toByteArray(),
@@ -61,6 +62,7 @@ class MediaCacheTest {
         val song = cache.getSong("song1")!!
         assertEquals("群青", song.title)
         assertEquals("YOASOBI", song.artist)
+        assertEquals("abc123def456", song.mediaRev)
         assertTrue(song.singable)
         assertTrue(cache.file("song1", "karaoke.m4a")!!.exists())
         assertEquals(1, cache.listSongs().size)

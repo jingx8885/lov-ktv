@@ -4,7 +4,7 @@ import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
-import { mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js";
+import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 
@@ -18,7 +18,10 @@ export function canPlay() {
 
 export function srcHasSong(el, songId) {
   const src = String((el && (el.getAttribute("src") || el.currentSrc || el.src)) || "");
-  return !!(songId && src.includes(songId));
+  if (!songId || !src.includes(songId)) return false;
+  const rev = mediaRevFor(songId);
+  if (!rev) return true;
+  return src.includes(`v=${encodeURIComponent(rev)}`) || src.includes(`v=${rev}`);
 }
 
 export function songReallyEnded(el) {
@@ -190,14 +193,16 @@ export async function tick() {
     return;
   }
   const itemKey = now.id || now.song_id;
-  if (state.lastItem !== itemKey) {
+  const rev = now.media_rev || "";
+  if (state.lastItem !== itemKey || (rev && rev !== state.lastMediaRev)) {
     state.lastItem = itemKey;
+    state.lastMediaRev = rev;
     state.lyricPaint.prev = "";
     state.lyricPaint.cur = "";
     state.lyricPaint.next = "";
-    const lyricsHit = await fetchJson(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${Date.now()}`);
+    const lyricsHit = await fetchJson(mediaUrl(now.song_id, "lyrics.json"));
     state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
-    const skeletonHit = await fetchJson(`/media/${now.song_id}/skeleton.json`).catch(() => ({ ok: false, data: null }));
+    const skeletonHit = await fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({ ok: false, data: null }));
     state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;
@@ -219,7 +224,7 @@ export async function tick() {
     if (Date.now() - state.lastLyricsAt > 8000) {
       state.lastLyricsAt = Date.now();
       const prev = lyricsFingerprint(state.lyrics);
-      fetchJson(`/media/${now.song_id}/lyrics.json?v=ja-kanji&t=${state.lastLyricsAt}`)
+      fetchJson(mediaUrl(now.song_id, "lyrics.json"))
         .then(({ ok, data }) => {
           if (!ok || !data || !data.cues || lyricsFingerprint(data) === prev) return;
           state.lyrics = data;

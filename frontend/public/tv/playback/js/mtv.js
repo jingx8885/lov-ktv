@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
-import { mediaUrl } from "./mix.js";
+import { mediaRevFor, mediaUrl } from "./mix.js";
 
 function nativePlayer() {
   return window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function";
@@ -81,13 +81,15 @@ export function bindMtv(songId) {
     document.body.classList.add("has-mtv", "has-native-player");
     glassStage(true);
     syncNativeMv();
-    if (state.boundMtvSong === songId) return;
-    state.boundMtvSong = songId;
+    const bindKey = songId + ":" + (mediaRevFor(songId) || "");
+    if (state.boundMtvSong === bindKey) return;
+    state.boundMtvSong = bindKey;
     try { window.LovKtvNative.playMtv(abs); } catch (err) {}
     return;
   }
-  if (state.boundMtvSong === songId && (mtv.getAttribute("src") || mtv.src)) return;
-  state.boundMtvSong = songId;
+  const bindKey = songId + ":" + (mediaRevFor(songId) || "");
+  if (state.boundMtvSong === bindKey && (mtv.getAttribute("src") || mtv.src)) return;
+  state.boundMtvSong = bindKey;
   syncNativeMv();
   const cover = mediaUrl(songId, "cover.jpg");
   silenceMtv(mtv);

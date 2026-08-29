@@ -20,7 +20,7 @@ export const state = guardState({
   selectedCue: -1,
   lyricsDirty: false,
   playerVocal: localStorage.getItem("playerVocal") === "0" ? 0 : 1,
-  songMediaRev: 0,
+  songMediaRev: "",
   playerRaf: 0,
   playerHeld: true,
   playerHook: null,

@@ -68,7 +68,7 @@ interface PhoneState {
   selectedCue: number;
   lyricsDirty: boolean;
   playerVocal: number;
-  songMediaRev: number;
+  songMediaRev: string;
   playerRaf: number;
   playerHeld: boolean;
   playerHook: BandsHook | null;

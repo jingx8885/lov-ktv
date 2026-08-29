@@ -7,7 +7,7 @@ import org.junit.Test
 
 class LocalRoomTest {
     private val songs = listOf(
-        CachedSong("s1", "群青", "YOASOBI", "ja", "ready", listOf("karaoke.m4a", "lyrics.json"), true),
+        CachedSong("s1", "群青", "YOASOBI", "ja", "ready", listOf("karaoke.m4a", "lyrics.json"), true, "rev-s1"),
         CachedSong("s2", "夜に駆ける", "YOASOBI", "ja", "ready", listOf("karaoke.m4a", "lyrics.json"), true),
         CachedSong("busy", "制作中", "x", "zh", "separating", emptyList(), false),
     )
@@ -21,6 +21,7 @@ class LocalRoomTest {
         var snap = room.enqueue("OFF1", "s2")
         assertEquals(listOf("s1", "s2"), snap.queue.map { it.songId })
         assertEquals("s1", snap.nowPlaying?.songId)
+        assertEquals("rev-s1", snap.nowPlaying?.mediaRev)
 
         snap = room.skip("OFF1")
         assertEquals(listOf("s2"), snap.queue.map { it.songId })
@@ -67,6 +68,7 @@ class LocalRoomTest {
         )
         val snap = room.snapshot("EABAB5")
         assertEquals("s1", snap.nowPlaying?.songId)
+        assertEquals("rev-s1", snap.nowPlaying?.mediaRev)
         assertEquals(70, snap.volume)
         val skipped = room.skip("EABAB5")
         assertTrue(skipped.queue.isEmpty())

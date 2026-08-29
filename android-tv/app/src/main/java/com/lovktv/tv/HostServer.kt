@@ -207,17 +207,21 @@ class HostServer(
     }
 
     private suspend fun serveMedia(call: ApplicationCall, songId: String, name: String) {
+        val rev = call.request.queryParameters["v"].orEmpty()
         val local = cache.file(songId, name)
-        if (local != null && local.exists() && local.length() > 0) {
-            serveFile(call, local)
+        val cachedRev = cache.getSong(songId)?.mediaRev.orEmpty()
+        val fresh = local != null && local.exists() && local.length() > 0 &&
+            (rev.isBlank() || cachedRev.isBlank() || cachedRev == rev)
+        if (fresh) {
+            serveFile(call, local!!)
             return
         }
         puller.hint()
         if (shouldCacheMedia(name)) {
-            val bytes = withContext(Dispatchers.IO) { fetchMediaBytes(songId, name) }
+            val bytes = withContext(Dispatchers.IO) { fetchMediaBytes(songId, name, rev) }
             if (bytes != null && bytes.isNotEmpty()) {
                 cache.putFile(songId, name, bytes)
-                call.response.headers.append(HttpHeaders.CacheControl, "no-cache, must-revalidate")
+                call.response.headers.append(HttpHeaders.CacheControl, mediaCacheControl(call))
                 call.response.headers.append("Access-Control-Allow-Origin", "*")
                 call.respondBytes(bytes, mime(name))
                 return
@@ -230,9 +234,18 @@ class HostServer(
         return name.endsWith(".json") || name == "cover.jpg"
     }
 
-    private fun fetchMediaBytes(songId: String, name: String): ByteArray? {
+    private fun mediaCacheControl(call: ApplicationCall): String {
+        return if (call.request.queryParameters["v"].orEmpty().isNotBlank()) {
+            "public, max-age=31536000, immutable"
+        } else {
+            "no-cache, must-revalidate"
+        }
+    }
+
+    private fun fetchMediaBytes(songId: String, name: String, rev: String): ByteArray? {
         return try {
-            val remote = HostGateway.remoteUrl(processOrigin, "/media/$songId/$name", null)
+            val query = if (rev.isNotBlank()) "v=$rev" else null
+            val remote = HostGateway.remoteUrl(processOrigin, "/media/$songId/$name", query)
             val request = Request.Builder()
                 .url(remote)
                 .header("Accept", "*/*")
@@ -370,7 +383,7 @@ class HostServer(
         val range = MediaCache.parseRange(call.request.headers[HttpHeaders.Range], size)
         val type = mime(file.name)
         call.response.headers.append(HttpHeaders.AcceptRanges, "bytes")
-        call.response.headers.append(HttpHeaders.CacheControl, "no-cache, must-revalidate")
+        call.response.headers.append(HttpHeaders.CacheControl, mediaCacheControl(call))
         call.response.headers.append("Access-Control-Allow-Origin", "*")
         if (range == null) {
             call.respond(object : OutgoingContent.WriteChannelContent() {

@@ -12,6 +12,7 @@ data class CachedSong(
     val status: String,
     val files: List<String>,
     val singable: Boolean,
+    val mediaRev: String = "",
 ) {
     fun toJson(): JSONObject {
         return JSONObject()
@@ -23,6 +24,7 @@ data class CachedSong(
             .put("error", "")
             .put("files", JSONArray(files))
             .put("cached", true)
+            .put("media_rev", mediaRev)
     }
 }
 
@@ -68,6 +70,7 @@ class MediaCache(private val root: File) {
             .put("language", meta["language"] ?: "zh")
             .put("status", meta["status"] ?: "ready")
             .put("files", JSONArray(files.ifEmpty { listFiles(id) }))
+            .put("media_rev", meta["media_rev"] ?: "")
         dest.writeText(obj.toString())
     }
 
@@ -87,6 +90,7 @@ class MediaCache(private val root: File) {
             status = meta.optString("status", "ready"),
             files = files,
             singable = isSingable(files.toSet()),
+            mediaRev = meta.optString("media_rev"),
         )
     }
 

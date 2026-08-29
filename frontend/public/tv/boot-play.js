@@ -45,10 +45,9 @@
   }
 
   function mediaUrl(songId, name) {
-    var q = "";
-    if (name === "karaoke.m4a" || name === "guide.m4a") q = "?v=stem2";
-    if (name === "lyrics.json") q = "?v=ja-kanji";
-    return "/media/" + songId + "/" + name + q;
+    var now = room && room.now_playing;
+    var rev = now && now.song_id === songId && now.media_rev ? String(now.media_rev) : "";
+    return "/media/" + songId + "/" + name + (rev ? "?v=" + encodeURIComponent(rev) : "");
   }
 
   function hideGate() {
@@ -145,9 +144,9 @@
       mtv.pause();
       mtv.removeAttribute("src");
     }
-    jsonFetch(mediaUrl(songId, "lyrics.json") + "&t=" + Date.now()).then(function (hit) {
+    jsonFetch(mediaUrl(songId, "lyrics.json")).then(function (hit) {
       lyrics = hit.ok && hit.data ? hit.data : { cues: [] };
-      return jsonFetch("/media/" + songId + "/skeleton.json");
+      return jsonFetch(mediaUrl(songId, "skeleton.json"));
     }).then(function (skel) {
       if (skel && skel.ok && skel.data && skel.data.has_video) lyrics.has_video = true;
       syncLyricSkin();
@@ -401,7 +400,7 @@
       if (title) title.textContent = now.title || "";
       if (meta) meta.textContent = (now.artist || "") + " · " + (now.status || "");
       if (now.status !== "ready") return;
-      var key = now.id || now.song_id;
+      var key = (now.id || now.song_id) + ":" + (now.media_rev || "");
       if (lastItem !== key) {
         lastItem = key;
         stopSong();

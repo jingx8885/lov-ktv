@@ -2,10 +2,17 @@ import { t } from "../../../shared/i18n/js/i18n.js";
 import { $ } from "../../../shared/ui/js/dom.js";
 import { state } from "../../state.js";
 
+export function mediaRevFor(songId) {
+  const snap = state.room;
+  const now = snap && snap.now_playing;
+  if (now && now.song_id === songId && now.media_rev) return String(now.media_rev);
+  const hit = ((snap && snap.queue) || []).find((item) => item && item.song_id === songId);
+  return hit && hit.media_rev ? String(hit.media_rev) : "";
+}
+
 export function mediaUrl(songId, name) {
-  if (name === "lyrics.json") return `/media/${songId}/${name}?v=ja-kanji`;
-  if (name === "karaoke.m4a" || name === "guide.m4a") return `/media/${songId}/${name}?v=stem2`;
-  return `/media/${songId}/${name}`;
+  const rev = mediaRevFor(songId);
+  return `/media/${songId}/${name}` + (rev ? `?v=${encodeURIComponent(rev)}` : "");
 }
 
 export function prefetchUrl(url) {
@@ -46,7 +53,7 @@ export function prefetchQueue(snap) {
     urls.push(mediaUrl(songId, "mtv.mp4"));
     urls.push(mediaUrl(songId, "original.mp3"));
     urls.push(mediaUrl(songId, "lyrics.json"));
-    urls.push(`/media/${songId}/skeleton.json`);
+    urls.push(mediaUrl(songId, "skeleton.json"));
   };
   const now = snap && snap.now_playing;
   const nowId = now && now.status === "ready" ? now.song_id : "";

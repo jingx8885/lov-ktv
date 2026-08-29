@@ -31,6 +31,7 @@ interface Song {
   status: SongStatus | string;
   error?: string;
   native_video?: boolean;
+  media_rev?: string;
   letter?: string;
 }
 

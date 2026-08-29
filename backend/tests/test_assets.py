@@ -88,6 +88,7 @@ def test_pages_inject_same_rev_into_html_and_modules(tmp_path, monkeypatch):
     assert 'from "../shared/i18n/js/i18n.js?v=testhash"' in app_js.text
     assert app_js.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert css.headers["cache-control"] == "public, max-age=31536000, immutable"
-    assert "/media/${songId}/${name}?v=ja-kanji" in mix_js.text
-    assert "/media/${songId}/${name}?v=stem2" in mix_js.text
+    assert "mediaRevFor" in mix_js.text
+    assert "ja-kanji" not in mix_js.text
+    assert "stem2" not in mix_js.text
     assert 'addModule("/shared/audio/js/aec-worklet.js?v=testhash")' in aec_js.text

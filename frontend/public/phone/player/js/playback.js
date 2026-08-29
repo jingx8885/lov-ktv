@@ -11,7 +11,11 @@ import { showToast } from "../../ui/js/toast.js";
 import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
 
 export function mediaUrl(songId, name) {
-  return `/media/${songId}/${name}?v=${state.songMediaRev || Date.now()}`;
+  const song = state.playerSong;
+  const rev = (song && (song.id === songId || song.song_id === songId) && song.media_rev)
+    || state.songMediaRev
+    || "";
+  return `/media/${songId}/${name}` + (rev ? `?v=${encodeURIComponent(rev)}` : "");
 }
 
 export function setPlayIcon(playing) {
@@ -433,7 +437,7 @@ export async function loadPlayerSong(songId, opts) {
   resetPlayerFace();
   try { audio.currentTime = 0; } catch (err) {}
   try { if (guide) guide.currentTime = 0; } catch (err) {}
-  const lyrics = await fetchJson(`/media/${song.id}/lyrics.json?v=ja-kanji&t=${Date.now()}`);
+  const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
   state.playerLyrics = lyrics.ok ? lyrics.data : { cues: [] };
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
   if (gen !== state.playerLoad) return;
@@ -444,7 +448,7 @@ export async function loadPlayerSong(songId, opts) {
   setPlayerCover(song);
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
   $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
-  state.songMediaRev = Date.now();
+  state.songMediaRev = song.media_rev || "";
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
   audio.src = karaoke;

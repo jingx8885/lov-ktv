@@ -14,6 +14,7 @@ data class QueueItem(
     val artist: String,
     val status: String,
     val language: String,
+    val mediaRev: String = "",
 ) {
     fun toJson(): JSONObject {
         return JSONObject()
@@ -24,6 +25,7 @@ data class QueueItem(
             .put("artist", artist)
             .put("status", status)
             .put("language", language)
+            .put("media_rev", mediaRev)
     }
 }
 
@@ -95,6 +97,7 @@ class LocalRoom(
             artist = song?.artist.orEmpty(),
             status = "ready",
             language = song?.language ?: "zh",
+            mediaRev = song?.mediaRev.orEmpty(),
         )
         val queue = room.queue + item
         val playing = room.nowPlaying != null
@@ -198,6 +201,9 @@ class LocalRoom(
                         artist = item.optString("artist"),
                         status = item.optString("status", "ready"),
                         language = item.optString("language", "zh"),
+                        mediaRev = item.optString("media_rev").ifBlank {
+                            songLookup(item.optString("song_id"))?.mediaRev.orEmpty()
+                        },
                     ),
                 )
             }

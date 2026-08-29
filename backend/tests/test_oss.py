@@ -13,6 +13,7 @@ def _boot(tmp_path, monkeypatch):
     store.init_db()
     config.DATA_DIR = tmp_path
     config.MEDIA_DIR = tmp_path / "media"
+    main.MEDIA_DIR = tmp_path / "media"
     config.ALIYUN_OSS_ENABLED = False
     return main
 
@@ -49,8 +50,11 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     (tmp_path / "media").mkdir(parents=True, exist_ok=True)
     with TestClient(main.app) as client:
         res = client.get("/media/abc123/mtv.mp4", follow_redirects=False)
+        versioned = client.get("/media/abc123/mtv.mp4?v=deadbeef12", follow_redirects=False)
     assert res.status_code == 302
     assert res.headers["location"] == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4"
+    assert versioned.status_code == 302
+    assert versioned.headers["location"] == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4?v=deadbeef12"
 
 
 def test_publish_files_includes_every_json(tmp_path, monkeypatch):

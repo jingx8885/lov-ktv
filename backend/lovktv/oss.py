@@ -253,7 +253,9 @@ def write_marker(song_id: str, names: list[str]) -> Path:
             native = False
     if not native:
         native = (MEDIA_DIR / song_id / "mugen.mp4").exists() or (MEDIA_DIR / song_id / "mugen.webm").exists()
-    payload = {"files": names, "native_video": native}
+    from lovktv.store import media_rev
+
+    payload = {"files": names, "native_video": native, "media_rev": media_rev(song_id)}
     dest = folder / "oss.json"
     dest.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     return dest

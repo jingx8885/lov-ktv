@@ -75,6 +75,49 @@ def get_song(song_id: str) -> dict[str, Any] | None:
     return _row(row)
 
 
+_MEDIA_REV_NAMES = (
+    "cover.jpg",
+    "guide.m4a",
+    "karaoke.m4a",
+    "lyrics.ass",
+    "lyrics.elrc",
+    "lyrics.json",
+    "lyrics.lrc",
+    "lyrics.manual.lrc",
+    "mtv.mp4",
+    "original.mp3",
+    "skeleton.json",
+)
+
+
+def media_rev(song_id: str) -> str:
+    folder = MEDIA_DIR / str(song_id)
+    digest = hashlib.sha256()
+    found = False
+    if folder.is_dir():
+        for name in _MEDIA_REV_NAMES:
+            path = folder / name
+            if not path.is_file():
+                continue
+            found = True
+            stat = path.stat()
+            digest.update(name.encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(str(stat.st_size).encode("ascii"))
+            digest.update(b"\0")
+            digest.update(str(stat.st_mtime_ns).encode("ascii"))
+            digest.update(b"\0")
+    if found:
+        return digest.hexdigest()[:12]
+    marker = folder / "oss.json"
+    if marker.is_file():
+        try:
+            return str(json.loads(marker.read_text(encoding="utf-8")).get("media_rev") or "")
+        except (OSError, json.JSONDecodeError, TypeError):
+            return ""
+    return ""
+
+
 def media_flags(song_id: str) -> dict[str, Any]:
     folder = MEDIA_DIR / str(song_id)
     native = False
@@ -95,7 +138,11 @@ def media_flags(song_id: str) -> dict[str, Any]:
                 native = False
     if not native:
         native = (folder / "mugen.mp4").exists() or (folder / "mugen.webm").exists()
-    return {"native_video": native}
+    flags: dict[str, Any] = {"native_video": native}
+    rev = media_rev(song_id)
+    if rev:
+        flags["media_rev"] = rev
+    return flags
 
 
 def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
