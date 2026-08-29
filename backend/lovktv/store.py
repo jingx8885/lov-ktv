@@ -460,21 +460,3 @@ def upsert_songs(rows: list[dict[str, Any]]) -> int:
                 values,
             )
     return len(rows)
-
-
-# Room persistence now lives in ``room_store``. These names remain importable
-# for data migration scripts and older integrations, but contain no SQL here.
-from lovktv.room_store import (  # noqa: E402,F401
-    bump,
-    enqueue,
-    ensure_room,
-    ensure_room_for_host,
-    normalize_lan_origin,
-    play_now,
-    remember_host_room,
-    room_for_hosts,
-    room_snapshot,
-    set_mix,
-    set_room_lan,
-    skip,
-)

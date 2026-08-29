@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from lovktv import jobs
-from lovktv.catalog import fetch, mugen, search
+from lovktv.catalog import importer, mugen, search
 
 ASS = """\ufeff[Script Info]
 Title: NIGHT DANCER
@@ -416,9 +416,9 @@ def test_import_song_prefers_vocal_mugen_hit(tmp_path, monkeypatch):
         (out_dir / "original.mp3").write_bytes(b"x" * 1000)
         return {"title": "群青", "source": {"provider": "karaoke-mugen", "kid": kid}}
 
-    monkeypatch.setattr(fetch, "search_mugen", fake_search)
-    monkeypatch.setattr(fetch, "import_mugen_song", fake_import)
-    fetch.import_song(query="群青 YOASOBI", out_dir=tmp_path)
+    monkeypatch.setattr(importer, "search_mugen", fake_search)
+    monkeypatch.setattr(importer, "import_mugen_song", fake_import)
+    importer.import_song(query="群青 YOASOBI", out_dir=tmp_path)
     assert called["kid"] == "88bbec95-58e2-4407-adf2-74d7c6e4ac1d"
 
 
@@ -434,8 +434,8 @@ def test_import_song_uses_mugen_kid(tmp_path, monkeypatch):
             "source": {"provider": "karaoke-mugen", "kid": kid},
         }
 
-    monkeypatch.setattr(fetch, "import_mugen_song", fake_import)
-    skeleton = fetch.import_song(
+    monkeypatch.setattr(importer, "import_mugen_song", fake_import)
+    skeleton = importer.import_song(
         query="NIGHT DANCER",
         out_dir=tmp_path,
         song_id="13393b41-9204-42ca-b014-e548bd60ca9f",
@@ -883,16 +883,16 @@ def test_complete_mugen_audio_keeps_lyrics_when_media_missing(tmp_path, monkeypa
         "needs_separate": True,
     }
     monkeypatch.setattr(
-        fetch,
+        importer,
         "pick_bilibili_mv",
         lambda title, artist="": {"bvid": "BV1xx", "title": "群青 MV"},
     )
     monkeypatch.setattr(
-        fetch,
+        importer,
         "try_bilibili_download",
         lambda bvid, mp3, video: mp3.write_bytes(b"a" * 2000) or True,
     )
-    filled = fetch._complete_mugen_audio(skeleton, tmp_path, "群青")
+    filled = importer._complete_mugen_audio(skeleton, tmp_path, "群青")
     assert filled["audio"]["source"] == "mugen-bilibili"
     assert (tmp_path / "original.mp3").exists()
     assert filled["source"]["provider"] == "karaoke-mugen"

@@ -3,10 +3,11 @@ from __future__ import annotations
 from fastapi import WebSocket
 
 from lovktv import store
+from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.i18n import localize_song
 from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_store import remember_host_room
-from lovktv.runtime import _mics, _peers, _rooms, host_volume_meta, set_host_volume
+from lovktv.runtime import _mics, _peers, _rooms
 from lovktv.store import host_keys, with_media_flags
 
 

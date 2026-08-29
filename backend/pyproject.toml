@@ -44,18 +44,15 @@ ignore = ["F403", "F405"]
 [tool.ruff.lint.per-file-ignores]
 "lovktv/pipeline/lyric_anchor.py" = ["E402"]
 "scripts/manual_align.py" = ["E402"]
-"lovktv/catalog/fetch.py" = ["F401"]
 
 [tool.pyright]
-# Keep the gate focused on the typed contracts and alignment pipeline.  The
-# catalog/HTTP compatibility facades intentionally use dynamic re-exports and
-# are covered by the runtime test suite instead.
+# Keep the gate focused on the typed contracts and alignment pipeline.
 include = [
   "lovktv/contracts.py",
   "lovktv/room_contract.py",
   "lovktv/timeline_contract.py",
   "lovktv/pipeline/audio.py",
-  "lovktv/pipeline/align.py",
+  "lovktv/pipeline/orchestrator.py",
   "lovktv/pipeline/bounds.py",
   "lovktv/pipeline/clock.py",
   "lovktv/pipeline/constants.py",

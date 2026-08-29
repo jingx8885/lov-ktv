@@ -1,9 +1,9 @@
-from lovktv.pipeline.align import align_lyrics
 from lovktv.pipeline.lyric_anchor import (
     align_lines_with_anchor,
     asr_words_to_segments,
     merge_whisper_and_anchor,
 )
+from lovktv.pipeline.orchestrator import align_lyrics
 
 
 def _pulse(

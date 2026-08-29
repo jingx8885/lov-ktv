@@ -1,10 +1,10 @@
-from lovktv.catalog import fetch, search
+from lovktv.catalog import audio, importer, search
 
 
 def test_clean_search_title_strips_version_marks():
-    assert fetch.clean_search_title("晴天(深情版)") == "晴天"
-    assert fetch.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"
-    assert fetch.clean_search_title("群青 (Remix)") == "群青"
+    assert search.clean_search_title("晴天(深情版)") == "晴天"
+    assert search.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"
+    assert search.clean_search_title("群青 (Remix)") == "群青"
 
 
 def _no_mugen(monkeypatch):
@@ -13,10 +13,10 @@ def _no_mugen(monkeypatch):
         "search_mugen",
         lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
     )
-    monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
-    monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
-    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "is_mugen_kid", lambda value: False)
+    monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
     monkeypatch.setattr(search, "search_bilibili_hits", lambda *args, **kwargs: [])
     monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
 
@@ -24,14 +24,14 @@ def _no_mugen(monkeypatch):
 def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
     _no_mugen(monkeypatch)
     monkeypatch.setattr(
-        fetch,
+        importer,
         "search_tonzhon",
         lambda query, count=12, source="netease", page=1: [
             {"id": "111", "name": "Wrong song", "artist": ["X"]}
         ],
     )
     monkeypatch.setattr(
-        fetch,
+        importer,
         "fetch_lyric",
         lambda song_id, source="netease": "[00:01.00]Give a reason",
     )
@@ -42,11 +42,11 @@ def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
         out_path.write_bytes(b"x" * 60_000)
         return True
 
-    monkeypatch.setattr(fetch, "try_netease_download", fake_download)
+    monkeypatch.setattr(importer, "try_netease_download", fake_download)
     monkeypatch.setattr(
-        fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, "should not run")
+        importer, "try_ytdlp_search", lambda *args, **kwargs: (False, "should not run")
     )
-    skeleton = fetch.import_song(
+    skeleton = importer.import_song(
         query="Give a reason", out_dir=tmp_path, song_id="22689669"
     )
     assert skeleton["source"]["netease_id"] == "22689669"
@@ -56,23 +56,23 @@ def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
 
 def test_import_uses_previewed_ytdlp_page(tmp_path, monkeypatch):
     _no_mugen(monkeypatch)
-    fetch._AUDIO_CACHE.clear()
-    monkeypatch.setattr(fetch, "search_tonzhon", lambda *args, **kwargs: [])
+    audio._AUDIO_CACHE.clear()
+    monkeypatch.setattr(importer, "search_tonzhon", lambda *args, **kwargs: [])
     monkeypatch.setattr(
-        fetch,
+        importer,
         "fetch_lyric",
         lambda song_id, source="netease": "[00:01.00]Give a reason",
     )
-    monkeypatch.setattr(fetch, "try_netease_download", lambda song_id, path: False)
+    monkeypatch.setattr(importer, "try_netease_download", lambda song_id, path: False)
     downloaded: list[str] = []
     monkeypatch.setattr(
-        fetch,
+        importer,
         "_ytdlp_download",
         lambda page, path: (
             downloaded.append(page) or path.write_bytes(b"x" * 60_000) or True
         ),
     )
-    fetch.remember_audio_source(
+    audio.remember_audio_source(
         "22689669",
         {
             "kind": "ytdlp",
@@ -81,7 +81,7 @@ def test_import_uses_previewed_ytdlp_page(tmp_path, monkeypatch):
             "provider": "soundcloud",
         },
     )
-    skeleton = fetch.import_song(
+    skeleton = importer.import_song(
         query="give a reason", out_dir=tmp_path, song_id="22689669"
     )
     assert downloaded == ["https://soundcloud.com/right-track"]

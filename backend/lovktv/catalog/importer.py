@@ -5,22 +5,38 @@ from __future__ import annotations
 import json
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
-from lovktv.catalog import bilibili
 from lovktv.catalog.mugen import (
+    import_mugen_song,
+    is_mugen_kid,
     pick_vocal_hit,
+    search_mugen,
 )
 
-from .audio import *
-from .search import BROWSER_UA
+from .audio import (
+    _ytdlp_download,
+    peek_audio_source,
+    pick_bilibili_mv,
+    try_bilibili_download,
+    try_netease_download,
+    try_ytdlp_search,
+)
+from .bilibili import is_bvid
+from .kugou import fetch_kugou_lyrics
+from .lyrics import fetch_lyric, parse_lrc
+from .search import (
+    BROWSER_UA,
+    clean_search_title,
+    flatten_artists,
+    is_clean_title,
+    search_tonzhon,
+)
 
 
 def _complete_mugen_audio(
     skeleton: dict[str, Any], out_dir: Path, query: str
 ) -> dict[str, Any]:
-    from lovktv.catalog import fetch as f
-
     mp3_path = out_dir / "original.mp3"
     if mp3_path.exists() and mp3_path.stat().st_size > 200:
         return skeleton
@@ -30,13 +46,17 @@ def _complete_mugen_audio(
     )
     short = title.split(" · ", 1)[0].strip() or title
     mtv_path = out_dir / "mtv.mp4"
-    audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
-    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
-    filled = ""
-    hit = f.pick_bilibili_mv(short, artist) or f.pick_bilibili_mv(
-        f.clean_search_title(short), ""
+    audio_value = skeleton.get("audio")
+    source_value = skeleton.get("source")
+    audio = cast(dict[str, Any], audio_value) if isinstance(audio_value, dict) else {}
+    source = (
+        cast(dict[str, Any], source_value) if isinstance(source_value, dict) else {}
     )
-    if hit and f.try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
+    filled = ""
+    hit = pick_bilibili_mv(short, artist) or pick_bilibili_mv(
+        clean_search_title(short), ""
+    )
+    if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
         filled = "bilibili"
         source["bvid"] = str(hit["bvid"])
         audio["title"] = str(hit.get("title") or "")
@@ -44,13 +64,13 @@ def _complete_mugen_audio(
             audio["has_video"] = True
             skeleton["has_video"] = True
     if not filled:
-        ok, got_title = f.try_ytdlp_search(
+        ok, got_title = try_ytdlp_search(
             f"{short} {artist}".strip() or query, mp3_path, "soundcloud"
         )
         if ok:
             filled, audio["title"] = "soundcloud", got_title
     if not filled:
-        ok, got_title = f.try_ytdlp_search(
+        ok, got_title = try_ytdlp_search(
             f"{short} {artist}".strip() or query, mp3_path, "youtube"
         )
         if ok:
@@ -68,22 +88,20 @@ def _complete_mugen_audio(
 def import_song(
     *, query: str, out_dir: Path, song_id: str | None = None, prefer_ytdlp: bool = False
 ) -> dict[str, Any]:
-    from lovktv.catalog import fetch as f
-
     out_dir.mkdir(parents=True, exist_ok=True)
-    if song_id and f.is_mugen_kid(song_id):
-        return f._complete_mugen_audio(
-            f.import_mugen_song(song_id, out_dir, query=query), out_dir, query
+    if song_id and is_mugen_kid(song_id):
+        return _complete_mugen_audio(
+            import_mugen_song(song_id, out_dir, query=query), out_dir, query
         )
     if not song_id:
-        chosen = pick_vocal_hit(f.search_mugen(query, count=8).get("hits") or [])
+        chosen = pick_vocal_hit(search_mugen(query, count=8).get("hits") or [])
         if chosen and chosen.get("id"):
-            return f._complete_mugen_audio(
-                f.import_mugen_song(str(chosen["id"]), out_dir, query=query),
+            return _complete_mugen_audio(
+                import_mugen_song(str(chosen["id"]), out_dir, query=query),
                 out_dir,
                 query,
             )
-    results = f.search_tonzhon(query)
+    results = search_tonzhon(query)
     chosen: dict[str, Any] | None = None
     if song_id:
         chosen = next(
@@ -94,14 +112,14 @@ def import_song(
     else:
         chosen = results[0]
         for item in results:
-            if f.is_clean_title(str(item.get("name") or "")):
+            if is_clean_title(str(item.get("name") or "")):
                 chosen = item
                 break
     title_name, artist_name = (
         str(chosen.get("name") or query),
-        f.flatten_artists(chosen),
+        flatten_artists(chosen),
     )
-    kugou = f.fetch_kugou_lyrics(title_name, artist_name)
+    kugou = fetch_kugou_lyrics(title_name, artist_name)
     lyric_source, needs_align, language = "netease", True, ""
     if kugou and kugou.get("timeline"):
         from lovktv.pipeline.lyrics import write_subtitles
@@ -122,13 +140,13 @@ def import_song(
         )
     else:
         lyric_id = str(chosen.get("id") or "")
-        lrc = f.fetch_lyric(lyric_id) if lyric_id.isdigit() else ""
+        lrc = fetch_lyric(lyric_id) if lyric_id.isdigit() else ""
         if not lrc.strip():
-            for song in f._tonzhon_hits(title_name, 5, 1):
+            for song in search_tonzhon(title_name, count=5, page=1):
                 sid = str(song.get("id") or "")
                 if sid.isdigit():
                     try:
-                        lrc = f.fetch_lyric(sid)
+                        lrc = fetch_lyric(sid)
                     except Exception:
                         lrc = ""
                     if lrc.strip():
@@ -136,7 +154,7 @@ def import_song(
         if not lrc.strip():
             raise RuntimeError("歌词为空")
         (out_dir / "lyrics.lrc").write_text(lrc, encoding="utf-8")
-        lines = f.parse_lrc(lrc)
+        lines = parse_lrc(lrc)
     if not lines:
         raise RuntimeError("歌词为空")
     audio_file = None
@@ -146,13 +164,13 @@ def import_song(
     has_video = False
     mp3_path, mtv_path = out_dir / "original.mp3", out_dir / "mtv.mp4"
     chosen_id, pic = str(chosen.get("id") or ""), str(chosen.get("pic") or "")
-    cached = f.peek_audio_source(chosen_id)
+    cached = peek_audio_source(chosen_id)
     pinned_bvid = str(
         cached.get("bvid")
-        or (chosen_id if bilibili.is_bvid(chosen_id) else "")
-        or (song_id if bilibili.is_bvid(song_id or "") else "")
+        or (chosen_id if is_bvid(chosen_id) else "")
+        or (song_id if is_bvid(song_id or "") else "")
     )
-    if pinned_bvid and f.try_bilibili_download(pinned_bvid, mp3_path, mtv_path):
+    if pinned_bvid and try_bilibili_download(pinned_bvid, mp3_path, mtv_path):
         audio_file, audio_source, audio_title, audio_bvid, has_video = (
             "original.mp3",
             "bilibili",
@@ -164,7 +182,7 @@ def import_song(
     if (
         audio_file is None
         and cached.get("page")
-        and f._ytdlp_download(str(cached["page"]), mp3_path)
+        and _ytdlp_download(str(cached["page"]), mp3_path)
     ):
         audio_file, audio_source, audio_title = (
             "original.mp3",
@@ -172,13 +190,13 @@ def import_song(
             str(cached.get("title") or ""),
         )
     ytdlp_query = (
-        f"{chosen.get('name') or ''} {f.flatten_artists(chosen)}".strip() or query
+        f"{chosen.get('name') or ''} {flatten_artists(chosen)}".strip() or query
     )
     if audio_file is None:
-        hit = f.pick_bilibili_mv(title_name, artist_name) or f.pick_bilibili_mv(
-            f.clean_search_title(title_name), ""
+        hit = pick_bilibili_mv(title_name, artist_name) or pick_bilibili_mv(
+            clean_search_title(title_name), ""
         )
-        if hit and f.try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
+        if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
             audio_file, audio_source, audio_title, audio_bvid, has_video = (
                 "original.mp3",
                 "bilibili",
@@ -188,7 +206,7 @@ def import_song(
             )
             pic = pic or str(hit.get("pic") or "")
     if audio_file is None:
-        ok, got_title = f.try_ytdlp_search(ytdlp_query, mp3_path, "soundcloud")
+        ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "soundcloud")
         if ok:
             audio_file, audio_source, audio_title = (
                 "original.mp3",
@@ -198,11 +216,11 @@ def import_song(
     if (
         audio_file is None
         and not prefer_ytdlp
-        and f.try_netease_download(chosen_id, mp3_path)
+        and try_netease_download(chosen_id, mp3_path)
     ):
         audio_file, audio_source = "original.mp3", "netease"
     if audio_file is None:
-        ok, got_title = f.try_ytdlp_search(ytdlp_query, mp3_path, "youtube")
+        ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "youtube")
         if ok:
             audio_file, audio_source, audio_title = "original.mp3", "youtube", got_title
     if has_video:
@@ -228,7 +246,7 @@ def import_song(
         except Exception:
             cover_file = ""
     skeleton = {
-        "title": f"{chosen.get('name')} · {f.flatten_artists(chosen)}",
+        "title": f"{chosen.get('name')} · {flatten_artists(chosen)}",
         "artist": artist_name,
         "language": language,
         "needs_align": needs_align,
