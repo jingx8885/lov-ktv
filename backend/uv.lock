@@ -906,6 +906,7 @@ source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "httpx", extra = ["socks"] },
+    { name = "lyric-align" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnxruntime" },
@@ -931,6 +932,7 @@ requires-dist = [
     { name = "audio-separator", marker = "extra == 'sep'", specifier = ">=0.30" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", extras = ["socks"], specifier = ">=0.27" },
+    { name = "lyric-align", specifier = ">=0.3" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "onnxruntime", specifier = ">=1.18" },
     { name = "pillow", specifier = ">=10.0" },
@@ -943,6 +945,15 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
 provides-extras = ["dev", "sep"]
+
+[[package]]
+name = "lyric-align"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/77/bc/db139a7637272a1c0aa8e2c29ebcc76492700af74f774b8a64c764ebd592/lyric_align-0.3.0.tar.gz", hash = "sha256:ea8fa655bbec747ae1f8cfe5f46fb55bfcd13080bd443dc2fb2690b05d223cc8", size = 51980, upload-time = "2026-07-25T08:28:59.545Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/96/a5/e771c07312b3c8e99348a2c7fbf9d54d51365146cb7c050cc9985fcee8eb/lyric_align-0.3.0-py3-none-any.whl", hash = "sha256:9f924807c3abbdfb079d482d0b2f72c10dc9cd0b23709f8b561a21f4a5d8c61a", size = 39218, upload-time = "2026-07-25T08:28:58.395Z" },
+]
 
 [[package]]
 name = "markupsafe"
