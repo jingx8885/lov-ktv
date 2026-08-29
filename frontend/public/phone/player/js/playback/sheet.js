@@ -17,6 +17,10 @@ function landscape() {
   return window.matchMedia("(orientation: landscape)").matches;
 }
 
+function desktopLayout() {
+  return window.matchMedia("(min-width: 900px)").matches;
+}
+
 function peekSize() {
   return landscape() ? PEEK_LAND : PEEK_PORT;
 }
@@ -41,6 +45,24 @@ function liveY(sheet) {
 function applySheet(y, anim, hard = true) {
   const sheet = $("playerSheet");
   if (!sheet) return;
+  if (desktopLayout()) {
+    sheet.style.height = "";
+    sheet.style.removeProperty("--sheet-peek");
+    sheet.style.transform = "none";
+    sheet.classList.remove("is-anim", "is-drag");
+    sheet.classList.add("is-open");
+    sheet.dataset.y = "0";
+    sheet.dataset.snap = "open";
+    document.body.classList.remove("player-sheet-open");
+    const grab = $("playerSheetGrab");
+    if (grab) {
+      grab.setAttribute("aria-expanded", "true");
+      grab.setAttribute("aria-label", t("phone.player.closeLib"));
+    }
+    const scrim = $("playerSheetScrim");
+    if (scrim) scrim.hidden = true;
+    return;
+  }
   const open = openHeight();
   const peek = peekY();
   const next = hard ? Math.max(0, Math.min(peek, y)) : y;

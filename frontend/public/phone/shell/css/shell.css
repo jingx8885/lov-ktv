@@ -128,6 +128,64 @@
     padding-right: 48px;
   }
 }
+
+/* 桌面 Web 导航：不用移动端底部胶囊，改为固定的窄侧栏。 */
+@media (min-width: 1100px) {
+  body.phone .btn,
+  body.phone .empty-state .btn {
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  body.phone input:not([type="range"]):not([type="file"]) {
+    border-radius: 8px;
+  }
+
+  body.phone:not([data-page="player"]) .page {
+    width: calc(100% - 176px);
+    margin-left: 128px;
+    margin-right: 48px;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  body.phone:not([data-page="player"]) .tabbar {
+    position: fixed;
+    left: 24px;
+    right: auto;
+    top: 96px;
+    bottom: 24px;
+    width: 80px;
+    height: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    transform: none;
+    border: 1px solid rgba(255, 255, 255, .09);
+    border-radius: 12px;
+    background: rgba(23, 26, 36, .94);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  body.phone:not([data-page="player"]) .tabbar button {
+    flex: 0 0 64px;
+    min-height: 64px;
+    border-radius: 8px;
+    font-size: 11px;
+  }
+
+  body.phone:not([data-page="player"]) .tabbar button.on {
+    background: rgba(255, 55, 95, .16);
+  }
+
+  body.phone:not([data-page="player"]) .tabbar svg {
+    width: 20px;
+    height: 20px;
+  }
+}
 /* —— 手机 App 壳 —— */
 body.phone {
   --nav-h: 49px;

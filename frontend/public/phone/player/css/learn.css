@@ -338,3 +338,113 @@ body.phone.learn-on #playerLearn {
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* 桌面 Web 游戏工作区：内容网格化，避免手机端纵向卡片在大屏上留下大片空白。 */
+@media (min-width: 900px) {
+  body.phone.learn-on #page-player {
+    min-height: 100vh;
+    height: auto;
+    padding: 24px 32px 32px;
+    overflow: hidden;
+  }
+
+  body.phone.learn-on .learn {
+    width: min(1180px, 100%);
+    min-height: calc(100vh - 56px);
+    margin: 0 auto;
+    padding: 22px 28px 28px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 16px;
+    background:
+      radial-gradient(ellipse at 8% 0%, rgba(255, 77, 141, .16), transparent 40%),
+      radial-gradient(ellipse at 92% 0%, rgba(245, 193, 108, .1), transparent 38%),
+      #11141e;
+  }
+
+  body.phone.learn-on .learn-bar {
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+  }
+
+  body.phone.learn-on .learn-titles b {
+    font-size: 22px;
+  }
+
+  body.phone.learn-on #learnHome {
+    display: grid;
+    grid-template-columns: minmax(260px, .8fr) minmax(420px, 1.2fr);
+    grid-template-rows: auto auto 1fr;
+    align-content: start;
+    column-gap: 28px;
+    row-gap: 14px;
+    padding: 28px 0 0;
+    overflow: visible;
+  }
+
+  body.phone.learn-on #learnHome .learn-song {
+    grid-column: 1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  body.phone.learn-on #learnHome .learn-lead {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0;
+    max-width: 34ch;
+  }
+
+  body.phone.learn-on #learnHome .learn-diff {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+    margin: 0;
+  }
+
+  body.phone.learn-on #learnHome .learn-mode {
+    grid-column: 2;
+    min-height: 92px;
+    padding: 14px 16px;
+    border-radius: 10px;
+  }
+
+  body.phone.learn-on #learnHome .learn-mode.is-quiz { grid-row: 1; }
+  body.phone.learn-on #learnHome .learn-mode.is-tap { grid-row: 2; }
+  body.phone.learn-on #learnHome .learn-mode.is-echo { grid-row: 3; }
+
+  body.phone.learn-on .learn-mode-ico {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+  }
+
+  body.phone.learn-on .learn-mode em {
+    font-size: 17px;
+  }
+
+  body.phone.learn-on .learn-mode-copy span {
+    font-size: 12px;
+  }
+
+  body.phone.learn-on .learn-diff button,
+  body.phone.learn-on .learn-choice,
+  body.phone.learn-on .learn-tap-tile {
+    border-radius: 8px;
+  }
+
+  body.phone.learn-on .learn-body.is-play {
+    padding-top: 24px;
+  }
+
+  body.phone.learn-on .learn-body.is-play .learn-src {
+    font-size: clamp(28px, 3.2vw, 48px);
+  }
+
+  body.phone.learn-on .learn-choices {
+    gap: 14px;
+  }
+
+  body.phone.learn-on .learn-dock .btn {
+    border-radius: 8px;
+  }
+}

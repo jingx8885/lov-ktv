@@ -447,6 +447,93 @@
     max-width: none;
   }
 }
+
+/* 桌面端把控制区收进左栏，曲库独占主要空间。这样窗口变高时列表会
+   跟着变高，而不是被上方几个操作按钮挤成一小块。 */
+@media (min-width: 900px) {
+  body.phone .page-desk {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    align-items: stretch;
+    gap: 18px 24px;
+    min-height: calc(100vh - var(--bar-h));
+    box-sizing: border-box;
+  }
+
+  body.phone .page-desk .now-bar {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    margin: 0;
+  }
+
+  body.phone .page-desk .now-tools {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: start;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 0;
+    padding: 14px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+    background: rgba(23, 26, 36, .72);
+  }
+
+  body.phone .page-desk .lyric-seg {
+    grid-column: 1;
+    grid-row: 3;
+    align-self: start;
+    margin: 0;
+    max-width: none;
+    padding: 10px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+    background: rgba(23, 26, 36, .72);
+  }
+
+  body.phone .page-desk .desk-sheet {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    min-height: 0;
+    height: 100%;
+    padding: 18px 20px 14px;
+  }
+
+  body.phone .page-desk .desk-pane,
+  body.phone .page-desk #queue,
+  body.phone .page-desk .desk-lib {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  body.phone .page-desk .lib-body {
+    min-height: 0;
+  }
+
+  body.phone .page-desk .lib-body .inset-list {
+    overflow: auto;
+  }
+
+  body.phone .page-desk .seg,
+  body.phone .page-desk .lyric-seg .seg-btn {
+    border-radius: 7px;
+  }
+
+  body.phone .page-desk .lyric-seg .seg-btn {
+    background: rgba(255, 255, 255, .055);
+  }
+
+  body.phone .page-desk .lyric-seg .seg-btn.on {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  body.phone .page-desk .now-act {
+    border-radius: 8px;
+  }
+}
 .now-hit > div, .now-idle > div { flex: 1; min-width: 0; }
 .now-hit b, .now-idle b { display: block; font-size: 17px; }
 .now-go {

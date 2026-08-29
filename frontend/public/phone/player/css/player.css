@@ -758,7 +758,7 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"] .page-player {
-    width: min(1180px, 100%);
+    width: min(1320px, 100%);
     min-height: calc(100vh - 24px);
     height: auto;
     margin: 0 auto;
@@ -768,7 +768,7 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
 
   body.phone[data-page="player"] .player-main {
     display: grid;
-    grid-template-columns: minmax(280px, .85fr) minmax(420px, 1.15fr);
+    grid-template-columns: minmax(220px, .78fr) minmax(300px, 1fr) minmax(220px, 280px);
     grid-template-rows: auto minmax(360px, 1fr);
     gap: 20px 28px;
     max-width: 1080px;
@@ -793,14 +793,27 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   body.phone[data-page="player"] .player-stage {
     grid-column: 1;
     grid-row: 2;
-    align-self: center;
+    align-self: stretch;
+    align-content: center;
+    justify-items: center;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 20px;
+    background: rgba(23, 26, 36, .64);
     gap: 10px;
   }
 
   body.phone[data-page="player"] .player-art {
-    height: clamp(220px, 32vw, 340px);
-    max-height: 340px;
+    width: min(100%, 340px);
+    height: auto;
+    aspect-ratio: 1;
+    max-height: none;
+    opacity: 1;
+    pointer-events: auto;
     border-radius: 20px;
+    background:
+      radial-gradient(70% 90% at 18% 20%, rgba(255, 55, 95, .28), transparent 72%),
+      linear-gradient(145deg, #292033, #171a26 58%, #10121a);
     box-shadow: 0 18px 44px rgba(0, 0, 0, .3);
   }
 
@@ -816,6 +829,52 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     border-radius: 20px;
     background: rgba(23, 26, 36, .64);
     border: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  /* 桌面端曲库是右侧常驻栏，列表独立滚动；手机端仍使用底部抽屉。 */
+  body.phone[data-page="player"] .player-sheet-scrim {
+    display: none !important;
+  }
+
+  body.phone[data-page="player"] .player-sheet {
+    position: relative;
+    grid-column: 3;
+    grid-row: 2;
+    inset: auto;
+    width: auto;
+    height: auto !important;
+    min-height: 360px;
+    max-height: none;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 20px;
+    transform: none !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .2);
+    will-change: auto;
+  }
+
+  body.phone[data-page="player"] .player-sheet-grab {
+    flex-basis: 58px;
+    min-height: 58px;
+    padding: 14px 16px 8px;
+    cursor: default;
+  }
+
+  body.phone[data-page="player"] .player-sheet-grip {
+    top: 10px;
+  }
+
+  body.phone[data-page="player"] .player-sheet-chevron {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-sheet-body {
+    min-height: 0;
+    padding-bottom: 10px;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list {
+    overflow: auto;
   }
 
   body.phone[data-page="player"] .player-lyric-stack .lyric-seg {
@@ -845,15 +904,17 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     margin: 0 auto;
   }
 
-  body.phone[data-page="player"] .player-sheet {
-    max-width: 620px;
-    left: 50%;
-    right: auto;
-    width: calc(100% - 48px);
-    transform: translate3d(-50%, calc(100% - var(--sheet-peek, 58px)), 0);
+}
+
+@media (min-width: 1200px) {
+  body.phone[data-page="player"] .page-player {
+    width: min(1320px, 100%);
+    padding-left: 32px;
+    padding-right: 32px;
   }
 
-  body.phone[data-page="player"] .player-sheet.is-open {
-    transform: translate3d(-50%, 0, 0);
+  body.phone[data-page="player"] .player-main {
+    grid-template-columns: minmax(280px, .85fr) minmax(420px, 1.25fr) minmax(280px, .9fr);
+    max-width: 1240px;
   }
 }
