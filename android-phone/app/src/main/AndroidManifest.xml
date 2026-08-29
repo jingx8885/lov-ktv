@@ -3,7 +3,6 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -29,7 +28,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".SplashActivity"
+            android:name=".feature.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.LovKtvPhone.Splash">
             <intent-filter>
@@ -39,19 +38,19 @@
         </activity>
 
         <activity
-            android:name=".DeskActivity"
+            android:name=".feature.DeskActivity"
             android:exported="false"
             android:keepScreenOn="true"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".ScanActivity"
+            android:name=".feature.ScanActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.LovKtvPhone" />
 
         <service
-            android:name=".MicService"
+            android:name=".media.MicService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
     </application>

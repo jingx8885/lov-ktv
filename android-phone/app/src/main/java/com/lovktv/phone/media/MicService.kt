@@ -1,4 +1,6 @@
-package com.lovktv.phone
+package com.lovktv.phone.media
+
+import com.lovktv.phone.R
 
 import android.annotation.SuppressLint
 import android.app.Notification
