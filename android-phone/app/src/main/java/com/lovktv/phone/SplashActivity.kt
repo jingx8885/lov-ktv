@@ -9,6 +9,7 @@ import android.os.Looper
 class SplashActivity : Activity() {
     private val main = Handler(Looper.getMainLooper())
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)

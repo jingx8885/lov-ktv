@@ -11,7 +11,7 @@ object LanAddress {
             if (!iface.isUp || iface.isLoopback) continue
             for (address in iface.inetAddresses) {
                 if (address is Inet4Address && !address.isLoopbackAddress) {
-                    found += address.hostAddress
+                    address.hostAddress?.let(found::add)
                 }
             }
         }

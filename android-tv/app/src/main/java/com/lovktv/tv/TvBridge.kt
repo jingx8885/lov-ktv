@@ -44,7 +44,7 @@ class TvBridge(private val host: TvHost) {
 
     @JavascriptInterface
     fun setLyrics(cur: String, zh: String, next: String) {
-        host.runOnUi { host.showLyrics("", "", "") }
+        host.runOnUi { host.showLyrics(cur, zh, next) }
     }
 
     @JavascriptInterface

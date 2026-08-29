@@ -37,6 +37,23 @@ android {
         jvmTarget = "17"
     }
 
+    lint {
+        // TV-only resources and local-network behavior are intentional: Leanback
+        // requires a banner/icon set, the shell serves HTTP on the LAN, and the
+        // branded splash/background are part of the kiosk experience.
+        disable += setOf(
+            "Autofill",
+            "CustomSplashScreen",
+            "GradleDependency",
+            "IconLauncherShape",
+            "IconLocation",
+            "InsecureBaseConfiguration",
+            "Overdraw",
+            "UnusedAttribute",
+            "UnusedResources",
+        )
+    }
+
     sourceSets.getByName("main").assets.srcDir(generatedAssets)
 
     packaging {

@@ -30,6 +30,21 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    lint {
+        // These checks describe intentional product choices: the phone shell is a
+        // local-network WebView, keeps a branded splash, and ships shared strings
+        // used by the web bridge. Keep actionable API/permission checks enabled.
+        disable += setOf(
+            "CustomSplashScreen",
+            "InsecureBaseConfiguration",
+            "LockedOrientationActivity",
+            "Overdraw",
+            "RtlEnabled",
+            "SetJavaScriptEnabled",
+            "UnusedResources",
+        )
+    }
 }
 
 dependencies {
