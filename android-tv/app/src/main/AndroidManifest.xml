@@ -15,7 +15,7 @@
         android:required="false" />
 
     <application
-        android:name=".LovKtvApp"
+        android:name=".platform.LovKtvApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
@@ -27,7 +27,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".SplashActivity"
+            android:name=".ui.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.LovKtvTv.Splash">
             <intent-filter>
@@ -38,19 +38,19 @@
         </activity>
 
         <activity
-            android:name=".SetupActivity"
+            android:name=".ui.SetupActivity"
             android:exported="false"
             android:theme="@style/Theme.LovKtvTv" />
 
         <activity
-            android:name=".TvActivity"
+            android:name=".ui.TvActivity"
             android:hardwareAccelerated="true"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout"
             android:exported="false"
             android:theme="@style/Theme.LovKtvTv" />
 
         <service
-            android:name=".HostService"
+            android:name=".feature.host.HostService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
     </application>

@@ -1,0 +1,24 @@
+package com.lovktv.tv.feature.host
+
+
+object HostRuntime {
+    const val DEFAULT_PORT = 8788
+
+    @Volatile
+    var port: Int = DEFAULT_PORT
+
+    @Volatile
+    var ready: Boolean = false
+
+    @Volatile
+    var lanOrigin: String = ""
+
+    @Volatile
+    var processOrigin: String = ""
+
+    @Volatile
+    var micPort: Int = 0
+
+    @Volatile
+    var roomCode: String = ""
+}
