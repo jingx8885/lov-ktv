@@ -13,8 +13,19 @@ _peers: dict[WebSocket, dict] = {}
 _mics: dict[str, str] = {}
 
 
-def media_dir():
+WEB_ROOT = (
+    config.ROOT / "frontend" / "frontend-dist"
+    if (config.ROOT / "frontend" / "frontend-dist" / "manifest.json").is_file()
+    else config.ROOT / "frontend" / "public"
+)
+
+
+def media_root():
     return config.MEDIA_DIR
+
+
+def media_dir():
+    return media_root()
 
 
 def web_root():

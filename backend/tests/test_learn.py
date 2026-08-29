@@ -209,7 +209,9 @@ def test_phone_learn_shell_is_wired():
     assert "learn-echo.css" in html
     assert "bindLearn" in app
     assert 'id="learnFx"' in html
-    shell = (root / "phone" / "player" / "js" / "learn" / "index.js").read_text(encoding="utf-8")
+    shell = (root / "phone" / "player" / "js" / "learn" / "index.js").read_text(
+        encoding="utf-8"
+    )
     css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
     quiz = (root / "phone" / "player" / "js" / "learn" / "quiz.js").read_text(
         encoding="utf-8"
@@ -269,7 +271,9 @@ def test_phone_learn_shell_is_wired():
     assert "needsLineHold" in tap
     assert "holdAfterLine" in quiz
     assert "holdAfterLine" in tap
-    rtc = (root / "phone" / "room" / "js" / "room" / "rtc.js").read_text(encoding="utf-8")
+    rtc = (root / "phone" / "room" / "js" / "room" / "rtc.js").read_text(
+        encoding="utf-8"
+    )
     assert 'from "../../../platform.js"' in rtc
     assert "usesNativeMic" in rtc
     assert "phone.mic.needTv" in rtc

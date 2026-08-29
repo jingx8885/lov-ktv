@@ -10,7 +10,13 @@ def test_runtime_directories_have_one_taxonomy_level():
         ROOT / "phone" / "player" / "js": {"learn", "playback"},
         ROOT / "phone" / "room" / "js": {"room"},
         ROOT / "shared" / "audio" / "js": {"aec", "bands", "rtc"},
-        ROOT / "tv" / "playback" / "js": {"lyric", "media", "remote", "room", "runtime"},
+        ROOT / "tv" / "playback" / "js": {
+            "lyric",
+            "media",
+            "remote",
+            "room",
+            "runtime",
+        },
     }
     for folder, names in expected.items():
         assert not [path for path in folder.iterdir() if path.is_file()], folder
@@ -41,7 +47,9 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert 'href="/tv/stage/css/stage.css' in tv
     assert 'src="/tv/app.js' in tv
     http = (ROOT / "shared" / "ui" / "js" / "http.js").read_text(encoding="utf-8")
-    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(encoding="utf-8")
+    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(
+        encoding="utf-8"
+    )
     assert "X-LovKtv-Machine" in http
     assert "LovKtvPlatform.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join

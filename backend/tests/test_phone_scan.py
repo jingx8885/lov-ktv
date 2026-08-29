@@ -5,7 +5,9 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 def test_phone_app_does_not_force_tv_on_boot():
     app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
-    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(encoding="utf-8")
+    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(
+        encoding="utf-8"
+    )
     origin = (ROOT / "phone" / "origin.js").read_text(encoding="utf-8")
     pages = (ROOT / "phone" / "nav" / "js" / "pages.js").read_text(encoding="utf-8")
     html = (ROOT / "m.html").read_text(encoding="utf-8")
@@ -33,13 +35,21 @@ def test_phone_app_does_not_force_tv_on_boot():
 
 def test_queue_needs_room_not_forced_tv_scan():
     lib = (ROOT / "phone" / "desk" / "js" / "library.js").read_text(encoding="utf-8")
-    mix = (ROOT / "phone" / "room" / "js" / "room" / "mix.js").read_text(encoding="utf-8")
-    rtc = (ROOT / "phone" / "room" / "js" / "room" / "rtc.js").read_text(encoding="utf-8")
+    mix = (ROOT / "phone" / "room" / "js" / "room" / "mix.js").read_text(
+        encoding="utf-8"
+    )
+    rtc = (ROOT / "phone" / "room" / "js" / "room" / "rtc.js").read_text(
+        encoding="utf-8"
+    )
     playback = "\n".join(
-        (ROOT / "phone" / "player" / "js" / "playback" / name).read_text(encoding="utf-8")
+        (ROOT / "phone" / "player" / "js" / "playback" / name).read_text(
+            encoding="utf-8"
+        )
         for name in ("controls.js", "song.js")
     )
-    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(encoding="utf-8")
+    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(
+        encoding="utf-8"
+    )
     assert "api.needTvOrRoom" in lib
     assert "api.needTvOrRoom" in mix
     assert "api.needTvOrRoom" in rtc
@@ -55,7 +65,9 @@ def test_queue_needs_room_not_forced_tv_scan():
 
 def test_scan_reload_uses_url_room_and_waits_for_lan():
     app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
-    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(encoding="utf-8")
+    join = (ROOT / "phone" / "room" / "js" / "room" / "join.js").read_text(
+        encoding="utf-8"
+    )
     queue = (ROOT / "phone" / "desk" / "js" / "queue.js").read_text(encoding="utf-8")
     http = (ROOT / "shared" / "ui" / "js" / "http.js").read_text(encoding="utf-8")
     assert 'const roomFromUrl = (params.get("room") || "").toUpperCase();' in app

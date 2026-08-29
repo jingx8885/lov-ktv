@@ -282,7 +282,9 @@ def test_import_uses_bilibili_before_soundcloud(tmp_path, monkeypatch):
         ],
     )
     monkeypatch.setattr(
-        importer, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]故事的小黄花"
+        importer,
+        "fetch_lyric",
+        lambda song_id, source="netease": "[00:01.00]故事的小黄花",
     )
     monkeypatch.setattr(
         importer,

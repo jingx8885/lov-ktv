@@ -338,6 +338,7 @@ interface Window {
   LovKtvPlatform?: PhonePlatform;
   LovKtvNative?: LovKtvNativeBridge;
   LovKtvOnHttp?: (msg: { id?: string; ok?: boolean; status?: number; body?: unknown }) => void;
+  LovKtvOnMic?: ((ok: boolean, err?: string) => void) | null;
   __lovktvLanFetch?: boolean;
   __lovktvPlayBooted?: boolean;
   __lovktvQrBooted?: boolean;

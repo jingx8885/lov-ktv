@@ -19,12 +19,12 @@ def test_public_route_smoke(tmp_path, monkeypatch):
 
 def test_room_websocket_smoke(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, runtime, store
+    from lovktv import main, room_store, runtime, store
 
     store.DB_PATH = tmp_path / "smoke.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
     store.init_db()
-    store.ensure_room("SMOKE1")
+    room_store.ensure_room("SMOKE1")
     runtime._rooms.clear()
     runtime._peers.clear()
     runtime._mics.clear()

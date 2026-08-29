@@ -16,7 +16,9 @@ def _no_mugen(monkeypatch):
     monkeypatch.setattr(importer, "is_mugen_kid", lambda value: False)
     monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        importer, "try_bilibili_download", lambda *args, **kwargs: False
+    )
     monkeypatch.setattr(search, "search_bilibili_hits", lambda *args, **kwargs: [])
     monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
 

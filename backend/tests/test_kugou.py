@@ -132,13 +132,17 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
         ),
     )
     monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        importer, "try_bilibili_download", lambda *args, **kwargs: False
+    )
     monkeypatch.setattr(
         importer,
         "try_netease_download",
         lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
     )
-    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    monkeypatch.setattr(
+        importer, "try_ytdlp_search", lambda *args, **kwargs: (False, "")
+    )
     skeleton = importer.import_song(query="晴天", out_dir=tmp_path, song_id="1")
     assert skeleton["needs_align"] is False
     assert skeleton["source"]["lyrics"] == "kugou"
@@ -168,13 +172,17 @@ def test_import_song_falls_back_to_netease_lyrics(tmp_path, monkeypatch):
         lambda song_id, source="netease": "[00:01.00]Give a reason",
     )
     monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        importer, "try_bilibili_download", lambda *args, **kwargs: False
+    )
     monkeypatch.setattr(
         importer,
         "try_netease_download",
         lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
     )
-    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    monkeypatch.setattr(
+        importer, "try_ytdlp_search", lambda *args, **kwargs: (False, "")
+    )
     skeleton = importer.import_song(
         query="Give a reason", out_dir=tmp_path, song_id="22689669"
     )
