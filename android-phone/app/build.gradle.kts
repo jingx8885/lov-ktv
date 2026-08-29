@@ -38,6 +38,8 @@ android {
             "CustomSplashScreen",
             "InsecureBaseConfiguration",
             "LockedOrientationActivity",
+            // targetSdk 34 is intentional while the app's compatibility matrix is validated.
+            "OldTargetApi",
             "Overdraw",
             "RtlEnabled",
             "SetJavaScriptEnabled",

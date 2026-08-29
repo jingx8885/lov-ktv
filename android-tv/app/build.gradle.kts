@@ -53,6 +53,8 @@ android {
             "IconLauncherShape",
             "IconLocation",
             "InsecureBaseConfiguration",
+            // targetSdk 34 is intentional while the TV compatibility matrix is validated.
+            "OldTargetApi",
             "Overdraw",
             "UnusedAttribute",
             "UnusedResources",
