@@ -123,10 +123,10 @@ interface SongListPage {
 }
 
 interface SearchPage {
-  page?: number;
   hits?: SearchHit[];
   has_more?: boolean;
   detail?: string;
+  page?: number;
 }
 
 interface PhoneLibState {

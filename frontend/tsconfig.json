@@ -19,12 +19,13 @@
     "public/tv/**/*.js",
     "public/shared/ui/**/*.js",
     "public/shared/lyrics/**/*.js",
+    "public/phone/player/js/timeline.js",
+    "public/tv/fx/js/stage-fx.js",
     "public/login/**/*.js",
     "public/landing/**/*.js"
   ],
   "exclude": [
     "public/vendor/**",
-    "public/shared/audio/**",
-    "public/tv/fx/js/stage-fx.js"
+    "public/shared/audio/**"
   ]
 }
