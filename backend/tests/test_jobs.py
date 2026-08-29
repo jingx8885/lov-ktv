@@ -1,3 +1,5 @@
+import threading
+
 from lovktv import jobs
 
 
@@ -39,6 +41,25 @@ def test_resume_stuck_jobs_includes_queued_and_aligning(monkeypatch, tmp_path):
     assert spawned[1][1][0] == "f1"
     assert spawned[2][0] == "process_import"
     assert spawned[2][1][0] == "q1"
+
+
+def test_job_queue_deduplicates_only_while_pending():
+    queue = jobs.JobQueue(worker_name="test-lovktv-jobs")
+    started = threading.Event()
+    release = threading.Event()
+
+    def work(song_id):
+        assert song_id == "s1"
+        started.set()
+        release.wait(1)
+
+    assert queue.submit(work, "s1") is True
+    assert started.wait(1)
+    assert queue.submit(work, "s1") is False
+    release.set()
+    queue._jobs.join()
+    assert queue.submit(work, "s1") is True
+    queue._jobs.join()
 
 
 def test_finish_ready_lyrics_forces_romaji_restore(tmp_path, monkeypatch):

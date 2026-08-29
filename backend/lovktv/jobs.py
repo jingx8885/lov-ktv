@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import threading
 from pathlib import Path
+from typing import Any, Callable
 
 from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation, line_is_romaji
 from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, translate_lines
@@ -34,10 +35,7 @@ def _publish_ready(song_id: str) -> None:
     except Exception as exc:  # noqa: BLE001
         print(f"[lovktv] oss publish {song_id} skipped: {exc}", flush=True)
 
-_JOBS: queue.Queue = queue.Queue()
-_QUEUED: set[str] = set()
-_QUEUE_LOCK = threading.Lock()
-_WORKER_STARTED = False
+JobFn = Callable[..., Any]
 
 
 def _fallback_media(src: Path, out_dir: Path) -> None:
@@ -480,39 +478,62 @@ def _align_and_mtv(
         update_song(song_id, error=f"{previous} {note}".strip())
 
 
-def _job_key(fn, args: tuple) -> str:
+def _job_key(fn: JobFn, args: tuple) -> str:
     name = getattr(fn, "__name__", str(fn))
     song_id = args[0] if args else ""
     return f"{name}:{song_id}"
 
 
-def _worker() -> None:
-    while True:
-        fn, args, kwargs, key = _JOBS.get()
-        try:
-            print(f"[lovktv] start {key}", flush=True)
-            fn(*args, **kwargs)
-            print(f"[lovktv] done {key}", flush=True)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[lovktv] fail {key}: {exc}", flush=True)
-        finally:
-            with _QUEUE_LOCK:
-                _QUEUED.discard(key)
-            _JOBS.task_done()
+class JobQueue:
+    """Small single-worker queue with duplicate suppression.
+
+    Keeping queue lifecycle in an object makes the worker independently
+    replaceable in tests or by a process-backed implementation.  The module
+    level :func:`spawn` below remains the compatibility boundary used by API
+    handlers and recovery code.
+    """
+
+    def __init__(self, worker_name: str = "lovktv-jobs") -> None:
+        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = queue.Queue()
+        self._queued: set[str] = set()
+        self._lock = threading.Lock()
+        self._worker_started = False
+        self._worker_name = worker_name
+
+    def _worker(self) -> None:
+        while True:
+            fn, args, kwargs, key = self._jobs.get()
+            try:
+                print(f"[lovktv] start {key}", flush=True)
+                fn(*args, **kwargs)
+                print(f"[lovktv] done {key}", flush=True)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[lovktv] fail {key}: {exc}", flush=True)
+            finally:
+                with self._lock:
+                    self._queued.discard(key)
+                self._jobs.task_done()
+
+    def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
+        """Queue work and return ``False`` when an identical job is pending."""
+        key = _job_key(fn, args)
+        with self._lock:
+            if key in self._queued:
+                return False
+            self._queued.add(key)
+            if not self._worker_started:
+                self._worker_started = True
+                threading.Thread(target=self._worker, name=self._worker_name, daemon=True).start()
+            self._jobs.put((fn, args, kwargs, key))
+        return True
 
 
-def spawn(fn, *args, **kwargs) -> None:
+job_queue = JobQueue()
+
+
+def spawn(fn: JobFn, *args: Any, **kwargs: Any) -> None:
     """Queue background work. One worker, so Whisper is not stampeded."""
-    global _WORKER_STARTED
-    key = _job_key(fn, args)
-    with _QUEUE_LOCK:
-        if key in _QUEUED:
-            return
-        _QUEUED.add(key)
-        if not _WORKER_STARTED:
-            _WORKER_STARTED = True
-            threading.Thread(target=_worker, name="lovktv-jobs", daemon=True).start()
-        _JOBS.put((fn, args, kwargs, key))
+    job_queue.submit(fn, *args, **kwargs)
 
 
 def _has_ready_lyrics(out_dir: Path) -> bool:
