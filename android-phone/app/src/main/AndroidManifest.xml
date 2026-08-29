@@ -29,7 +29,7 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".feature.SplashActivity"
+            android:name=".SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.LovKtvPhone.Splash">
             <intent-filter>
@@ -39,24 +39,19 @@
         </activity>
 
         <activity
-            android:name=".feature.JoinActivity"
-            android:exported="true"
-            android:windowSoftInputMode="adjustResize" />
-
-        <activity
-            android:name=".feature.DeskActivity"
+            android:name=".DeskActivity"
             android:exported="false"
             android:keepScreenOn="true"
             android:windowSoftInputMode="adjustResize" />
 
         <activity
-            android:name=".feature.ScanActivity"
+            android:name=".ScanActivity"
             android:exported="false"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.LovKtvPhone" />
 
         <service
-            android:name=".media.MicService"
+            android:name=".MicService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
     </application>

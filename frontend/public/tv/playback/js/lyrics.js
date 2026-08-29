@@ -5,7 +5,6 @@ import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js";
 import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./lyric/clock.js";
 import {
-  clearNativeLyrics,
   nativeMtvAvailable,
   nativeMtvDurationMs,
   nativeMtvPlaying,
@@ -14,13 +13,6 @@ import {
   resumeNativeMtv,
   seekNativeMtv
 } from "../../platform.js";
-
-let nativeLyricsCleared = false;
-
-function hideNativeLyrics() {
-  if (nativeLyricsCleared) return;
-  if (clearNativeLyrics()) nativeLyricsCleared = true;
-}
 
 function syncNativeVideo(karaoke) {
   if (!nativeMtvAvailable() || !karaoke) return;
@@ -141,18 +133,15 @@ export function paint() {
       paintLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
       paintLine($("cur"), cue, t, "cur", state.lyricPaint, "", mode);
       paintLine($("next"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
-      hideNativeLyrics();
     } else if (upcomingIdx >= 0) {
       const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
       paintLine($("prev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint, "", mode);
       paintLine($("cur"), held, 1e12, "cur", state.lyricPaint, "", mode);
       paintLine($("next"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
-      hideNativeLyrics();
     } else {
       paintLine($("prev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
       paintLine($("cur"), null, t, "cur", state.lyricPaint, "", mode);
       paintLine($("next"), null, -1, "next", state.lyricPaint, "", mode);
-      hideNativeLyrics();
     }
     syncNativeVideo(karaoke);
   }

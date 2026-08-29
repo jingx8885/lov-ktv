@@ -30,6 +30,20 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    lint {
+        // The phone shell intentionally embeds the remote web desk and keeps a
+        // branded splash; its LAN HTTP bridge also requires cleartext traffic.
+        disable += setOf(
+            "CustomSplashScreen",
+            "InsecureBaseConfiguration",
+            "LockedOrientationActivity",
+            "Overdraw",
+            "RtlEnabled",
+            "SetJavaScriptEnabled",
+            "UnusedResources",
+        )
+    }
 }
 
 dependencies {

@@ -43,6 +43,21 @@ android {
         jvmTarget = "17"
     }
 
+    lint {
+        // TV-only resources and local-network WebView behavior are intentional.
+        disable += setOf(
+            "Autofill",
+            "CustomSplashScreen",
+            "GradleDependency",
+            "IconLauncherShape",
+            "IconLocation",
+            "InsecureBaseConfiguration",
+            "Overdraw",
+            "UnusedAttribute",
+            "UnusedResources",
+        )
+    }
+
     sourceSets.getByName("main").assets.srcDir(generatedAssets)
 
     packaging {

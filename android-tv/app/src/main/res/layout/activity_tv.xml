@@ -5,14 +5,6 @@
     android:layout_height="match_parent"
     android:background="#0B1020">
 
-    <ImageView
-        android:id="@+id/mtvCover"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:contentDescription="@null"
-        android:scaleType="centerCrop"
-        android:visibility="gone" />
-
     <SurfaceView
         android:id="@+id/mtvNative"
         android:layout_width="match_parent"
@@ -29,27 +21,4 @@
         android:focusable="true"
         android:focusableInTouchMode="true" />
 
-    <TextView
-        android:id="@+id/nativeLyrics"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginLeft="48dp"
-        android:layout_marginRight="48dp"
-        android:layout_marginBottom="36dp"
-        android:background="#99000000"
-        android:gravity="center"
-        android:lineSpacingExtra="6dp"
-        android:paddingLeft="22dp"
-        android:paddingTop="10dp"
-        android:paddingRight="22dp"
-        android:paddingBottom="12dp"
-        android:shadowColor="#FF000000"
-        android:shadowDx="0"
-        android:shadowDy="2"
-        android:shadowRadius="8"
-        android:textColor="#FFFFFFF4"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:visibility="gone" />
 </FrameLayout>

@@ -25,7 +25,7 @@ class StaticAssetHandler(
     }
 
     suspend fun serve(call: ApplicationCall, path: String) {
-        val name = assetName(path)
+        val name = assetNameFor(path)
         val bytes = withContext(Dispatchers.IO) { readAsset(name) }
         if (bytes == null) {
             call.respond(io.ktor.http.HttpStatusCode.NotFound, "not found")
@@ -43,10 +43,6 @@ class StaticAssetHandler(
             call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=31536000, immutable")
         }
         call.respondBytes(body, contentType = HostContentTypes.mime(name))
-    }
-
-    fun assetName(path: String): String {
-        return assetNameFor(path)
     }
 
     private fun readAsset(name: String): ByteArray? {

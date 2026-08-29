@@ -16,7 +16,7 @@ class SplashActivity : Activity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_splash)
         main.postDelayed({
-            startActivity(Intent(this, JoinActivity::class.java))
+            startActivity(Intent(this, DeskActivity::class.java))
             finish()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 overrideActivityTransition(

@@ -212,7 +212,7 @@ phonePlatform.__onHttp = function (msg) {
 if (typeof window !== "undefined") window.LovKtvPlatform = phonePlatform;
 
 export function lanFetchReady() {
-  return !!(typeof window !== "undefined" && (window.__lovktvLanFetch || window.__lovktvNativeLan));
+  return !!(typeof window !== "undefined" && window.__lovktvLanFetch);
 }
 
 export function nativeHttpReady() {

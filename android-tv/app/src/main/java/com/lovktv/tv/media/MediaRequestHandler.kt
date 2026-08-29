@@ -40,7 +40,7 @@ class MediaRequestHandler(
             return
         }
         hintPuller()
-        if (shouldCache(name)) {
+        if (shouldCacheName(name)) {
             val bytes = withContext(Dispatchers.IO) { fetch(songId, name, rev) }
             if (bytes != null && bytes.isNotEmpty()) {
                 cache.putFile(songId, name, bytes)
@@ -52,8 +52,6 @@ class MediaRequestHandler(
         }
         proxy(call)
     }
-
-    fun shouldCache(name: String): Boolean = shouldCacheName(name)
 
     fun cacheControl(call: ApplicationCall): String {
         return if (call.request.queryParameters["v"].orEmpty().isNotBlank()) {

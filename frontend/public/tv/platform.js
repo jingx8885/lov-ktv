@@ -37,17 +37,6 @@ export function stopNativeMtv() {
   }
 }
 
-export function clearNativeLyrics() {
-  const native = bridge();
-  if (!native || typeof native.clearLyrics !== "function") return false;
-  try {
-    native.clearLyrics();
-    return true;
-  } catch (err) {
-    return false;
-  }
-}
-
 export function pauseNativeMtv() {
   const native = bridge();
   if (!native || typeof native.pauseMtv !== "function") return false;

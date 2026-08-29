@@ -289,7 +289,6 @@ type Platform = PhonePlatform | TvPlatform;
 interface LovKtvNativeBridge {
   playMtv?: (url: string) => void;
   stopMtv?: () => void;
-  clearLyrics?: () => void;
   pauseMtv?: () => void;
   resumeMtv?: () => void;
   durationMs?: () => number;
@@ -297,10 +296,6 @@ interface LovKtvNativeBridge {
   playing?: () => boolean;
   seekMtv?: (positionMs: number) => void;
   openSetup?: () => void;
-  startMic?: () => void;
-  stopMic?: () => void;
-  hasLanMic?: () => boolean;
-  isMicLive?: () => boolean;
   startTvMic?: () => void;
   stopTvMic?: () => void;
   startIem?: () => void;
@@ -342,10 +337,8 @@ interface Window {
   LovI18n?: LovI18nApi;
   LovKtvPlatform?: PhonePlatform;
   LovKtvNative?: LovKtvNativeBridge;
-  LovKtvOnMic?: ((ok: boolean, err?: string) => void) | null;
   LovKtvOnHttp?: (msg: { id?: string; ok?: boolean; status?: number; body?: unknown }) => void;
   __lovktvLanFetch?: boolean;
-  __lovktvNativeLan?: boolean;
   __lovktvPlayBooted?: boolean;
   __lovktvQrBooted?: boolean;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
