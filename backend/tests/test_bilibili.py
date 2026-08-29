@@ -1,6 +1,6 @@
 import hashlib
 
-from lovktv.catalog import bilibili, fetch
+from lovktv.catalog import audio, bilibili, fetch
 
 
 def test_score_rejects_title_inside_longer_name():
@@ -178,7 +178,7 @@ def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
             "provider": "youtube",
         },
     )
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
@@ -189,7 +189,7 @@ def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch.bilibili,
+        audio.bilibili,
         "play_urls",
         lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
     )
@@ -210,12 +210,12 @@ def test_resolve_uses_netease_before_bilibili(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch.bilibili,
+        audio.bilibili,
         "play_urls",
         lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
     )
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: True)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
     source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
     assert source["kind"] == "netease"
     assert source["id"] == "186016"
@@ -231,10 +231,10 @@ def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
             return {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""}
         return None
 
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(fetch, "pick_bilibili_mv", fake_pick)
     monkeypatch.setattr(
-        fetch.bilibili,
+        audio.bilibili,
         "play_urls",
         lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
     )
@@ -246,7 +246,7 @@ def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
 
 def test_resolve_uses_bilibili_when_netease_empty(monkeypatch):
     fetch._AUDIO_CACHE.clear()
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
@@ -257,7 +257,7 @@ def test_resolve_uses_bilibili_when_netease_empty(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch.bilibili,
+        audio.bilibili,
         "play_urls",
         lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
     )

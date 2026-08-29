@@ -1,9 +1,9 @@
-from lovktv.catalog import fetch
+from lovktv.catalog import audio
 from lovktv.catalog import http as catalog_http
 
 
 def _no_bilibili(monkeypatch):
-    monkeypatch.setattr(fetch, "_resolve_bilibili_source", lambda *args, **kwargs: {})
+    monkeypatch.setattr(audio, "_resolve_bilibili_source", lambda *args, **kwargs: {})
 
 
 def test_curl_and_ytdlp_omit_proxy_by_default(monkeypatch):
@@ -19,10 +19,10 @@ def test_curl_and_ytdlp_use_lovktv_https_proxy(monkeypatch):
 
 
 def test_resolve_prefers_playable_soundcloud(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     _no_bilibili(monkeypatch)
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
@@ -41,24 +41,24 @@ def test_resolve_prefers_playable_soundcloud(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)
+    monkeypatch.setattr(audio, "_list_ytdlp", fake_list)
     monkeypatch.setattr(
-        fetch,
+        audio,
         "_ytdlp_direct_url",
         lambda page: "" if "youtube" in page else f"{page}/direct",
     )
-    source = fetch.resolve_audio_source("22689669", "Give a reason", "林原めぐみ")
+    source = audio.resolve_audio_source("22689669", "Give a reason", "林原めぐみ")
     assert source["provider"] == "soundcloud"
     assert source["page"] == "https://soundcloud.com/right-track"
 
 
 def test_resolve_skips_unplayable_ytdlp(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     _no_bilibili(monkeypatch)
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
     monkeypatch.setattr(
-        fetch,
+        audio,
         "_list_ytdlp",
         lambda query, ytdlp, provider, count=15: [
             {
@@ -68,16 +68,16 @@ def test_resolve_skips_unplayable_ytdlp(monkeypatch):
             }
         ],
     )
-    monkeypatch.setattr(fetch, "_ytdlp_direct_url", lambda page: "")
-    assert fetch.resolve_audio_source("1", "Give a reason", "X") == {}
-    assert fetch.peek_audio_source("1") == {}
+    monkeypatch.setattr(audio, "_ytdlp_direct_url", lambda page: "")
+    assert audio.resolve_audio_source("1", "Give a reason", "X") == {}
+    assert audio.peek_audio_source("1") == {}
 
 
 def test_resolve_uses_netease_before_youtube(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     _no_bilibili(monkeypatch)
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: True)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
@@ -90,17 +90,17 @@ def test_resolve_uses_netease_before_youtube(monkeypatch):
             ]
         return []
 
-    monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)
-    monkeypatch.setattr(fetch, "_ytdlp_direct_url", lambda page: f"{page}/direct")
-    source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
+    monkeypatch.setattr(audio, "_list_ytdlp", fake_list)
+    monkeypatch.setattr(audio, "_ytdlp_direct_url", lambda page: f"{page}/direct")
+    source = audio.resolve_audio_source("186016", "晴天", "周杰伦")
     assert source == {"kind": "netease", "id": "186016", "title": "晴天"}
 
 
 def test_resolve_uses_youtube_last(monkeypatch):
-    fetch._AUDIO_CACHE.clear()
+    audio._AUDIO_CACHE.clear()
     _no_bilibili(monkeypatch)
-    monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
-    monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
+    monkeypatch.setattr(audio, "probe_netease_url", lambda song_id: False)
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/yt-dlp")
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
@@ -113,7 +113,7 @@ def test_resolve_uses_youtube_last(monkeypatch):
             ]
         return []
 
-    monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)
-    monkeypatch.setattr(fetch, "_ytdlp_direct_url", lambda page: f"{page}/direct")
-    source = fetch.resolve_audio_source("1", "Give a reason", "X")
+    monkeypatch.setattr(audio, "_list_ytdlp", fake_list)
+    monkeypatch.setattr(audio, "_ytdlp_direct_url", lambda page: f"{page}/direct")
+    source = audio.resolve_audio_source("1", "Give a reason", "X")
     assert source["provider"] == "youtube"

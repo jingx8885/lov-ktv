@@ -1,4 +1,4 @@
-from lovktv.catalog import fetch
+from lovktv.catalog import fetch, search
 
 
 def test_clean_search_title_strips_version_marks():
@@ -9,7 +9,7 @@ def test_clean_search_title_strips_version_marks():
 
 def _no_mugen(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
     )
@@ -17,8 +17,8 @@ def _no_mugen(monkeypatch):
     monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
-    monkeypatch.setattr(fetch, "search_bilibili_hits", lambda *args, **kwargs: [])
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    monkeypatch.setattr(search, "search_bilibili_hits", lambda *args, **kwargs: [])
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
 
 
 def test_import_uses_pinned_netease_id(tmp_path, monkeypatch):
@@ -106,8 +106,8 @@ def test_search_hits_include_preview_url(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
-    result = fetch.search_songs("Give a reason", count=8, page=2)
+    monkeypatch.setattr(search, "search_bilibili_hits", fake_bili)
+    result = search.search_songs("Give a reason", count=8, page=2)
     assert result["hits"][0]["preview_url"] == "/api/preview/BV1xx"
     assert result["page"] == 2
     assert result["has_more"] is False
@@ -117,7 +117,7 @@ def test_search_hits_include_preview_url(monkeypatch):
 def test_search_has_more_when_page_is_full(monkeypatch):
     _no_mugen(monkeypatch)
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda query, count=10, page=1: [
             {
@@ -130,6 +130,6 @@ def test_search_has_more_when_page_is_full(monkeypatch):
             for i in range(count)
         ],
     )
-    result = fetch.search_songs("x", count=10, page=1)
+    result = search.search_songs("x", count=10, page=1)
     assert result["has_more"] is True
     assert len(result["hits"]) == 10

@@ -23,7 +23,7 @@ def test_lifespan_health_and_public_acceptance_paths(tmp_path, monkeypatch):
         assert health.json()["ready"] is True
         assert health.json()["worker"]["running"] is True
         assert host.status_code == 200
-        assert host.json()["worker"]["running"] is True
+        assert "worker" not in host.json()
         assert all(page.status_code == 200 for page in pages)
     assert main.job_queue.health()["running"] is False
 

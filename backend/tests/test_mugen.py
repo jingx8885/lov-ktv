@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from lovktv import jobs
-from lovktv.catalog import fetch, mugen
+from lovktv.catalog import fetch, mugen, search
 
 ASS = """\ufeff[Script Info]
 Title: NIGHT DANCER
@@ -246,7 +246,7 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
 
 def test_search_songs_puts_mugen_first(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [
@@ -265,7 +265,7 @@ def test_search_songs_puts_mugen_first(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda query, count=8, page=1: [
             {
@@ -277,8 +277,8 @@ def test_search_songs_puts_mugen_first(monkeypatch):
             }
         ],
     )
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("NIGHT DANCER", count=10, page=1)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("NIGHT DANCER", count=10, page=1)
     assert result["hits"][0]["source"] == "mugen"
     assert result["hits"][0]["title"] == "NIGHT DANCER"
     assert result["hits"][1]["source"] == "bilibili"
@@ -318,10 +318,10 @@ def test_search_songs_queries_channels_together(monkeypatch):
             }
         ]
 
-    monkeypatch.setattr(fetch, "search_mugen", fake_mugen)
-    monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("群青", count=10, page=1)
+    monkeypatch.setattr(search, "search_mugen", fake_mugen)
+    monkeypatch.setattr(search, "search_bilibili_hits", fake_bili)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("群青", count=10, page=1)
     assert set(called) == {"mugen", "bilibili"}
     assert result["hits"][0]["source"] == "mugen"
     assert any(hit["source"] == "bilibili" for hit in result["hits"])
@@ -330,7 +330,7 @@ def test_search_songs_queries_channels_together(monkeypatch):
 
 def test_search_songs_keeps_mugen_when_others_fail(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [{"id": "kid", "title": "群青", "source": "mugen", "is_mv": True}],
@@ -339,19 +339,19 @@ def test_search_songs_keeps_mugen_when_others_fail(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("down")),
     )
-    monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
-    result = fetch.search_songs("群青", count=10, page=1)
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("群青", count=10, page=1)
     assert result["hits"][0]["title"] == "群青"
     assert result["hits"][0]["source"] == "mugen"
 
 
 def test_search_songs_shows_remaining_channels(monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_mugen",
         lambda query, count=10, page=1: {
             "hits": [{"id": "kid", "title": "Mugen", "source": "mugen", "is_mv": True}],
@@ -360,7 +360,7 @@ def test_search_songs_shows_remaining_channels(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_bilibili_hits",
         lambda query, count=8, page=1: [
             {
@@ -373,7 +373,7 @@ def test_search_songs_shows_remaining_channels(monkeypatch):
         ],
     )
     monkeypatch.setattr(
-        fetch,
+        search,
         "search_ytdlp_hits",
         lambda query, provider, count=5, page=1: [
             {
@@ -385,7 +385,7 @@ def test_search_songs_shows_remaining_channels(monkeypatch):
             }
         ],
     )
-    result = fetch.search_songs("晴天", count=10, page=1)
+    result = search.search_songs("晴天", count=10, page=1)
     assert [hit["source"] for hit in result["hits"]] == [
         "mugen",
         "bilibili",
