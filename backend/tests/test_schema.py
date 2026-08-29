@@ -23,6 +23,7 @@ def test_schema_covers_current_tables():
         "mic_gain",
         "lyric_mode",
         "now_index",
+        "paused",
     )
     assert TABLES["queue"] == ("id", "room", "song_id", "position", "created_at")
     assert TABLES["users"] == (
@@ -81,6 +82,7 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
     room = store.ensure_room("AB12CD")
     assert room["lyric_mode"] == "all"
     assert room["mic_gain"] == 80
+    assert int(room["paused"] or 0) == 0
 
 
 def test_overridden_sqlite_path_wins_over_postgres_url(tmp_path, monkeypatch):

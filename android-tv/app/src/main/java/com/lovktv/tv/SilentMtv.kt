@@ -7,7 +7,7 @@ import android.view.SurfaceView
 import android.view.View
 
 /**
- * HEVC MV picture only. Hisense/Android 9 VideoView.setVolume(0,0) often fails,
+ * H.264 MV picture on a hardware SurfaceView. Hisense/Android 9 VideoView.setVolume(0,0) often fails,
  * so this player drops audio tracks and remutes after start.
  */
 class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
@@ -24,6 +24,7 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
     private var pendingUrl: String = ""
 
     init {
+        surface.holder.setFormat(android.graphics.PixelFormat.OPAQUE)
         surface.holder.addCallback(this)
         surface.isFocusable = false
         surface.isFocusableInTouchMode = false
@@ -80,6 +81,8 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
             )
             nextPlayer.setVolume(0f, 0f)
             nextPlayer.isLooping = false
+            nextPlayer.setScreenOnWhilePlaying(true)
+            nextPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
             nextPlayer.setOnPreparedListener { ready ->
                 if (player !== ready) return@setOnPreparedListener
                 prepared = true

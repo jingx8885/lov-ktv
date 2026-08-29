@@ -16,11 +16,25 @@ export function mixEditing() {
 export function paintVocalMix(mix) {
   const btn = $("vocalMix");
   const label = $("vocalMixLabel");
-  if (!btn || !label) return;
   const on = Number(mix) >= 0.5;
-  btn.classList.toggle("on", on);
-  label.textContent = on ? t("common.vocal") : t("common.karaoke");
-  btn.setAttribute("aria-label", on ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
+  if (btn) {
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-label", on ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
+  }
+  if (label) label.textContent = on ? t("common.vocal") : t("common.karaoke");
+  const mixVocal = $("mixVocal");
+  if (mixVocal) mixVocal.textContent = on ? t("common.vocal") : t("common.karaoke");
+}
+
+export function paintPaused(paused) {
+  const on = !!paused;
+  const btn = $("deskPause");
+  const label = $("deskPauseLabel");
+  if (btn) {
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-label", on ? t("common.play") : t("common.pause"));
+  }
+  if (label) label.textContent = on ? t("common.play") : t("common.pause");
 }
 
 export { lyricModeForScript, lyricScript };
@@ -58,6 +72,7 @@ export function paintMix(room) {
   const micGainVal = $("micGainVal");
   if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
+  paintPaused(!!room.paused);
   const vol = room.host_volume != null ? room.host_volume : (room.volume != null ? room.volume : 80);
   const gain = room.mic_gain != null ? room.mic_gain : 80;
   hostVol.value = String(vol);
@@ -122,11 +137,15 @@ export function bindMix() {
   if ($("vocalMix")) $("vocalMix").onclick = () => {
     const next = $("vocalMix").classList.contains("on") ? 0 : 1;
     paintVocalMix(next);
-    fetch(roomUrl(`/api/rooms/${$("room").value}/mix`), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vocal_mix: next }),
-    });
+    postMix({ vocal_mix: next });
+  };
+  if ($("mixVocal")) $("mixVocal").onclick = () => $("vocalMix") && $("vocalMix").click();
+  if ($("mixSkip")) $("mixSkip").onclick = () => $("skip") && $("skip").click();
+  if ($("deskPause")) $("deskPause").onclick = () => {
+    if (api.needTvOrRoom && api.needTvOrRoom()) return;
+    const next = !$("deskPause").classList.contains("on");
+    paintPaused(next);
+    postMix({ paused: next });
   };
   if ($("skip")) $("skip").onclick = async () => {
     const code = $("room").value.trim().toUpperCase();

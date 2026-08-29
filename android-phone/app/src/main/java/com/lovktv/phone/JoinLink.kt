@@ -20,15 +20,23 @@ object JoinLink {
             return JoinTarget(Prefs.normalize(fallbackServer), text.uppercase())
         }
         val url = extractUrl(text) ?: return null
-        val server = originOf(url) ?: return null
+        val origin = originOf(url) ?: return null
         val room = queryParam(url, "room").orEmpty().uppercase()
         if (room.isEmpty() || !ROOM.matches(room)) return null
-        val lan = queryParam(url, "lan").orEmpty()
-        return JoinTarget(
-            server = Prefs.normalize(server),
-            room = room,
-            lan = if (lan.isBlank()) "" else Prefs.normalize(lan),
-        )
+        val process = queryParam(url, "process").orEmpty()
+        val lanParam = queryParam(url, "lan").orEmpty()
+        val originLocal = Prefs.looksLocal(DeskPage.hostOf(origin))
+        val server = when {
+            process.isNotBlank() -> Prefs.normalize(process)
+            originLocal -> Prefs.normalize(fallbackServer)
+            else -> Prefs.normalize(origin)
+        }
+        val lan = when {
+            lanParam.isNotBlank() -> Prefs.normalize(lanParam)
+            originLocal -> Prefs.normalize(origin)
+            else -> ""
+        }
+        return JoinTarget(server = server, room = room, lan = lan)
     }
 
     private fun extractUrl(text: String): String? {

@@ -27,6 +27,10 @@ def test_set_mix_clamps_volume_and_mic_gain(tmp_path, monkeypatch):
     assert snap["vocal_mix"] == 1
     assert snap["volume"] == 100
     assert snap["mic_gain"] == 0
+    snap = store.set_mix("MIX1", paused=True)
+    assert int(snap["paused"]) == 1
+    snap = store.set_mix("MIX1", paused=False)
+    assert int(snap["paused"]) == 0
 
 
 def test_mix_http_sets_mac_volume_and_snapshot(tmp_path, monkeypatch):

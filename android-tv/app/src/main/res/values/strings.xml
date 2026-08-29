@@ -5,7 +5,7 @@
     <string name="setup_title">处理服务器</string>
     <string name="setup_hint">搜歌、人声分离、歌词对齐走云端处理端。电视在本机开局域网服务，手机扫码进房。</string>
     <string name="server_hint">https://ktv.lovbrowser.com</string>
-    <string name="setup_remote">开唱后遥控器：确认键切换原唱/伴唱，右键切歌，上下键调音量。菜单键可改处理服务器。</string>
+    <string name="setup_remote">开唱后遥控器：确认键暂停/播放，菜单键切歌和原唱伴唱，上下键调音量。</string>
     <string name="open_tv">开启电视</string>
     <string name="server_error">本机服务还没就绪。按菜单键检查处理服务器地址。</string>
     <string name="host_channel">局域网服务</string>

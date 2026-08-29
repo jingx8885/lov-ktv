@@ -297,6 +297,8 @@ export default {
   "tv.switch": "Switch account",
   "tv.micLive": "Phone mic connected",
   "tv.toggle": "Original / karaoke",
+  "tv.settings": "Settings",
+  "tv.processServer": "Process server",
   "tv.queue": "Queue {n} · original {mix}% · volume {vol}%",
   "tv.queueMic": " · phone mic on",
   "tv.openFail": "Could not open the room",

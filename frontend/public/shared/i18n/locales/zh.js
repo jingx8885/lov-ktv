@@ -297,6 +297,8 @@ export default {
   "tv.switch": "换账号",
   "tv.micLive": "手机麦已接入",
   "tv.toggle": "原唱/伴唱",
+  "tv.settings": "设置",
+  "tv.processServer": "处理服务器",
   "tv.queue": "队列 {n} · 原唱 {mix}% · 音量 {vol}%",
   "tv.queueMic": " · 手机麦开",
   "tv.openFail": "开房失败",

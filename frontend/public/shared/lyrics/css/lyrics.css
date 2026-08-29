@@ -97,7 +97,7 @@ body.tv.is-waiting .lyric-plate {
   display: flex;
   width: 100%;
   min-height: 0.42em;
-  font-size: .34em;
+  font-size: 0.34em;
   color: var(--gold);
   line-height: 1.15;
   font-weight: 700;

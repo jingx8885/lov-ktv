@@ -22,7 +22,11 @@ const params = new URLSearchParams(location.search);
 if (params.get("login")) {
   location.replace("/login.html?" + params.toString());
 }
-$must("room").value = (params.get("room") || localStorage.getItem("room") || "").toUpperCase();
+const roomFromUrl = (params.get("room") || "").toUpperCase();
+if (roomFromUrl) {
+  try { localStorage.setItem("room", roomFromUrl); } catch (_) {}
+}
+$must("room").value = (roomFromUrl || localStorage.getItem("room") || "").toUpperCase();
 
 bootI18n();
 onLangChange(() => {

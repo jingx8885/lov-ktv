@@ -9,14 +9,20 @@ def test_tv_lyrics_use_this_morning_small_type():
     stage = (ROOT / "tv" / "stage" / "css" / "stage.css").read_text(encoding="utf-8")
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
     assert "clamp(28px, 4.6vw, 58px)" in shared
+    assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
-    assert "clamp(18px, 2.8vw, 34px)" in tv
+    assert "clamp(18px, 2.8vw, 34px)" not in tv
+    assert "position: absolute" in stage
+    assert "bottom: 36px" in stage
+    assert "body.tv .lyrics .anno .rt" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
     assert "font-size: 14px" in tv
     assert "font-size: 15px" in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
+    assert "backdrop-filter" not in tv
+    assert "drop-shadow" not in tv
     assert 'href="/tv/lyrics/css/lyrics.css"' in html
     assert 'href="/shared/lyrics/css/lyrics.css"' in html
     assert 'class="tv is-waiting"' in html

@@ -128,15 +128,22 @@ class DeskActivity : Activity() {
                 }
             }
 
+            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                injectLanHttp()
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
+                injectLanHttp()
                 injectRebindEntry()
             }
         }
     }
 
-    private fun loadDesk(hash: String = "") {
+    private fun loadDesk(hash: String = "", fresh: Boolean = false) {
         var url = DeskPage.url(server, roomCode, lanOrigin)
+        if (fresh) url += "&bind=" + System.currentTimeMillis()
         if (hash.isNotBlank()) url += "#$hash"
+        webView.stopLoading()
         webView.loadUrl(url)
     }
 
@@ -146,6 +153,89 @@ class DeskActivity : Activity() {
             scanning = true
             ScanActivity.start(this)
         }
+    }
+
+    fun lanHttp(id: String, url: String, method: String, body: String) {
+        Thread({
+            val hit = LanHttp.request(url, method, body)
+            val payload = org.json.JSONObject()
+                .put("id", id)
+                .put("ok", hit.ok)
+                .put("status", hit.status)
+                .put("body", hit.body)
+            runOnUiThread {
+                if (!::webView.isInitialized) return@runOnUiThread
+                webView.evaluateJavascript(
+                    "window.LovKtvOnHttp && window.LovKtvOnHttp($payload); window.LovKtvOnLanHttp && window.LovKtvOnLanHttp($payload);",
+                    null,
+                )
+            }
+        }, "lovktv-lan-http").start()
+    }
+
+    private fun injectLanHttp() {
+        webView.evaluateJavascript(
+            """
+            (function(){
+              if (window.__lovktvLanFetch || !window.LovKtvPhone || typeof LovKtvPhone.http !== 'function') return;
+              if (typeof window.fetch !== 'function') return;
+              window.__lovktvLanFetch = true;
+              window.__lovktvLanWait = {};
+              window.__lovktvLanSeq = 0;
+              window.LovKtvOnLanHttp = function(msg){
+                var pending = msg && window.__lovktvLanWait[msg.id];
+                if (!pending) return;
+                delete window.__lovktvLanWait[msg.id];
+                pending(msg);
+              };
+              function privateHttp(url){
+                try {
+                  var parsed = new URL(url, location.href);
+                  if (parsed.protocol !== 'http:') return false;
+                  var host = String(parsed.hostname || '').toLowerCase();
+                  if (host === 'localhost' || host.slice(-6) === '.local') return true;
+                  var p = host.split('.');
+                  if (p.length !== 4) return false;
+                  var n = p.map(function(x){ return +x; });
+                  if (n.some(function(x){ return x !== x || x < 0 || x > 255; })) return false;
+                  return (n[0] === 192 && n[1] === 168) || n[0] === 10 || (n[0] === 172 && n[1] >= 16 && n[1] <= 31);
+                } catch (err) { return false; }
+              }
+              var orig = window.fetch;
+              window.fetch = function(input, init){
+                var url = typeof input === 'string' ? input : (input && input.url) || '';
+                if (!privateHttp(url)) return orig.apply(this, arguments);
+                init = init || {};
+                var method = String(init.method || 'GET').toUpperCase();
+                var body = typeof init.body === 'string' ? init.body : '';
+                var id = String(++window.__lovktvLanSeq);
+                return new Promise(function(resolve, reject){
+                  var timer = setTimeout(function(){
+                    delete window.__lovktvLanWait[id];
+                    reject(new Error('lan-timeout'));
+                  }, 20000);
+                  window.__lovktvLanWait[id] = function(msg){
+                    clearTimeout(timer);
+                    var text = msg && msg.body != null ? String(msg.body) : '';
+                    var status = Number(msg && msg.status) || 0;
+                    if (typeof Response === 'function') {
+                      resolve(new Response(text, { status: status || 599, headers: { 'Content-Type': 'application/json' } }));
+                      return;
+                    }
+                    resolve({
+                      ok: !!(msg && msg.ok),
+                      status: status,
+                      json: function(){ try { return Promise.resolve(JSON.parse(text || '{}')); } catch (err) { return Promise.resolve({}); } }
+                    });
+                  };
+                  try { LovKtvPhone.http(id, url, method, body); }
+                  catch (err) { clearTimeout(timer); delete window.__lovktvLanWait[id]; reject(err); }
+                });
+              };
+            })();
+            """.trimIndent(),
+            null,
+        )
     }
 
     private fun injectRebindEntry() {
@@ -200,22 +290,17 @@ class DeskActivity : Activity() {
         }
         android.widget.Toast.makeText(this, R.string.scan_joining, android.widget.Toast.LENGTH_SHORT).show()
         Thread({
-            try {
-                val session = RoomConnect.open(target.server, target.room, target.lan)
-                runOnUiThread { applySession(session) }
-            } catch (exc: Exception) {
-                runOnUiThread {
-                    android.widget.Toast.makeText(
-                        this,
-                        exc.message ?: getString(R.string.scan_invalid),
-                        android.widget.Toast.LENGTH_LONG,
-                    ).show()
-                }
+            val session = runCatching {
+                RoomConnect.open(target.server, target.room, target.lan)
+            }.getOrElse {
+                RoomConnect.fromQr(target.server, target.room, target.lan)
             }
+            runOnUiThread { applySession(session) }
         }, "lovktv-join").start()
     }
 
     private fun applySession(session: RoomConnect.Session) {
+        val micMoved = session.micHost != micHost || session.micPort != micPort
         server = session.server
         roomCode = session.room
         lanOrigin = session.lanOrigin
@@ -223,7 +308,10 @@ class DeskActivity : Activity() {
         micPort = session.micPort
         micRate = session.micRate
         Prefs.save(this, server, roomCode, lanOrigin, micHost, micPort, micRate)
-        loadDesk("desk")
+        if (micMoved && MicService.running) {
+            MicService.apply(this, micHost, micPort, micRate)
+        }
+        loadDesk("desk", fresh = true)
     }
 
     fun micCapabilities(): String = NativeMic.capabilitiesJson(micHost, micPort, micRate)

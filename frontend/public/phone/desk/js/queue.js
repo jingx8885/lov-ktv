@@ -10,7 +10,12 @@ import { showDeskPane } from "./library.js";
 
 let lastLanFailAt = 0;
 
-export async function loadRoom() {
+async function fetchRoom(code) {
+  return fetchJson(roomUrl(`/api/rooms/${code}`)).catch(() => ({ ok: false, data: {} }));
+}
+
+export async function loadRoom(opts) {
+  const quiet = !!(opts && opts.quiet);
   const code = $("room").value.trim();
   if (!code) {
     if ($("nowCard") && !$("nowCard").innerHTML.trim()) {
@@ -19,9 +24,15 @@ export async function loadRoom() {
     return;
   }
   /** @type {{ ok: boolean, data: Room }} */
-  const { ok, data: room } = await fetchJson(roomUrl(`/api/rooms/${code}`)).catch(() => ({ ok: false, data: {} }));
+  let { ok, data: room } = await fetchRoom(code);
+  if ((!ok || !room.code) && lanOrigin()) {
+    for (let i = 0; i < 3 && (!ok || !room.code); i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      ({ ok, data: room } = await fetchRoom(code));
+    }
+  }
   if (!ok || !room.code) {
-    if (lanOrigin() && Date.now() - lastLanFailAt > 8000) {
+    if (!quiet && lanOrigin() && Date.now() - lastLanFailAt > 8000) {
       lastLanFailAt = Date.now();
       showToast(t("phone.room.lanFail"));
     }

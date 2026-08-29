@@ -91,6 +91,13 @@
 }
 .now-act:active { opacity: .5; }
 .now-mix { padding: 0 2px 4px; }
+.mix-acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.mix-acts .btn { min-height: 44px; }
 .mix-row {
   display: grid;
   grid-template-columns: minmax(52px, max-content) 1fr 36px;

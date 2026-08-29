@@ -451,8 +451,9 @@
   function confirm() {
     hideGate();
     var karaoke = $("karaoke");
-    if (karaoke && karaoke.paused) playEl(karaoke);
-    else toggleVocal();
+    if (!karaoke) return;
+    if (karaoke.paused) playEl(karaoke);
+    else karaoke.pause();
   }
 
   function karaokeHasSrc() {
@@ -474,9 +475,20 @@
     window.LovKtvRemote = {
       skip: skip,
       toggleVocal: toggleVocal,
+      togglePaused: confirm,
       volumeUp: function () { nudgeVol(10); },
       volumeDown: function () { nudgeVol(-10); },
       confirm: confirm,
+      settings: function () {
+        var sheet = $("tvSheet");
+        if (!sheet) return;
+        sheet.hidden = !sheet.hidden;
+      },
+      back: function () {
+        var sheet = $("tvSheet");
+        if (sheet && !sheet.hidden) { sheet.hidden = true; return true; }
+        return false;
+      },
       start: function () {
         hideGate();
         var karaoke = $("karaoke");
@@ -487,7 +499,8 @@
     if (startBtn) {
       startBtn.onclick = function () {
         hideGate();
-        confirm();
+        var karaoke = $("karaoke");
+        if (karaoke) playEl(karaoke);
       };
     }
     hideGate();

@@ -96,4 +96,10 @@ class HostGatewayTest {
         assertEquals(ApiKind.Media("abc", "karaoke.m4a"), HostGateway.classify("/media/abc/karaoke.m4a", "GET"))
         assertEquals(ApiKind.Proxy, HostGateway.classify("/api/search", "GET"))
     }
+
+    @Test
+    fun phoneCorsAllowsMachineHeaderPreflight() {
+        assertTrue(HostServer.CORS_ALLOW_HEADERS.contains("X-LovKtv-Machine"))
+        assertTrue(HostServer.CORS_ALLOW_METHODS.contains("OPTIONS"))
+    }
 }

@@ -1,10 +1,11 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { unlockAudio } from "../../audio/js/unlock.js";
 import { applyMix } from "./mix.js";
-import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js";
+import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "./tick.js";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";
@@ -13,6 +14,30 @@ function currentCode() {
 function loginOpen() {
   const gate = $("loginGate");
   return !!(gate && !gate.hidden);
+}
+
+function settingsBox() {
+  return $("tvSheet");
+}
+
+export function settingsOpen() {
+  const sheet = settingsBox();
+  return !!(sheet && !sheet.hidden);
+}
+
+function roomPaused() {
+  return !!(state.room && state.room.paused);
+}
+
+export function applyPaused() {
+  paintSettings();
+  if (roomPaused()) {
+    pauseAudio();
+    return;
+  }
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready") {
+    startPlayback();
+  }
 }
 
 function startIfNeeded() {
@@ -24,7 +49,7 @@ function startIfNeeded() {
     return true;
   }
   const karaoke = $("karaoke");
-  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && wantsResume(karaoke)) {
+  if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && karaoke && wantsResume(karaoke) && !roomPaused()) {
     startPlayback();
     return true;
   }
@@ -34,7 +59,7 @@ function startIfNeeded() {
 export async function skipSong() {
   const code = currentCode();
   if (!code) return;
-  const btn = $("skip");
+  const btn = $("skip") || $("tvSkip");
   if (btn) btn.disabled = true;
   try {
     const { ok, data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
@@ -45,6 +70,7 @@ export async function skipSong() {
     if (!state.room.now_playing) stopPlayback();
     else state.lastItem = "";
     if (state.room.now_playing && $("title")) $("title").textContent = state.room.now_playing.title;
+    closeSettings();
     await tick();
   } finally {
     if (btn) btn.disabled = false;
@@ -63,6 +89,28 @@ export async function toggleVocal() {
   if (!data || !data.code) return;
   state.room = /** @type {Room} */ (data);
   applyMix();
+  paintSettings();
+}
+
+export async function setPaused(paused) {
+  const code = currentCode();
+  if (!code) return;
+  const { data } = await fetchJson("/api/rooms/" + code + "/mix", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ paused: !!paused }),
+  });
+  if (!data || !data.code) return;
+  state.room = /** @type {Room} */ (data);
+  applyPaused();
+}
+
+export async function togglePaused() {
+  if (!state.room || !state.room.now_playing) {
+    startIfNeeded();
+    return;
+  }
+  await setPaused(!roomPaused());
 }
 
 export async function nudgeVolume(delta) {
@@ -82,10 +130,56 @@ export async function nudgeVolume(delta) {
   applyMix();
 }
 
+export function paintSettings() {
+  const vocal = $("tvVocal");
+  if (vocal) {
+    const on = (state.room && state.room.vocal_mix || 0) > 0.5;
+    vocal.textContent = on ? t("common.vocal") : t("common.karaoke");
+    vocal.classList.toggle("on", on);
+  }
+}
+
+export function openSettings() {
+  const sheet = settingsBox();
+  if (!sheet) return;
+  paintSettings();
+  sheet.hidden = false;
+  const skip = $("tvSkip");
+  if (skip) skip.focus();
+}
+
+export function closeSettings() {
+  const sheet = settingsBox();
+  if (sheet) sheet.hidden = true;
+}
+
+export function toggleSettings() {
+  if (loginOpen()) return;
+  if (settingsOpen()) closeSettings();
+  else openSettings();
+}
+
 export function confirm() {
   if (loginOpen()) return;
-  if (startIfNeeded()) return;
-  toggleVocal();
+  if (settingsOpen()) return;
+  if (startIfNeeded() && roomPaused()) return;
+  togglePaused();
+}
+
+export function back() {
+  if (settingsOpen()) {
+    closeSettings();
+    return true;
+  }
+  return false;
+}
+
+function openProcessSetup() {
+  try {
+    if (window.LovKtvNative && typeof window.LovKtvNative.openSetup === "function") {
+      window.LovKtvNative.openSetup();
+    }
+  } catch (err) {}
 }
 
 function onRemoteKey(event) {
@@ -95,11 +189,6 @@ function onRemoteKey(event) {
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   if (loginOpen()) return;
   switch (event.key) {
-    case "ArrowRight":
-    case "MediaTrackNext":
-      event.preventDefault();
-      skipSong();
-      break;
     case "ArrowUp":
       event.preventDefault();
       nudgeVolume(5);
@@ -113,6 +202,13 @@ function onRemoteKey(event) {
     case "MediaPlayPause":
       event.preventDefault();
       confirm();
+      break;
+    case "Escape":
+    case "Backspace":
+      if (settingsOpen()) {
+        event.preventDefault();
+        closeSettings();
+      }
       break;
     default:
       break;
@@ -128,11 +224,18 @@ export function bindRemote() {
   window.LovKtvRemote = {
     skip: skipSong,
     toggleVocal,
+    togglePaused,
     volumeUp: () => nudgeVolume(10),
     volumeDown: () => nudgeVolume(-10),
     confirm,
     start: startIfNeeded,
+    settings: toggleSettings,
+    back,
     __module: true,
   };
+  if ($("tvSkip")) $("tvSkip").onclick = () => skipSong();
+  if ($("tvVocal")) $("tvVocal").onclick = () => toggleVocal();
+  if ($("tvSetup")) $("tvSetup").onclick = () => openProcessSetup();
+  if ($("tvSheetBack")) $("tvSheetBack").onclick = () => closeSettings();
   document.addEventListener("keydown", onRemoteKey);
 }

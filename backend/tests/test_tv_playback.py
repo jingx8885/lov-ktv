@@ -28,6 +28,11 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function setWaiting" in tick
     assert "setWaiting(true)" in tick
     assert 'setWaiting(now.status !== "ready")' in tick
+    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
+    assert "togglePaused" in remote
+    assert 'id="tvSheet"' in html
+    assert 'id="tvSkip"' in html
+    assert "确认 暂停/播放" in html
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
     clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(encoding="utf-8")
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")

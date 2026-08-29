@@ -182,6 +182,7 @@ def _room_view(code: str, snap: dict | None = None, lang: str = "zh") -> dict:
     if room.get("now_playing"):
         room["now_playing"] = localize_song(lang, with_media_flags(room["now_playing"]))
     room["queue"] = [localize_song(lang, with_media_flags(item) or item) for item in room.get("queue") or []]
+    room["paused"] = bool(int(room.get("paused") or 0))
     return room
 
 
@@ -684,6 +685,7 @@ async def api_mix(request: Request, code: str, payload: dict) -> dict:
         payload.get("volume"),
         payload.get("mic_gain"),
         payload.get("lyric_mode"),
+        None if "paused" not in payload else bool(payload.get("paused")),
     )
     if payload.get("volume") is not None:
         set_host_volume(int(payload.get("volume") or 0))
@@ -764,6 +766,7 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     msg.get("volume"),
                     msg.get("mic_gain"),
                     msg.get("lyric_mode"),
+                    None if "paused" not in msg else bool(msg.get("paused")),
                 )
                 if msg.get("volume") is not None:
                     set_host_volume(int(msg.get("volume") or 0))

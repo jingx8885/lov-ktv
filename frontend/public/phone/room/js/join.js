@@ -62,10 +62,38 @@ export function openTv(code) {
   window.open(url, "lovktv-tv");
 }
 
+function nativeLanHttp() {
+  try {
+    return typeof window.LovKtvPhone !== "undefined" && typeof window.LovKtvPhone.http === "function";
+  } catch (err) {
+    return false;
+  }
+}
+
+function lanReady() {
+  if (!lanOrigin()) return true;
+  return !!(window.__lovktvLanFetch || window.__lovktvNativeLan);
+}
+
+function waitLanReady() {
+  if (lanReady() || !nativeLanHttp()) return Promise.resolve();
+  return new Promise((resolve) => {
+    let n = 0;
+    const timer = setInterval(() => {
+      n += 1;
+      if (lanReady() || n > 20) {
+        clearInterval(timer);
+        resolve();
+      }
+    }, 50);
+  });
+}
+
 export async function joinRoom(openScreen, quiet) {
   let code = $("room").value.trim().toUpperCase();
   $("join").disabled = true;
   try {
+    await waitLanReady();
     if (!code) {
       const created = await fetchJson(roomUrl("/api/rooms"), { method: "POST" });
       if (!created.ok || !created.data.code) throw new Error(created.data.detail || t("phone.room.openFail"));
@@ -86,7 +114,7 @@ export async function joinRoom(openScreen, quiet) {
       closeOverlay("roomSheet");
       showToast(t("phone.room.joinedToast", { code: room.code }));
     }
-    await api.loadRoom();
+    await api.loadRoom({ quiet: !!quiet });
   } catch (err) {
     $("roomState").textContent = t("phone.room.fail");
     if (!quiet) showToast(lanOrigin() ? t("phone.room.lanFail") : t("phone.room.fail"));

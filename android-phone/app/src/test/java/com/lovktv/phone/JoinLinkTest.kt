@@ -8,15 +8,17 @@ class JoinLinkTest {
     @Test
     fun parseTvPhoneQr() {
         val target = JoinLink.parse("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue3")
-        assertEquals("http://192.168.1.8:8787", target!!.server)
+        assertEquals("https://ktv.lovbrowser.com", target!!.server)
         assertEquals("EABAB5", target.room)
+        assertEquals("http://192.168.1.8:8787", target.lan)
     }
 
     @Test
     fun parseLoginScanQr() {
         val target = JoinLink.parse("http://192.168.1.8:8787/api/auth/scan?ticket=abc123&room=eabab5")
-        assertEquals("http://192.168.1.8:8787", target!!.server)
+        assertEquals("https://ktv.lovbrowser.com", target!!.server)
         assertEquals("EABAB5", target.room)
+        assertEquals("http://192.168.1.8:8787", target.lan)
     }
 
     @Test
@@ -54,6 +56,16 @@ class JoinLinkTest {
             "https://ktv.lovbrowser.com/m.html?room=EABAB5&v=queue3&lan=http://192.168.1.8:8788",
         )
         assertEquals("http://192.168.1.8:8788", raw!!.lan)
+    }
+
+    @Test
+    fun parseLanQrKeepsProcessAsCatalog() {
+        val target = JoinLink.parse(
+            "http://192.168.1.8:8788/m.html?room=EABAB5&process=https%3A%2F%2Fktv.lovbrowser.com",
+        )
+        assertEquals("https://ktv.lovbrowser.com", target!!.server)
+        assertEquals("EABAB5", target.room)
+        assertEquals("http://192.168.1.8:8788", target.lan)
     }
 }
 

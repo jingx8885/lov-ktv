@@ -243,7 +243,7 @@ export function paintLine(el, cue, t, slot, paint, empty, mode) {
   }
   const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
   const id = cueKey(cue) + ":" + skin + ":" + view;
-  const fitKey = `${id}:${Math.round(el.clientWidth)}x${Math.round(el.clientHeight)}`;
+  const fitKey = `${id}:${Math.round(el.clientWidth)}`;
   if (paint[slot] !== id) {
     el.innerHTML = renderCue(cue, t, view);
     paint[slot] = id;

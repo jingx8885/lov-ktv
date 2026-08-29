@@ -44,3 +44,18 @@ def test_queue_needs_room_not_forced_tv_scan():
     assert "api.requestTvBind && api.requestTvBind()" in rtc
     assert "phone.mic.needTv" in rtc
     assert 'openOverlay("roomSheet")' in join
+
+
+def test_scan_reload_uses_url_room_and_waits_for_lan():
+    app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
+    join = (ROOT / "phone" / "room" / "js" / "join.js").read_text(encoding="utf-8")
+    queue = (ROOT / "phone" / "desk" / "js" / "queue.js").read_text(encoding="utf-8")
+    http = (ROOT / "shared" / "ui" / "js" / "http.js").read_text(encoding="utf-8")
+    assert 'const roomFromUrl = (params.get("room") || "").toUpperCase();' in app
+    assert 'localStorage.setItem("room", roomFromUrl)' in app
+    assert "function waitLanReady()" in join
+    assert "await waitLanReady();" in join
+    assert "await api.loadRoom({ quiet: !!quiet });" in join
+    assert "const quiet = !!(opts && opts.quiet);" in queue
+    assert "window.__lovktvNativeLan = true" in http
+    assert "LovKtvPhone.http" in http

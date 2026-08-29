@@ -35,6 +35,7 @@ data class RoomSnap(
     val volume: Int = 80,
     val micGain: Int = 80,
     val nowIndex: Int = 0,
+    val paused: Boolean = false,
     val queue: List<QueueItem> = emptyList(),
 ) {
     val nowPlaying: QueueItem?
@@ -48,6 +49,7 @@ data class RoomSnap(
             .put("volume", volume)
             .put("mic_gain", micGain)
             .put("now_index", nowIndex)
+            .put("paused", paused)
             .put("queue", JSONArray(queue.map { it.toJson() }))
             .put("now_playing", now?.toJson() ?: JSONObject.NULL)
             .put("mic_on", false)
@@ -117,7 +119,7 @@ class LocalRoom(
             cur >= queue.size -> 0
             else -> cur
         }
-        val next = room.copy(queue = queue, nowIndex = nxt)
+        val next = room.copy(queue = queue, nowIndex = nxt, paused = false)
         rooms[room.code] = next
         return next
     }
@@ -137,7 +139,7 @@ class LocalRoom(
         }
         val idx = room.queue.indexOfFirst { it.id == id }
         if (idx < 0) return room
-        val next = room.copy(nowIndex = idx)
+        val next = room.copy(nowIndex = idx, paused = false)
         rooms[room.code] = next
         return next
     }
@@ -156,12 +158,13 @@ class LocalRoom(
     }
 
     @Synchronized
-    fun setMix(code: String, vocalMix: Double? = null, volume: Int? = null, micGain: Int? = null): RoomSnap {
+    fun setMix(code: String, vocalMix: Double? = null, volume: Int? = null, micGain: Int? = null, paused: Boolean? = null): RoomSnap {
         val room = ensure(code)
         val next = room.copy(
             vocalMix = vocalMix?.let { max(0.0, min(1.0, it)) } ?: room.vocalMix,
             volume = volume?.let { max(0, min(100, it)) } ?: room.volume,
             micGain = micGain?.let { max(0, min(100, it)) } ?: room.micGain,
+            paused = paused ?: room.paused,
         )
         rooms[room.code] = next
         return next
@@ -181,10 +184,20 @@ class LocalRoom(
             volume = obj.optInt("volume", 80),
             micGain = obj.optInt("mic_gain", 80),
             nowIndex = if (queue.isEmpty()) 0 else nowIndex.coerceAtMost(queue.lastIndex),
+            paused = jsonFlag(obj, "paused") ?: false,
             queue = queue,
         )
         rooms[code] = snap
         return snap
+    }
+
+    private fun jsonFlag(obj: JSONObject, key: String): Boolean? {
+        if (!obj.has(key) || obj.isNull(key)) return null
+        return when (val raw = obj.get(key)) {
+            is Boolean -> raw
+            is Number -> raw.toInt() != 0
+            else -> obj.optBoolean(key)
+        }
     }
 
     private fun jsonQueue(array: JSONArray?): List<QueueItem> {

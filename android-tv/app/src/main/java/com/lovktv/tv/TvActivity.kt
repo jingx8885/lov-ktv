@@ -154,6 +154,13 @@ class TvActivity : Activity(), TvHost {
         lyricsView.visibility = View.GONE
     }
 
+    override fun openSetup() {
+        startActivity(
+            Intent(this, SetupActivity::class.java).putExtra(SetupActivity.EXTRA_FORCE, true),
+        )
+        finish()
+    }
+
     private fun loadWhenReady() {
         webView.post(object : Runnable {
             private var tries = 0
@@ -175,15 +182,12 @@ class TvActivity : Activity(), TvHost {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
-            webView.goBack()
+        if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_INFO) {
+            sendRemote("settings")
             return true
         }
-        if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_INFO) {
-            startActivity(
-                Intent(this, SetupActivity::class.java).putExtra(SetupActivity.EXTRA_FORCE, true),
-            )
-            finish()
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            sendRemote("back")
             return true
         }
         if (event != null && RemoteKeys.interceptInNative(keyCode)) {
@@ -212,7 +216,6 @@ class TvActivity : Activity(), TvHost {
         super.onResume()
         webView.onResume()
         webView.requestFocus()
-        resumeMtv()
     }
 
     override fun onDestroy() {

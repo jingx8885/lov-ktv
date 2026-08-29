@@ -79,6 +79,10 @@
         </button>
       </div>
       <div class="now-tools">
+        <button class="now-act" id="deskPause" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v14H5zm9 0h5v14h-5z"/></svg>
+          <span id="deskPauseLabel" data-i18n="common.pause">暂停</span>
+        </button>
         <button class="now-act" id="skip" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z"/></svg>
           <span data-i18n="common.skip">切歌</span>
@@ -483,8 +487,12 @@
       <button type="button" class="overlay-backdrop" data-close-sheet="mixSheet" data-i18n-aria="common.close"></button>
       <div class="sheet" role="dialog" aria-labelledby="mixSheetTitle">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <h2 id="mixSheetTitle" data-i18n="common.volume">音量</h2>
+        <h2 id="mixSheetTitle" data-i18n="tv.settings">设置</h2>
         <div class="now-mix">
+          <div class="mix-acts">
+            <button class="btn" id="mixSkip" type="button" data-i18n="common.skip">切歌</button>
+            <button class="btn" id="mixVocal" type="button" data-i18n="tv.toggle">原唱/伴唱</button>
+          </div>
           <label class="mix-row">
             <span id="hostVolLabel" data-i18n="common.volume">音量</span>
             <input type="range" id="hostVol" min="0" max="100" value="80" />

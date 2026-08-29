@@ -334,7 +334,7 @@ def skip(code: str) -> dict[str, Any]:
     nxt = 0 if remaining <= 0 or cur >= remaining else cur
     with _LOCK, connect() as conn:
         execute(conn, "DELETE FROM queue WHERE id=?", (item_id,))
-        execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (nxt, code))
+        execute(conn, "UPDATE rooms SET now_index=?, paused=0 WHERE code=?", (nxt, code))
     return room_snapshot(code)
 
 
@@ -362,7 +362,7 @@ def play_now(code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]:
     if snap["queue"][idx].get("status") != READY:
         raise ValueError("这首还没就绪，不能点")
     with _LOCK, connect() as conn:
-        execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (idx, code))
+        execute(conn, "UPDATE rooms SET now_index=?, paused=0 WHERE code=?", (idx, code))
     return room_snapshot(code)
 
 
@@ -372,6 +372,7 @@ def set_mix(
     volume: int | None = None,
     mic_gain: int | None = None,
     lyric_mode: str | None = None,
+    paused: bool | None = None,
 ) -> dict[str, Any]:
     fields = {}
     if vocal_mix is not None:
@@ -382,6 +383,8 @@ def set_mix(
         fields["mic_gain"] = max(0, min(100, int(mic_gain)))
     if lyric_mode is not None:
         fields["lyric_mode"] = normalize_lyric_mode(lyric_mode)
+    if paused is not None:
+        fields["paused"] = 1 if paused else 0
     allowed = {key: value for key, value in fields.items() if key in ROOM_FIELDS}
     if allowed:
         assignments = ", ".join(f"{key}=?" for key in allowed)

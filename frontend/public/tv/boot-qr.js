@@ -101,11 +101,14 @@
         if (!code) throw new Error("开房失败");
         remember(code);
         var host = (hit && hit.host) || {};
-        var process = (host.process_origin || "").replace(/\/$/, "");
-        var origin = (host.origin || location.origin || "").replace(/\/$/, "");
-        var url = (process || origin) + "/m.html?room=" + code + "&v=queue3";
-        if (origin && process && origin !== process) {
-          url += "&lan=" + encodeURIComponent(origin);
+        var url = host.phone_url || "";
+        if (!url) {
+          var process = (host.process_origin || "").replace(/\/$/, "");
+          var origin = (host.origin || location.origin || "").replace(/\/$/, "");
+          url = (origin || process) + "/m.html?room=" + code;
+          if (origin && process && origin !== process) {
+            url += "&process=" + encodeURIComponent(process);
+          }
         }
         paint(url, code);
       })

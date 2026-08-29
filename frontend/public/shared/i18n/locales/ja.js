@@ -297,6 +297,8 @@ export default {
   "tv.switch": "アカウント切替",
   "tv.micLive": "スマホマイク接続中",
   "tv.toggle": "原曲/伴奏",
+  "tv.settings": "設定",
+  "tv.processServer": "処理サーバー",
   "tv.queue": "予約 {n} · 原曲 {mix}% · 音量 {vol}%",
   "tv.queueMic": " · スマホマイクオン",
   "tv.openFail": "部屋を開けませんでした",

@@ -22,6 +22,7 @@ TABLES: dict[str, tuple[str, ...]] = {
         "mic_gain",
         "lyric_mode",
         "now_index",
+        "paused",
     ),
     "queue": ("id", "room", "song_id", "position", "created_at"),
     "users": (
@@ -39,7 +40,7 @@ TABLES: dict[str, tuple[str, ...]] = {
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
-ROOM_FIELDS = frozenset({"vocal_mix", "volume", "mic_gain", "lyric_mode", "now_index"})
+ROOM_FIELDS = frozenset({"vocal_mix", "volume", "mic_gain", "lyric_mode", "now_index", "paused"})
 
 # Epoch milliseconds overflow 32-bit INTEGER on Postgres.
 SQLITE_DDL = """
@@ -61,7 +62,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   volume INTEGER NOT NULL DEFAULT 80,
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
-  now_index INTEGER NOT NULL DEFAULT 0
+  now_index INTEGER NOT NULL DEFAULT 0,
+  paused INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS queue (
   id TEXT PRIMARY KEY,
@@ -127,7 +129,8 @@ CREATE TABLE IF NOT EXISTS rooms (
   volume INTEGER NOT NULL DEFAULT 80,
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
-  now_index INTEGER NOT NULL DEFAULT 0
+  now_index INTEGER NOT NULL DEFAULT 0,
+  paused INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS queue (
   id TEXT PRIMARY KEY,
@@ -177,4 +180,5 @@ CREATE INDEX IF NOT EXISTS hosts_room ON hosts (room);
 ROOM_MIGRATIONS = (
     ("mic_gain", "INTEGER NOT NULL DEFAULT 80"),
     ("lyric_mode", "TEXT NOT NULL DEFAULT 'all'"),
+    ("paused", "INTEGER NOT NULL DEFAULT 0"),
 )

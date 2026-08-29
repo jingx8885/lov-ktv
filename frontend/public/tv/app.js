@@ -30,6 +30,7 @@ document.addEventListener("visibilitychange", () => {
     pauseAudio();
     return;
   }
+  if (state.room && state.room.paused) return;
   if (state.armed && state.room && state.room.now_playing) startPlayback();
 });
 
@@ -39,6 +40,7 @@ $must("start").onclick = () => {
 };
 document.addEventListener("pointerdown", () => {
   unlockAudio();
+  if (state.room && state.room.paused) return;
   const karaoke = $must("karaoke");
   if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && wantsResume(karaoke)) {
     startPlayback();
@@ -46,6 +48,7 @@ document.addEventListener("pointerdown", () => {
 });
 document.addEventListener("keydown", () => {
   unlockAudio();
+  if (state.room && state.room.paused) return;
   const karaoke = $must("karaoke");
   if (state.room && state.room.now_playing && state.room.now_playing.status === "ready" && wantsResume(karaoke)) {
     startPlayback();
@@ -70,8 +73,9 @@ bootAuth().then(() => {
   setInterval(tick, 1500);
   requestAnimationFrame(paint);
 }).catch((err) => {
-  const code = document.getElementById("code");
   const qr = document.getElementById("qr");
+  if (qr && qr.querySelector("canvas, img, svg")) return;
+  const code = document.getElementById("code");
   if (code) code.textContent = "开房失败";
   if (qr) qr.textContent = (err && err.message) || "请按菜单键检查处理服务器";
 });

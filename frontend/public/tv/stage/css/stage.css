@@ -29,12 +29,16 @@ body.tv.is-waiting .party-fx { display: none !important; }
 .tv.has-native-mv::after { display: none; }
 .tv.has-native-mv .stage-fx,
 .tv.has-native-mv .party-fx { display: none !important; }
-.tv.has-native-mv .lyrics {
+.tv .lyrics {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 36px;
   min-height: 0;
-  align-items: end;
-  justify-items: center;
-  place-items: end center;
-  padding-bottom: 28px;
+  height: auto;
+  display: block;
+  text-align: center;
+  padding: 0 28px;
 }
 .tv.has-native-mv .lyrics .prev { display: none; }
 .stage-fx,
@@ -64,7 +68,7 @@ body.tv.is-waiting .party-fx { display: none !important; }
 }
 .tv-ui {
   position: relative; z-index: 10; min-height: 100vh;
-  display: grid; grid-template-rows: 1fr; padding: 24px 32px 28px;
+  display: block; padding: 24px 32px 28px;
 }
 .tv-ui header,
 .tv .user-chip,

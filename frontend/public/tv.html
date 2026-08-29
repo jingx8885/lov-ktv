@@ -24,7 +24,16 @@
       <div id="qr" class="qr"></div>
       <span class="qr-cap"><span data-i18n="tv.scan">扫码 · </span><b id="code"></b></span>
     </a>
-    <p class="remote-hint" id="remoteHint" hidden>确认 原唱/伴唱 · 右键切歌 · 上下音量</p>
+      <p class="remote-hint" id="remoteHint" hidden>确认 暂停/播放 · 菜单 切歌、原唱伴唱</p>
+  </div>
+  <div class="tv-sheet" id="tvSheet" hidden>
+    <button type="button" class="overlay-backdrop" id="tvSheetBack" data-i18n-aria="common.close"></button>
+    <div class="tv-sheet-card" role="dialog">
+      <h2 data-i18n="tv.settings">设置</h2>
+      <button class="btn primary" id="tvSkip" type="button" data-i18n="common.skip">切歌</button>
+      <button class="btn" id="tvVocal" type="button" data-i18n="tv.toggle">原唱/伴唱</button>
+      <button class="btn" id="tvSetup" type="button" data-i18n="tv.processServer">处理服务器</button>
+    </div>
   </div>
   <div class="login-gate" id="loginGate" hidden>
     <div class="login-card">

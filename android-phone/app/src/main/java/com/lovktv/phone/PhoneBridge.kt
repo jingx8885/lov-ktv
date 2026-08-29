@@ -30,4 +30,9 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun scanTv() {
         activity.scanTv()
     }
+
+    @JavascriptInterface
+    fun http(id: String, url: String, method: String, body: String) {
+        activity.lanHttp(id, url, method, body)
+    }
 }

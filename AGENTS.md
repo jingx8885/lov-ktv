@@ -42,17 +42,25 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 
 ## App 发版
 
-- APK 不进 git、不进镜像。文件落在生产机 `data/apps/`（compose 数据卷），落地页读 `GET /api/apps`。
+- APK 不进 git、不进镜像。落在生产机 `data/apps/`，落地页读 `GET /api/apps`。
 - 下载：`https://ktv.lovbrowser.com/apps/tv.apk`、`/apps/phone.apk`。
-- 43 的 `~/lov-ktv/.env` 设 `LOVKTV_APP_UPLOAD_TOKEN`（不要打印）。改 env 后 recreate 容器。
-- 代码上线后再传包：
+- **直接打接口上传。不要 scp、不要 ssh 拷数据卷、不要另写上传流程。**
+- 43 的 `~/lov-ktv/.env` 有 `LOVKTV_APP_UPLOAD_TOKEN`（不要打印、不要写进聊天）。本机读进环境变量后立刻：
 
 ```bash
-export LOVKTV_APP_UPLOAD_TOKEN=...
-python scripts/publish-apps.py --tv path/to/tv.apk --phone path/to/phone.apk --version 2026.8.29
+python scripts/publish-apps.py --version 2026.8.29
 ```
 
-- 接口：`POST /api/apps/{tv|phone}`，`Authorization: Bearer`，multipart 字段 `file`，可选 `version`。
+未指定路径时用 Gradle 产物：电视 `android-tv/.../debug/app-debug.apk`，手机 `android-phone/.../release/app-release.apk`。
+- 接口：`POST /api/apps/{tv|phone}`，`Authorization: Bearer`，multipart 字段 `file`，可选 `version`。默认 `https://ktv.lovbrowser.com`。
+- 本机 Clash 掐 Cloudflare 时，只加一条隧道打同一接口（生产只绑 `127.0.0.1:8790`），不要改成别的办法：
+
+```bash
+ssh -o ExitOnForwardFailure=yes -N -L 18790:127.0.0.1:8790 ubuntu@43.134.133.185
+python scripts/publish-apps.py --base http://127.0.0.1:18790 --version 2026.8.29
+```
+
+- 电视 APK 会烤进 `frontend/public`。重打前对 `android-tv` 跑 `:app:copyWebAssets assembleDebug --rerun-tasks`。
 
 ## 产品边界
 

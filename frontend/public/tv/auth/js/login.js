@@ -101,22 +101,27 @@ export async function bootAuth() {
   /** @type {{ ok: boolean, data: Room }} */
   const roomRes = wanted
     ? await fetchJson("/api/rooms/" + wanted)
-    : await fetchJson("/api/rooms", { method: "POST" });
+    : await fetchJson("/api/rooms", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
   if (!roomRes.ok || !roomRes.data || !roomRes.data.code) {
     throw new Error((roomRes.data && roomRes.data.detail) || t("tv.openFail"));
   }
+  state.room = roomRes.data;
   localStorage.setItem("tvRoom", state.room.code);
   $("code").textContent = state.room.code;
   let process = "";
   let lan = "";
+  let url = "";
   try {
     const { data } = await fetchJson("/api/host");
     process = data && data.process_origin ? String(data.process_origin).replace(/\/$/, "") : "";
     lan = data && data.origin ? String(data.origin).replace(/\/$/, "") : "";
+    url = data && data.phone_url ? String(data.phone_url) : "";
   } catch (err) {}
-  const base = process || lan || (await hostOrigin());
-  let url = base + "/m.html?room=" + state.room.code + "&v=queue3";
-  if (lan && process && lan !== process) url += "&lan=" + encodeURIComponent(lan);
+  if (!url) {
+    const origin = lan || process || (await hostOrigin());
+    url = origin + "/m.html?room=" + state.room.code;
+    if (process && origin !== process) url += "&process=" + encodeURIComponent(process);
+  }
   $("phoneLink").href = url;
   renderQr(url);
   const user = await currentUser();

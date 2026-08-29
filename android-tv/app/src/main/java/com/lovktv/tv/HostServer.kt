@@ -3,6 +3,7 @@ package com.lovktv.tv
 import android.content.res.AssetManager
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.withCharset
 import io.ktor.http.content.OutgoingContent
@@ -63,6 +64,11 @@ class HostServer(
     private val assetRev: String = "",
     private val persistRoom: (String) -> Unit = {},
 ) {
+    companion object {
+        const val CORS_ALLOW_METHODS = "GET, POST, OPTIONS"
+        const val CORS_ALLOW_HEADERS = "Content-Type, Accept, Accept-Language, X-LovKtv-Machine"
+    }
+
     @Volatile
     var processOrigin: String = Prefs.normalize(processOrigin)
 
@@ -182,7 +188,18 @@ class HostServer(
         }
     }
 
+    private fun allowPhone(call: ApplicationCall) {
+        call.response.headers.append("Access-Control-Allow-Origin", "*")
+        call.response.headers.append("Access-Control-Allow-Methods", CORS_ALLOW_METHODS)
+        call.response.headers.append("Access-Control-Allow-Headers", CORS_ALLOW_HEADERS)
+    }
+
     private suspend fun dispatch(call: ApplicationCall) {
+        allowPhone(call)
+        if (call.request.httpMethod == HttpMethod.Options) {
+            call.respond(HttpStatusCode.NoContent)
+            return
+        }
         val path = call.request.path().ifBlank { "/" }
         val method = call.request.httpMethod.value
         when (val kind = HostGateway.classify(path, method)) {
@@ -345,6 +362,11 @@ class HostServer(
                 vocalMix = if (obj.has("vocal_mix")) obj.optDouble("vocal_mix") else null,
                 volume = if (obj.has("volume")) obj.optInt("volume") else null,
                 micGain = if (obj.has("mic_gain")) obj.optInt("mic_gain") else null,
+                paused = when {
+                    !obj.has("paused") || obj.isNull("paused") -> null
+                    obj.get("paused") is Number -> obj.optInt("paused") != 0
+                    else -> obj.optBoolean("paused")
+                },
             ).toJson()
             else -> throw IllegalArgumentException("处理服务器暂时连不上")
         }

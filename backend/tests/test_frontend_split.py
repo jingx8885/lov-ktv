@@ -19,6 +19,7 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     http = (ROOT / "shared" / "ui" / "js" / "http.js").read_text(encoding="utf-8")
     join = (ROOT / "phone" / "room" / "js" / "join.js").read_text(encoding="utf-8")
     assert "X-LovKtv-Machine" in http
+    assert "LovKtvPhone.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
     assert (ROOT / "phone" / "player" / "js" / "playback.js").is_file()

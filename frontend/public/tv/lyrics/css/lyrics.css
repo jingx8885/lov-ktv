@@ -1,16 +1,12 @@
-.lyrics { text-align: center; min-height: 40vh; display: grid; align-items: center; justify-items: center; place-items: center; }
+.lyrics { text-align: center; min-height: 0; }
 .tv .lyrics > .lyric-plate {
+  display: inline-block;
   max-width: 92vw;
-  max-width: min(92vw, 1520px);
-  padding: 20px 44px 24px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 36%, rgba(6, 10, 22, 0.18)),
-    rgba(8, 12, 26, 0.58);
+  padding: 8px 24px 4px;
+  border-radius: 16px;
+  background: rgba(8, 12, 26, 0.58);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.16);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.46);
 }
 .tv:not(.has-native-mv) .lyric-plate:not(.bare) {
   background:
@@ -20,13 +16,6 @@
 .tv .lyrics .prev:empty,
 .tv .lyrics .next:empty,
 .tv .lyrics .line:empty { display: none; }
-.tv .lyric-plate:not(:has(.line:not(:empty))) {
-  display: none;
-  background: none;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-}
 body.tv.is-waiting .lyrics,
 body.tv.is-waiting .lyric-plate {
   display: none !important;
@@ -34,8 +23,6 @@ body.tv.is-waiting .lyric-plate {
   background-image: none !important;
   border: 0 !important;
   box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
   padding: 0 !important;
 }
 body.tv.has-native-mv .lyric-plate,
@@ -47,9 +34,6 @@ body.tv .lyric-plate.bare {
   border-radius: 0 !important;
   box-shadow: none !important;
   outline: none !important;
-  filter: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
   padding: 0 12px 4px !important;
 }
 body.tv.has-native-mv .lyrics .line,
@@ -59,6 +43,7 @@ body.tv .lyric-plate.bare .line {
   background: rgba(0, 0, 0, 0.58);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
 }
+body.tv .lyrics .line,
 body.tv.has-native-mv .lyrics .prev,
 body.tv.has-native-mv .lyrics .next,
 body.tv .lyric-plate.bare .prev,
@@ -71,31 +56,24 @@ body.tv .lyric-plate.bare .next {
     -1px 0 0 #000,
     0 4px 12px rgba(0, 0, 0, 0.7);
 }
-body.tv.has-native-mv .lyrics .line .rb,
-body.tv.has-native-mv .lyrics .line .rt,
-body.tv.has-native-mv .lyrics .line .roma,
-body.tv.has-native-mv .lyrics .line .gloss,
-body.tv.has-native-mv .lyrics .line .lyric-zh,
-body.tv .lyric-plate.bare .line .rb,
-body.tv .lyric-plate.bare .line .rt,
-body.tv .lyric-plate.bare .line .roma,
-body.tv .lyric-plate.bare .line .gloss,
-body.tv .lyric-plate.bare .line .lyric-zh {
-  filter:
-    drop-shadow(0 1px 0 #000)
-    drop-shadow(0 -1px 0 #000)
-    drop-shadow(1px 0 0 #000)
-    drop-shadow(-1px 0 0 #000)
-    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.75));
-}
 body.tv .lyrics .line {
   font-size: 42px;
-  font-size: clamp(28px, 4.6vw, 58px);
 }
 body.tv .lyrics .prev,
 body.tv .lyrics .next {
   font-size: 24px;
-  font-size: clamp(18px, 2.8vw, 34px);
+}
+body.tv .lyrics .anno .rt {
+  min-height: 16px;
+  font-size: 14px;
+  line-height: 1.15;
+  font-weight: 700;
+}
+body.tv .lyrics .anno .rt i {
+  font-size: 14px;
+  line-height: 1.15;
+  font-weight: 700;
+  font-style: normal;
 }
 body.tv .lyrics .anno .roma {
   min-height: 1.15em;

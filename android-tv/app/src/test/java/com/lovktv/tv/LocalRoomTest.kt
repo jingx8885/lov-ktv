@@ -1,6 +1,7 @@
 package com.lovktv.tv
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -73,5 +74,8 @@ class LocalRoomTest {
         val skipped = room.skip("EABAB5")
         assertTrue(skipped.queue.isEmpty())
         assertNull(skipped.nowPlaying)
+        val paused = room.setMix("EABAB5", paused = true)
+        assertTrue(paused.paused)
+        assertFalse(room.setMix("EABAB5", paused = false).paused)
     }
 }

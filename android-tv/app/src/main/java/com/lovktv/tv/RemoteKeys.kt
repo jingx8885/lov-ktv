@@ -5,7 +5,6 @@ import android.view.KeyEvent
 object RemoteKeys {
     fun jsAction(keyCode: Int): String? {
         return when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_MEDIA_NEXT,
             KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,
             KeyEvent.KEYCODE_CHANNEL_UP,
@@ -18,6 +17,10 @@ object RemoteKeys {
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             -> "confirm"
             KeyEvent.KEYCODE_MEDIA_PLAY -> "start"
+            KeyEvent.KEYCODE_MENU,
+            KeyEvent.KEYCODE_INFO,
+            -> "settings"
+            KeyEvent.KEYCODE_BACK -> "back"
             else -> null
         }
     }
@@ -29,6 +32,8 @@ object RemoteKeys {
             KeyEvent.KEYCODE_CHANNEL_UP,
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
             KeyEvent.KEYCODE_MEDIA_PLAY,
+            KeyEvent.KEYCODE_MENU,
+            KeyEvent.KEYCODE_INFO,
             -> true
             else -> false
         }

@@ -233,7 +233,9 @@ export async function tick() {
         .catch(() => {});
     }
     const karaoke = $("karaoke");
-    if (pageVisible() && state.isLeader && wantsResume(karaoke)) {
+    if (state.room && state.room.paused) {
+      pauseAudio();
+    } else if (pageVisible() && state.isLeader && wantsResume(karaoke)) {
       startPlayback();
     }
   }
@@ -243,6 +245,10 @@ export function startPlayback() {
   if (!pageVisible()) {
     pauseAudio();
     $("gate").hidden = false;
+    return;
+  }
+  if (state.room && state.room.paused) {
+    pauseAudio();
     return;
   }
   state.armed = true;

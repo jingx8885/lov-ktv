@@ -51,6 +51,11 @@ class TvBridge(private val host: TvHost) {
     fun clearLyrics() {
         host.runOnUi { host.showLyrics("", "", "") }
     }
+
+    @JavascriptInterface
+    fun openSetup() {
+        host.runOnUi { host.openSetup() }
+    }
 }
 
 interface TvHost {
@@ -65,6 +70,7 @@ interface TvHost {
     fun mtvPlaying(): Boolean
     fun showCover(url: String)
     fun showLyrics(cur: String, zh: String, next: String)
+    fun openSetup()
 }
 
 object LyricOverlay {
