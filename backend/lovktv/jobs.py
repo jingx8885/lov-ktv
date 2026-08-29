@@ -598,44 +598,75 @@ def _has_ready_lyrics(out_dir: Path) -> bool:
     return source in {"karaoke-mugen", "kugou"} or meta.get("needs_align") is False
 
 
+class _ModuleSongRepository:
+    """Compatibility adapter that keeps monkeypatchable module seams alive."""
+
+    def list(self) -> list[dict]:
+        return list_songs()
+
+    def retry_query(self, song: dict) -> str:
+        return retry_query(song)
+
+
+class JobRecovery:
+    """Find persisted songs that need to be queued again after a restart."""
+
+    def __init__(
+        self,
+        repository: SongRepository | None = None,
+        submit: Callable[..., Any] | None = None,
+        media_dir: Path | None = None,
+    ) -> None:
+        self.repository = repository or _ModuleSongRepository()
+        self.submit = submit
+        self.media_dir = media_dir or MEDIA_DIR
+
+    def resume(self) -> int:
+        """Continue songs left queued/aligning after a reload killed the worker."""
+        submit = self.submit or spawn
+        media_dir = self.media_dir
+        songs = self.repository
+        resumed = 0
+        pending_finish: list[tuple] = []
+        pending_align: list[tuple] = []
+        pending_import: list[tuple] = []
+        for song in reversed(songs.list()):
+            status = str(song.get("status") or "")
+            song_id = str(song["id"])
+            out_dir = media_dir / song_id
+            has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
+            if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
+                if _has_ready_lyrics(out_dir):
+                    pending_finish.append((song_id, out_dir, song.get("language")))
+                else:
+                    pending_align.append((song_id, song.get("language")))
+                continue
+            if status in {"queued", "fetching"}:
+                pending_import.append(
+                    (song_id, songs.retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
+                )
+        for song_id, out_dir, language in pending_finish:
+            src = out_dir / "original.mp3"
+            if not src.exists():
+                src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
+            if src.exists() and not (out_dir / "karaoke.m4a").exists():
+                try:
+                    _fallback_media(src, out_dir)
+                except Exception:
+                    pass
+            submit(_finish_ready_lyrics, song_id, out_dir, src, language, False)
+            resumed += 1
+        for song_id, language in pending_align:
+            submit(process_realign, song_id, language, not _has_native_mtv(media_dir / song_id))
+            resumed += 1
+        for song_id, query, netease_id, language in pending_import:
+            submit(process_import, song_id, query, netease_id, language)
+            resumed += 1
+        if resumed:
+            print(f"[lovktv] resume {resumed} stuck songs", flush=True)
+        return resumed
+
+
 def resume_stuck_jobs() -> int:
-    """Continue songs left queued/aligning after a reload killed the worker."""
-    resumed = 0
-    pending_finish: list[tuple] = []
-    pending_align: list[tuple] = []
-    pending_import: list[tuple] = []
-    for song in reversed(list_songs()):
-        status = str(song.get("status") or "")
-        song_id = str(song["id"])
-        out_dir = MEDIA_DIR / song_id
-        has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
-        if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
-            if _has_ready_lyrics(out_dir):
-                pending_finish.append((song_id, out_dir, song.get("language")))
-            else:
-                pending_align.append((song_id, song.get("language")))
-            continue
-        if status in {"queued", "fetching"}:
-            pending_import.append(
-                (song_id, retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
-            )
-    for song_id, out_dir, language in pending_finish:
-        src = out_dir / "original.mp3"
-        if not src.exists():
-            src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
-        if src.exists() and not (out_dir / "karaoke.m4a").exists():
-            try:
-                _fallback_media(src, out_dir)
-            except Exception:
-                pass
-        spawn(_finish_ready_lyrics, song_id, out_dir, src, language, False)
-        resumed += 1
-    for song_id, language in pending_align:
-        spawn(process_realign, song_id, language, not _has_native_mtv(MEDIA_DIR / song_id))
-        resumed += 1
-    for song_id, query, netease_id, language in pending_import:
-        spawn(process_import, song_id, query, netease_id, language)
-        resumed += 1
-    if resumed:
-        print(f"[lovktv] resume {resumed} stuck songs", flush=True)
-    return resumed
+    """Compatibility wrapper for the injectable :class:`JobRecovery`."""
+    return JobRecovery().resume()

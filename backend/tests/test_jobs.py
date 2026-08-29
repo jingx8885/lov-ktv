@@ -82,6 +82,25 @@ def test_song_repository_is_replaceable(monkeypatch):
     assert jobs.retry_query({}) == "fake query"
 
 
+def test_job_recovery_accepts_repository_and_submitter(tmp_path):
+    queued = []
+
+    class FakeSongs:
+        def list(self):
+            return [{"id": "q1", "status": "queued", "title": "测试", "language": "zh"}]
+
+        def retry_query(self, song):
+            return song["title"]
+
+    recovery = jobs.JobRecovery(
+        repository=FakeSongs(),
+        submit=lambda fn, *args: queued.append((fn.__name__, args)),
+        media_dir=tmp_path,
+    )
+    assert recovery.resume() == 1
+    assert queued == [("process_import", ("q1", "测试", "", "zh"))]
+
+
 def test_finish_ready_lyrics_forces_romaji_restore(tmp_path, monkeypatch):
     out_dir = tmp_path / "s1"
     out_dir.mkdir()
