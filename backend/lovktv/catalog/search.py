@@ -8,9 +8,11 @@ import shutil
 import subprocess
 import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from lovktv.catalog import bilibili
+from lovktv.catalog.mugen import search_mugen
 from lovktv.catalog.http import urlopen, ytdlp_proxy_args
 
 TONZHON_API = "https://tonzhon.com/api.php"
@@ -63,7 +65,6 @@ def flatten_artists(song: dict[str, Any]) -> str:
     return " / ".join(names)
 
 def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict[str, Any]]:
-    from lovktv.catalog import fetch as facade
     try:
         videos = bilibili.search_videos(query, count=max(count, 12), page=page)
     except Exception:
@@ -76,8 +77,9 @@ def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict
         duration = item.get("duration")
         if isinstance(duration, int) and not (bilibili.MIN_SEC <= duration <= bilibili.MAX_SEC):
             continue
-        facade.remember_audio_source(bvid, {"kind": "bilibili", "bvid": bvid, "title": title, "cover": str(item.get("pic") or "")})
-        hits.append({"id": bvid, "title": title, "artist": str(item.get("author") or ""), "album": "", "pic": str(item.get("pic") or ""), "source": "bilibili", "is_mv": True, "clean": facade.is_clean_title(title), "preview_url": f"/api/preview/{bvid}"})
+        from .audio import remember_audio_source
+        remember_audio_source(bvid, {"kind": "bilibili", "bvid": bvid, "title": title, "cover": str(item.get("pic") or "")})
+        hits.append({"id": bvid, "title": title, "artist": str(item.get("author") or ""), "album": "", "pic": str(item.get("pic") or ""), "source": "bilibili", "is_mv": True, "clean": is_clean_title(title), "preview_url": f"/api/preview/{bvid}"})
         if len(hits) >= count:
             break
     return hits
@@ -103,14 +105,13 @@ def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15, timeout:
     return out
 
 def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) -> list[dict[str, Any]]:
-    from lovktv.catalog import fetch as facade
     if page > 1 or provider != "soundcloud":
         return []
     ytdlp = shutil.which("yt-dlp")
     if not ytdlp:
         return []
     try:
-        rows = facade._list_ytdlp(query, ytdlp, provider, count=count, timeout=6)
+        rows = _list_ytdlp(query, ytdlp, provider, count=count, timeout=6)
     except Exception:
         return []
     hits: list[dict[str, Any]] = []
@@ -119,8 +120,9 @@ def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) 
         if not page_url:
             continue
         hid = f"{provider}_{hashlib.sha1(page_url.encode('utf-8')).hexdigest()[:12]}"
-        facade.remember_audio_source(hid, {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider})
-        hits.append({"id": hid, "title": title, "artist": "", "album": "", "pic": "", "source": provider, "is_mv": provider == "youtube", "clean": facade.is_clean_title(title), "preview_url": f"/api/preview/{hid}"})
+        from .audio import remember_audio_source
+        remember_audio_source(hid, {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider})
+        hits.append({"id": hid, "title": title, "artist": "", "album": "", "pic": "", "source": provider, "is_mv": provider == "youtube", "clean": is_clean_title(title), "preview_url": f"/api/preview/{hid}"})
         if len(hits) >= count:
             break
     return hits
@@ -144,3 +146,26 @@ def merge_channel_hits(groups: dict[str, list[dict[str, Any]]], count: int) -> l
         if not added:
             break
     return out
+
+def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
+    page, count = max(1, int(page)), max(1, min(int(count), 30))
+    extra = min(count, 5)
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        jobs = [
+            pool.submit(search_mugen, query, count, page),
+            pool.submit(search_bilibili_hits, query, count, page),
+            pool.submit(search_ytdlp_hits, query, "soundcloud", extra, page),
+        ]
+        try: mugen = jobs[0].result()
+        except Exception: mugen = {"hits": [], "has_more": False}
+        try: bili = jobs[1].result()
+        except Exception: bili = []
+        try: soundcloud = jobs[2].result()
+        except Exception: soundcloud = []
+    groups = {"mugen": list(mugen.get("hits") or []), "bilibili": bili, "soundcloud": soundcloud}
+    hits = merge_channel_hits(groups, count)
+    available = sum(len(bucket) for bucket in groups.values())
+    return {"query": query, "page": page, "count": count,
+            "has_more": bool(mugen.get("has_more")) or available > len(hits)
+            or any(len(groups[key]) >= count for key in SEARCH_CHANNELS),
+            "hits": hits, "sources": list(SEARCH_CHANNELS)}
