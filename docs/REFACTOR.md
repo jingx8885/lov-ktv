@@ -49,6 +49,7 @@
 - [x] 增加房间 code、action、暂停值的运行时规范化（`room_contract.py`）。
 - [x] 增加歌词 timeline 的运行时校验和时间边界修复（`timeline_contract.py`）。
 - [x] 固化播放控制事件的运行时校验，并在 WebSocket 入口接入。
+- [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
 - [ ] 前端按 `api / room-state / playback` 拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
@@ -60,4 +61,4 @@
 
 ## 当前跟进
 
-下一项是 R5：补齐播放控制和歌词 timeline 契约，并让前端状态模块引用它们；每完成一个可回滚的小步骤就更新本文件并提交。
+下一项是 R5：继续拆分前端播放状态模块，并补协议 smoke test；每完成一个可回滚的小步骤就更新本文件并提交。
