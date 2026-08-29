@@ -6,19 +6,14 @@ import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
+import { hasNativeScan as platformHasNativeScan, scanTv as platformScanTv, lanFetchReady, nativeHttpReady } from "../../platform.js";
 
 export function hasNativeScan() {
-  try {
-    return typeof window.LovKtvPhone !== "undefined" && typeof window.LovKtvPhone.scanTv === "function";
-  } catch (err) {
-    return false;
-  }
+  return platformHasNativeScan();
 }
 
 export function scanTv() {
-  if (!hasNativeScan()) return false;
-  window.LovKtvPhone.scanTv();
-  return true;
+  return platformScanTv();
 }
 
 /** @returns {boolean} true if a TV bind was requested and the caller should stop. */
@@ -59,24 +54,18 @@ export function tvUrl(code) {
 export function openTv(code) {
   const url = tvUrl(code);
   $("openTv").href = url;
-  window.open(url, "lovktv-tv");
-}
-
-function nativeLanHttp() {
   try {
-    return typeof window.LovKtvPhone !== "undefined" && typeof window.LovKtvPhone.http === "function";
-  } catch (err) {
-    return false;
-  }
+    if (!window.LovKtvPlatform?.remote?.open(url)) window.open(url, "lovktv-tv");
+  } catch (_) { window.open(url, "lovktv-tv"); }
 }
 
 function lanReady() {
   if (!lanOrigin()) return true;
-  return !!(window.__lovktvLanFetch || window.__lovktvNativeLan);
+  return lanFetchReady() || nativeHttpReady();
 }
 
 function waitLanReady() {
-  if (lanReady() || !nativeLanHttp()) return Promise.resolve();
+  if (lanReady() || !nativeHttpReady()) return Promise.resolve();
   return new Promise((resolve) => {
     let n = 0;
     const timer = setInterval(() => {

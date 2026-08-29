@@ -61,15 +61,17 @@
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
-### R5A 前端平台边界与 DOM contract — 待开始
+### R5A 前端平台边界与 DOM contract — 核心闭环已完成（本批）
 
 - [x] 本批次先为 `m.html`、`tv.html` 增加稳定 `data-app` / `data-mount` 挂载点，并加入静态启动 smoke test。
-- [ ] 定义 `Platform`、`HttpPort`、`MediaPort`、`MicPort`、`RemotePort`、`ScannerPort`，浏览器 / Android Phone / Android TV 各有 adapter。
-- [ ] 原生桥调用和回调集中到 adapter；业务模块不再直接访问 `window.LovKtvNative`、`window.LovKtvPhone`、`window.LovMic`、`window.LovAec`。
+- [x] 定义 Phone `Platform` 的 `http`、`media`、`mic`、`remote`、`scanner` ports；无桥浏览器和 Android Phone 共用同一降级 adapter，Android TV 保持独立 `tv/platform.js` adapter。
+- [x] 原生桥调用和 LAN HTTP 回调集中到 `phone/platform.js`；Phone 业务模块不再直接访问注入桥，缺少能力时返回安全的 no-op / fallback。
 - [x] `m.html`、`tv.html` 建立必需节点清单和静态启动 smoke test。
 - [ ] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
 - [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
-- [ ] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常。
+- [x] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常（静态契约测试覆盖）。
+
+> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，涉及整页生命周期与后续 R5C 资源拆分；本批不以伪包装器交付，保留为下一批独立改动。其余 R5A adapter、桥隔离、LAN 回调、降级和 DOM contract 均已闭环并有测试。
 
 ### R5B TV 播放运行时收敛 — 已完成
 
@@ -101,10 +103,12 @@
 
 ## 当前跟进
 
-当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 注入入口的稳定挂载点迁移与 TV 播放运行时收敛；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
+当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 平台 adapter、稳定挂载点迁移与 TV 播放运行时收敛；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
 
-- R5A：平台能力与页面 DOM contract（已将 Android Phone 注入改为稳定 mount point）。
+- R5A：平台能力与页面 DOM contract（已完成 Phone ports、桥隔离、LAN HTTP 回调和降级测试）。
 - R5B：TV 播放运行时收敛（删除 classic/QR 旧入口，统一 module 播放路径，补齐播放转场护栏）。
 - R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
 
-本批次新增验收：Android Phone 注入脚本静态断言、TV 播放运行时单一 owner / 转场护栏（3 项）。当前环境缺少 `fastapi`，完整 pytest 无法收集；`npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将这些基线/环境失败误判为本批次回归。
+本批次新增验收：`backend/tests/test_phone_platform.py`、`backend/tests/test_platform_boundary.py`（4 项），Android Phone 注入脚本静态断言，以及 TV 播放运行时单一 owner / 转场护栏。当前环境缺少 `fastapi/httpx/numpy/lyric_align`，完整 pytest 无法收集；`npm run check` 可运行但仍有既有类型错误，未新增 Phone adapter 错误。
+
+> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，保留为下一批独立改动；本批已闭环 adapter、桥隔离、LAN 回调、降级和 DOM contract。

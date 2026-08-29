@@ -5,28 +5,24 @@ import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
 import { paintMix } from "./mix.js";
-
-function nativeMic() {
-  return window.LovKtvNative;
-}
+import { hasNativeMic, nativeCapabilities, nativeMicState, nativeCall, webMicApi, micErrorText } from "../../platform.js";
 
 export function usesNativeMic() {
-  const n = nativeMic();
-  return !!(n && typeof n.startMic === "function");
+  return hasNativeMic();
 }
 
 function nativeError(err) {
-  return (err && err.message) || t("phone.mic.fail");
+  return micErrorText(err);
 }
 
 function nativeStartMic() {
   return new Promise((resolve, reject) => {
-    const n = nativeMic();
-    if (!n || typeof n.startMic !== "function") {
+    if (!hasNativeMic()) {
       reject(new Error(t("phone.mic.fail")));
       return;
     }
-    if (typeof n.hasLanMic === "function" && !n.hasLanMic()) {
+    const caps = nativeCapabilities();
+    if (!caps.host || !caps.port) {
       reject(new Error(t("phone.mic.needTv")));
       return;
     }
@@ -42,7 +38,7 @@ function nativeStartMic() {
     };
     window.LovKtvOnMic = done;
     try {
-      n.startMic();
+      nativeCall("startTvMic").then(() => done(true)).catch((err) => done(false, nativeError(err)));
     } catch (err) {
       done(false, nativeError(err));
     }
@@ -54,17 +50,14 @@ function createNativeRtc() {
     peerId: "native",
     native: true,
     isLive() {
-      const n = nativeMic();
-      return !!(n && typeof n.isMicLive === "function" && n.isMicLive());
+      return !!nativeMicState().tv;
     },
     startMic: nativeStartMic,
     async stopMic() {
-      const n = nativeMic();
-      if (n && typeof n.stopMic === "function") n.stopMic();
+      if (hasNativeMic()) await nativeCall("stopTvMic").catch(() => {});
     },
     disconnect() {
-      const n = nativeMic();
-      if (n && typeof n.stopMic === "function") n.stopMic();
+      if (hasNativeMic()) nativeCall("stopTvMic").catch(() => {});
     },
     connect() {},
     send() {},
@@ -89,14 +82,15 @@ export function connectRoomRtc(code) {
     state.roomRtc = createNativeRtc();
     return;
   }
-  if (!window.LovMic) return;
+  const webMic = webMicApi();
+  if (!webMic) return;
   if (state.roomRtc && state.roomRtcCode === code) return;
   if (state.roomRtc) {
     state.roomRtc.stopMic().catch(() => {});
     state.roomRtc.disconnect();
   }
   state.roomRtcCode = code;
-  state.roomRtc = LovMic.create({ role: "phone" });
+  state.roomRtc = webMic.create({ role: "phone" });
   state.roomRtc.connect(code, {
     onSnapshot: (room) => paintMix(room),
     onPeer: (msg) => {
@@ -119,7 +113,7 @@ export function connectRoomRtc(code) {
 }
 
 function micFailText(err) {
-  return (window.LovMic && LovMic.micErrorText(err)) || nativeError(err);
+  return micErrorText(err) || nativeError(err);
 }
 
 export function bindRoomRtc() {
