@@ -4,7 +4,7 @@ from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_service import RoomService
 from lovktv.room_store import SqliteRoomStore
 from lovktv.contracts import RoomAction, RoomSnapshot
-from lovktv.room_contract import normalize_room_code
+from lovktv.room_contract import normalize_playback_event, normalize_room_code
 from lovktv.timeline_contract import normalize_timeline
 
 
@@ -42,6 +42,13 @@ def test_timeline_contract_clamps_and_orders_cues_and_tokens():
     assert [cue["text"] for cue in doc["cues"]] == ["second", "first"]
     assert doc["cues"][0]["start_ms"] == 0
     assert doc["cues"][0]["tokens"][0]["end_ms"] == 10
+
+
+def test_playback_event_requires_target_for_jump_commands():
+    assert normalize_playback_event("skip", {})["action"] == "skip"
+    assert normalize_playback_event("play", {"song_id": 123})["song_id"] == "123"
+    with pytest.raises(ValueError, match="缺少目标"):
+        normalize_playback_event("bump", {})
 
 
 def test_command_parsing_normalizes_transport_payload():

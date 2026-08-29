@@ -44,6 +44,7 @@ from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_store import ensure_room_for_host, remember_host_room, room_for_hosts, set_room_lan
 from lovktv.timeline_contract import normalize_timeline
+from lovktv.room_contract import normalize_playback_event
 from lovktv import store
 from lovktv.store import (
     confirm_login_ticket,
@@ -767,9 +768,19 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                 await _broadcast(code, {"type": "snapshot", "room": _room_view(code, lang=lang)})
                 continue
             if action == "skip":
-                snap = _run_room_command(code, RoomCommand.from_payload("skip"))
+                try:
+                    event = normalize_playback_event(action, msg)
+                    snap = _run_room_command(code, RoomCommand.from_payload(event["action"], event))
+                except ValueError as exc:
+                    await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
+                    continue
             elif action == "bump":
-                snap = _run_room_command(code, RoomCommand.from_payload("bump", msg))
+                try:
+                    event = normalize_playback_event(action, msg)
+                    snap = _run_room_command(code, RoomCommand.from_payload(event["action"], event))
+                except ValueError as exc:
+                    await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
+                    continue
             elif action == "enqueue":
                 try:
                     snap = _run_room_command(code, RoomCommand.from_payload("enqueue", msg))
@@ -778,7 +789,8 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                     continue
             elif action == "play":
                 try:
-                    snap = _run_room_command(code, RoomCommand.from_payload("play", msg))
+                    event = normalize_playback_event(action, msg)
+                    snap = _run_room_command(code, RoomCommand.from_payload(event["action"], event))
                 except ValueError as exc:
                     await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
                     continue

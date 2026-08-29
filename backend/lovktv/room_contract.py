@@ -38,3 +38,14 @@ def normalize_command(action: Any, payload: Mapping[str, Any] | None = None) -> 
     if "paused" in data:
         result["paused"] = optional_bool(data.get("paused"))
     return result
+
+
+def normalize_playback_event(action: Any, payload: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    """Normalize playback-only WS events before they reach the room service."""
+    name = str(action or "").strip().lower()
+    if name not in {"play", "skip", "bump"}:
+        raise ValueError("播放控制事件无效")
+    data = normalize_command(name, payload)
+    if name in {"play", "bump"} and not (data.get("id") or data.get("item_id") or data.get("song_id")):
+        raise ValueError("播放控制事件缺少目标")
+    return data
