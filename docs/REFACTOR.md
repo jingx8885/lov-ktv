@@ -40,7 +40,7 @@
 - [x] 建立独立 `room_store.py` 适配器，房间服务不再持有 SQLite 实现。
 - [x] 将房间 SQL、队列、混音和 LAN 元数据迁入 `room_store.py`。
 - [x] `lovktv.store` 仅保留无 SQL 的迁移导出，业务调用方改用 `room_store`。
-- [ ] 验收：事务边界和现有 schema 不变，房间并发回归通过。
+- [x] 验收：事务边界和现有 schema 不变，房间/LAN/schema 回归通过（23 项）。
 
 ### R5 播放协议与前端状态 — 待开始
 
