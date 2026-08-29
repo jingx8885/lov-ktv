@@ -16,7 +16,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
-from lovktv.config import DATA_DIR
+from lovktv.core.config import DATA_DIR
 
 GITLAB_PROJECT = 32_123_952
 GITLAB_ARCHIVE = (

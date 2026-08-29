@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 
 import httpx
 
-from lovktv.config import (
+from lovktv.core.config import (
     ALIYUN_OSS_ACCESS_KEY_ID,
     ALIYUN_OSS_ACCESS_KEY_SECRET,
     ALIYUN_OSS_BASE_PATH,
@@ -268,7 +268,7 @@ def write_marker(song_id: str, names: list[str]) -> Path:
         native = (MEDIA_DIR / song_id / "mugen.mp4").exists() or (
             MEDIA_DIR / song_id / "mugen.webm"
         ).exists()
-    from lovktv.store import media_rev
+    from lovktv.storage.store import media_rev
 
     payload = {"files": names, "native_video": native, "media_rev": media_rev(song_id)}
     dest = folder / "oss.json"

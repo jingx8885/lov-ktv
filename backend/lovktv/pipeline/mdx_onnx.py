@@ -8,7 +8,7 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from lovktv.config import DATA_DIR, IMAGE_MODELS_DIR, WHISPER_DIR
+from lovktv.core.config import DATA_DIR, IMAGE_MODELS_DIR, WHISPER_DIR
 
 MODEL_NAME = "UVR_MDXNET_KARA_2.onnx"
 MODEL_URL = "https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR_MDXNET_KARA_2.onnx"

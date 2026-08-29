@@ -7,7 +7,8 @@ def _boot(tmp_path, monkeypatch, token="secret-token"):
         monkeypatch.delenv("LOVKTV_APP_UPLOAD_TOKEN", raising=False)
     else:
         monkeypatch.setenv("LOVKTV_APP_UPLOAD_TOKEN", token)
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

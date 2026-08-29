@@ -217,7 +217,7 @@ def _choices(
         if filler != answer and filler not in picked:
             picked.append(filler)
         else:
-            from lovktv.i18n import translate
+            from lovktv.locale.i18n import translate
 
             picked.append(translate("zh", "api.learn_option", n=len(picked) + 1))
     options = [answer, *picked]
@@ -268,7 +268,7 @@ def build_line_questions(
     lang: str = "zh",
 ) -> list[dict[str, Any]]:
     """One live question per sung line, drawn from that line's bank."""
-    from lovktv.i18n import translate
+    from lovktv.locale.i18n import translate
 
     bank: list[dict[str, Any]] = []
     text = cue_text(cue)

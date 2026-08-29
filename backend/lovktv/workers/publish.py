@@ -6,8 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
-from lovktv.oss import oss_ready, publish_all
-from lovktv.store import init_db, upsert_songs
+from lovktv.media.oss import oss_ready, publish_all
+from lovktv.storage.store import init_db, upsert_songs
 
 
 def main() -> int:

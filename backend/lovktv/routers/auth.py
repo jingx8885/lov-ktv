@@ -4,7 +4,7 @@ from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.requests import Request
 
-from lovktv.auth import (
+from lovktv.identity.auth import (
     SESSION_COOKIE,
     auth_status,
     decode_state,
@@ -17,7 +17,7 @@ from lovktv.auth import (
     wechat_authorize_url,
     wechat_ready,
 )
-from lovktv.i18n import localize_exc
+from lovktv.locale.i18n import localize_exc
 from lovktv.services.http import (
     clear_session,
     current_user,
@@ -25,7 +25,7 @@ from lovktv.services.http import (
     request_base,
     set_session,
 )
-from lovktv.store import (
+from lovktv.storage.store import (
     confirm_login_ticket,
     consume_confirmed_ticket,
     create_login_ticket,

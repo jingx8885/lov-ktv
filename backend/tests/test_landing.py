@@ -51,7 +51,8 @@ def test_landing_follows_gigglecut_layout():
 
 def test_root_serves_landing(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

@@ -22,7 +22,7 @@ def _files(root: Path) -> list[Path]:
 
 def _digest(root: Path, files: list[Path]) -> str:
     digest = hashlib.sha256()
-    # Match ``lovktv.assets._compute`` ordering exactly on Windows and POSIX.
+    # Match ``lovktv.media.assets._compute`` ordering exactly on Windows and POSIX.
     for path in sorted(files, key=lambda p: p.relative_to(root).as_posix()):
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
         digest.update(b"\0")

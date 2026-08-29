@@ -5,7 +5,8 @@ def _app(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("LOVKTV_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -45,7 +46,7 @@ def test_different_ua_gets_new_room(tmp_path, monkeypatch):
 
 def test_joining_a_room_binds_this_machine(tmp_path, monkeypatch):
     app, store = _app(tmp_path, monkeypatch)
-    from lovktv.room_store import ensure_room
+    from lovktv.storage.room_store import ensure_room
 
     room = ensure_room("HOME01")
     headers = {"User-Agent": "iPhone", "X-LovKtv-Machine": "phone-alice-01"}

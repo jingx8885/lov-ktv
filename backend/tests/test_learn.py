@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.learn import QUESTIONS_PER_LINE, build_learn_quiz, is_singable_cue
+from lovktv.workers.learn import QUESTIONS_PER_LINE, build_learn_quiz, is_singable_cue
 
 JA_TIMELINE = {
     "language": "ja",
@@ -117,7 +117,7 @@ def test_skips_instrumental_and_mixes_meaning_with_words():
 
 
 def test_tap_words_keeps_order_and_skips_punct():
-    from lovktv.learn import tap_words
+    from lovktv.workers.learn import tap_words
 
     words = tap_words(
         {
@@ -317,7 +317,9 @@ def test_phone_learn_shell_is_wired():
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import config, main, store
+    from lovktv.core import config
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

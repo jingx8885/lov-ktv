@@ -2,14 +2,14 @@ import pytest
 
 from lovktv.domain.contracts import RoomAction, RoomSnapshot
 from lovktv.domain.room_contract import normalize_playback_event, normalize_room_code
-from lovktv.room_service import RoomCommand, RoomService, room_service
-from lovktv.room_store import SqliteRoomStore
+from lovktv.rooms.service import RoomCommand, RoomService, room_service
+from lovktv.storage.room_store import SqliteRoomStore
 from lovktv.domain.timeline import normalize_timeline
 
 
 def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
     # The adapter now owns the implementation instead of forwarding to store.
-    from lovktv import store
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "room.sqlite"
     store.init_db()
@@ -123,7 +123,7 @@ def test_service_can_use_repository_without_sqlite():
 
 def test_service_uses_store_room_semantics(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import store
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

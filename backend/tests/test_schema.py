@@ -1,5 +1,5 @@
-from lovktv.db import adapt_sql, dialect, is_postgres_url, table_columns
-from lovktv.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
+from lovktv.core.db import adapt_sql, dialect, is_postgres_url, table_columns
+from lovktv.core.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
 
 
 def test_schema_covers_current_tables():
@@ -85,7 +85,7 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("LOVKTV_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    from lovktv import store
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -99,7 +99,7 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
     got = store.get_song(song["id"])
     assert got["title"] == "测试"
     assert got["audio_source"] == "netease"
-    from lovktv.room_store import ensure_room
+    from lovktv.storage.room_store import ensure_room
 
     room = ensure_room("AB12CD")
     assert room["lyric_mode"] == "all"
@@ -112,6 +112,6 @@ def test_overridden_sqlite_path_wins_over_postgres_url(tmp_path, monkeypatch):
     monkeypatch.setenv(
         "LOVKTV_DATABASE_URL", "postgresql://postgres:x@localhost:5432/postgres"
     )
-    from lovktv.db import dialect
+    from lovktv.core.db import dialect
 
     assert dialect(tmp_path / "t.sqlite") == "sqlite"

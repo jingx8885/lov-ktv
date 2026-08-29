@@ -1,14 +1,15 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from lovktv.room_store import normalize_lan_origin, set_room_lan
+from lovktv.storage.room_store import normalize_lan_origin, set_room_lan
 
 
 def _app(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("LOVKTV_DATABASE_URL", raising=False)
     monkeypatch.delenv("DATABASE_URL", raising=False)
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -33,7 +34,7 @@ def test_normalize_lan_origin_rejects_public_and_https():
 
 def test_set_room_lan_persists_on_snapshot(tmp_path, monkeypatch):
     _app(tmp_path, monkeypatch)
-    from lovktv.room_store import room_snapshot
+    from lovktv.storage.room_store import room_snapshot
 
     snap = set_room_lan(
         "home01", "http://192.168.1.8:8788", mic_port=18787, mic_sample_rate=48000

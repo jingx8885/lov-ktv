@@ -4,21 +4,21 @@ from fastapi import APIRouter, File, Form, UploadFile
 from starlette.requests import Request
 
 from lovktv.agents.ja_lyrics import agent_status
-from lovktv.apps import catalog as apps_catalog
-from lovktv.apps import download_apk, require_upload_token, save_apk
-from lovktv.assets import asset_rev
-from lovktv.db import dialect as db_dialect
-from lovktv.oss import oss_status
+from lovktv.core.db import dialect as db_dialect
+from lovktv.media.apps import catalog as apps_catalog
+from lovktv.media.apps import download_apk, require_upload_token, save_apk
+from lovktv.media.assets import asset_rev
+from lovktv.media.oss import oss_status
 from lovktv.pipeline.mdx_onnx import model_status
-from lovktv.runtime import WEB_ROOT
+from lovktv.platform.runtime import WEB_ROOT
 
 router = APIRouter()
 
 
 @router.get("/api/host")
 def api_host(request: Request) -> dict:
-    from lovktv import store
     from lovktv.services.http import request_base
+    from lovktv.storage import store
 
     return {
         "origin": request_base(request),

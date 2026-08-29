@@ -5,7 +5,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.assets import (
+from lovktv.media.assets import (
     _compute,
     asset_rev,
     reset_asset_rev_cache,
@@ -85,7 +85,7 @@ def test_frontend_dist_manifest_is_single_source_for_web_and_embedded(
     # The public URL and the embedded TV URL both resolve to the same entry
     # bytes and revision-bearing module references.
     assert (output / "tv.html").read_text(encoding="utf-8")
-    from lovktv.assets import versioned_response
+    from lovktv.media.assets import versioned_response
 
     response = versioned_response(output / "tv.html", output)
     assert f"?v={manifest['revision']}".encode() in response.body
@@ -95,7 +95,8 @@ def _boot(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.setenv("LOVKTV_ASSET_REV", "testhash")
     reset_asset_rev_cache()
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

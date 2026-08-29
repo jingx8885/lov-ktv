@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = Path(os.environ.get("LOVKTV_DATA", ROOT / "data")).resolve()
 MEDIA_DIR = (DATA_DIR / "media").resolve()
 MODELS_DIR = Path(os.environ.get("LOVKTV_MODELS", DATA_DIR / "models")).resolve()
