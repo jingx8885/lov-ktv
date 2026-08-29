@@ -142,6 +142,42 @@ interface LovStageFxApi {
   reduceMotion?: (() => boolean) | boolean;
 }
 
+/** Internal stage-effect module contracts. These globals are installed by the
+ * ordered scripts in tv.html before the compatibility facade runs. */
+interface LovStageFxPrimitivesApi {
+  EFFECTS: readonly string[];
+  C: { amber: string; gray: string; ink: string };
+  ACCENTS: readonly string[];
+  FX_IN: number;
+  FX_OUT: number;
+  MAX_LAYERS: number;
+  mulberry32(seed: number): () => number;
+  clamp01(value: number): number;
+  smooth(value: number): number;
+  easeOutCubic(value: number): number;
+  easeOutBack(value: number): number;
+  easeOutElastic(value: number): number;
+  prog(t: number, delay: number, duration?: number): number;
+  pickColor(rng: () => number): string;
+  tracePoly(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, sides: number, rotation: number): void;
+  traceStar(ctx: CanvasRenderingContext2D, x: number, y: number, radius: number, points: number, rotation: number): void;
+  drawPiece(ctx: CanvasRenderingContext2D, kind: string, color: string, x: number, y: number, radius: number, rotation: number): void;
+  strokePartial(ctx: CanvasRenderingContext2D, points: Array<{ x: number; y: number }>, lengths: number[], visible: number): { x: number; y: number };
+}
+
+interface LovStageFxBuildApi {
+  [name: string]: (instance: any, rng: () => number, width: number, height: number) => void;
+}
+
+interface LovStageFxDrawApi {
+  [name: string]: (ctx: CanvasRenderingContext2D, instance: any, t: number, fade: number, beat: number, width: number, height: number) => void;
+}
+
+interface LovStageFxRuntimeApi {
+  create(canvas: HTMLCanvasElement): StageFxHandle;
+  reduceMotion(): boolean;
+}
+
 interface KeepAliveTone {
   osc: OscillatorNode;
   gain: GainNode;
@@ -256,6 +292,10 @@ interface Window {
   LovAec?: LovAecApi;
   LovTimeline?: LovTimelineApi;
   LovStageFx?: LovStageFxApi;
+  LovStageFxPrimitives?: LovStageFxPrimitivesApi;
+  LovStageFxBuild?: LovStageFxBuildApi;
+  LovStageFxDraw?: LovStageFxDrawApi;
+  LovStageFxRuntime?: LovStageFxRuntimeApi;
   LovKtvRemote?: LovKtvRemoteApi;
   LovKtvPhone?: LovKtvPhoneBridge;
   LovI18n?: LovI18nApi;
