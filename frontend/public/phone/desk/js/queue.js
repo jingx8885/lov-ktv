@@ -7,26 +7,10 @@ import { api } from "../../api.js";
 import { ICO, songInitial, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
+import { fetchRoom, roomStamp } from "../../room/js/state.js";
 
 let lastLanFailAt = 0;
 let lastRoomStamp = "";
-
-function roomStamp(room) {
-  return JSON.stringify({
-    code: room && room.code,
-    idx: room && room.now_index,
-    mix: room && room.vocal_mix,
-    vol: room && room.volume,
-    paused: room && room.paused,
-    now: room && room.now_playing && (room.now_playing.id || room.now_playing.song_id),
-    nowStatus: room && room.now_playing && room.now_playing.status,
-    q: (room && room.queue ? room.queue : []).map((item) => [item.id, item.song_id, item.status, item.title]),
-  });
-}
-
-async function fetchRoom(code) {
-  return fetchJson(roomUrl(`/api/rooms/${code}`)).catch(() => ({ ok: false, data: {} }));
-}
 
 export async function loadRoom(opts) {
   const quiet = !!(opts && opts.quiet);
