@@ -4,7 +4,7 @@
 
 ## 导入
 
-用 Android Studio 打开本目录 `android-tv/`，同步 Gradle 后 Run 到 Android TV 模拟器或盒子。构建时会把 `frontend/public` 打进 APK。
+用 Android Studio 打开本目录 `android-tv/`，同步 Gradle 后 Run 到 Android TV 模拟器或盒子。构建时先由 `scripts/build-frontend-dist.py` 生成带 `manifest.json` 的 `frontend/frontend-dist`，再把这份同一产物打进 APK；处理端镜像也使用同一 manifest revision。
 
 命令行（SDK / Gradle / 产物都在外接硬盘）：
 

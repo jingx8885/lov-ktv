@@ -275,6 +275,7 @@ class HostServer(
             cacheReady = cache.listReady().size,
             micPort = HostRuntime.micPort,
             micSampleRate = LanMic.SAMPLE_RATE,
+            assetRev = assetRev,
         )
         call.response.headers.append(HttpHeaders.CacheControl, "no-store")
         call.respondText(HostGateway.toJson(info), ContentType.Application.Json)
@@ -526,7 +527,7 @@ class HostServer(
         } else {
             bytes
         }
-        if (name.endsWith(".html")) {
+        if (name.endsWith(".html") || name.endsWith("manifest.json")) {
             call.response.headers.append(HttpHeaders.CacheControl, "no-store, max-age=0")
             call.response.headers.append("Pragma", "no-cache")
         } else if (AssetRev.shouldRewrite(name) && assetRev.isNotBlank()) {

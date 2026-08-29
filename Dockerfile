@@ -24,6 +24,10 @@ FROM base AS app
 
 COPY backend /app/backend
 COPY frontend /app/frontend
+COPY scripts/build-frontend-dist.py /app/scripts/build-frontend-dist.py
+RUN python /app/scripts/build-frontend-dist.py \
+    --source /app/frontend/public \
+    --output /app/frontend/frontend-dist
 RUN pip install --no-deps --no-cache-dir -e /app/backend
 
 EXPOSE 8787

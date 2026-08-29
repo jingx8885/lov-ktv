@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
 from lovktv.api_models import RoomCommandPayload, RoomLanPayload
-from lovktv.assets import VersionedStaticFiles, versioned_response
+from lovktv.assets import VersionedStaticFiles, asset_rev, versioned_response
 from lovktv.auth import (
     SESSION_COOKIE,
     auth_status,
@@ -67,7 +67,9 @@ from lovktv.store import (
     user_from_session,
 )
 
-WEB = ROOT / "frontend" / "public"
+_PUBLIC = ROOT / "frontend" / "public"
+_DIST = ROOT / "frontend" / "frontend-dist"
+WEB = _DIST if (_DIST / "manifest.json").is_file() else _PUBLIC
 HOST_COOKIE = "lovktv_host"
 HOST_COOKIE_DAYS = 400
 
@@ -236,6 +238,7 @@ def api_host(request: Request) -> dict:
         "oss": oss_status(),
         "agent": agent_status(),
         "database": db_dialect(store.DB_PATH),
+        "asset_rev": asset_rev(WEB),
     }
 
 

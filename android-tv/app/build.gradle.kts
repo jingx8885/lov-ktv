@@ -4,8 +4,14 @@ plugins {
 }
 
 val generatedAssets = layout.buildDirectory.dir("generated/assets")
+val frontendDist = rootProject.projectDir.resolve("../frontend/frontend-dist")
+val buildFrontendDist = tasks.register<Exec>("buildFrontendDist") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python", "scripts/build-frontend-dist.py", "--source", "frontend/public", "--output", "frontend/frontend-dist")
+}
 val copyWebAssets = tasks.register<Copy>("copyWebAssets") {
-    from(rootProject.projectDir.resolve("../frontend/public"))
+    dependsOn(buildFrontendDist)
+    from(frontendDist)
     into(generatedAssets.map { it.dir("web") })
     exclude("**/.DS_Store")
 }

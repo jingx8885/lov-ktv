@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from pathlib import Path
@@ -16,6 +17,7 @@ _MEDIA = {
     ".css": "text/css; charset=utf-8",
     ".html": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
+    ".json": "application/json; charset=utf-8",
 }
 
 _cache: dict[str, tuple[tuple[int, int], str]] = {}
@@ -29,7 +31,7 @@ def _stamp(root: Path) -> tuple[int, int]:
     total = 0
     count = 0
     for path in root.rglob("*"):
-        if path.is_file() and path.suffix.lower() in ASSET_SUFFIXES:
+        if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}:
             stat = path.stat()
             total += stat.st_mtime_ns + stat.st_size
             count += 1
@@ -39,7 +41,7 @@ def _stamp(root: Path) -> tuple[int, int]:
 def _compute(root: Path) -> str:
     digest = hashlib.sha256()
     files = sorted(
-        path for path in root.rglob("*") if path.is_file() and path.suffix.lower() in ASSET_SUFFIXES
+        path for path in root.rglob("*") if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}
     )
     for path in files:
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
@@ -54,6 +56,14 @@ def asset_rev(root: Path) -> str:
     if pinned:
         return pinned[:32]
     key = str(root.resolve())
+    manifest = root / "manifest.json"
+    if manifest.is_file():
+        try:
+            revision = str(json.loads(manifest.read_text(encoding="utf-8")).get("revision", "")).strip()
+            if revision:
+                return revision[:32]
+        except (OSError, ValueError, TypeError):
+            pass
     stamp = _stamp(root)
     hit = _cache.get(key)
     if hit and hit[0] == stamp:
@@ -74,7 +84,7 @@ def rewrite_frontend_assets(text: str, rev: str) -> str:
 
 
 def versioned_headers(path: Path) -> dict[str, str]:
-    if path.suffix.lower() == ".html":
+    if path.suffix.lower() == ".html" or path.name == "manifest.json":
         return {
             "Cache-Control": "no-store, max-age=0",
             "Pragma": "no-cache",
@@ -104,7 +114,7 @@ class VersionedStaticFiles(StaticFiles):
         if not file_path or getattr(response, "status_code", 200) != 200:
             return response
         full = Path(file_path)
-        if full.suffix.lower() not in ASSET_SUFFIXES:
+        if full.suffix.lower() not in ASSET_SUFFIXES and full.name != "manifest.json":
             return response
         rewritten = versioned_response(full, self.asset_root, status_code=response.status_code)
         if scope.get("method") == "HEAD":

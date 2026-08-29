@@ -13,6 +13,7 @@ data/
 !.env.example
 node_modules/
 dist/
+frontend/frontend-dist/
 .DS_Store
 vendor/*
 !vendor/README.md

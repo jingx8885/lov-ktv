@@ -42,4 +42,10 @@ class AssetRevTest {
         assertTrue(AssetRev.shouldRewrite("web/phone/shell/css/shell.css"))
         assertFalse(AssetRev.shouldRewrite("web/brand/icon.png"))
     }
+
+    @Test
+    fun manifestRevisionIsTheEmbeddedAssetRevision() {
+        assertEquals("abc123", AssetRev.fromManifestJson("{\"revision\":\"abc123\"}"))
+        assertEquals("", AssetRev.fromManifestJson("{}"))
+    }
 }

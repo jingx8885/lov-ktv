@@ -18,3 +18,4 @@ android-tv
 .DS_Store
 node_modules
 dist
+frontend/frontend-dist

@@ -1,11 +1,14 @@
 import re
+import json
+import runpy
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.assets import asset_rev, reset_asset_rev_cache, rewrite_frontend_assets
+from lovktv.assets import _compute, asset_rev, reset_asset_rev_cache, rewrite_frontend_assets
 
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
+BUILD = Path(__file__).resolve().parents[2] / "scripts" / "build-frontend-dist.py"
 ASSET_REF = re.compile(r"""['"]([^'"]+\.(?:js|css))\?v=([^'"]+)['"]""")
 
 
@@ -55,6 +58,32 @@ def test_asset_rev_follows_file_bytes(tmp_path, monkeypatch):
     assert len(first) == 12
 
 
+def test_frontend_dist_manifest_is_single_source_for_web_and_embedded(tmp_path, monkeypatch):
+    source = ROOT
+    output = tmp_path / "frontend-dist"
+    monkeypatch.delenv("LOVKTV_ASSET_REV", raising=False)
+    module = runpy.run_path(str(BUILD))
+    manifest = module["build"](source, output)
+    disk = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["revision"] == disk["revision"]
+    assert manifest["content_sha256"] == _compute(output)
+    assert manifest["revision"] == asset_rev(output)
+    assert manifest["content_sha256"].startswith(manifest["revision"])
+    assert manifest["git_commit"]
+    for entry in ("index.html", "m.html", "tv.html", "phone/app.js", "tv/app.js"):
+        assert entry in manifest["files"]
+        assert (output / entry).is_file()
+
+    # The public URL and the embedded TV URL both resolve to the same entry
+    # bytes and revision-bearing module references.
+    assert (output / "tv.html").read_text(encoding="utf-8")
+    from lovktv.assets import versioned_response
+
+    response = versioned_response(output / "tv.html", output)
+    assert f"?v={manifest['revision']}".encode() in response.body
+
+
 def _boot(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.setenv("LOVKTV_ASSET_REV", "testhash")
@@ -77,6 +106,8 @@ def test_pages_inject_same_rev_into_html_and_modules(tmp_path, monkeypatch):
         mix_js = client.get("/tv/playback/js/mix.js")
         aec_js = client.get("/shared/audio/js/aec.js")
         css = client.get("/phone/shell/css/shell.css")
+        host = client.get("/api/host")
+        manifest = client.get("/manifest.json")
 
     assert phone.status_code == 200
     assert 'src="/phone/app.js?v=testhash"' in phone.text
@@ -88,6 +119,11 @@ def test_pages_inject_same_rev_into_html_and_modules(tmp_path, monkeypatch):
     assert 'from "../shared/i18n/js/i18n.js?v=testhash"' in app_js.text
     assert app_js.headers["cache-control"] == "public, max-age=31536000, immutable"
     assert css.headers["cache-control"] == "public, max-age=31536000, immutable"
+    assert host.status_code == 200
+    assert host.json()["asset_rev"] == "testhash"
+    assert manifest.status_code in {200, 404}
+    if manifest.status_code == 200:
+        assert manifest.headers["cache-control"].startswith("no-store")
     assert "mediaRevFor" in mix_js.text
     assert "ja-kanji" not in mix_js.text
     assert "stem2" not in mix_js.text

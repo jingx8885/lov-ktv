@@ -26,6 +26,7 @@ data class HostInfo(
     val micPort: Int = 0,
     val micSampleRate: Int = LanMic.SAMPLE_RATE,
     val room: String = "",
+    val assetRev: String = "",
 )
 
 object HostGateway {
@@ -78,6 +79,7 @@ object HostGateway {
         cacheReady: Int = 0,
         micPort: Int = LanMic.DEFAULT_PORT,
         micSampleRate: Int = LanMic.SAMPLE_RATE,
+        assetRev: String = "",
     ): HostInfo {
         val origin = lanOrigin.trim().trimEnd('/')
         val process = processOrigin.trim().trimEnd('/')
@@ -104,6 +106,7 @@ object HostGateway {
             micPort = micPort,
             micSampleRate = micSampleRate,
             room = code,
+            assetRev = assetRev,
         )
     }
 
@@ -118,7 +121,8 @@ object HostGateway {
             append("\"cache_ready\":").append(info.cacheReady).append(',')
             append("\"mic_port\":").append(info.micPort).append(',')
             append("\"mic_sample_rate\":").append(info.micSampleRate).append(',')
-            append("\"room\":").append(quote(info.room))
+            append("\"room\":").append(quote(info.room)).append(',')
+            append("\"asset_rev\":").append(quote(info.assetRev))
             append('}')
         }
     }
