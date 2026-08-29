@@ -14,19 +14,19 @@
   <link rel="stylesheet" href="/tv/lyrics/css/lyrics.css" />
   <link rel="stylesheet" href="/tv/gates/css/gates.css" />
 </head>
-<body class="tv is-waiting">
+<body class="tv is-waiting" data-app="tv" data-mount="tv-root">
   <img id="waitArt" class="wait-art" src="/brand/wait-tv.jpg" alt="" />
   <video id="mtv" muted playsinline></video>
   <canvas id="stageFx" class="stage-fx" aria-hidden="true"></canvas>
   <canvas id="partyFx" class="party-fx" aria-hidden="true"></canvas>
-  <div class="qrbox">
+  <div class="qrbox" data-mount="tv-qr">
     <a id="phoneLink" href="#">
       <div id="qr" class="qr"></div>
       <span class="qr-cap"><span data-i18n="tv.scan">扫码 · </span><b id="code"></b></span>
     </a>
       <p class="remote-hint" id="remoteHint" hidden>确认 暂停/播放 · 菜单 切歌、原唱伴唱</p>
   </div>
-  <div class="tv-sheet" id="tvSheet" hidden>
+  <div class="tv-sheet" id="tvSheet" data-mount="tv-settings" hidden>
     <button type="button" class="overlay-backdrop" id="tvSheetBack" tabindex="-1" data-i18n-aria="common.close"></button>
     <div class="tv-sheet-card" role="dialog" aria-modal="true" aria-labelledby="tvSheetTitle">
       <h2 id="tvSheetTitle" data-i18n="tv.settings">设置</h2>
@@ -47,7 +47,7 @@
       <p class="tv-sheet-hint" data-i18n="tv.settingsNav">上下选择 · 确认打开 · 返回关闭</p>
     </div>
   </div>
-  <div class="login-gate" id="loginGate" hidden>
+  <div class="login-gate" id="loginGate" data-mount="tv-login" hidden>
     <div class="login-card">
       <p class="brand"><img class="brand-mark" src="/brand/icon.png" width="28" height="28" alt="">lov-ktv</p>
       <h2 data-i18n="tv.loginTitle">微信扫一下</h2>
@@ -60,10 +60,10 @@
       </div>
     </div>
   </div>
-  <div class="start-gate" id="gate">
+  <div class="start-gate" id="gate" data-mount="tv-start">
     <button class="btn primary" id="start" data-i18n="tv.start">点击开唱</button>
   </div>
-  <div class="tv-ui">
+  <div class="tv-ui" data-mount="tv-ui">
     <header class="bar">
       <div>
         <p class="brand"><img class="brand-mark" src="/brand/icon.png" width="28" height="28" alt="">lov-ktv</p>
@@ -76,14 +76,14 @@
         <button class="btn" id="tvLoginBtn" type="button" data-i18n="tv.login">登录</button>
       </div>
     </header>
-    <section class="lyrics">
+    <section class="lyrics" data-mount="tv-lyrics">
       <div class="lyric-plate" id="lyricPlate">
         <div class="prev" id="prev"></div>
         <div class="line" id="cur"></div>
         <div class="next" id="next"></div>
       </div>
     </section>
-    <footer class="bar">
+    <footer class="bar" data-mount="tv-footer">
       <audio id="karaoke" crossorigin="anonymous"></audio>
       <audio id="vocal" crossorigin="anonymous" hidden></audio>
       <audio id="liveMic" autoplay playsinline hidden></audio>
@@ -99,7 +99,6 @@
   </div>
   <script src="/vendor/qrcode.js"></script>
   <script src="/tv/boot-qr.js"></script>
-  <script src="/tv/boot-play.js"></script>
   <script src="/vendor/canvas-confetti.min.js"></script>
   <script src="/shared/audio/js/bands.js"></script>
   <script src="/tv/fx/js/stage-fx.js"></script>

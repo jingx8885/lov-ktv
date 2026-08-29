@@ -25,7 +25,6 @@
   "exclude": [
     "public/vendor/**",
     "public/shared/audio/**",
-    "public/phone/player/js/timeline.js",
     "public/tv/fx/js/stage-fx.js"
   ]
 }

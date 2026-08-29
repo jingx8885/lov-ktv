@@ -1,5 +1,9 @@
 # lov-ktv 架构重构需求与跟踪
 
+> 重构批次标识：`R5-2026.08.29-supervisor-01`
+>
+> 本标识用于串联本轮监工会话、子会话提交与验收记录；后续批次递增末尾序号。
+
 ## 目标
 
 让“搜歌、处理、房间、播放端、部署”通过稳定边界协作，修改单一功能时不需要同时改多个传输层或全局状态。重构期间保持现有 API、房间协议和媒体目录兼容。
@@ -59,20 +63,24 @@
 
 ### R5A 前端平台边界与 DOM contract — 待开始
 
+- [x] 本批次先为 `m.html`、`tv.html` 增加稳定 `data-app` / `data-mount` 挂载点，并加入静态启动 smoke test。
 - [ ] 定义 `Platform`、`HttpPort`、`MediaPort`、`MicPort`、`RemotePort`、`ScannerPort`，浏览器 / Android Phone / Android TV 各有 adapter。
 - [ ] 原生桥调用和回调集中到 adapter；业务模块不再直接访问 `window.LovKtvNative`、`window.LovKtvPhone`、`window.LovMic`、`window.LovAec`。
-- [ ] `m.html`、`tv.html` 建立必需节点清单和启动 smoke test；功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
+- [x] `m.html`、`tv.html` 建立必需节点清单和静态启动 smoke test。
+- [ ] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
 - [ ] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
 - [ ] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常。
 
 ### R5B TV 播放运行时收敛 — 待开始
 
+- [x] 本批次从 `tv.html` 移除 classic `boot-play.js` 入口，播放统一由 module `tv/app.js` 接管；保留文件以兼容直接访问。
 - [ ] module 播放器稳定后删除 `tv/boot-play.js` 的 classic fallback、重复 timer 和第二套 `LovKtvRemote`。
 - [ ] 播放、歌词、MTV、恢复、预取通过单一 controller / 事件协作，`tick.js` 不再承担所有生命周期职责。
 - [ ] 验收：浏览器 TV 与 TV APK 只走同一播放路径，覆盖冷启动、暂停恢复、切歌、卡顿恢复和 MTV 降级。
 
 ### R5C shared 资源与类型边界 — 待开始
 
+- [x] 本批次移除 `timeline.js` 的 TypeScript 排除项，单文件 `tsc` 检查通过。
 - [ ] `stage-fx.js`、`timeline.js` 改为 ESM，Phone 学习模式不再从 `tv/` 目录加载资源。
 - [ ] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
 - [ ] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
@@ -93,4 +101,10 @@
 
 ## 当前跟进
 
-下一项是 R5：继续拆分前端播放状态模块，并按 [`docs/FRONTEND_COUPLING.md`](FRONTEND_COUPLING.md) 推进平台边界、TV 播放收敛、类型检查和 Web/embedded 资产一致性；每完成一个可回滚的小步骤就更新本文件并提交。
+当前批次（`R5-2026.08.29-supervisor-01`）已完成 R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐，并落地三条并行支线的首个小步骤：
+
+- R5A：平台能力与页面 DOM contract（先补稳定 mount point 和启动 smoke test）。
+- R5B：TV 播放运行时收敛（清理 classic fallback，统一 module 播放路径）。
+- R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
+
+本批次新增验收：`backend/tests/test_frontend_dom_contract.py`（2 项）及 TV 播放入口回归断言（1 项）。完整 `npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将该基线失败误判为本批次回归。

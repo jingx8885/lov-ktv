@@ -37,6 +37,9 @@ def test_tv_does_not_restart_on_network_stall():
     assert "item.song_id !== nowId" in mix
     assert 'if (now && now.status === "ready") add(now.song_id)' not in mix
     assert 'src="/tv/app.js"' in html
+    # Playback is owned by the ES module app; the legacy classic bootstrap
+    # installed a second polling/lyrics timer when module loading was delayed.
+    assert 'src="/tv/boot-play.js"' not in html
     assert 'from "./playback/js/tick.js"' in app
     assert "watchRoom(state.room.code, applyRoom)" in app
     assert "export function setWaiting" in tick
