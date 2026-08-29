@@ -11,6 +11,7 @@ import re
 
 
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
+ANDROID_PHONE = Path(__file__).resolve().parents[2] / "android-phone"
 
 
 class _Elements(HTMLParser):
@@ -62,3 +63,22 @@ def test_tv_entry_has_stable_mount_points_and_boot_module():
     assert body.get("data-app") == "tv"
     assert any(item.get("tag") == "script" and item.get("type") == "module" and item.get("src", "").endswith("/tv/app.js") for item in elements)
     assert _must_ids("tv") <= _ids(elements)
+
+
+def test_android_phone_rebind_injection_uses_mount_contract():
+    source = (
+        ANDROID_PHONE
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "phone"
+        / "DeskActivity.kt"
+    ).read_text(encoding="utf-8")
+    assert '[data-mount="phone-room-sheet"]' in source
+    assert '[data-mount="phone-who-sheet"]' in source
+    assert '[data-mount="phone-language"]' in source
+    assert "#roomSheet .sheet" not in source
+    assert ".lang-picker" not in source

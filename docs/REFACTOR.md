@@ -1,6 +1,6 @@
 # lov-ktv 架构重构需求与跟踪
 
-> 重构批次标识：`R5-2026.08.29-supervisor-01`
+> 重构批次标识：`R5-2026.08.29-supervisor-02`
 >
 > 本标识用于串联本轮监工会话、子会话提交与验收记录；后续批次递增末尾序号。
 
@@ -68,7 +68,7 @@
 - [ ] 原生桥调用和回调集中到 adapter；业务模块不再直接访问 `window.LovKtvNative`、`window.LovKtvPhone`、`window.LovMic`、`window.LovAec`。
 - [x] `m.html`、`tv.html` 建立必需节点清单和静态启动 smoke test。
 - [ ] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
-- [ ] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
+- [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
 - [ ] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常。
 
 ### R5B TV 播放运行时收敛 — 待开始
@@ -101,10 +101,10 @@
 
 ## 当前跟进
 
-当前批次（`R5-2026.08.29-supervisor-01`）已完成 R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐，并落地三条并行支线的首个小步骤：
+当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 注入入口的稳定挂载点迁移；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
 
-- R5A：平台能力与页面 DOM contract（先补稳定 mount point 和启动 smoke test）。
+- R5A：平台能力与页面 DOM contract（已将 Android Phone 注入改为稳定 mount point）。
 - R5B：TV 播放运行时收敛（清理 classic fallback，统一 module 播放路径）。
 - R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
 
-本批次新增验收：`backend/tests/test_frontend_dom_contract.py`（2 项）及 TV 播放入口回归断言（1 项）。完整 `npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将该基线失败误判为本批次回归。
+本批次新增验收：Android Phone 注入脚本静态断言，以及上一批 `backend/tests/test_frontend_dom_contract.py`（2 项）和 TV 播放入口回归断言（1 项）。完整 `npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将该基线失败误判为本批次回归。

@@ -280,8 +280,10 @@ class DeskActivity : Activity() {
                 el.onclick = function(){ LovKtvPhone.scanTv(); };
               }
               var label = bound ? $rebind : $bind;
-              wire(ensure('scanTv', '#roomSheet .sheet', '#join', 'btn primary'), label);
-              wire(ensure('rebindTv', '#whoSheet .sheet', '.lang-picker', 'btn'), label);
+              // Use semantic mount points from m.html; visual class names are not
+              // part of the embedded-page contract and may change with styling.
+              wire(ensure('scanTv', '[data-mount="phone-room-sheet"]', '#join', 'btn primary'), label);
+              wire(ensure('rebindTv', '[data-mount="phone-who-sheet"]', '[data-mount="phone-language"]', 'btn'), label);
             })();
             """.trimIndent(),
             null,
