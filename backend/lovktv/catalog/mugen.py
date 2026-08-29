@@ -453,9 +453,14 @@ def parse_ass(raw: str) -> list[dict[str, Any]]:
 
 
 def timeline_from_ass(raw: str, language: str = "ja") -> dict[str, Any]:
+    from lovktv.pipeline.lyrics import merge_english_token_chunks
+
     cues = parse_ass(raw)
     if not cues:
         raise RuntimeError("Karaoke Mugen 歌词是空的")
+    if str(language or "").strip().lower() == "en":
+        for cue in cues:
+            cue["tokens"] = merge_english_token_chunks(cue.get("tokens") or [])
     return {
         "language": language or "ja",
         "alignment": "mugen",

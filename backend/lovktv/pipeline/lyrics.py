@@ -18,6 +18,9 @@ _LATIN_LETTER = re.compile(r"[A-Za-z]")
 _KATA_MARK = set("ー・ヽヾ")
 _LATIN_CHUNK = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?")
 _JA_CHUNK = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
+_LATIN_WORD_TOKEN = re.compile(
+    r"[^\W_]+(?:['’][^\W_]+)*(?:[-‐‑‒–—][^\W_]+(?:['’][^\W_]+)*)*"
+)
 _META_LINE = re.compile(r"^\[(ti|ar|al|by|offset):", re.I)
 _converter = None
 
@@ -241,11 +244,18 @@ def ja_token_specs(text: str) -> list[tuple[str, str]]:
 
 
 def _latin_words(text: str) -> list[str]:
-    return [
-        part
-        for part in re.findall(r"[A-Za-z0-9']+|[^\sA-Za-z0-9']+", text)
-        if part.strip()
-    ]
+    # Keep contractions and hyphenated compounds together.  Curly apostrophes
+    # are common in fetched lyrics (``don’t``); treating them as punctuation
+    # would turn one sung word into three visual tokens.
+    parts: list[str] = []
+    cursor = 0
+    for match in _LATIN_WORD_TOKEN.finditer(text):
+        gap = text[cursor : match.start()]
+        parts.extend(piece for piece in re.findall(r"[^\s]+", gap) if piece)
+        parts.append(match.group(0))
+        cursor = match.end()
+    parts.extend(piece for piece in re.findall(r"[^\s]+", text[cursor:]) if piece)
+    return parts
 
 
 def tokenize(text: str, language: str) -> list[str]:
@@ -256,6 +266,40 @@ def tokenize(text: str, language: str) -> list[str]:
     ):
         return _latin_words(text)
     return [char for char in text if not char.isspace()]
+
+
+def merge_english_token_chunks(tokens: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Merge syllable-level karaoke tags into whole English words."""
+    merged: list[dict[str, Any]] = []
+    boundary_after = False
+    for raw in tokens or []:
+        text = str(raw.get("text") or "")
+        if not text.strip():
+            continue
+        clean = re.sub(r"\s+", " ", text).strip()
+        if not clean:
+            continue
+        leading_space = bool(re.match(r"\s", text))
+        trailing_space = bool(re.search(r"\s$", text))
+        punctuation_only = not bool(re.search(r"[A-Za-z0-9]", clean))
+        row = dict(raw)
+        row["text"] = clean
+        if not merged:
+            merged.append(row)
+            boundary_after = trailing_space
+        elif punctuation_only:
+            merged[-1]["text"] = str(merged[-1].get("text") or "").rstrip() + clean
+            merged[-1]["end_ms"] = max(int(merged[-1].get("end_ms") or 0), int(row.get("end_ms") or 0))
+            boundary_after = boundary_after or trailing_space
+        elif boundary_after or leading_space:
+            merged[-1]["text"] = str(merged[-1].get("text") or "").rstrip() + " "
+            merged.append(row)
+            boundary_after = trailing_space
+        else:
+            merged[-1]["text"] = str(merged[-1].get("text") or "").rstrip() + clean
+            merged[-1]["end_ms"] = max(int(merged[-1].get("end_ms") or 0), int(row.get("end_ms") or 0))
+            boundary_after = trailing_space
+    return merged
 
 
 def reading_for(token: str, language: str) -> str:

@@ -122,6 +122,19 @@ Comment: 0,0:00:02.07,0:00:05.69,Hajime,,0,0,0,karaoke,{\\k54}hello {\\k20}world
     assert cues[0]["tokens"][0]["start_ms"] == 2070
 
 
+def test_timeline_from_ass_merges_english_syllables_into_words():
+    raw = r"""
+Comment: 0,0:00:02.07,0:00:03.00,Hajime,,0,0,0,karaoke,{\k20}hel{\k30}lo {\k15}wor{\k25}ld!
+"""
+    timeline = mugen.timeline_from_ass(raw, "en")
+    assert [token["text"] for token in timeline["cues"][0]["tokens"]] == [
+        "hello ",
+        "world!",
+    ]
+    assert timeline["cues"][0]["tokens"][0]["start_ms"] == 2070
+    assert timeline["cues"][0]["tokens"][0]["end_ms"] == 2570
+
+
 def test_classify_dual_audio_uses_stream_titles():
     streams = [
         {"index": 0, "codec_type": "video"},

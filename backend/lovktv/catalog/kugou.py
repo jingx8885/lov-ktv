@@ -122,6 +122,11 @@ def timeline_from_krc(
     lang = detect_language(
         "".join(str(cue.get("text") or "") for cue in cues), language
     )
+    if lang == "en":
+        from lovktv.pipeline.lyrics import merge_english_token_chunks
+
+        for cue in cues:
+            cue["tokens"] = merge_english_token_chunks(cue.get("tokens") or [])
     return {
         "language": lang,
         "alignment": "kugou",

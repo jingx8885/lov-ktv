@@ -113,6 +113,13 @@ def test_language_and_tokens():
     assert detect_language("It's only love", "zh") == "en"
     assert tokenize("晴天", "zh") == ["晴", "天"]
     assert tokenize("I see", "en") == ["I", "see"]
+    assert tokenize("I don’t know rock'n'roll café", "en") == [
+        "I",
+        "don’t",
+        "know",
+        "rock'n'roll",
+        "café",
+    ]
     assert tokenize("I close my eyes and I can see", "zh") == [
         "I",
         "close",
