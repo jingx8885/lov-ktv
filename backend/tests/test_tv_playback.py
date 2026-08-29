@@ -64,3 +64,57 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function shouldSeekNative" in clock
     assert "syncNativeVideo" in lyrics
     assert "window.LovKtvNative.stopMtv" in tick
+
+
+def test_tv_has_one_runtime_owner_and_no_legacy_boot_entries():
+    """The ES-module runtime is the only TV bootstrap for browser and APK WebView."""
+    tv = (ROOT / "tv.html").read_text(encoding="utf-8")
+    app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
+    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
+    scripts = [p.read_text(encoding="utf-8") for p in (ROOT / "tv").rglob("*.js")]
+    joined = "\n".join(scripts)
+
+    assert 'src="/tv/app.js"' in tv
+    assert 'src="/tv/boot-play.js"' not in tv
+    assert 'src="/tv/boot-qr.js"' not in tv
+    assert not (ROOT / "tv" / "boot-play.js").exists()
+    assert not (ROOT / "tv" / "boot-qr.js").exists()
+    assert joined.count("window.LovKtvRemote =") == 1
+    assert joined.count("setInterval(tick, 1500)") == 1
+    assert app.count("setInterval(tick, 1500)") == 1
+    assert "bindRemote();" in app
+    assert "__module: true" in remote
+
+
+def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
+    """Keep the critical playback transitions covered without a browser dependency."""
+    app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
+    tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
+    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
+    mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
+
+    # Cold start is explicitly armed by the same button in browser and APK WebView.
+    assert '$must("start").onclick' in app
+    assert "unlockAudio();" in app
+    assert "startPlayback();" in app
+    assert "watchRoom(state.room.code, applyRoom)" in app
+    # Pause/resume is room-authoritative and never advances while paused.
+    assert "if (state.room && state.room.paused)" in tick
+    assert "pauseAudio();" in tick
+    assert "export function applyPaused()" in remote
+    assert "startPlayback();" in remote
+    # Skip clears the current item and re-enters the canonical tick path.
+    assert 'fetchJson("/api/rooms/" + code + "/skip"' in remote
+    assert 'state.lastItem = ""' in remote
+    assert "await tick();" in remote
+    # Stalls retain resume position and are excluded from eager restart decisions.
+    assert 'addEventListener("waiting"' in tick
+    assert 'addEventListener("stalled"' in tick
+    assert "state.mediaStall" in tick
+    assert "if (isMediaStalled(el)) return false;" in tick
+    assert "state.resumeAt = t;" in tick
+    # Browser MTV failure degrades to a cover; native MTV remains the same bind path.
+    assert 'mtv.onerror = () =>' in mtv
+    assert 'classList.add("has-mtv-cover")' in mtv
+    assert 'mtv.hidden = true' in mtv
+    assert "window.LovKtvNative.playMtv" in mtv
