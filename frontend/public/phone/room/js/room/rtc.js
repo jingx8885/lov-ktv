@@ -1,9 +1,9 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
-import { showToast } from "../../ui/js/toast.js";
-import { openOverlay } from "../../ui/js/overlays.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { openOverlay } from "../../../ui/js/overlays.js";
 import { paintMix } from "./mix.js";
 import {
   hasNativeMic,
@@ -12,7 +12,7 @@ import {
   nativeCall,
   webMicApi,
   micErrorText
-} from "../../platform.js";
+} from "../../../platform.js";
 
 export function usesNativeMic() {
   return hasNativeMic();

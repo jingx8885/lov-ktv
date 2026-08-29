@@ -1,8 +1,8 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../../shared/lyrics/js/paint.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 
 export function cueIndexAt(time) {

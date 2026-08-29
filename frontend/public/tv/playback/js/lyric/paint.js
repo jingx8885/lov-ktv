@@ -1,9 +1,9 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js";
-import { state } from "../../state.js";
-import { nativeMv, silenceMtv } from "./mtv.js";
-import { syncVocal } from "./mix.js";
-import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./lyric/clock.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { applyLyricMode, paintLine } from "../../../../shared/lyrics/js/paint.js";
+import { state } from "../../../state.js";
+import { nativeMv, silenceMtv } from "../media/mtv.js";
+import { syncVocal } from "../media/mix.js";
+import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./clock.js";
 import {
   clearNativeLyrics,
   nativeMtvAvailable,
@@ -13,7 +13,7 @@ import {
   pauseNativeMtv,
   resumeNativeMtv,
   seekNativeMtv
-} from "../../platform.js";
+} from "../../../platform.js";
 
 let nativeLyricsCleared = false;
 

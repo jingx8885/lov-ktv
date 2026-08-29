@@ -19,8 +19,8 @@
     "public/tv/**/*.js",
     "public/shared/ui/**/*.js",
     "public/shared/lyrics/**/*.js",
-    "public/phone/player/js/timeline.js",
-    "public/tv/fx/js/stage-fx.js",
+    "public/phone/player/js/playback/timeline.js",
+    "public/shared/fx/**/*.js",
     "public/login/**/*.js",
     "public/landing/**/*.js"
   ],

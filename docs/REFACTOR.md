@@ -55,9 +55,11 @@
 - [x] 固化播放控制事件的运行时校验，并在 WebSocket 入口接入。
 - [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
 - [x] 手机端播放顺序决策提取到独立 `player/state.js`。
-- [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/state.js`。
+- [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/runtime/state.js`。
 - [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room/state.js`。
 - [x] 电视端 `LovKtvNative` MTV/歌词/设置能力集中到 `tv/platform.js` adapter。
+- [x] Phone 播放与房间模块分别归档到 `player/js/playback`、`room/js/room`，消除同级文件与二级目录混排。
+- [x] 共享音频与舞台特效按 `aec`、`bands`、`rtc`、`fx/stage` 归档，Phone 不再反向依赖 TV 目录。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
@@ -83,7 +85,7 @@
 ### R5C shared 资源与类型边界 — 待开始
 
 - [x] 本批次移除 `timeline.js` 的 TypeScript 排除项，单文件 `tsc` 检查通过。
-- [ ] `stage-fx.js`、`timeline.js` 改为 ESM，Phone 学习模式不再从 `tv/` 目录加载资源。
+- [x] 舞台特效归档到 `shared/fx/js/stage`，Phone 学习模式与 TV 播放共用资源；播放器 timeline 归档到 `phone/player/js/playback`。
 - [ ] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
 - [ ] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
 - [ ] 验收：`npm run check` 绿色，且 phone/tv 入口各有独立模块加载测试。

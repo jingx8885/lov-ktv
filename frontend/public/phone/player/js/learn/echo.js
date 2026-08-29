@@ -2,8 +2,8 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
 import { showToast } from "../../../ui/js/toast.js";
-import { mediaUrl } from "../media.js";
-import { startPhoneMic, stopPhoneMic } from "../mic.js";
+import { mediaUrl } from "../playback/media.js";
+import { startPhoneMic, stopPhoneMic } from "../playback/mic.js";
 import { cancelCueWindow, paintLearnLine, playCueWindow } from "./play.js";
 
 export const SING_PAD_MS = 1600;

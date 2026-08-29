@@ -5,7 +5,7 @@ import { state } from "./state.js";
 import { bootAuth, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
 import { bindRoomRtc } from "./audio/js/mic.js";
-import { applyMix } from "./playback/js/mix.js";
+import { applyMix } from "./playback/js/media/mix.js";
 import {
   tick,
   applyRoom,
@@ -16,9 +16,9 @@ import {
   restoreResume,
   songReallyEnded,
   wantsResume
-} from "./playback/js/tick.js";
-import { paint } from "./playback/js/lyrics.js";
-import { bindRemote, skipSong, toggleVocal, paintSettings } from "./playback/js/remote.js";
+} from "./playback/js/runtime/tick.js";
+import { paint } from "./playback/js/lyric/paint.js";
+import { bindRemote, skipSong, toggleVocal, paintSettings } from "./playback/js/remote/controls.js";
 
 bootI18n();
 onLangChange(() => {

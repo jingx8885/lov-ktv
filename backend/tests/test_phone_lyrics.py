@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 
 def test_lyric_mode_buttons_do_not_select_body():
-    mix = (ROOT / "phone" / "room" / "js" / "mix.js").read_text(encoding="utf-8")
+    mix = (ROOT / "phone" / "room" / "js" / "room" / "mix.js").read_text(encoding="utf-8")
     paint = (ROOT / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
     assert "el.dataset.lyricMode = mode" in paint
     assert "function tokenRoma" in paint
@@ -24,13 +24,13 @@ def test_lyric_mode_buttons_do_not_select_body():
     html = (ROOT / "m.html").read_text(encoding="utf-8")
     assert 'getElementById("page-desk")' in app
     assert '$must("page-desk")' not in app
-    assert 'from "./room/js/mix.js"' in app
-    assert 'from "../../../shared/lyrics/js/paint.js"' in mix
+    assert 'from "./room/js/room/mix.js"' in app
+    assert 'from "../../../../shared/lyrics/js/paint.js"' in mix
     assert 'src="/phone/app.js"' in html
     assert 'href="/phone/desk/css/desk.css"' in html
-    assert 'from "./player/js/mic.js"' in app
+    assert 'from "./player/js/playback/mic.js"' in app
     css = (ROOT / "phone" / "player" / "css" / "player.css").read_text(encoding="utf-8")
-    mic = (ROOT / "phone" / "player" / "js" / "mic.js").read_text(encoding="utf-8")
+    mic = (ROOT / "phone" / "player" / "js" / "playback" / "mic.js").read_text(encoding="utf-8")
     assert ".player-dock.is-hint .player-hint" in css
     assert ".player-hint[data-hold] { display: block; }" in css
     assert 'btn.classList.add("busy")' in mic

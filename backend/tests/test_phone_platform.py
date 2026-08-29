@@ -12,7 +12,7 @@ def test_phone_platform_exposes_named_ports_and_bridge_isolated():
     assert "export const phonePlatform" in source
     for port in ("mic", "scanner", "media", "remote", "http"):
         assert f"  {port}:" in source
-    assert "export const platform = phonePlatform" in source
+    assert "window.LovKtvPlatform = phonePlatform" in source
     # Only the adapter may inspect the Android injection point.
     business = "\n".join(
         path.read_text(encoding="utf-8")

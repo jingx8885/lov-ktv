@@ -3,9 +3,9 @@ import { roomCode, hostOrigin } from "./auth/js/login.js";
 import { bindLiveMic, clearLiveMic, bindRoomRtc, micGainValue } from "./audio/js/mic.js";
 import { startKeepAlive, schedulePlayRetries } from "./audio/js/keepalive.js";
 import { hookAudio, unlockAudio, playEl, resumeCtxs, liveCtxs } from "./audio/js/unlock.js";
-import { mediaUrl, prefetchQueue, applyMix, syncVocal, roomLine } from "./playback/js/mix.js";
-import { silenceMtv, nativeMv, syncNativeMv, bindMtv } from "./playback/js/mtv.js";
-import { ensureStageFx, lyricsFingerprint, paint } from "./playback/js/lyrics.js";
+import { mediaUrl, prefetchQueue, applyMix, syncVocal, roomLine } from "./playback/js/media/mix.js";
+import { silenceMtv, nativeMv, syncNativeMv, bindMtv } from "./playback/js/media/mtv.js";
+import { ensureStageFx, lyricsFingerprint, paint } from "./playback/js/lyric/paint.js";
 import {
   pageVisible,
   canPlay,
@@ -15,7 +15,7 @@ import {
   startPlayback,
   stopPlayback,
   pauseAudio
-} from "./playback/js/tick.js";
+} from "./playback/js/runtime/tick.js";
 
 installApi({
   roomCode,

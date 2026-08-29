@@ -6,18 +6,18 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-FX = ROOT / "frontend" / "public" / "tv" / "fx" / "js"
+FX = ROOT / "frontend" / "public" / "shared" / "fx" / "js"
 
 
 def test_stage_fx_is_split_into_ordered_modules():
     tv = (ROOT / "frontend" / "public" / "tv.html").read_text(encoding="utf-8")
     scripts = [
-        "/tv/fx/js/stage-fx/primitives.js",
-        "/tv/fx/js/stage-fx/build.js",
-        "/tv/fx/js/stage-fx/draw.js",
-        "/tv/fx/js/stage-fx/runtime.js",
-        "/tv/fx/js/stage-fx/party.js",
-        "/tv/fx/js/stage-fx/hooks.js",
+        "/shared/fx/js/stage/primitives.js",
+        "/shared/fx/js/stage/build.js",
+        "/shared/fx/js/stage/draw.js",
+        "/shared/fx/js/stage/runtime.js",
+        "/shared/fx/js/stage/party.js",
+        "/shared/fx/js/stage/hooks.js",
     ]
     positions = [tv.index(f'src="{src}"') for src in scripts]
     assert positions == sorted(positions)
@@ -32,12 +32,12 @@ def test_stage_fx_browser_smoke():
     if not node:
         pytest.skip("需要 Node，才能运行 stage-fx smoke")
     files = [
-        FX / "stage-fx" / "primitives.js",
-        FX / "stage-fx" / "build.js",
-        FX / "stage-fx" / "draw.js",
-        FX / "stage-fx" / "runtime.js",
-        FX / "stage-fx" / "party.js",
-        FX / "stage-fx" / "hooks.js",
+        FX / "stage" / "primitives.js",
+        FX / "stage" / "build.js",
+        FX / "stage" / "draw.js",
+        FX / "stage" / "runtime.js",
+        FX / "stage" / "party.js",
+        FX / "stage" / "hooks.js",
     ]
     script = r"""
 const fs = require("fs");

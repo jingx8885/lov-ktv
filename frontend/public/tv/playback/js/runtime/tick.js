@@ -1,15 +1,15 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { STATUS } from "../../../shared/ui/js/status.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
-import { roomCode } from "../../auth/js/login.js";
-import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js";
-import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
-import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { STATUS } from "../../../../shared/ui/js/status.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
+import { roomCode } from "../../../auth/js/login.js";
+import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "../media/mix.js";
+import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
+import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
-import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room/state.js";
-import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
+import { fetchRoomSnapshot, roomWsLive, watchRoom } from "../room/state.js";
+import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../../platform.js";
 
 export { roomWsLive, watchRoom };
 

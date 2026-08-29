@@ -1,8 +1,8 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
 import { mediaRevFor, mediaUrl } from "./mix.js";
-import { nativeMtvAvailable, playNativeMtv } from "../../platform.js";
+import { nativeMtvAvailable, playNativeMtv } from "../../../platform.js";
 
 function nativePlayer() {
   return nativeMtvAvailable();

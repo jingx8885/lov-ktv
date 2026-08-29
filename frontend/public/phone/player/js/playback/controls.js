@@ -1,9 +1,9 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
-import { ICO } from "../../ui/js/icons.js";
-import { showToast } from "../../ui/js/toast.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
+import { ICO } from "../../../ui/js/icons.js";
+import { showToast } from "../../../ui/js/toast.js";
 import { mediaAhead } from "./media.js";
 
 let paintPlayerCallback = null;

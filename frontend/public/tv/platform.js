@@ -139,5 +139,3 @@ export const tvPlatform = {
   remote: { available: hasNativeTv },
   scanner: { available: () => false }
 };
-
-export const platform = tvPlatform;

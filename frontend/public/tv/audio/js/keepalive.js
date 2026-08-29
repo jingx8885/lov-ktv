@@ -2,7 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { liveCtxs, resumeCtxs } from "./unlock.js";
-import { wantsResume } from "../../playback/js/tick.js";
+import { wantsResume } from "../../playback/js/runtime/tick.js";
 
 export function makeQuietLoop() {
   const sr = 44100;

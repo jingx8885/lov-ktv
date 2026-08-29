@@ -7,7 +7,7 @@ import { api } from "../../api.js";
 import { ICO, songInitial, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
-import { fetchRoom, roomStamp } from "../../room/js/state.js";
+import { fetchRoom, roomStamp } from "../../room/js/room/state.js";
 
 let lastLanFailAt = 0;
 let lastRoomStamp = "";
