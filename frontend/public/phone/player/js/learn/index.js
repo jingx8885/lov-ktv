@@ -1,17 +1,17 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
-import { showToast } from "../../ui/js/toast.js";
-import { startPhoneMic } from "./mic.js";
-import { applyPlayerVocalMix, pausePlayer, unlockPlayerGesture } from "./controls.js";
-import { kickPlayerPaint } from "./lyrics.js";
-import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn/play.js";
-import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn/fx.js";
-import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn/quiz.js";
-import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn/echo.js";
-import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn/tap.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { startPhoneMic } from "../playback/mic.js";
+import { applyPlayerVocalMix, pausePlayer, unlockPlayerGesture } from "../playback/controls.js";
+import { kickPlayerPaint } from "../playback/lyrics.js";
+import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./play.js";
+import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./fx.js";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./quiz.js";
+import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js";
+import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
 
 /** @type {{ mode: LearnMode | "", pack: LearnQuiz | null, vocalWas: number, boot: number }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };

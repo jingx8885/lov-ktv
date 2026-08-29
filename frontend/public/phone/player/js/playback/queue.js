@@ -1,9 +1,9 @@
-import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { state, LIB_LETTERS } from "../../state.js";
+import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { state, LIB_LETTERS } from "../../../state.js";
 import { nextSongId } from "./state.js";
-import { ICO, songLetter } from "../../ui/js/icons.js";
+import { ICO, songLetter } from "../../../ui/js/icons.js";
 import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
 import { unlockPlayerGesture } from "./controls.js";
 import { loadPlayerSong } from "./song.js";

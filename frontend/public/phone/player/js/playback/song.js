@@ -1,10 +1,10 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { roomUrl } from "../../origin.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { paintLyricMode } from "../../room/js/mix.js";
-import { api } from "../../api.js";
-import { state } from "../../state.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { roomUrl } from "../../../origin.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { paintLyricMode } from "../../../room/js/room/mix.js";
+import { api } from "../../../api.js";
+import { state } from "../../../state.js";
 import { applyPlayerVocalMix, hookPlayerAudio, setPlayIcon, syncGuide, unlockPlayerGesture } from "./controls.js";
 import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";

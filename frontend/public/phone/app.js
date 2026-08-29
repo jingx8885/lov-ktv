@@ -9,15 +9,15 @@ import { bindNav, showPage } from "./nav/js/pages.js";
 import { bindSearch, paintSearchHits } from "./search/js/hits.js";
 import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
-import { bindJoin, paintBindBtns } from "./room/js/join.js";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js";
-import { bindRoomRtc } from "./room/js/rtc.js";
-import { bindPlayback } from "./player/js/ui.js";
-import { updatePlayOrderBtns } from "./player/js/queue.js";
-import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
-import { bindAlign, updateAlignNow } from "./player/js/align.js";
-import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js";
-import { bindLearn } from "./player/js/learn.js";
+import { bindJoin, paintBindBtns } from "./room/js/room/join.js";
+import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/room/mix.js";
+import { bindRoomRtc } from "./room/js/room/rtc.js";
+import { bindPlayback } from "./player/js/playback/ui.js";
+import { updatePlayOrderBtns } from "./player/js/playback/queue.js";
+import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/playback/sheet.js";
+import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
+import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
+import { bindLearn } from "./player/js/learn/index.js";
 
 const params = new URLSearchParams(location.search);
 if (params.get("login")) {

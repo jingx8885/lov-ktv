@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-PLAYER = ROOT / "frontend" / "public" / "phone" / "player" / "js"
+PLAYER = ROOT / "frontend" / "public" / "phone" / "player" / "js" / "playback"
 
 
 def test_phone_playback_has_responsibility_modules_without_facade():
@@ -32,7 +32,7 @@ def test_phone_playback_modules_parse_and_direct_imports():
         assert result.returncode == 0, result.stdout + result.stderr
     script = (
         "globalThis.localStorage={getItem:()=>null,setItem:()=>{}};"
-        "const mods=await Promise.all(['media','controls','queue','lyrics','song','ui'].map(n=>import('./frontend/public/phone/player/js/'+n+'.js')));"
+        "const mods=await Promise.all(['media','controls','queue','lyrics','song','ui'].map(n=>import('./frontend/public/phone/player/js/playback/'+n+'.js')));"
         "for (const m of mods) if (!m || !Object.keys(m).length) throw Error('empty module');"
     )
     result = subprocess.run(

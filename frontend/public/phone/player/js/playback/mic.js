@@ -1,11 +1,17 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { state } from "../../state.js";
-import { showToast } from "../../ui/js/toast.js";
-import { showActionSheet } from "../../ui/js/overlays.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { state } from "../../../state.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { showActionSheet } from "../../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./controls.js";
-import { hasNativeMic, nativeCaps, nativeCall, nativeMicState, setNativeGain } from "../../room/js/native/mic.js";
-import { micErrorText as platformMicErrorText } from "../../platform.js";
+import {
+  hasNativeMic,
+  nativeCapabilities,
+  nativeCall,
+  nativeMicState,
+  setNativeGain,
+  micErrorText as platformMicErrorText
+} from "../../../platform.js";
 
 const MIC_WAIT_MS = 12000;
 
@@ -204,7 +210,7 @@ export async function routePhoneSink(sink) {
 }
 
 async function startNativePhoneMic() {
-  const caps = nativeCaps();
+  const caps = nativeCapabilities();
   if (state.phoneIem) {
     await nativeCall("startIem");
   } else if (nativeMicState().iem) {

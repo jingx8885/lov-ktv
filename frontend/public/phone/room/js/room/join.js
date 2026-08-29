@@ -1,17 +1,17 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { adoptLan, lanOrigin, roomUrl, tvBound } from "../../origin.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { api } from "../../api.js";
-import { paintTopRoom } from "../../ui/js/icons.js";
-import { showToast } from "../../ui/js/toast.js";
-import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { adoptLan, lanOrigin, roomUrl, tvBound } from "../../../origin.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { api } from "../../../api.js";
+import { paintTopRoom } from "../../../ui/js/icons.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { closeOverlay, openOverlay } from "../../../ui/js/overlays.js";
 import {
   hasNativeScan as platformHasNativeScan,
   scanTv as platformScanTv,
   lanFetchReady,
   nativeHttpReady
-} from "../../platform.js";
+} from "../../../platform.js";
 
 export function hasNativeScan() {
   return platformHasNativeScan();

@@ -239,6 +239,3 @@ export function micErrorText(err) {
     return (err && err.message) || t("phone.mic.fail");
   }
 }
-
-/** Browser and embedded pages consume the same named port bundle. */
-export const platform = phonePlatform;

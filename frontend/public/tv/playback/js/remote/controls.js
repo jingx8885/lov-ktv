@@ -1,12 +1,12 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { state } from "../../state.js";
-import { nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../platform.js";
-import { roomCode } from "../../auth/js/login.js";
-import { unlockAudio } from "../../audio/js/unlock.js";
-import { applyMix } from "./mix.js";
-import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "./tick.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { state } from "../../../state.js";
+import { nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
+import { roomCode } from "../../../auth/js/login.js";
+import { unlockAudio } from "../../../audio/js/unlock.js";
+import { applyMix } from "../media/mix.js";
+import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "../runtime/tick.js";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";

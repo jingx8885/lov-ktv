@@ -1,6 +1,6 @@
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { $ } from "../../../shared/ui/js/dom.js";
-import { state } from "../../state.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { state } from "../../../state.js";
 
 export function mediaRevFor(songId) {
   const snap = state.room;

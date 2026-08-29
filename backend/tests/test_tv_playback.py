@@ -4,8 +4,8 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 
 def test_tv_does_not_restart_on_network_stall():
-    tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
-    playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(
+    tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(encoding="utf-8")
+    playback_state = (ROOT / "tv" / "playback" / "js" / "runtime" / "state.js").read_text(
         encoding="utf-8"
     )
     room_state = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(
@@ -14,7 +14,7 @@ def test_tv_does_not_restart_on_network_stall():
     platform = (ROOT / "tv" / "platform.js").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
-    mix = (ROOT / "tv" / "playback" / "js" / "mix.js").read_text(encoding="utf-8")
+    mix = (ROOT / "tv" / "playback" / "js" / "media" / "mix.js").read_text(encoding="utf-8")
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
     assert "export { roomWsLive, watchRoom }" in tick
     assert "/ws/box/" in room_state
@@ -26,7 +26,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function shouldReloadRoomItem" in playback_state
     assert "export function watchRoom" in room_state
     assert "export function fetchRoomSnapshot" in room_state
-    assert 'from "./room/state.js"' in tick
+    assert 'from "../room/state.js"' in tick
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
@@ -44,12 +44,12 @@ def test_tv_does_not_restart_on_network_stall():
     # Playback is owned by the ES module app; the legacy classic bootstrap
     # installed a second polling/lyrics timer when module loading was delayed.
     assert 'src="/tv/boot-play.js"' not in html
-    assert 'from "./playback/js/tick.js"' in app
+    assert 'from "./playback/js/runtime/tick.js"' in app
     assert "watchRoom(state.room.code, applyRoom)" in app
     assert "export function setWaiting" in tick
     assert "setWaiting(true)" in tick
     assert 'setWaiting(now.status !== "ready")' in tick
-    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
+    remote = (ROOT / "tv" / "playback" / "js" / "remote" / "controls.js").read_text(encoding="utf-8")
     assert "togglePaused" in remote
     assert "if (startIfNeeded()) return;" in remote
     assert "if (startIfNeeded() && roomPaused()) return;" not in remote
@@ -98,11 +98,11 @@ def test_tv_does_not_restart_on_network_stall():
     assert "setVideoScalingMode" not in silent
     assert "PixelFormat.OPAQUE" not in silent
     assert "resumeMtv()" in activity
-    mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
+    mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(encoding="utf-8")
     clock = (ROOT / "tv" / "playback" / "js" / "lyric" / "clock.js").read_text(
         encoding="utf-8"
     )
-    lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")
+    lyrics = (ROOT / "tv" / "playback" / "js" / "lyric" / "paint.js").read_text(encoding="utf-8")
     assert "nativeMtvAvailable" in mtv
     assert "export function playNativeMtv" in platform
     assert "export function shouldSeekNative" in clock
@@ -114,7 +114,7 @@ def test_tv_has_one_runtime_owner_and_no_legacy_boot_entries():
     """The ES-module runtime is the only TV bootstrap for browser and APK WebView."""
     tv = (ROOT / "tv.html").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
-    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
+    remote = (ROOT / "tv" / "playback" / "js" / "remote" / "controls.js").read_text(encoding="utf-8")
     scripts = [p.read_text(encoding="utf-8") for p in (ROOT / "tv").rglob("*.js")]
     joined = "\n".join(scripts)
 
@@ -133,9 +133,9 @@ def test_tv_has_one_runtime_owner_and_no_legacy_boot_entries():
 def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     """Keep the critical playback transitions covered without a browser dependency."""
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
-    tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
-    remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
-    mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
+    tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(encoding="utf-8")
+    remote = (ROOT / "tv" / "playback" / "js" / "remote" / "controls.js").read_text(encoding="utf-8")
+    mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(encoding="utf-8")
 
     # Cold start is explicitly armed by the same button in browser and APK WebView.
     assert '$must("start").onclick' in app

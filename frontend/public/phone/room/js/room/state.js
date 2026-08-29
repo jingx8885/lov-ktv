@@ -1,5 +1,5 @@
-import { fetchJson } from "../../../shared/ui/js/http.js";
-import { roomUrl } from "../../origin.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { roomUrl } from "../../../origin.js";
 
 /** @param {Room | null | undefined} room */
 export function roomStamp(room) {

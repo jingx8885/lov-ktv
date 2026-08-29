@@ -67,7 +67,7 @@ def test_song_and_media_urls_use_media_rev(tmp_path, monkeypatch):
     with TestClient(main.app) as client:
         detail = client.get(f"/api/songs/{song['id']}").json()
         page = client.get("/m.html")
-        mix = client.get("/tv/playback/js/mix.js")
+        mix = client.get("/tv/playback/js/media/mix.js")
         media = client.get(f"/media/{song['id']}/karaoke.m4a?v={rev}")
     assert detail["media_rev"] == rev
     assert "mediaRevFor" in mix.text

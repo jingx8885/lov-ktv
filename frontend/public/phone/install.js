@@ -8,10 +8,10 @@ import { showDeskPane, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { runSearch } from "./search/js/hits.js";
 import { stopPreview, togglePreview } from "./search/js/preview.js";
-import { joinRoom, openTv, requestTvBind, needTvOrRoom, paintBindBtns } from "./room/js/join.js";
-import { paintVocalMix, paintMix } from "./room/js/mix.js";
-import { connectRoomRtc } from "./room/js/rtc.js";
-import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/mic.js";
+import { joinRoom, openTv, requestTvBind, needTvOrRoom, paintBindBtns } from "./room/js/room/join.js";
+import { paintVocalMix, paintMix } from "./room/js/room/mix.js";
+import { connectRoomRtc } from "./room/js/room/rtc.js";
+import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import {
   exitEdit,
   enterEdit,
@@ -20,7 +20,7 @@ import {
   renderAlignList,
   applyEditorTracks,
   syncEditAxis
-} from "./player/js/align.js";
+} from "./player/js/playback/align.js";
 import {
   setPlayIcon,
   refreshPlayIcon,
@@ -32,12 +32,12 @@ import {
   syncGuide,
   applyPlayerVocalMix,
   hookPlayerAudio
-} from "./player/js/controls.js";
-import { loadPlayerList, playNextSong } from "./player/js/queue.js";
-import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/song.js";
-import { cueIndexAt } from "./player/js/lyrics.js";
-import { setPlayerSheet } from "./player/js/sheet.js";
-import { enterLearn, exitLearn } from "./player/js/learn.js";
+} from "./player/js/playback/controls.js";
+import { loadPlayerList, playNextSong } from "./player/js/playback/queue.js";
+import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/song.js";
+import { cueIndexAt } from "./player/js/playback/lyrics.js";
+import { setPlayerSheet } from "./player/js/playback/sheet.js";
+import { enterLearn, exitLearn } from "./player/js/learn/index.js";
 
 installApi({
   ICO,

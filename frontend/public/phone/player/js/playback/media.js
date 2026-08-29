@@ -1,5 +1,5 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { state } from "../../state.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { state } from "../../../state.js";
 
 /** Build a versioned URL for a song asset. */
 export function mediaUrl(songId, name) {
