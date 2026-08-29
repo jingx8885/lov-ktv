@@ -1,0 +1,146 @@
+"""Search providers and result normalization for the catalog."""
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+import urllib.parse
+import urllib.request
+from typing import Any
+
+from lovktv.catalog import bilibili
+from lovktv.catalog.http import urlopen, ytdlp_proxy_args
+
+TONZHON_API = "https://tonzhon.com/api.php"
+BROWSER_UA = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+BAD_TITLE_TOKENS = (
+    "remix", "cover", "flip", "nightcore", "slowed", "reverb", "sped up", "8d",
+    "karaoke", "カラオケ", "instrumental", "off vocal", "オフボーカル", "伴奏",
+    "inst.", "inst ", "piano ver", "acoustic ver", "live at", "first take",
+    "ザ・ファースト", "歌ってみた", "原曲歌手", "歌っちゃ王", "+1key", "+2key",
+    "+3key", "-1key", "-2key", "-3key",
+)
+TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
+SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
+
+def is_clean_title(title: str) -> bool:
+    low = (title or "").lower()
+    return not any(tok in low for tok in BAD_TITLE_TOKENS)
+
+def clean_search_title(title: str) -> str:
+    text = TITLE_VERSION.sub("", title or "")
+    text = re.sub(r"\s+", " ", text).strip(" -_·|/")
+    return text or str(title or "").strip()
+
+def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
+    body = urllib.parse.urlencode(fields).encode("utf-8")
+    req = urllib.request.Request(url, data=body, headers={
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": BROWSER_UA,
+        "Referer": "https://tonzhon.com/",
+    })
+    with urlopen(req, timeout=timeout) as resp:
+        return resp.read()
+
+def search_tonzhon(query: str, count: int = 12, source: str = "netease", page: int = 1) -> list[dict[str, Any]]:
+    raw = post_form(TONZHON_API, {"types": "search", "count": count, "source": source, "name": query, "pages": max(1, int(page))})
+    data = json.loads(raw.decode("utf-8"))
+    return data if isinstance(data, list) else []
+
+def flatten_artists(song: dict[str, Any]) -> str:
+    artists = song.get("artist") or []
+    names: list[str] = []
+    for item in artists:
+        if isinstance(item, list):
+            names.extend(str(part) for part in item if part)
+        elif item:
+            names.append(str(item))
+    return " / ".join(names)
+
+def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict[str, Any]]:
+    from lovktv.catalog import fetch as facade
+    try:
+        videos = bilibili.search_videos(query, count=max(count, 12), page=page)
+    except Exception:
+        return []
+    hits: list[dict[str, Any]] = []
+    for item in videos:
+        title, bvid = str(item.get("title") or ""), str(item.get("bvid") or "")
+        if not bvid or not title or any(tok in title.lower() for tok in bilibili.SKIP_TITLE):
+            continue
+        duration = item.get("duration")
+        if isinstance(duration, int) and not (bilibili.MIN_SEC <= duration <= bilibili.MAX_SEC):
+            continue
+        facade.remember_audio_source(bvid, {"kind": "bilibili", "bvid": bvid, "title": title, "cover": str(item.get("pic") or "")})
+        hits.append({"id": bvid, "title": title, "artist": str(item.get("author") or ""), "album": "", "pic": str(item.get("pic") or ""), "source": "bilibili", "is_mv": True, "clean": facade.is_clean_title(title), "preview_url": f"/api/preview/{bvid}"})
+        if len(hits) >= count:
+            break
+    return hits
+
+def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15, timeout: float = 60) -> list[dict[str, Any]]:
+    prefix = {"soundcloud": f"scsearch{count}:", "youtube": f"ytsearch{count}:"}[provider]
+    cmd = [ytdlp, f"{prefix}{query}", "--no-playlist", "--flat-playlist", "--print", "%(webpage_url)s\t%(duration)s\t%(title)s", "--quiet", "--no-warnings", *ytdlp_proxy_args()]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return []
+    out: list[dict[str, Any]] = []
+    for line in (result.stdout or "").strip().splitlines():
+        parts = line.split("\t", 2)
+        if len(parts) != 3:
+            continue
+        url, dur, title = parts
+        try:
+            duration = float(dur) if dur and dur != "NA" else None
+        except ValueError:
+            duration = None
+        out.append({"url": url, "duration": duration, "title": title})
+    return out
+
+def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) -> list[dict[str, Any]]:
+    from lovktv.catalog import fetch as facade
+    if page > 1 or provider != "soundcloud":
+        return []
+    ytdlp = shutil.which("yt-dlp")
+    if not ytdlp:
+        return []
+    try:
+        rows = facade._list_ytdlp(query, ytdlp, provider, count=count, timeout=6)
+    except Exception:
+        return []
+    hits: list[dict[str, Any]] = []
+    for row in rows:
+        title, page_url = str(row.get("title") or ""), str(row.get("url") or "")
+        if not page_url:
+            continue
+        hid = f"{provider}_{hashlib.sha1(page_url.encode('utf-8')).hexdigest()[:12]}"
+        facade.remember_audio_source(hid, {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider})
+        hits.append({"id": hid, "title": title, "artist": "", "album": "", "pic": "", "source": provider, "is_mv": provider == "youtube", "clean": facade.is_clean_title(title), "preview_url": f"/api/preview/{hid}"})
+        if len(hits) >= count:
+            break
+    return hits
+
+def merge_channel_hits(groups: dict[str, list[dict[str, Any]]], count: int) -> list[dict[str, Any]]:
+    queues = {key: list(groups.get(key) or []) for key in SEARCH_CHANNELS}
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    while len(out) < count:
+        added = False
+        for key in SEARCH_CHANNELS:
+            bucket = queues[key]
+            while bucket:
+                hit = bucket.pop(0)
+                hid = str(hit.get("id") or "")
+                if not hid or hid in seen:
+                    continue
+                seen.add(hid); out.append(hit); added = True; break
+            if len(out) >= count:
+                break
+        if not added:
+            break
+    return out
