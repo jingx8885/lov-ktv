@@ -9,9 +9,33 @@ HTTP/WebSocket layers.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from lovktv import store
+
+
+class RoomRepository(Protocol):
+    """Persistence contract consumed by the room domain service."""
+
+    def room_snapshot(self, code: str) -> dict[str, Any]: ...
+
+    def enqueue(self, code: str, song_id: str) -> dict[str, Any]: ...
+
+    def bump(self, code: str, item_id: str) -> dict[str, Any]: ...
+
+    def skip(self, code: str) -> dict[str, Any]: ...
+
+    def play_now(self, code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]: ...
+
+    def set_mix(
+        self,
+        code: str,
+        vocal_mix: float | None = None,
+        volume: int | None = None,
+        mic_gain: int | None = None,
+        lyric_mode: str | None = None,
+        paused: bool | None = None,
+    ) -> dict[str, Any]: ...
 
 
 class SqliteRoomStore:
@@ -42,4 +66,3 @@ class SqliteRoomStore:
         paused: bool | None = None,
     ) -> dict[str, Any]:
         return store.set_mix(code, vocal_mix, volume, mic_gain, lyric_mode, paused)
-

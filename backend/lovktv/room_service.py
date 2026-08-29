@@ -9,9 +9,9 @@ room semantics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping, Protocol
+from typing import Any, Literal, Mapping
 
-from lovktv.room_store import SqliteRoomStore
+from lovktv.room_store import RoomRepository, SqliteRoomStore
 
 RoomAction = Literal["enqueue", "bump", "skip", "play", "mix"]
 
@@ -64,36 +64,6 @@ class RoomCommand:
             lyric_mode=str(data["lyric_mode"]) if data.get("lyric_mode") is not None else None,
             paused=optional_bool("paused"),
         )
-
-
-class RoomRepository(Protocol):
-    """Persistence boundary used by :class:`RoomService`.
-
-    The room application rules should not care whether state lives in SQLite,
-    a remote store, or a test double.  Keeping this deliberately small also
-    makes it harder for a transport handler to reach around the service and
-    mutate room state itself.
-    """
-
-    def room_snapshot(self, code: str) -> dict[str, Any]: ...
-
-    def enqueue(self, code: str, song_id: str) -> dict[str, Any]: ...
-
-    def bump(self, code: str, item_id: str) -> dict[str, Any]: ...
-
-    def skip(self, code: str) -> dict[str, Any]: ...
-
-    def play_now(self, code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]: ...
-
-    def set_mix(
-        self,
-        code: str,
-        vocal_mix: float | None = None,
-        volume: int | None = None,
-        mic_gain: int | None = None,
-        lyric_mode: str | None = None,
-        paused: bool | None = None,
-    ) -> dict[str, Any]: ...
 
 
 # Compatibility name for callers that imported the adapter from this module.
