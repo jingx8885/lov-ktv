@@ -27,7 +27,7 @@ export function drawPlayerBands(time) {
     playMs: time || 0,
     duration: (audio.duration || 0) * 1000,
     cues: state.playerLyrics.cues || [],
-    selected: state.selectedCue
+    selected: state.selectedCue,
   });
 }
 
@@ -43,7 +43,7 @@ export function paintPlayer() {
   }
   const audio = $("playerAudio");
   const hold = state.playerClockHold;
-  const time = Math.floor((hold != null ? hold : audio.currentTime || 0) * 1000);
+  const time = Math.floor(((hold != null ? hold : (audio.currentTime || 0)) * 1000));
   const cues = state.playerLyrics.cues || [];
   const mode = applyLyricMode(document.body, state.lyricMode);
   const idx = cues.findIndex((c) => time >= c.start_ms && time < c.end_ms);
@@ -54,15 +54,7 @@ export function paintPlayer() {
     paintLine($("playerNext"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
   } else if (upcomingIdx >= 0) {
     const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
-    paintLine(
-      $("playerPrev"),
-      upcomingIdx > 1 ? cues[upcomingIdx - 2] : null,
-      1e12,
-      "prev",
-      state.lyricPaint,
-      "",
-      mode
-    );
+    paintLine($("playerPrev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint, "", mode);
     paintLine($("playerCur"), held, held ? 1e12 : 0, "cur", state.lyricPaint, "", mode);
     paintLine($("playerNext"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
   } else {
@@ -75,22 +67,18 @@ export function paintPlayer() {
   if (nextSel !== state.selectedCue && !dragging) state.selectedCue = nextSel;
   if (document.body.classList.contains("edit-on")) api.updateAlignNow(time);
   drawPlayerBands(time);
-  const durSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : state.playerHoldDur;
+  const durSec = (Number.isFinite(audio.duration) && audio.duration > 0) ? audio.duration : state.playerHoldDur;
   const dur = (durSec || 0) * 1000;
   $("playerNow").textContent = fmtClock(time);
   $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - time))}` : "−0:00";
   const seek = $("playerSeek");
   if (seek) {
-    const ratio = durSec ? Math.max(0, Math.min(1, time / 1000 / durSec)) : 0;
+    const ratio = durSec ? Math.max(0, Math.min(1, (time / 1000) / durSec)) : 0;
     if (!seek.matches(":active") && durSec) seek.value = String(Math.round(ratio * 1000));
     seek.style.setProperty("--seek-p", `${(seek.matches(":active") ? Number(seek.value) / 1000 : ratio) * 100}%`);
   }
   const art = $("playerArt");
-  if (art)
-    art.classList.toggle(
-      "is-live",
-      (!audio.paused || state.playerClockHold != null) && !!audio.src && !state.playerHeld
-    );
+  if (art) art.classList.toggle("is-live", (!audio.paused || state.playerClockHold != null) && !!audio.src && !state.playerHeld);
   refreshPlayIcon();
   syncGuide(hold != null ? hold : undefined);
   const align = $("playerAlign");
@@ -114,10 +102,7 @@ export function resetPlayerFace() {
   state.lyricPaint.cur = "";
   state.lyricPaint.next = "";
   state.lyricPaint.align = "";
-  ["playerPrev", "playerCur", "playerNext"].forEach((id) => {
-    const el = $(id);
-    if (el) el.textContent = "";
-  });
+  ["playerPrev", "playerCur", "playerNext"].forEach((id) => { const el = $(id); if (el) el.textContent = ""; });
   const now = $("playerNow");
   const left = $("playerLeft");
   if (now) now.textContent = "0:00";

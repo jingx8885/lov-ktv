@@ -58,19 +58,14 @@ export function renderPlayerList() {
   const box = $("playerList");
   if (!box) return;
   const cur = state.playerSong && state.playerSong.id;
-  box.innerHTML =
-    state.playerCatalog
-      .map(
-        (song) => `
+  box.innerHTML = state.playerCatalog.map((song) => `
         <button type="button" class="list-row player-pick${song.id === cur ? " on" : ""}" data-pick="${song.id}" data-letter="${escapeHtml(song.letter || songLetter(song.title))}">
           <span class="list-copy">
             <b>${escapeHtml(song.title)}</b>
             <span class="tiny">${escapeHtml(song.artist || "")}</span>
           </span>
         </button>
-      `
-      )
-      .join("") || `<div class="empty-state"><p>${t("phone.player.emptyLib")}</p></div>`;
+      `).join("") || `<div class="empty-state"><p>${t("phone.player.emptyLib")}</p></div>`;
   box.querySelectorAll("[data-pick]").forEach((btn) => {
     btn.onclick = () => {
       unlockPlayerGesture();
