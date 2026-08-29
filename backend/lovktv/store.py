@@ -7,7 +7,6 @@ import threading
 import time
 import uuid
 from typing import Any
-from urllib.parse import urlparse
 
 from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 from lovktv.db import connect as db_connect
@@ -203,17 +202,6 @@ def retry_query(song: dict[str, Any]) -> str:
     return " ".join(part for part in (title, artist) if part)
 
 
-def ensure_room(code: str | None = None) -> dict[str, Any]:
-    if not code:
-        code = uuid.uuid4().hex[:6].upper()
-    with _LOCK, connect() as conn:
-        row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
-        if not row:
-            execute(conn, "INSERT INTO rooms (code, created_at) VALUES (?,?)", (code, now_ms()))
-            row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
-    return dict(row)
-
-
 def host_keys(machine: str = "", ua: str = "", ip: str = "") -> list[str]:
     keys: list[str] = []
     mid = "".join(ch for ch in str(machine or "") if ch.isalnum() or ch in "-_")[:64]
@@ -225,243 +213,6 @@ def host_keys(machine: str = "", ua: str = "", ip: str = "") -> list[str]:
         digest = hashlib.sha256(f"{ua_n}|{ip_n}".encode()).hexdigest()[:32]
         keys.append("u:" + digest)
     return keys
-
-
-def room_for_hosts(keys: list[str]) -> str:
-    for key in keys:
-        if not key:
-            continue
-        with connect() as conn:
-            row = execute(conn, "SELECT room FROM hosts WHERE key=?", (key,)).fetchone()
-        if row and row["room"]:
-            return str(row["room"]).upper()
-    return ""
-
-
-def remember_host_room(keys: list[str], room: str, ua: str = "") -> None:
-    code = str(room or "").strip().upper()
-    if not code or not keys:
-        return
-    now = now_ms()
-    ua_n = " ".join(str(ua or "").split())[:240]
-    with _LOCK, connect() as conn:
-        for key in keys:
-            if not key:
-                continue
-            row = execute(conn, "SELECT key FROM hosts WHERE key=?", (key,)).fetchone()
-            if row:
-                execute(conn, "UPDATE hosts SET room=?, ua=?, last_seen=? WHERE key=?", (code, ua_n, now, key))
-            else:
-                execute(
-                    conn,
-                    "INSERT INTO hosts (key, room, ua, created_at, last_seen) VALUES (?,?,?,?,?)",
-                    (key, code, ua_n, now, now),
-                )
-
-
-def ensure_room_for_host(keys: list[str], ua: str = "") -> dict[str, Any]:
-    room = ensure_room(room_for_hosts(keys) or None)
-    remember_host_room(keys, room["code"], ua)
-    return room
-
-
-def _private_ipv4(host: str) -> bool:
-    name = str(host or "").strip().lower()
-    if name == "localhost" or name.endswith(".local"):
-        return True
-    parts = name.split(".")
-    if len(parts) != 4:
-        return False
-    try:
-        nums = [int(part) for part in parts]
-    except ValueError:
-        return False
-    if any(n < 0 or n > 255 for n in nums):
-        return False
-    if nums[0] == 192 and nums[1] == 168:
-        return True
-    if nums[0] == 10:
-        return True
-    if nums[0] == 172 and 16 <= nums[1] <= 31:
-        return True
-    return False
-
-
-def normalize_lan_origin(raw: str) -> str:
-    text = str(raw or "").strip().rstrip("/")
-    if not text:
-        raise ValueError("局域网地址无效")
-    if "://" not in text:
-        text = "http://" + text
-    parsed = urlparse(text)
-    if parsed.scheme != "http":
-        raise ValueError("局域网地址无效")
-    host = (parsed.hostname or "").strip()
-    if not _private_ipv4(host):
-        raise ValueError("局域网地址无效")
-    if parsed.path not in {"", "/"} or parsed.params or parsed.query or parsed.fragment:
-        raise ValueError("局域网地址无效")
-    if parsed.username or parsed.password:
-        raise ValueError("局域网地址无效")
-    port = parsed.port or 80
-    if port < 1 or port > 65535:
-        raise ValueError("局域网地址无效")
-    return f"http://{host}:{port}"
-
-
-def set_room_lan(
-    code: str,
-    origin: str,
-    mic_port: int | None = None,
-    mic_sample_rate: int | None = None,
-) -> dict[str, Any]:
-    room = str(code or "").strip().upper()
-    if not room:
-        raise ValueError("局域网地址无效")
-    lan = normalize_lan_origin(origin)
-    port = int(mic_port or 0)
-    if port < 0 or port > 65535:
-        port = 0
-    rate = int(mic_sample_rate or 48000)
-    if rate < 8000 or rate > 96000:
-        rate = 48000
-    ensure_room(room)
-    with _LOCK, connect() as conn:
-        execute(
-            conn,
-            "UPDATE rooms SET lan_origin=?, lan_mic_port=?, lan_mic_sample_rate=?, lan_seen_at=? WHERE code=?",
-            (lan, port, rate, now_ms(), room),
-        )
-    return room_snapshot(room)
-
-
-def room_snapshot(code: str) -> dict[str, Any]:
-    room = ensure_room(code)
-    with connect() as conn:
-        rows = execute(
-            conn,
-            """
-            SELECT queue.id, queue.song_id, queue.position, songs.title, songs.artist, songs.status, songs.language
-            FROM queue JOIN songs ON songs.id = queue.song_id
-            WHERE queue.room=? ORDER BY queue.position ASC, queue.created_at ASC
-            """,
-            (code,),
-        ).fetchall()
-    queue = [dict(row) for row in rows]
-    index = int(room["now_index"])
-    if queue and index < 0:
-        with _LOCK, connect() as conn:
-            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (code,))
-        index = 0
-        room["now_index"] = 0
-    now = queue[index] if queue and 0 <= index < len(queue) else None
-    return {**room, "queue": queue, "now_playing": now}
-
-
-def enqueue(code: str, song_id: str) -> dict[str, Any]:
-    code = code.upper()
-    ensure_room(code)
-    song = get_song(song_id)
-    if not song or song.get("status") != READY:
-        raise ValueError("这首还没就绪，不能点")
-    snap = room_snapshot(code)
-    if any(item["song_id"] == song_id for item in snap["queue"]):
-        return snap
-    had_playing = snap.get("now_playing") is not None
-    with _LOCK, connect() as conn:
-        pos = _count_value(execute(conn, "SELECT COALESCE(MAX(position),0)+1 FROM queue WHERE room=?", (code,)).fetchone())
-        execute(
-            conn,
-            "INSERT INTO queue (id, room, song_id, position, created_at) VALUES (?,?,?,?,?)",
-            (new_id(), code, song_id, pos, now_ms()),
-        )
-        if not had_playing:
-            execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (code,))
-    return room_snapshot(code)
-
-
-def bump(code: str, item_id: str) -> dict[str, Any]:
-    snap = room_snapshot(code)
-    items = snap["queue"]
-    idx = next((i for i, item in enumerate(items) if item["id"] == item_id), None)
-    if idx is None or idx <= snap["now_index"] + 1:
-        return snap
-    target_pos = items[snap["now_index"] + 1]["position"] if len(items) > snap["now_index"] + 1 else items[idx]["position"]
-    with _LOCK, connect() as conn:
-        execute(conn, "UPDATE queue SET position=? WHERE id=?", (target_pos - 1, item_id))
-    return room_snapshot(code)
-
-
-def skip(code: str) -> dict[str, Any]:
-    """Remove the current song from the queue and play the next one."""
-    code = code.upper()
-    snap = room_snapshot(code)
-    queue = snap["queue"]
-    if not queue or snap.get("now_playing") is None:
-        return snap
-    cur = max(0, min(snap["now_index"], len(queue) - 1))
-    item_id = queue[cur]["id"]
-    remaining = len(queue) - 1
-    nxt = 0 if remaining <= 0 or cur >= remaining else cur
-    with _LOCK, connect() as conn:
-        execute(conn, "DELETE FROM queue WHERE id=?", (item_id,))
-        execute(conn, "UPDATE rooms SET now_index=?, paused=0 WHERE code=?", (nxt, code))
-    return room_snapshot(code)
-
-
-def play_now(code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]:
-    """Jump to a queue item. A bare song_id only starts the room if nothing is on."""
-    code = code.upper()
-    if song_id and not item_id:
-        snap = room_snapshot(code)
-        if snap.get("now_playing"):
-            enqueue(code, song_id)
-            return room_snapshot(code)
-        existing = next((item for item in snap["queue"] if item["song_id"] == song_id), None)
-        if existing is None:
-            song = get_song(song_id)
-            if not song or song.get("status") != READY:
-                raise ValueError("这首还没就绪，不能点")
-            enqueue(code, song_id)
-            snap = room_snapshot(code)
-            existing = next((item for item in snap["queue"] if item["song_id"] == song_id), None)
-        item_id = existing["id"] if existing else ""
-    snap = room_snapshot(code)
-    idx = next((i for i, item in enumerate(snap["queue"]) if item["id"] == item_id), None)
-    if idx is None:
-        return snap
-    if snap["queue"][idx].get("status") != READY:
-        raise ValueError("这首还没就绪，不能点")
-    with _LOCK, connect() as conn:
-        execute(conn, "UPDATE rooms SET now_index=?, paused=0 WHERE code=?", (idx, code))
-    return room_snapshot(code)
-
-
-def set_mix(
-    code: str,
-    vocal_mix: float | None = None,
-    volume: int | None = None,
-    mic_gain: int | None = None,
-    lyric_mode: str | None = None,
-    paused: bool | None = None,
-) -> dict[str, Any]:
-    fields = {}
-    if vocal_mix is not None:
-        fields["vocal_mix"] = max(0.0, min(1.0, float(vocal_mix)))
-    if volume is not None:
-        fields["volume"] = max(0, min(100, int(volume)))
-    if mic_gain is not None:
-        fields["mic_gain"] = max(0, min(100, int(mic_gain)))
-    if lyric_mode is not None:
-        fields["lyric_mode"] = normalize_lyric_mode(lyric_mode)
-    if paused is not None:
-        fields["paused"] = 1 if paused else 0
-    allowed = {key: value for key, value in fields.items() if key in ROOM_FIELDS}
-    if allowed:
-        assignments = ", ".join(f"{key}=?" for key in allowed)
-        with _LOCK, connect() as conn:
-            execute(conn, f"UPDATE rooms SET {assignments} WHERE code=?", (*allowed.values(), code))
-    return room_snapshot(code)
 
 
 def write_json(path, payload: Any) -> None:
@@ -664,3 +415,21 @@ def upsert_songs(rows: list[dict[str, Any]]) -> int:
                 values,
             )
     return len(rows)
+
+
+# Room persistence now lives in ``room_store``. These names remain importable
+# for data migration scripts and older integrations, but contain no SQL here.
+from lovktv.room_store import (  # noqa: E402,F401
+    bump,
+    enqueue,
+    ensure_room,
+    ensure_room_for_host,
+    normalize_lan_origin,
+    play_now,
+    remember_host_room,
+    room_for_hosts,
+    room_snapshot,
+    set_mix,
+    set_room_lan,
+    skip,
+)

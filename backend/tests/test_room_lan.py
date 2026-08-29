@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from lovktv.store import normalize_lan_origin, set_room_lan
+from lovktv.room_store import normalize_lan_origin, set_room_lan
 
 
 def _app(tmp_path, monkeypatch):

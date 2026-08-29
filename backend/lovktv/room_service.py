@@ -66,10 +66,6 @@ class RoomCommand:
         )
 
 
-# Compatibility name for callers that imported the adapter from this module.
-StoreRoomRepository = SqliteRoomStore
-
-
 class RoomService:
     """Execute room mutations independently of HTTP/WebSocket transport."""
 

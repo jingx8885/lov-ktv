@@ -1,5 +1,5 @@
 import pytest
-from lovktv.store import enqueue, ensure_room, play_now, skip
+from lovktv.room_store import enqueue, ensure_room, play_now, room_snapshot, skip
 
 
 def _ready(store, song_id: str) -> None:
@@ -26,7 +26,7 @@ def test_skip_removes_current_and_plays_next(tmp_path, monkeypatch):
     enqueue("SKIP1", a)
     enqueue("SKIP1", b)
     enqueue("SKIP1", c)
-    assert [item["song_id"] for item in store.room_snapshot("SKIP1")["queue"]] == [a, b, c]
+    assert [item["song_id"] for item in room_snapshot("SKIP1")["queue"]] == [a, b, c]
     play_now("SKIP1", song_id=a)
     snap = skip("SKIP1")
     assert [item["song_id"] for item in snap["queue"]] == [b, c]
@@ -70,7 +70,7 @@ def test_delete_failed_song_removes_files_and_queue(tmp_path, monkeypatch):
     assert store.delete_song(failed["id"]) is True
     assert store.get_song(failed["id"]) is None
     assert not (store.MEDIA_DIR / failed["id"]).exists()
-    assert [item["song_id"] for item in store.room_snapshot("DEL1")["queue"]] == [ready["id"]]
+    assert [item["song_id"] for item in room_snapshot("DEL1")["queue"]] == [ready["id"]]
 
 
 def test_catalog_enqueue_does_not_cut_in(tmp_path, monkeypatch):
@@ -113,7 +113,7 @@ def test_enqueue_after_empty_queue_starts_song(tmp_path, monkeypatch):
     assert started["now_index"] == 0
     assert started["now_playing"]["song_id"] == first["id"]
     skip("EMPTY1")
-    idle = store.room_snapshot("EMPTY1")
+    idle = room_snapshot("EMPTY1")
     assert idle["queue"] == []
     assert idle["now_playing"] is None
     again = enqueue("EMPTY1", extra["id"])
@@ -134,7 +134,7 @@ def test_stuck_negative_index_heals_when_queue_has_songs(tmp_path, monkeypatch):
     enqueue("STUCK1", song["id"])
     with sqlite3.connect(store.DB_PATH) as conn:
         conn.execute("UPDATE rooms SET now_index=-1 WHERE code=?", ("STUCK1",))
-    snap = store.room_snapshot("STUCK1")
+    snap = room_snapshot("STUCK1")
     assert snap["now_index"] == 0
     assert snap["now_playing"]["song_id"] == song["id"]
 

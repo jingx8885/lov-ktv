@@ -1,26 +1,18 @@
 import pytest
 
 from lovktv.room_service import RoomCommand, room_service
-from lovktv.room_service import RoomService, StoreRoomRepository
+from lovktv.room_service import RoomService
 from lovktv.room_store import SqliteRoomStore
 
 
-def test_sqlite_adapter_has_stable_compatibility_alias():
-    assert StoreRoomRepository is SqliteRoomStore
-
-
-def test_sqlite_adapter_forwards_optional_lan_metadata(monkeypatch):
-    seen = {}
-
-    def fake_set_room_lan(*args):
-        seen["args"] = args
-        return {"code": "R1"}
-
+def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
+    # The adapter now owns the implementation instead of forwarding to store.
     from lovktv import store
-
-    monkeypatch.setattr(store, "set_room_lan", fake_set_room_lan, raising=False)
-    assert SqliteRoomStore().set_room_lan("r1", "http://192.168.1.2:8790", 9000, 48000) == {"code": "R1"}
-    assert seen["args"] == ("r1", "http://192.168.1.2:8790", 9000, 48000)
+    store.DB_PATH = tmp_path / "room.sqlite"
+    store.init_db()
+    snap = SqliteRoomStore().set_room_lan("r1", "http://192.168.1.2:8790", 9000, 48000)
+    assert snap["code"] == "R1"
+    assert snap["lan_mic_port"] == 9000
 
 
 def test_command_parsing_normalizes_transport_payload():

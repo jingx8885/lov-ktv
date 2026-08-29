@@ -42,6 +42,7 @@ from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.room_service import RoomCommand, room_service
+from lovktv.room_store import ensure_room_for_host, remember_host_room, room_for_hosts, set_room_lan
 from lovktv import store
 from lovktv.store import (
     confirm_login_ticket,
@@ -51,15 +52,11 @@ from lovktv.store import (
     create_song,
     delete_session,
     delete_song,
-    ensure_room_for_host,
     get_login_ticket,
     host_keys,
-    remember_host_room,
-    room_for_hosts,
     get_song,
     init_db,
     list_songs,
-    set_room_lan,
     retry_query,
     update_song,
     with_media_flags,
