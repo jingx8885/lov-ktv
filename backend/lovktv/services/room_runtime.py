@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from fastapi import WebSocket
 
-from lovktv import store
-from lovktv.host_volume import host_volume_meta, set_host_volume
-from lovktv.i18n import localize_song
-from lovktv.room_service import RoomCommand, room_service
-from lovktv.room_store import remember_host_room
-from lovktv.runtime import _mics, _peers, _rooms
-from lovktv.store import host_keys, with_media_flags
+from lovktv.locale.i18n import localize_song
+from lovktv.media.host_volume import host_volume_meta, set_host_volume
+from lovktv.platform.runtime import _mics, _peers, _rooms
+from lovktv.rooms.service import RoomCommand, room_service
+from lovktv.storage import store
+from lovktv.storage.room_store import remember_host_room
+from lovktv.storage.store import host_keys, with_media_flags
 
 
 def room_view(code: str, snap: dict | None = None, lang: str = "zh") -> dict:

@@ -7,9 +7,9 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Iterable
 
-from lovktv.config import DB_PATH as DEFAULT_DB_PATH
-from lovktv.config import MEDIA_DIR
-from lovktv.schema import POSTGRES_DDL, ROOM_MIGRATIONS, SQLITE_DDL
+from lovktv.core.config import DB_PATH as DEFAULT_DB_PATH
+from lovktv.core.config import MEDIA_DIR
+from lovktv.core.schema import POSTGRES_DDL, ROOM_MIGRATIONS, SQLITE_DDL
 
 
 def database_url() -> str:

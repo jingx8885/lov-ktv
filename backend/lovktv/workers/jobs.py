@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import queue
 import shutil
 import subprocess
-import threading
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv import store as _store
 from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
@@ -21,7 +18,7 @@ from lovktv.agents.translate import (
 from lovktv.catalog.importer import import_song
 from lovktv.catalog.lyrics import parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
-from lovktv.config import MEDIA_DIR
+from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.audio import extract_envelope, probe_duration_ms
 from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.language import resolve_language
@@ -36,6 +33,18 @@ from lovktv.pipeline.mtv import compose_mtv
 from lovktv.pipeline.orchestrator import align_lyrics
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
 from lovktv.pipeline.transcribe import transcribe_words
+from lovktv.storage import store as _store
+from lovktv.workers.queue import JobQueue, job_queue, spawn
+
+__all__ = [
+    "JobQueue",
+    "job_queue",
+    "spawn",
+    "process_import",
+    "process_upload",
+    "process_realign",
+    "resume_stuck_jobs",
+]
 
 
 class SongRepository(Protocol):
@@ -89,7 +98,7 @@ def retry_query(song: dict) -> str:
 
 def _publish_ready(song_id: str) -> None:
     try:
-        from lovktv.oss import publish_song
+        from lovktv.media.oss import publish_song
 
         publish_song(song_id)
     except Exception as exc:  # noqa: BLE001
@@ -280,7 +289,7 @@ def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
             force=force,
         )
         apply_ja_annotation(timeline, notes)
-        from lovktv.restore_ja import pack_timeline_to_voice
+        from lovktv.workers.restore_ja import pack_timeline_to_voice
 
         pack_timeline_to_voice(timeline, out_dir)
         previous = str((get_song(song_id) or {}).get("error") or "")
@@ -574,124 +583,6 @@ def _align_and_mtv(
         previous = str(song.get("error") or "").strip()
         note = f"MTV降级：{mtv_exc}"
         update_song(song_id, error=f"{previous} {note}".strip())
-
-
-def _job_key(fn: JobFn, args: tuple) -> str:
-    name = getattr(fn, "__name__", str(fn))
-    song_id = args[0] if args else ""
-    return f"{name}:{song_id}"
-
-
-class JobQueue:
-    """Small single-worker queue with duplicate suppression.
-
-    Keeping queue lifecycle in an object makes the worker independently
-    replaceable in tests or by a process-backed implementation.  The module
-    level :func:`spawn` below remains the compatibility boundary used by API
-    handlers and recovery code.
-    """
-
-    def __init__(self, worker_name: str = "lovktv-jobs") -> None:
-        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = (
-            queue.Queue()
-        )
-        self._queued: set[str] = set()
-        self._lock = threading.Lock()
-        self._worker_started = False
-        self._worker_thread: threading.Thread | None = None
-        self._stop_event = threading.Event()
-        self._worker_name = worker_name
-
-    def _worker(self) -> None:
-        while not self._stop_event.is_set():
-            try:
-                fn, args, kwargs, key = self._jobs.get(timeout=0.2)
-            except queue.Empty:
-                continue
-            try:
-                print(f"[lovktv] start {key}", flush=True)
-                fn(*args, **kwargs)
-                print(f"[lovktv] done {key}", flush=True)
-            except Exception as exc:  # noqa: BLE001
-                print(f"[lovktv] fail {key}: {exc}", flush=True)
-            finally:
-                with self._lock:
-                    self._queued.discard(key)
-                self._jobs.task_done()
-        with self._lock:
-            self._worker_started = False
-            self._worker_thread = None
-
-    def start(self) -> bool:
-        """Start the queue worker once and report whether it was started."""
-        with self._lock:
-            if (
-                self._worker_started
-                and self._worker_thread
-                and self._worker_thread.is_alive()
-            ):
-                return False
-            self._stop_event.clear()
-            self._worker_started = True
-            self._worker_thread = threading.Thread(
-                target=self._worker,
-                name=self._worker_name,
-                daemon=True,
-            )
-            self._worker_thread.start()
-            return True
-
-    def stop(self, timeout: float = 5.0) -> bool:
-        """Stop the worker and discard jobs that have not started yet."""
-        with self._lock:
-            thread = self._worker_thread
-            if not self._worker_started or thread is None:
-                return False
-            self._stop_event.set()
-        thread.join(max(0.0, timeout))
-        if thread.is_alive():
-            return False
-        while True:
-            try:
-                _fn, _args, _kwargs, key = self._jobs.get_nowait()
-            except queue.Empty:
-                break
-            with self._lock:
-                self._queued.discard(key)
-            self._jobs.task_done()
-        with self._lock:
-            self._worker_started = False
-            self._worker_thread = None
-        return True
-
-    def health(self) -> dict[str, Any]:
-        """Return non-secret worker state for readiness and diagnostics."""
-        with self._lock:
-            thread = self._worker_thread
-            return {
-                "running": bool(thread and thread.is_alive()),
-                "queued": len(self._queued),
-                "pending": self._jobs.qsize(),
-            }
-
-    def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
-        """Queue work and return ``False`` when an identical job is pending."""
-        key = _job_key(fn, args)
-        with self._lock:
-            if key in self._queued:
-                return False
-            self._queued.add(key)
-            self._jobs.put((fn, args, kwargs, key))
-        self.start()
-        return True
-
-
-job_queue = JobQueue()
-
-
-def spawn(fn: JobFn, *args: Any, **kwargs: Any) -> None:
-    """Queue background work. One worker, so Whisper is not stampeded."""
-    job_queue.submit(fn, *args, **kwargs)
 
 
 def _has_ready_lyrics(out_dir: Path) -> bool:

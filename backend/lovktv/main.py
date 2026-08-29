@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from lovktv.assets import VersionedStaticFiles
-from lovktv.config import ROOT
-from lovktv.jobs import job_queue
-from lovktv.store import init_db
+from lovktv.core.config import ROOT
+from lovktv.media.assets import VersionedStaticFiles
+from lovktv.storage.store import init_db
+from lovktv.workers.jobs import job_queue
 
 _PUBLIC = ROOT / "frontend" / "public"
 _DIST = ROOT / "frontend" / "frontend-dist"
@@ -36,8 +36,8 @@ class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     from lovktv.catalog.mugen_index import prefetch_index
-    from lovktv.jobs import resume_stuck_jobs
-    from lovktv.oss import ensure_bucket_cors, oss_ready
+    from lovktv.media.oss import ensure_bucket_cors, oss_ready
+    from lovktv.workers.jobs import resume_stuck_jobs
 
     _.state.ready = False
     job_queue.start()

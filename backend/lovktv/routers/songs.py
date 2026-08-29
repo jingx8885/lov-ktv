@@ -16,14 +16,12 @@ from lovktv.catalog.index import prefer_native_library, query_library, song_lett
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
-from lovktv.i18n import localize_exc, localize_song, request_lang
-from lovktv.i18n import t as i18n_t
-from lovktv.jobs import process_import, process_realign, process_upload, spawn
-from lovktv.learn import build_learn_quiz
+from lovktv.locale.i18n import localize_exc, localize_song, request_lang
+from lovktv.locale.i18n import t as i18n_t
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
-from lovktv.runtime import media_root
+from lovktv.platform.runtime import media_root
 from lovktv.services.http import fail
-from lovktv.store import (
+from lovktv.storage.store import (
     create_song,
     delete_song,
     get_song,
@@ -32,6 +30,8 @@ from lovktv.store import (
     update_song,
     with_media_flags,
 )
+from lovktv.workers.jobs import process_import, process_realign, process_upload, spawn
+from lovktv.workers.learn import build_learn_quiz
 
 router = APIRouter()
 

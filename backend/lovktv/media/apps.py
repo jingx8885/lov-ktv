@@ -22,7 +22,7 @@ APK_MIME = "application/vnd.android.package-archive"
 
 def apps_dir() -> Path:
     root = Path(
-        os.environ.get("LOVKTV_DATA") or Path(__file__).resolve().parents[2] / "data"
+        os.environ.get("LOVKTV_DATA") or Path(__file__).resolve().parents[3] / "data"
     )
     return root.resolve() / "apps"
 

@@ -8,10 +8,19 @@ import time
 import uuid
 from typing import Any
 
-from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
-from lovktv.db import connect as db_connect
-from lovktv.db import execute, init_schema
-from lovktv.schema import SONG_FIELDS
+from lovktv.core.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
+from lovktv.core.db import connect as db_connect
+from lovktv.core.db import execute, init_schema
+from lovktv.core.schema import SONG_FIELDS
+from lovktv.storage.media import (
+    media_flags as _media_flags,
+)
+from lovktv.storage.media import (
+    media_rev as _media_rev,
+)
+from lovktv.storage.media import (
+    with_media_flags as _with_media_flags,
+)
 
 READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
@@ -82,85 +91,16 @@ def get_song(song_id: str) -> dict[str, Any] | None:
     return _row(row)
 
 
-_MEDIA_REV_NAMES = (
-    "cover.jpg",
-    "guide.m4a",
-    "karaoke.m4a",
-    "lyrics.ass",
-    "lyrics.elrc",
-    "lyrics.json",
-    "lyrics.lrc",
-    "lyrics.manual.lrc",
-    "mtv.mp4",
-    "original.mp3",
-    "skeleton.json",
-)
-
-
 def media_rev(song_id: str) -> str:
-    folder = MEDIA_DIR / str(song_id)
-    digest = hashlib.sha256()
-    found = False
-    if folder.is_dir():
-        for name in _MEDIA_REV_NAMES:
-            path = folder / name
-            if not path.is_file():
-                continue
-            found = True
-            stat = path.stat()
-            digest.update(name.encode("utf-8"))
-            digest.update(b"\0")
-            digest.update(str(stat.st_size).encode("ascii"))
-            digest.update(b"\0")
-            digest.update(str(stat.st_mtime_ns).encode("ascii"))
-            digest.update(b"\0")
-    if found:
-        return digest.hexdigest()[:12]
-    marker = folder / "oss.json"
-    if marker.is_file():
-        try:
-            return str(
-                json.loads(marker.read_text(encoding="utf-8")).get("media_rev") or ""
-            )
-        except (OSError, json.JSONDecodeError, TypeError):
-            return ""
-    return ""
+    return _media_rev(song_id, MEDIA_DIR)
 
 
 def media_flags(song_id: str) -> dict[str, Any]:
-    folder = MEDIA_DIR / str(song_id)
-    native = False
-    lyrics_path = folder / "lyrics.json"
-    if lyrics_path.exists():
-        try:
-            lyrics = json.loads(lyrics_path.read_text(encoding="utf-8"))
-            native = lyrics.get("native_video") is True
-        except (OSError, json.JSONDecodeError):
-            native = False
-    if not native:
-        skeleton_path = folder / "skeleton.json"
-        if skeleton_path.exists():
-            try:
-                skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
-                native = bool(skeleton.get("has_video"))
-            except (OSError, json.JSONDecodeError):
-                native = False
-    if not native:
-        native = (folder / "mugen.mp4").exists() or (folder / "mugen.webm").exists()
-    flags: dict[str, Any] = {"native_video": native}
-    rev = media_rev(song_id)
-    if rev:
-        flags["media_rev"] = rev
-    return flags
+    return _media_flags(song_id, MEDIA_DIR)
 
 
 def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not song:
-        return song
-    song_id = str(song.get("song_id") or song.get("id") or "")
-    if not song_id:
-        return song
-    return {**song, **media_flags(song_id)}
+    return _with_media_flags(song, MEDIA_DIR)
 
 
 def list_songs() -> list[dict[str, Any]]:

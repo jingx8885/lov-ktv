@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from lovktv.auth import decode_state, encode_state, scan_login_url, wechat_authorize_url
+from lovktv.identity.auth import decode_state, encode_state, scan_login_url, wechat_authorize_url
 
 
 def _init(store, tmp_path):
@@ -15,7 +15,7 @@ def test_encode_state_roundtrip():
 
 
 def test_wechat_authorize_requires_app_id(monkeypatch):
-    from lovktv import auth
+    from lovktv.identity import auth
 
     monkeypatch.setattr(auth, "WECHAT_APP_ID", "")
     monkeypatch.setattr(auth, "WECHAT_APP_SECRET", "")
@@ -27,7 +27,7 @@ def test_wechat_authorize_requires_app_id(monkeypatch):
 
 
 def test_wechat_silent_authorize_uses_snsapi_base(monkeypatch):
-    from lovktv import auth
+    from lovktv.identity import auth
 
     monkeypatch.setattr(auth, "WECHAT_MP_APP_ID", "mp-app")
     monkeypatch.setattr(auth, "WECHAT_MP_APP_SECRET", "mp-secret")
@@ -44,7 +44,7 @@ def test_scan_login_url_points_at_scan():
 
 def test_qr_login_store(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import store
+    from lovktv.storage import store
 
     _init(store, tmp_path)
     user = store.upsert_device_user("phone-device-01", "小明")
@@ -65,7 +65,7 @@ def test_qr_login_store(tmp_path, monkeypatch):
 
 def test_expired_ticket_cannot_confirm(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import store
+    from lovktv.storage import store
 
     _init(store, tmp_path)
     user = store.upsert_device_user("phone-device-02", "阿强")
@@ -81,7 +81,7 @@ def test_expired_ticket_cannot_confirm(tmp_path, monkeypatch):
 
 def test_qr_login_http_roundtrip(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import store
+    from lovktv.storage import store
 
     _init(store, tmp_path)
     from lovktv.main import app
@@ -130,7 +130,8 @@ def test_qr_login_http_roundtrip(tmp_path, monkeypatch):
 
 def test_scan_in_wechat_goes_silent(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import auth, store
+    from lovktv.identity import auth
+    from lovktv.storage import store
 
     _init(store, tmp_path)
     monkeypatch.setattr(auth, "WECHAT_MP_APP_ID", "mp-app")

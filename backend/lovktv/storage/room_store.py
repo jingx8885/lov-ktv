@@ -8,9 +8,9 @@ import uuid
 from typing import Any, Protocol
 from urllib.parse import urlparse
 
-from lovktv.db import connect as db_connect
-from lovktv.db import execute
-from lovktv.schema import ROOM_FIELDS
+from lovktv.core.db import connect as db_connect
+from lovktv.core.db import execute
+from lovktv.core.schema import ROOM_FIELDS
 
 _LOCK = threading.Lock()
 
@@ -44,7 +44,7 @@ class RoomRepository(Protocol):
 def connect():
     # Read the legacy module's mutable path so tests and runtime reconfiguration
     # use the same database while the physical room SQL lives here.
-    from lovktv import store
+    from lovktv.storage import store
 
     return db_connect(store.DB_PATH)
 
@@ -185,7 +185,7 @@ def room_snapshot(code: str) -> dict[str, Any]:
 
 
 def _song(song_id: str) -> dict[str, Any] | None:
-    from lovktv.store import get_song
+    from lovktv.storage.store import get_song
 
     return get_song(song_id)
 
@@ -293,7 +293,7 @@ def set_mix(
     lyric_mode: str | None = None,
     paused: bool | None = None,
 ) -> dict[str, Any]:
-    from lovktv.store import normalize_lyric_mode
+    from lovktv.storage.store import normalize_lyric_mode
 
     fields = {}
     if vocal_mix is not None:

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lovktv import jobs
+from lovktv.workers import jobs
 from lovktv.catalog import importer, mugen, search
 
 ASS = """\ufeff[Script Info]
@@ -208,7 +208,9 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from fastapi.testclient import TestClient
 
-    from lovktv import host_volume, main, store
+    from lovktv.media import host_volume
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

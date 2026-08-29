@@ -123,7 +123,7 @@ def test_apply_zh_keeps_existing_gloss_when_unit_count_differs():
 
 def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import room_store, store
+    from lovktv.storage import room_store, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

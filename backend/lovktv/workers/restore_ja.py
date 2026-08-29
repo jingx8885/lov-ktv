@@ -10,9 +10,9 @@ from lovktv.agents.ja_lyrics import (
     apply_ja_annotation,
     line_is_romaji,
 )
-from lovktv.config import MEDIA_DIR
+from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.lyrics import write_subtitles
-from lovktv.store import get_song, list_songs, update_song
+from lovktv.storage.store import get_song, list_songs, update_song
 
 LYRIC_PUBLISH_NAMES = (
     "lyrics.json",
@@ -23,7 +23,7 @@ LYRIC_PUBLISH_NAMES = (
 
 
 def _publish_lyrics(song_id: str) -> list[str]:
-    from lovktv.oss import oss_ready, put_file
+    from lovktv.media.oss import oss_ready, put_file
 
     if not oss_ready():
         return []
@@ -115,7 +115,7 @@ def restore_song(
     if publish:
         names = _publish_lyrics(song_id) if reapply else None
         if names is None:
-            from lovktv.oss import publish_song
+            from lovktv.media.oss import publish_song
 
             names = publish_song(song_id)
         return {"id": song_id, "ok": True, "published": names}

@@ -80,7 +80,8 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
 
 def test_split_assets_are_served(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

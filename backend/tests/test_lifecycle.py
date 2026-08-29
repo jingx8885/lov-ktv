@@ -4,7 +4,8 @@ from fastapi.testclient import TestClient
 def _boot(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("LOVKTV_PUBLIC_URL", raising=False)
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -31,7 +32,7 @@ def test_lifespan_health_and_public_acceptance_paths(tmp_path, monkeypatch):
 def test_job_queue_start_stop_drops_pending_jobs():
     import threading
 
-    from lovktv.jobs import JobQueue
+    from lovktv.workers.jobs import JobQueue
 
     queue = JobQueue(worker_name="test-lifecycle")
     started = threading.Event()

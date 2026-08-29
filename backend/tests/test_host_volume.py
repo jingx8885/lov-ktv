@@ -1,4 +1,4 @@
-from lovktv import host_volume
+from lovktv.media import host_volume
 
 
 def test_set_host_volume_skipped_off_mac(monkeypatch):

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.i18n import LOCALES, locale_keys, parse_lang, translate
+from lovktv.locale.i18n import LOCALES, locale_keys, parse_lang, translate
 
 FRONTEND = (
     Path(__file__).resolve().parents[2]
@@ -55,7 +55,8 @@ def test_translate_interpolation():
 
 def test_song_not_found_follows_accept_language(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -73,7 +74,7 @@ def test_song_not_found_follows_accept_language(tmp_path, monkeypatch):
 
 
 def test_learn_prompt_follows_locale():
-    from lovktv.learn import build_learn_quiz
+    from lovktv.workers.learn import build_learn_quiz
 
     timeline = {
         "language": "ja",

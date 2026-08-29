@@ -3,7 +3,10 @@ from fastapi.testclient import TestClient
 
 def _boot(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import host_volume, main, runtime, store
+    from lovktv.media import host_volume
+    from lovktv import main
+    from lovktv.platform import runtime
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -17,7 +20,7 @@ def _boot(tmp_path, monkeypatch):
 
 def test_set_mix_clamps_volume_and_mic_gain(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import room_store, store
+    from lovktv.storage import room_store, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -46,7 +49,7 @@ def test_mix_http_sets_mac_volume_and_snapshot(tmp_path, monkeypatch):
         "host_volume_meta",
         lambda: {"host_volume_kind": "mac", "host_volume": 35},
     )
-    from lovktv import room_store
+    from lovktv.storage import room_store
 
     room_store.ensure_room("MAC1")
     with TestClient(main.app) as client:
@@ -65,7 +68,7 @@ def test_ws_relays_rtc_and_marks_mic(tmp_path, monkeypatch):
     from lovktv.services import room_runtime
 
     monkeypatch.setattr(room_runtime, "host_volume_meta", lambda: {})
-    from lovktv import room_store
+    from lovktv.storage import room_store
 
     room_store.ensure_room("MIC1")
     with TestClient(main.app) as client:

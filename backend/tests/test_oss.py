@@ -6,7 +6,9 @@ def _boot(tmp_path, monkeypatch):
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)
     monkeypatch.delenv("ALIYUN_OSS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("ALIYUN_OSS_ACCESS_KEY_SECRET", raising=False)
-    from lovktv import config, main, store
+    from lovktv.core import config
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -41,7 +43,10 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     )
     from importlib import reload
 
-    from lovktv import config, main, oss, store
+    from lovktv.core import config
+    from lovktv import main
+    from lovktv.media import oss
+    from lovktv.storage import store
 
     reload(config)
     reload(oss)
@@ -71,7 +76,8 @@ def test_publish_files_includes_every_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from importlib import reload
 
-    from lovktv import config, oss
+    from lovktv.core import config
+    from lovktv.media import oss
 
     reload(config)
     reload(oss)
@@ -86,7 +92,7 @@ def test_publish_files_includes_every_json(tmp_path, monkeypatch):
 
 
 def test_cors_allows_media_from_star_or_ktv():
-    from lovktv.oss import MEDIA_CORS_XML, cors_allows_media, merge_cors_xml
+    from lovktv.media.oss import MEDIA_CORS_XML, cors_allows_media, merge_cors_xml
 
     assert cors_allows_media(MEDIA_CORS_XML)
     assert cors_allows_media(
@@ -117,7 +123,8 @@ def test_publish_noop_without_oss(tmp_path, monkeypatch):
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)
     from importlib import reload
 
-    from lovktv import config, oss
+    from lovktv.core import config
+    from lovktv.media import oss
 
     reload(config)
     reload(oss)

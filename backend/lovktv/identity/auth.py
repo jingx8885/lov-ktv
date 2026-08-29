@@ -6,7 +6,7 @@ from urllib.parse import quote, urlencode
 
 import httpx
 
-from lovktv.config import (
+from lovktv.core.config import (
     PUBLIC_URL,
     WECHAT_APP_ID,
     WECHAT_APP_SECRET,

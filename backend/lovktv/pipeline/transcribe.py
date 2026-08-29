@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from lovktv.config import WHISPER_DIR
+from lovktv.core.config import WHISPER_DIR
 from lovktv.pipeline.language import whisper_language
 
 WHISPER_BIN = shutil.which("whisper")

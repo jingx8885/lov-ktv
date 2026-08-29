@@ -3,10 +3,10 @@ from __future__ import annotations
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-from lovktv.auth import SESSION_COOKIE, public_base
-from lovktv.config import PUBLIC_URL, SESSION_DAYS
-from lovktv.i18n import t as i18n_t
-from lovktv.store import user_from_session
+from lovktv.core.config import PUBLIC_URL, SESSION_DAYS
+from lovktv.identity.auth import SESSION_COOKIE, public_base
+from lovktv.locale.i18n import t as i18n_t
+from lovktv.storage.store import user_from_session
 
 
 def request_base(request) -> str:

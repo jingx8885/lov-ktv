@@ -3,11 +3,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.store import media_flags, media_rev, with_media_flags
+from lovktv.storage.store import media_flags, media_rev, with_media_flags
 
 
 def test_media_rev_changes_when_file_bytes_or_mtime_change(tmp_path, monkeypatch):
-    monkeypatch.setattr("lovktv.store.MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("lovktv.storage.store.MEDIA_DIR", tmp_path)
     folder = tmp_path / "s1"
     folder.mkdir()
     karaoke = folder / "karaoke.m4a"
@@ -25,7 +25,7 @@ def test_media_rev_changes_when_file_bytes_or_mtime_change(tmp_path, monkeypatch
 
 
 def test_media_rev_falls_back_to_oss_marker(tmp_path, monkeypatch):
-    monkeypatch.setattr("lovktv.store.MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("lovktv.storage.store.MEDIA_DIR", tmp_path)
     folder = tmp_path / "s2"
     folder.mkdir()
     (folder / "oss.json").write_text(
@@ -35,13 +35,13 @@ def test_media_rev_falls_back_to_oss_marker(tmp_path, monkeypatch):
 
 
 def test_write_marker_records_media_rev(tmp_path, monkeypatch):
-    monkeypatch.setattr("lovktv.store.MEDIA_DIR", tmp_path)
-    monkeypatch.setattr("lovktv.oss.MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("lovktv.storage.store.MEDIA_DIR", tmp_path)
+    monkeypatch.setattr("lovktv.media.oss.MEDIA_DIR", tmp_path)
     folder = tmp_path / "s3"
     folder.mkdir()
     (folder / "karaoke.m4a").write_bytes(b"audio")
-    from lovktv.oss import write_marker
-    from lovktv.store import media_rev
+    from lovktv.media.oss import write_marker
+    from lovktv.storage.store import media_rev
 
     marker = write_marker("s3", ["karaoke.m4a"])
     payload = json.loads(marker.read_text(encoding="utf-8"))
@@ -51,7 +51,9 @@ def test_write_marker_records_media_rev(tmp_path, monkeypatch):
 
 def test_song_and_media_urls_use_media_rev(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import config, main, store
+    from lovktv import main
+    from lovktv.core import config
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

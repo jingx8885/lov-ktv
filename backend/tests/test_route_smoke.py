@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 
 def test_public_route_smoke(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, store
+    from lovktv import main
+    from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "smoke.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -19,7 +20,9 @@ def test_public_route_smoke(tmp_path, monkeypatch):
 
 def test_room_websocket_smoke(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, room_store, runtime, store
+    from lovktv import main
+    from lovktv.platform import runtime
+    from lovktv.storage import room_store, store
 
     store.DB_PATH = tmp_path / "smoke.sqlite"
     store.MEDIA_DIR = tmp_path / "media"

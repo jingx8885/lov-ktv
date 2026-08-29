@@ -9,7 +9,7 @@ from typing import Any
 from starlette.requests import Request
 from starlette.websockets import WebSocket
 
-from lovktv.config import ROOT
+from lovktv.core.config import ROOT
 
 LOCALES = ("zh", "yue", "en", "ja")
 _LOCALE_DIR = ROOT / "frontend" / "public" / "shared" / "i18n" / "locales"

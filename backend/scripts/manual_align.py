@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from lovktv.jobs import apply_locked_manual, load_lyric_lines  # noqa: E402
 from lovktv.pipeline.audio import extract_envelope, vocal_regions  # noqa: E402
 from lovktv.pipeline.lyrics import is_credit_lyric, write_manual_lrc  # noqa: E402
+from lovktv.workers.jobs import apply_locked_manual, load_lyric_lines  # noqa: E402
 
 HOP = 20
 SONGS = [

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from fastapi import WebSocket
 
-from lovktv import config
-from lovktv.host_volume import host_volume_meta as _host_volume_meta
-from lovktv.host_volume import set_host_volume as _set_host_volume
+from lovktv.core import config
+from lovktv.media.host_volume import host_volume_meta as _host_volume_meta
+from lovktv.media.host_volume import set_host_volume as _set_host_volume
 
 _rooms: dict[str, set[WebSocket]] = {}
 _peers: dict[WebSocket, dict] = {}

@@ -13,7 +13,7 @@ from typing import Any, Mapping
 
 from lovktv.domain.contracts import RoomAction, RoomSnapshot
 from lovktv.domain.room_contract import normalize_command, normalize_room_code
-from lovktv.room_store import RoomRepository, SqliteRoomStore
+from lovktv.storage.room_store import RoomRepository, SqliteRoomStore
 
 
 @dataclass(frozen=True)

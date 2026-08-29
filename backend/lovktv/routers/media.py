@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 from starlette.requests import Request
 
-from lovktv.assets import versioned_response
-from lovktv.oss import oss_ready, public_url
-from lovktv.runtime import WEB_ROOT, media_root
+from lovktv.media.assets import versioned_response
+from lovktv.media.oss import oss_ready, public_url
+from lovktv.platform.runtime import WEB_ROOT, media_root
 
 router = APIRouter()
 

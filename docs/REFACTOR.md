@@ -47,7 +47,7 @@
 
 - [x] 建立独立 `room_store.py` 适配器，房间服务不再持有 SQLite 实现。
 - [x] 将房间 SQL、队列、混音和 LAN 元数据迁入 `room_store.py`。
-- [x] `lovktv.store` 仅保留无 SQL 的迁移导出，业务调用方改用 `room_store`。
+- [x] `lovktv.storage.store` 集中歌曲、用户和会话持久化，房间 SQL 由 `lovktv.storage.room_store` 负责。
 - [x] 验收：事务边界和现有 schema 不变，房间/LAN/schema 回归通过（23 项）。
 
 ### R5 播放协议与前端状态 — 进行中
@@ -132,6 +132,6 @@
 - R5C：shared 资源与类型边界（已完成；timeline、stage FX、bridge/API 类型均纳入检查）。
 - R5D：Web/embedded 构建与 manifest/revision（构建链已完成，真实 APK hash/revision 对比待补）。
 
-本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（335 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
+本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（335 passed）；`uv run --project backend ruff check backend/lovktv backend/scripts`、`ruff format --check` 与 `uv run --project backend pyright` 均通过；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
 
 > 明确留项（下一批）：`mount(root, deps)` 逐模块重写 DOM 注入；Phone/TV 状态 ownership（room/catalog/player 等 store 迁移）；以及用真实 TV APK 解包产物和公网 bundle 做路径、文件 hash、manifest revision 对比。本批已闭环 adapter、桥隔离、LAN 回调、降级、DOM contract、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。

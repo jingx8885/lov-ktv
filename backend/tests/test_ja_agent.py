@@ -455,7 +455,7 @@ def test_apply_skips_truncated_romaji_restore():
 
 
 def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
-    from lovktv import restore_ja
+    from lovktv.workers import restore_ja
 
     song_dir = tmp_path / "s1"
     song_dir.mkdir()
@@ -499,7 +499,7 @@ def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
 
 
 def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
-    from lovktv import restore_ja
+    from lovktv.workers import restore_ja
 
     (tmp_path / "vocals.wav").write_bytes(b"x")
     seen = {}
@@ -539,7 +539,7 @@ def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
 
 
 def test_needs_romaji_restore():
-    from lovktv.restore_ja import already_restored, needs_romaji_restore
+    from lovktv.workers.restore_ja import already_restored, needs_romaji_restore
 
     assert needs_romaji_restore({"language": "ja", "cues": [{"text": "aa, itsumo"}]})
     assert already_restored(

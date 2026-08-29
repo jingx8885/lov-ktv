@@ -1,6 +1,6 @@
 import threading
 
-from lovktv import jobs
+from lovktv.workers import jobs
 
 
 def test_resume_stuck_jobs_includes_queued_and_aligning(monkeypatch, tmp_path):
