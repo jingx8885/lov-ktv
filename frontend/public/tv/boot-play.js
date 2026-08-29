@@ -261,6 +261,7 @@
       var title = $("title");
       var meta = $("meta");
       if (!now) {
+        document.body.classList.add("is-waiting");
         if (title) title.textContent = "等待点歌";
         if (meta) meta.textContent = "";
         if (lastItem) {
@@ -269,6 +270,7 @@
         }
         return;
       }
+      document.body.classList.toggle("is-waiting", now.status !== "ready");
       if (title) title.textContent = now.title || "";
       if (meta) meta.textContent = (now.artist || "") + " · " + (now.status || "");
       if (now.status !== "ready") return;

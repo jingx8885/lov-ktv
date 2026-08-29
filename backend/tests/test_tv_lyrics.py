@@ -6,18 +6,25 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 def test_tv_lyrics_use_this_morning_small_type():
     shared = (ROOT / "shared" / "lyrics" / "css" / "lyrics.css").read_text(encoding="utf-8")
     tv = (ROOT / "tv" / "lyrics" / "css" / "lyrics.css").read_text(encoding="utf-8")
+    stage = (ROOT / "tv" / "stage" / "css" / "stage.css").read_text(encoding="utf-8")
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
     assert "clamp(28px, 4.6vw, 58px)" in shared
     assert "font-size: .62em" in shared
-    assert "clamp(13px, 3.6vw, 17px)" in tv
-    assert "font-size: 11px" in tv
+    assert "clamp(18px, 2.8vw, 34px)" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
     assert "font-size: 14px" in tv
     assert "font-size: 15px" in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
-    assert 'href="/tv/lyrics/css/lyrics.css?v=split10"' in html
+    assert 'href="/tv/lyrics/css/lyrics.css?v=split13"' in html
+    assert 'href="/shared/lyrics/css/lyrics.css?v=split11"' in html
+    assert 'class="tv is-waiting"' in html
+    assert 'src="/brand/wait-tv.jpg"' in html
+    assert "body.tv.is-waiting .lyric-plate" in tv
+    assert "body.tv.is-waiting .lyric-plate" in shared
+    assert "body.tv.is-waiting .wait-art" in stage
+    assert 'href="/tv/stage/css/stage.css?v=split10"' in html
     assert "min-height: 1.15em" in tv
     assert "min-height: 1.2em" in tv
 

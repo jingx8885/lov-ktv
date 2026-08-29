@@ -75,6 +75,9 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/brand/logo.svg",
             "/brand/icon.png",
             "/brand/apple-touch.png",
+            "/brand/splash-tv.jpg",
+            "/brand/splash-phone.jpg",
+            "/brand/wait-tv.jpg",
         ):
             res = client.get(path)
             assert res.status_code == 200, path

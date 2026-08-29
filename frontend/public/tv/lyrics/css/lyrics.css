@@ -27,6 +27,17 @@
   box-shadow: none;
   padding: 0;
 }
+body.tv.is-waiting .lyrics,
+body.tv.is-waiting .lyric-plate {
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 0 !important;
+}
 body.tv.has-native-mv .lyric-plate,
 body.tv .lyric-plate.bare {
   background: transparent !important;

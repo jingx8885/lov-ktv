@@ -119,6 +119,10 @@ export function stopAudioOnly() {
   $("mtv").pause();
 }
 
+export function setWaiting(on) {
+  document.body.classList.toggle("is-waiting", !!on);
+}
+
 export function stopPlayback() {
   state.lyrics = { cues: [] };
   state.skeleton = null;
@@ -160,6 +164,7 @@ export async function tick() {
     state.emptyNow += 1;
     if (state.emptyNow < 3) return;
     stopPlayback();
+    setWaiting(true);
     $("gate").hidden = true;
     $("title").textContent = "";
     $("meta").textContent = "";
@@ -169,6 +174,7 @@ export async function tick() {
     return;
   }
   state.emptyNow = 0;
+  setWaiting(now.status !== "ready");
   $("title").textContent = now.title;
   $("meta").textContent = `${now.artist || ""} · ${STATUS[now.status] || now.status}`;
   if (now.status !== "ready") {

@@ -29,7 +29,7 @@ class TvActivity : Activity() {
             cookies.setAcceptThirdPartyCookies(webView, true)
         }
 
-        webView.setBackgroundColor(Color.parseColor("#0B1020"))
+        webView.setBackgroundColor(Color.TRANSPARENT)
         webView.isFocusable = true
         webView.isFocusableInTouchMode = true
         webView.settings.apply {

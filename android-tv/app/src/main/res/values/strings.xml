@@ -9,4 +9,5 @@
     <string name="open_tv">开启电视</string>
     <string name="server_error">本机服务还没就绪。按菜单键检查处理服务器地址。</string>
     <string name="host_channel">局域网服务</string>
+    <string name="splash_desc">lov-ktv 启动</string>
 </resources>

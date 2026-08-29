@@ -4,10 +4,19 @@
     android:layout_height="match_parent"
     android:background="#0B1020">
 
+    <ImageView
+        android:id="@+id/waitArt"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/splash_desc"
+        android:scaleType="centerCrop"
+        android:src="@drawable/wait_art" />
+
     <WebView
         android:id="@+id/webview"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@android:color/transparent"
         android:focusable="true"
         android:focusableInTouchMode="true" />
 </FrameLayout>

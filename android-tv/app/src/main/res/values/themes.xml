@@ -4,4 +4,9 @@
         <item name="android:windowBackground">#0B1020</item>
         <item name="android:colorBackground">#0B1020</item>
     </style>
+
+    <style name="Theme.LovKtvTv.Splash" parent="Theme.LovKtvTv">
+        <item name="android:windowBackground">@drawable/splash_window</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
 </resources>
