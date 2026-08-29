@@ -15,7 +15,7 @@
 ```bash
 cd /Users/yesone/project/lov-ktv
 python3 -m venv .venv
-.venv/bin/pip install -e backend
+UV_PROJECT_ENVIRONMENT="$PWD/.venv" uv sync --project backend --extra dev --frozen
 # 搜歌回落需要：
 # brew install ffmpeg yt-dlp
 PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787
@@ -41,6 +41,9 @@ docker compose up --build -d
 健康检查：http://本机:8787/api/host  
 `/api/host` 的 `models.separator` 应为 true（镜像已烤入 UVR ONNX，走 onnxruntime，不装 Torch）。歌词对齐优先用官方 LRC。  
 电视 App 填：`http://电脑或 NAS 的局域网IP:8787`
+
+本地验收：`scripts/accept.sh` 使用仓库根目录 `.venv` 和锁定的 `backend/uv.lock`；公网验收可运行
+`.venv/bin/python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
 
 公网（`ktv.lovbrowser.com`，43 上只绑 `127.0.0.1:8790`）：
 

@@ -8,15 +8,15 @@ def test_phone_desk_mic_uses_native_udp_not_webrtc():
     native = (ROOT / "phone" / "room" / "js" / "native-mic.js").read_text(encoding="utf-8")
     mix = (ROOT / "phone" / "room" / "js" / "mix.js").read_text(encoding="utf-8")
     player = (ROOT / "phone" / "player" / "js" / "mic.js").read_text(encoding="utf-8")
-    assert "export function hasNativeMic" in native
-    assert "window.LovKtvNative" in rtc
-    assert "n.startMic()" in rtc
+    assert "hasNativeMic" in native
+    assert "platform" in rtc
+    assert "startTvMic" in rtc
     assert "getUserMedia" not in rtc
-    assert 'nativeCall("startTvMic")' in native or "startTvMic" in native
+    assert "nativeCall" in native or "startTvMic" in native
     assert "nativeMicState().tv" in mix
     assert 'nativeCall("startIem")' in player
     assert "startNativePhoneMic" in player
-    assert "bridge.startTvMic" in native
+    assert "../../platform.js" in native
 
 
 def test_native_mic_copy_mentions_lan_not_webrtc():

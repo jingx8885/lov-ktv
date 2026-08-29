@@ -17,9 +17,11 @@ dist/
 vendor/*
 !vendor/README.md
 android-tv/.gradle/
+android-tv/build/
 android-tv/app/build/
 android-tv/local.properties
 android-phone/.gradle/
+android-phone/build/
 android-phone/app/build/
 android-phone/local.properties
 *.apk

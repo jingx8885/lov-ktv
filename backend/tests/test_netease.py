@@ -1,4 +1,6 @@
 import json
+import shutil
+import subprocess
 
 from lovktv.catalog import fetch, netease
 
@@ -8,12 +10,18 @@ def test_eapi_params_roundtrip_with_openssl():
     blob = netease.eapi_params(payload)
     assert blob.isupper()
     assert len(blob) >= 32
-    plain = __import__("subprocess").run(
-        ["openssl", "enc", "-aes-128-ecb", "-d", "-K", netease.EAPI_KEY.hex(), "-nosalt"],
-        input=bytes.fromhex(blob),
-        capture_output=True,
-        check=True,
-    ).stdout
+    encrypted = bytes.fromhex(blob)
+    if shutil.which("openssl"):
+        plain = subprocess.run(
+            ["openssl", "enc", "-aes-128-ecb", "-d", "-K", netease.EAPI_KEY.hex(), "-nosalt"],
+            input=encrypted,
+            capture_output=True,
+            check=True,
+        ).stdout
+    else:
+        from Crypto.Cipher import AES
+
+        plain = AES.new(netease.EAPI_KEY, AES.MODE_ECB).decrypt(encrypted)
     assert b"/api/song/enhance/player/url" in plain
     assert b"33894312" in plain
 

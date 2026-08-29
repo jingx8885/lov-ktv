@@ -13,7 +13,7 @@ def test_phone_app_does_not_force_tv_on_boot():
     assert "export function tvBound" in origin
     assert "export function requestTvBind" in join
     assert "export function hasNativeScan" in join
-    assert "LovKtvPhone.scanTv" in join
+    assert "platformScanTv" in join
     assert "hasNativeScan() && !tvBound()" not in app
     assert "? \"player\" : \"desk\"" not in app
     assert 'bootPage = PAGES.includes(bootHash) ? bootHash : "desk"' in app
@@ -57,11 +57,13 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "await waitLanReady();" in join
     assert "await api.loadRoom({ quiet: !!quiet });" in join
     assert "const quiet = !!(opts && opts.quiet);" in queue
-    assert "window.__lovktvNativeLan = true" in http
-    assert "LovKtvPhone.http" in http
+    platform = (ROOT / "phone" / "platform.js").read_text(encoding="utf-8")
+    assert "nativeHttpReady" in join
+    assert "LovKtvPlatform" in http
+    assert "phonePlatform" in platform
     origin = (ROOT / "phone" / "origin.js").read_text(encoding="utf-8")
     assert "export function adoptLan" in origin
-    assert "LovKtvPhone.useLan" in origin
+    assert "platformUseLan" in origin
     assert "room.lan_origin" in origin
     assert "adoptLan" in join
     assert "if (adoptLan(room))" in join

@@ -54,8 +54,12 @@ def test_frontend_tsc_no_emit():
             cmd = [str(tsc.with_suffix(".cmd")), "-p", str(FRONTEND), "--noEmit"]
         else:
             cmd = [str(tsc), "-p", str(FRONTEND), "--noEmit"]
-    elif shutil.which("npx"):
-        cmd = ["npx", "--yes", "typescript@5.9.2", "tsc", "-p", str(FRONTEND), "--noEmit"]
+    elif shutil.which("npx.cmd") or shutil.which("npx"):
+        # ``npx`` resolves to a PowerShell shim on Windows, which cannot be
+        # launched by subprocess without a shell.  Prefer the native .cmd
+        # launcher so this contract test is portable across developer hosts.
+        launcher = "npx.cmd" if os.name == "nt" and shutil.which("npx.cmd") else "npx"
+        cmd = [launcher, "--yes", "--package", "typescript@5.9.2", "tsc", "-p", str(FRONTEND), "--noEmit"]
     else:
         pytest.skip("需要 Node，才能跑 frontend 的 tsc 检查")
     result = subprocess.run(cmd, cwd=FRONTEND, capture_output=True, text=True, check=False)
