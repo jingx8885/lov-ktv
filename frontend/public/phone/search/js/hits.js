@@ -53,17 +53,9 @@ export function bindSearchHits(q) {
 
 export function searchCard(hit) {
   const isMv = hit.is_mv === true || hit.source === "mugen" || hit.source === "bilibili";
-  const channel =
-    {
-      mugen: "Mugen",
-      bilibili: t("phone.search.bilibili"),
-      soundcloud: "SoundCloud"
-    }[hit.source] || "";
-  const bits = [
-    escapeHtml(hit.artist || t("common.unknownArtist")),
-    channel ? `<span class="source-tag ${escapeHtml(hit.source)}">${escapeHtml(channel)}</span>` : "",
-    isMv ? "MV" : t("phone.search.song")
-  ].filter(Boolean);
+  const bits = [escapeHtml(hit.artist || t("common.unknownArtist")), isMv ? "MV" : t("phone.search.song")].filter(
+    Boolean
+  );
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
           <div class="list-copy">
