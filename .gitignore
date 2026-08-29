@@ -21,6 +21,8 @@ android-tv/.gradle/
 android-tv/build/
 android-tv/app/build/
 android-tv/local.properties
+# Local Android TV visual-debug screenshots
+android-tv/tv-*.png
 android-phone/.gradle/
 android-phone/build/
 android-phone/app/build/
