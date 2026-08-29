@@ -7,35 +7,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
 from lovktv.assets import VersionedStaticFiles
-from lovktv.catalog.fetch import (
-    is_preview_id,
-    open_preview_stream,
-    resolve_audio_source,
-    search_songs,
-)
-from lovktv.catalog.mugen import is_mugen_kid
-from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT
-from lovktv.host_volume import host_volume_meta, set_host_volume
+from lovktv.config import ROOT
 from lovktv.jobs import job_queue
-from lovktv.pipeline.mdx_onnx import model_status
-from lovktv.runtime import _mics, _peers, _rooms
-from lovktv.services.http import (
-    clear_session,
-    current_user,
-    fail,
-    request_base,
-    set_session,
-)
-from lovktv.services.room_runtime import (
-    bind_host,
-    broadcast,
-    host_machine,
-    request_ip,
-    room_view,
-    run_command,
-)
 from lovktv.store import init_db
 
 _PUBLIC = ROOT / "frontend" / "public"
@@ -110,52 +84,7 @@ app.include_router(songs.router)
 app.include_router(rooms.router)
 app.include_router(media.router)
 
-# Compatibility facade: existing integrations import route callables and
-# mutable room state from ``lovktv.main``.
-for _module in (misc, auth, songs, rooms, media):
-    for _name in dir(_module):
-        if _name.startswith("api_") or _name in {
-            "ws_room",
-            "media",
-            "mobile_page",
-            "login_page",
-        }:
-            globals()[_name] = getattr(_module, _name)
-
 if WEB.exists():
     app.mount("/", VersionedStaticFiles(directory=WEB, html=True), name="web")
 
-__all__ = [
-    "app",
-    "MEDIA_DIR",
-    "PUBLIC_URL",
-    "ROOT",
-    "WEB",
-    "HOST_COOKIE",
-    "HOST_COOKIE_DAYS",
-    "_rooms",
-    "_peers",
-    "_mics",
-    "host_volume_meta",
-    "set_host_volume",
-    "request_base",
-    "current_user",
-    "set_session",
-    "clear_session",
-    "fail",
-    "room_view",
-    "run_command",
-    "broadcast",
-    "bind_host",
-    "host_machine",
-    "request_ip",
-    "healthz",
-    "open_preview_stream",
-    "search_songs",
-    "resolve_audio_source",
-    "is_preview_id",
-    "is_mugen_kid",
-    "agent_status",
-    "annotate_ja_lines",
-    "model_status",
-]
+__all__ = ["app"]

@@ -108,6 +108,7 @@ def test_android_phone_rebind_injection_uses_mount_contract():
         / "com"
         / "lovktv"
         / "phone"
+        / "feature"
         / "DeskActivity.kt"
     ).read_text(encoding="utf-8")
     assert '[data-mount="phone-room-sheet"]' in source

@@ -228,8 +228,10 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
         def close(self):
             pass
 
+    from lovktv.routers import songs
+
     monkeypatch.setattr(
-        main,
+        songs,
         "open_preview_stream",
         lambda *args, **kwargs: (FakeResp(), {"kind": "mugen", "title": "群青"}),
     )

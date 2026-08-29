@@ -1,13 +1,12 @@
-"""Runtime state and compatibility helpers shared by API routers.
-
-The helpers intentionally resolve mutable values from :mod:`lovktv.main` at
-call time.  This keeps the historical ``main.MEDIA_DIR`` and host-volume
-monkeypatch points working while routers are split into focused modules.
-"""
+"""Runtime state shared by API routers."""
 
 from __future__ import annotations
 
 from fastapi import WebSocket
+
+from lovktv import config
+from lovktv.host_volume import host_volume_meta as _host_volume_meta
+from lovktv.host_volume import set_host_volume as _set_host_volume
 
 _rooms: dict[str, set[WebSocket]] = {}
 _peers: dict[WebSocket, dict] = {}
@@ -15,24 +14,21 @@ _mics: dict[str, str] = {}
 
 
 def media_dir():
-    from lovktv import main
-
-    return main.MEDIA_DIR
+    return config.MEDIA_DIR
 
 
 def web_root():
-    from lovktv import main
-
-    return main.WEB
+    dist = config.ROOT / "frontend" / "frontend-dist"
+    return (
+        dist
+        if (dist / "manifest.json").is_file()
+        else config.ROOT / "frontend" / "public"
+    )
 
 
 def host_volume_meta():
-    from lovktv import main
-
-    return main.host_volume_meta()
+    return _host_volume_meta()
 
 
 def set_host_volume(value: int):
-    from lovktv import main
-
-    return main.set_host_volume(value)
+    return _set_host_volume(value)

@@ -79,6 +79,7 @@ def test_tv_does_not_restart_on_network_stall():
         / "com"
         / "lovktv"
         / "tv"
+        / "media"
         / "SilentMtv.kt"
     ).read_text(encoding="utf-8")
     activity = (
@@ -91,6 +92,7 @@ def test_tv_does_not_restart_on_network_stall():
         / "com"
         / "lovktv"
         / "tv"
+        / "ui"
         / "TvActivity.kt"
     ).read_text(encoding="utf-8")
     assert "setVideoScalingMode" not in silent

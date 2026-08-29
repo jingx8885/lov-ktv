@@ -9,6 +9,7 @@ from starlette.requests import Request
 from lovktv.agents.ja_lyrics import annotate_ja_lines
 from lovktv.catalog.fetch import (
     is_preview_id,
+    open_preview_stream,
     resolve_audio_source,
     search_songs,
 )
@@ -70,11 +71,7 @@ def api_preview(
 ):
     if not is_preview_id(song_id):
         fail(request, 400, "api.bad_preview_id")
-    # Resolve through the facade so legacy tests/integrations can monkeypatch
-    # ``lovktv.main.open_preview_stream``.
-    from lovktv import main
-
-    resp, source = main.open_preview_stream(song_id, title, artist, media=media)
+    resp, source = open_preview_stream(song_id, title, artist, media=media)
     if resp is None:
         fail(request, 404, "api.preview_unavailable")
     ctype = str(resp.headers.get("Content-Type") or "audio/mpeg")
