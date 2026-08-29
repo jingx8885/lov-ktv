@@ -7,11 +7,11 @@ import { showToast } from "../../ui/js/toast.js";
 import { startPhoneMic } from "./mic.js";
 import { applyPlayerVocalMix, pausePlayer, unlockPlayerGesture } from "./controls.js";
 import { kickPlayerPaint } from "./lyrics.js";
-import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn/play.js";
-import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn/fx.js";
-import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn/quiz.js";
-import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn/echo.js";
-import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn/tap.js";
+import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js";
+import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn-fx.js";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js";
+import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn-echo.js";
+import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js";
 
 /** @type {{ mode: LearnMode | "", pack: LearnQuiz | null, vocalWas: number, boot: number }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };
@@ -20,7 +20,7 @@ const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };
 const MODES = {
   quiz: { pane: "learnQuiz", setup: startQuiz, run: runQuiz, stop: stopQuiz, score: quizScoreView },
   tap: { pane: "learnTap", setup: startTap, run: runTap, stop: stopTap, score: tapScoreView },
-  echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView }
+  echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView },
 };
 const CYCLE = ["quiz", "tap", "echo"];
 const PANES = ["learnHome", "learnQuiz", "learnTap", "learnEcho", "learnScore"];

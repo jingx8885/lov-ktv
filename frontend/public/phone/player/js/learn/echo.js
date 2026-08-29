@@ -1,10 +1,10 @@
-import { $ } from "../../../../shared/ui/js/dom.js";
-import { t } from "../../../../shared/i18n/js/i18n.js";
-import { state } from "../../../state.js";
-import { showToast } from "../../../ui/js/toast.js";
-import { mediaUrl } from "../media.js";
-import { startPhoneMic, stopPhoneMic } from "../mic.js";
-import { cancelCueWindow, paintLearnLine, playCueWindow } from "./play.js";
+import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
+import { state } from "../../state.js";
+import { showToast } from "../../ui/js/toast.js";
+import { mediaUrl } from "./media.js";
+import { startPhoneMic, stopPhoneMic } from "./mic.js";
+import { cancelCueWindow, paintLearnLine, playCueWindow } from "./learn-play.js";
 
 export const SING_PAD_MS = 1600;
 export const SING_MIN_MS = 4200;
@@ -18,7 +18,7 @@ const session = {
   running: false,
   review: null,
   previewUrl: "",
-  skipped: false
+  skipped: false,
 };
 
 /** @type {HTMLAudioElement | null} */
@@ -64,11 +64,7 @@ function cancelPreview() {
 
 function recMime() {
   const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/aac"];
-  return (
-    types.find(
-      (type) => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)
-    ) || ""
-  );
+  return types.find((type) => window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) || "";
 }
 
 function paintEchoLine() {
@@ -82,7 +78,7 @@ function paintEchoLine() {
     zh: "learnEchoZh",
     text: line ? line.text : "",
     romaji: line ? line.romaji : "",
-    zhText: line ? line.zh : ""
+    zhText: line ? line.zh : "",
   });
   const bar = $("learnEchoBar");
   if (bar) bar.style.width = total ? `${Math.round((session.index / total) * 100)}%` : "0";
@@ -290,10 +286,7 @@ async function mixClips() {
     live.close().catch(() => {});
     throw new Error(t("learn.mixFail"));
   }
-  const last = session.clips.reduce(
-    (max, clip) => Math.max(max, clip.rec_end_ms || clip.end_ms),
-    karaoke.duration * 1000
-  );
+  const last = session.clips.reduce((max, clip) => Math.max(max, clip.rec_end_ms || clip.end_ms), karaoke.duration * 1000);
   const length = Math.ceil(Math.max(karaoke.duration, last / 1000 + 0.2) * karaoke.sampleRate);
   const offline = new Offline(karaoke.numberOfChannels, length, karaoke.sampleRate);
   const bed = offline.createBufferSource();
@@ -358,7 +351,7 @@ async function takeLine(line, stream) {
       start_ms: line.start_ms,
       end_ms: line.end_ms,
       rec_end_ms: recEnd,
-      blob
+      blob,
     };
     setPhase("review", t("learn.echoReview"));
     const action = await waitReview();
@@ -394,23 +387,13 @@ export async function runEcho() {
       const heard = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
       if (!session.running) break;
       if (session.skipped || !heard) {
-        session.clips[session.index] = {
-          start_ms: line.start_ms,
-          end_ms: line.end_ms,
-          rec_end_ms: singWindowEnd(line),
-          blob: null
-        };
+        session.clips[session.index] = { start_ms: line.start_ms, end_ms: line.end_ms, rec_end_ms: singWindowEnd(line), blob: null };
         continue;
       }
       const action = await takeLine(line, stream);
       if (action === "stop") break;
       if (action === "skip") {
-        session.clips[session.index] = {
-          start_ms: line.start_ms,
-          end_ms: line.end_ms,
-          rec_end_ms: singWindowEnd(line),
-          blob: null
-        };
+        session.clips[session.index] = { start_ms: line.start_ms, end_ms: line.end_ms, rec_end_ms: singWindowEnd(line), blob: null };
       }
     }
     if (!session.running) return null;
@@ -473,7 +456,7 @@ export function echoScoreView(score, grade) {
     again: t("learn.again.echo"),
     sub: t("learn.score.sung", { grade: grade(score.pct), sung: score.sung || 0, total: score.total || 0 }),
     detail: t("learn.score.echoHint"),
-    mixUrl: score.mixUrl
+    mixUrl: score.mixUrl,
   };
 }
 

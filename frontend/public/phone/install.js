@@ -19,7 +19,7 @@ import {
   updateAlignNow,
   renderAlignList,
   applyEditorTracks,
-  syncEditAxis
+  syncEditAxis,
 } from "./player/js/align.js";
 import {
   setPlayIcon,
@@ -31,7 +31,7 @@ import {
   applyKaraokeGain,
   syncGuide,
   applyPlayerVocalMix,
-  hookPlayerAudio
+  hookPlayerAudio,
 } from "./player/js/controls.js";
 import { loadPlayerList, playNextSong } from "./player/js/queue.js";
 import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/song.js";
@@ -91,5 +91,5 @@ installApi({
   cueIndexAt,
   setPlayerSheet,
   enterLearn,
-  exitLearn
+  exitLearn,
 });

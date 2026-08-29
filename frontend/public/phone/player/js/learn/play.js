@@ -1,7 +1,7 @@
-import { $ } from "../../../../shared/ui/js/dom.js";
-import { t } from "../../../../shared/i18n/js/i18n.js";
-import { state } from "../../../state.js";
-import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "../controls.js";
+import { $ } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
+import { state } from "../../state.js";
+import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "./controls.js";
 
 /** @param {string | HTMLElement | null | undefined} id */
 function node(id) {
@@ -34,7 +34,7 @@ export function paintLearnLine(opts) {
 export const LEARN_DIFFS = {
   easy: { id: "easy", rate: 0.8, hold: "confirm" },
   normal: { id: "normal", rate: 1, hold: 5000 },
-  hard: { id: "hard", rate: 1, hold: "" }
+  hard: { id: "hard", rate: 1, hold: "" },
 };
 
 const DIFF_KEY = "lovktv-learn-diff";
@@ -74,9 +74,7 @@ export function resetLearnRate() {
 
 export function setLearnDiff(id) {
   diffId = LEARN_DIFFS[id] ? id : "normal";
-  try {
-    localStorage.setItem(DIFF_KEY, diffId);
-  } catch (err) {}
+  try { localStorage.setItem(DIFF_KEY, diffId); } catch (err) {}
   applyLearnRate();
   return getLearnDiff();
 }
@@ -117,18 +115,13 @@ export function playCueWindow(startMs, endMs, opts) {
     };
     hookPlayerAudio();
     applyLearnRate();
-    try {
-      audio.currentTime = start;
-    } catch (err) {}
+    try { audio.currentTime = start; } catch (err) {}
     syncGuide(start);
     state.playerHeld = false;
-    audio
-      .play()
-      .then(() => {
-        applyPlayerVocalMix();
-        requestAnimationFrame(tick);
-      })
-      .catch(() => resolve(false));
+    audio.play().then(() => {
+      applyPlayerVocalMix();
+      requestAnimationFrame(tick);
+    }).catch(() => resolve(false));
   });
 }
 
