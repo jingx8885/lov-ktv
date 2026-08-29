@@ -202,8 +202,6 @@ interface Window {
   LovKtvNative?: LovKtvNativeBridge;
   LovKtvOnMic?: (ok: boolean, error?: string) => void;
   __lovktvNativeLan?: boolean;
-  __lovktvPlayBooted?: boolean;
-  __lovktvQrBooted?: boolean;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
 }
 

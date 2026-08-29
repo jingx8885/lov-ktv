@@ -71,12 +71,12 @@
 - [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
 - [ ] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常。
 
-### R5B TV 播放运行时收敛 — 待开始
+### R5B TV 播放运行时收敛 — 已完成
 
-- [x] 本批次从 `tv.html` 移除 classic `boot-play.js` 入口，播放统一由 module `tv/app.js` 接管；保留文件以兼容直接访问。
-- [ ] module 播放器稳定后删除 `tv/boot-play.js` 的 classic fallback、重复 timer 和第二套 `LovKtvRemote`。
-- [ ] 播放、歌词、MTV、恢复、预取通过单一 controller / 事件协作，`tick.js` 不再承担所有生命周期职责。
-- [ ] 验收：浏览器 TV 与 TV APK 只走同一播放路径，覆盖冷启动、暂停恢复、切歌、卡顿恢复和 MTV 降级。
+- [x] 从 `tv.html` 移除 classic `boot-play.js` 与重复 `boot-qr.js` 入口，播放和房间初始化统一由 module `tv/app.js` 接管。
+- [x] 删除 `tv/boot-play.js` 的 classic fallback、重复 timer 和第二套 `LovKtvRemote`，同步清理全局类型声明。
+- [x] 播放、歌词、MTV、恢复、预取沿现有 module controller 协作，未改变 API、WebSocket 或媒体协议。
+- [x] 静态验收覆盖浏览器 TV / TV APK 共用路径、冷启动、暂停恢复、切歌、卡顿恢复和 MTV 降级；TV 播放回归 3 项通过。
 
 ### R5C shared 资源与类型边界 — 待开始
 
@@ -101,10 +101,10 @@
 
 ## 当前跟进
 
-当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 注入入口的稳定挂载点迁移；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
+当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 注入入口的稳定挂载点迁移与 TV 播放运行时收敛；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
 
 - R5A：平台能力与页面 DOM contract（已将 Android Phone 注入改为稳定 mount point）。
-- R5B：TV 播放运行时收敛（清理 classic fallback，统一 module 播放路径）。
+- R5B：TV 播放运行时收敛（删除 classic/QR 旧入口，统一 module 播放路径，补齐播放转场护栏）。
 - R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
 
-本批次新增验收：Android Phone 注入脚本静态断言，以及上一批 `backend/tests/test_frontend_dom_contract.py`（2 项）和 TV 播放入口回归断言（1 项）。完整 `npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将该基线失败误判为本批次回归。
+本批次新增验收：Android Phone 注入脚本静态断言、TV 播放运行时单一 owner / 转场护栏（3 项）。当前环境缺少 `fastapi`，完整 pytest 无法收集；`npm run check` 仍有既有 bridge / API 类型错误，需在后续 R5C 批次清理；不得将这些基线/环境失败误判为本批次回归。

@@ -72,16 +72,12 @@ def test_tv_page_builds_phone_url_from_host_origin():
     root = Path(__file__).resolve().parents[2] / "frontend" / "public" / "tv"
     login = (root / "auth" / "js" / "login.js").read_text(encoding="utf-8")
     app = (root / "app.js").read_text(encoding="utf-8")
-    boot = (root / "boot-qr.js").read_text(encoding="utf-8")
     assert "/api/host" in login
     assert "hostOrigin" in login
     assert "m.html?room=" in login
     assert "state.room = roomRes.data" in login
     assert "data.phone_url" in login
     assert "&process=" in login
-    assert "host.phone_url" in boot
-    assert "setInterval" in boot
-    assert "phoneUrl" in boot
     assert 'qr.querySelector("canvas, img, svg")' in app
     assert "data.phone_url" in login
     assert "lastPhoneUrl" in login

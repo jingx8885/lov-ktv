@@ -39,7 +39,7 @@ TV APK 提供给手机的 `m.html` 也是 APK 内嵌快照。因此公网手机�
 ### P0：启动和运行时协议
 
 - `phone/app.js` 在入口阶段直接读取固定 DOM 节点；核心节点缺失会让整个页面启动失败。
-- TV 同时存在 `boot-play.js` classic 播放器和 module 播放器。classic 路径等待 8 秒后接管，并且会创建自己的 timer、歌词和 `LovKtvRemote`。
+- TV 播放统一由 `tv/app.js` module 运行时接管；旧 `boot-play.js` / `boot-qr.js` 入口已删除，避免重复 timer、房间初始化和 `LovKtvRemote`。
 - Android Phone 通过注入脚本覆盖全局 `fetch`，同时维护 `LovKtvOnHttp`、`LovKtvOnLanHttp`、`__lovktvLanFetch` 等隐式回调协议。
 - Android TV 通过 Kotlin 调用 `window.LovKtvRemote.*`，TV 播放、遥控和原生 MTV 由多个全局对象拼接。
 
@@ -109,7 +109,7 @@ platform/android-phone  LovKtvPhone adapter + LAN fetch 适配
 
 ### 4. 收敛 TV 播放路径
 
-- module 播放器稳定后，删除 `boot-play.js` 的 8 秒 classic fallback。
+- 已删除 `boot-play.js` 的 8 秒 classic fallback 及 `boot-qr.js` 重复房间初始化；TV 浏览器与 TV APK 共用 `tv/app.js`。
 - `LovKtvRemote` 只由一个 controller 注册。
 - 播放、歌词、MTV、恢复、预取分别成为 controller 的子模块，通过事件协作。
 - 为浏览器 TV 和 TV APK 使用同一组播放协议 smoke test。
@@ -146,4 +146,3 @@ platform/android-phone  LovKtvPhone adapter + LAN fetch 适配
 - 不改变公网 API 路径、房间 WebSocket 消息格式和媒体目录。
 - 不把 Web、TV、Phone 立即改成三套独立 UI；先拆协议和平台边界，再决定哪些视觉组件真正复用。
 - 不在没有 smoke test 的情况下直接引入大规模 bundler 重写。
-
