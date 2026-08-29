@@ -25,7 +25,7 @@ export function watchRoom(code, onRoom) {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   let sock;
   try {
-    sock = new WebSocket(proto + "//" + location.host + "/ws/box/" + encodeURIComponent(next));
+    sock = new WebSocket(proto + "//" + location.host + "/ws/rooms/" + encodeURIComponent(next));
   } catch (err) {
     return;
   }

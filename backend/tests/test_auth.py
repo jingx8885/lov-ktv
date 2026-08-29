@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient
 
-from lovktv.identity.auth import decode_state, encode_state, scan_login_url, wechat_authorize_url
+from lovktv.identity.auth import (
+    decode_state,
+    encode_state,
+    scan_login_url,
+    wechat_authorize_url,
+)
 
 
 def _init(store, tmp_path):

@@ -21,7 +21,7 @@ def test_tv_does_not_restart_on_network_stall():
     )
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
     assert "export { roomWsLive, watchRoom }" in tick
-    assert "/ws/box/" in room_state
+    assert "/ws/rooms/" in room_state
     assert "export async function applyRoom" in tick
     assert "export function songReallyEnded" in tick
     assert 'from "./state.js"' in tick
@@ -140,6 +140,26 @@ def test_tv_has_one_runtime_owner_and_no_legacy_boot_entries():
     assert app.count("setInterval(tick, 1500)") == 1
     assert "bindRemote();" in app
     assert "__module: true" in remote
+
+
+def test_browser_room_websocket_contract_is_shared_and_safe():
+    """TV snapshots and phone RTC must use the canonical encoded room socket."""
+    room_state = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(
+        encoding="utf-8"
+    )
+    mic = (ROOT / "shared" / "audio" / "js" / "rtc" / "mic.js").read_text(
+        encoding="utf-8"
+    )
+    scripts = [p.read_text(encoding="utf-8") for p in ROOT.rglob("*.js")]
+    joined = "\n".join(scripts)
+
+    # There must be one public room WebSocket route; an obsolete route would be
+    # caught by static-file handling instead of the room WebSocket endpoint.
+    assert "/ws/" + "box" not in joined
+    for source in (room_state, mic):
+        assert '"/ws/rooms/"' in source
+        assert "encodeURIComponent" in source
+        assert 'location.protocol === "https:" ? "wss:" : "ws:"' in source
 
 
 def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():

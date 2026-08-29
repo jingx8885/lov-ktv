@@ -1,6 +1,12 @@
 import pytest
 
-from lovktv.storage.room_store import enqueue, ensure_room, play_now, room_snapshot, skip
+from lovktv.storage.room_store import (
+    enqueue,
+    ensure_room,
+    play_now,
+    room_snapshot,
+    skip,
+)
 
 
 def _ready(store, song_id: str) -> None:

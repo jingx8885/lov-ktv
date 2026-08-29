@@ -89,7 +89,7 @@ class HostServer(
                 install(WebSockets)
                 routing {
                     get("/") { assetsHandler.serve(call, "/") }
-                    webSocket("/ws/box/{code}") { webSockets.serveBox(this, call.parameters["code"].orEmpty()) }
+                    webSocket("/ws/rooms/{code}") { webSockets.serveRoom(this, call.parameters["code"].orEmpty()) }
                     webSocket("/ws/{path...}") { webSockets.proxy(this, call.request.path(), call.request.queryString()) }
                     route("{path...}") { handle { dispatch(call) } }
                 }

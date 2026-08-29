@@ -3,8 +3,8 @@ from fastapi.testclient import TestClient
 
 def _boot(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv.media import host_volume
     from lovktv import main
+    from lovktv.media import host_volume
     from lovktv.platform import runtime
     from lovktv.storage import store
 

@@ -6,8 +6,8 @@ def _boot(tmp_path, monkeypatch):
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)
     monkeypatch.delenv("ALIYUN_OSS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("ALIYUN_OSS_ACCESS_KEY_SECRET", raising=False)
-    from lovktv.core import config
     from lovktv import main
+    from lovktv.core import config
     from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
@@ -43,8 +43,8 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     )
     from importlib import reload
 
-    from lovktv.core import config
     from lovktv import main
+    from lovktv.core import config
     from lovktv.media import oss
     from lovktv.storage import store
 

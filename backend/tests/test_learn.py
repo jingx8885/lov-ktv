@@ -317,8 +317,8 @@ def test_phone_learn_shell_is_wired():
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv.core import config
     from lovktv import main
+    from lovktv.core import config
     from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"

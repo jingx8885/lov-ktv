@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lovktv.workers import jobs
 from lovktv.catalog import importer, mugen, search
+from lovktv.workers import jobs
 
 ASS = """\ufeff[Script Info]
 Title: NIGHT DANCER
@@ -208,8 +208,8 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from fastapi.testclient import TestClient
 
-    from lovktv.media import host_volume
     from lovktv import main
+    from lovktv.media import host_volume
     from lovktv.storage import store
 
     store.DB_PATH = tmp_path / "t.sqlite"

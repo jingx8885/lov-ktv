@@ -35,7 +35,7 @@ class HostWebSocketHandler(
     private val sockets = ConcurrentHashMap<String, CopyOnWriteArraySet<DefaultWebSocketServerSession>>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    suspend fun serveBox(session: DefaultWebSocketServerSession, codeRaw: String) {
+    suspend fun serveRoom(session: DefaultWebSocketServerSession, codeRaw: String) {
         val code = Prefs.validRoom(codeRaw)
         if (code.isBlank()) {
             session.close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "room"))
