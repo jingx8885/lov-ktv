@@ -313,11 +313,11 @@ def test_phone_learn_shell_is_wired():
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import main, store
+    from lovktv import config, main, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
-    main.MEDIA_DIR = store.MEDIA_DIR
+    config.MEDIA_DIR = store.MEDIA_DIR
     store.init_db()
     song = store.create_song("群青", "YOASOBI", "ja")
     store.update_song(song["id"], status="ready")

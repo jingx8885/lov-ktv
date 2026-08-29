@@ -20,7 +20,7 @@ from lovktv.i18n import t as i18n_t
 from lovktv.jobs import process_import, process_realign, process_upload, spawn
 from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
-from lovktv.runtime import media_root
+from lovktv.runtime import media_dir
 from lovktv.services.http import fail
 from lovktv.store import (
     create_song,
@@ -124,11 +124,11 @@ async def api_upload(
     song = create_song(
         title or file.filename or i18n_t(request, "api.unnamed"), artist, language
     )
-    dest = media_root() / song["id"] / "original.mp3"
+    dest = media_dir() / song["id"] / "original.mp3"
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
     if lyrics.strip():
-        (media_root() / song["id"] / "lyrics.lrc").write_text(lyrics, encoding="utf-8")
+        (media_dir() / song["id"] / "lyrics.lrc").write_text(lyrics, encoding="utf-8")
     spawn(process_upload, song["id"], dest, language)
     return song
 
@@ -175,8 +175,8 @@ def api_save_lyrics(
         timeline = validate_timeline(payload)
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
-    write_subtitles(timeline, media_root() / song_id)
-    write_manual_lrc(media_root() / song_id, timeline["cues"])
+    write_subtitles(timeline, media_dir() / song_id)
+    write_manual_lrc(media_dir() / song_id, timeline["cues"])
     return {"ok": True, "song_id": song_id, "cues": len(timeline["cues"])}
 
 
@@ -232,7 +232,7 @@ def api_song(request: Request, song_id: str) -> dict:
     song = localize_song(request_lang(request), with_media_flags(get_song(song_id)))
     if not song:
         fail(request, 404, "api.song_not_found")
-    folder = media_root() / song_id
+    folder = media_dir() / song_id
     song["files"] = (
         sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     )
@@ -244,7 +244,7 @@ def api_learn(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
-    path = media_root() / song_id / "lyrics.json"
+    path = media_dir() / song_id / "lyrics.json"
     if not path.exists():
         fail(request, 409, "api.no_lyrics")
     try:

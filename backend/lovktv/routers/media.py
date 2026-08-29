@@ -8,14 +8,14 @@ from starlette.requests import Request
 
 from lovktv.assets import versioned_response
 from lovktv.oss import oss_ready, public_url
-from lovktv.runtime import WEB_ROOT, media_root
+from lovktv.runtime import media_dir, web_root
 
 router = APIRouter()
 
 
 @router.get("/media/{song_id}/{name}")
 def media(song_id: str, name: str, request: Request):
-    root = media_root().resolve()
+    root = media_dir().resolve()
     path = (root / song_id / name).resolve()
     if root not in path.parents:
         raise HTTPException(404)
@@ -37,15 +37,17 @@ def media(song_id: str, name: str, request: Request):
 
 @router.get("/m.html")
 def mobile_page():
-    path = WEB_ROOT / "m.html"
+    root = web_root()
+    path = root / "m.html"
     if not path.exists():
         raise HTTPException(404)
-    return versioned_response(path, WEB_ROOT)
+    return versioned_response(path, root)
 
 
 @router.get("/login.html")
 def login_page():
-    path = WEB_ROOT / "login.html"
+    root = web_root()
+    path = root / "login.html"
     if not path.exists():
         raise HTTPException(404)
-    return versioned_response(path, WEB_ROOT)
+    return versioned_response(path, root)
