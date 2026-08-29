@@ -9,7 +9,7 @@ class HostGatewayTest {
     @Test
     fun phoneUrlUsesLanOriginAndRoom() {
         val url = HostGateway.phoneUrl("http://192.168.1.8:8787", "EABAB5")
-        assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue4", url)
+        assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5", url)
     }
 
     @Test
@@ -55,7 +55,7 @@ class HostGatewayTest {
         assertEquals("http://10.0.2.2:8787", payload.processOrigin)
         assertEquals("/m.html?room=EABAB5", payload.phonePath)
         assertEquals(
-            "http://192.168.1.8:8787/m.html?room=EABAB5&v=queue4&process=http%3A%2F%2F10.0.2.2%3A8787",
+            "http://192.168.1.8:8787/m.html?room=EABAB5&process=http%3A%2F%2F10.0.2.2%3A8787",
             payload.phoneUrl,
         )
         assertEquals("EABAB5", payload.room)
@@ -79,7 +79,7 @@ class HostGatewayTest {
         assertEquals("http://192.168.1.8:8788", payload.origin)
         assertEquals("https://ktv.lovbrowser.com", payload.processOrigin)
         assertEquals(
-            "http://192.168.1.8:8788/m.html?room=EABAB5&v=queue4&process=https%3A%2F%2Fktv.lovbrowser.com",
+            "http://192.168.1.8:8788/m.html?room=EABAB5&process=https%3A%2F%2Fktv.lovbrowser.com",
             payload.phoneUrl,
         )
     }

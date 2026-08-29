@@ -9,9 +9,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
-
 from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
+from lovktv.assets import VersionedStaticFiles, versioned_response
 from lovktv.auth import (
     SESSION_COOKIE,
     auth_status,
@@ -798,28 +797,20 @@ def media(song_id: str, name: str):
 
 
 @app.get("/m.html")
-def mobile_page() -> FileResponse:
+def mobile_page():
     path = WEB / "m.html"
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(
-        path,
-        media_type="text/html",
-        headers={"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"},
-    )
+    return versioned_response(path, WEB)
 
 
 @app.get("/login.html")
-def login_page() -> FileResponse:
+def login_page():
     path = WEB / "login.html"
     if not path.exists():
         raise HTTPException(404)
-    return FileResponse(
-        path,
-        media_type="text/html",
-        headers={"Cache-Control": "no-store, max-age=0", "Pragma": "no-cache"},
-    )
+    return versioned_response(path, WEB)
 
 
 if WEB.exists():
-    app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
+    app.mount("/", VersionedStaticFiles(directory=WEB, html=True), name="web")

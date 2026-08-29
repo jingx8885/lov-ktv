@@ -1,6 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { tvBound } from "../../origin.js?v=scan1";
+import { tvBound } from "../../origin.js";
 
 function nativePhone() {
   try {

@@ -12,7 +12,7 @@ import {
   needsLineHold,
   paintLearnLine,
   playCueWindow,
-} from "./learn-play.js?v=hold2";
+} from "./learn-play.js";
 import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
 
 const TILE_SKINS = [

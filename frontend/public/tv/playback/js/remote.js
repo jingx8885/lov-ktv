@@ -3,8 +3,8 @@ import { fetchJson } from "../../../shared/ui/js/http.js";
 import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { unlockAudio } from "../../audio/js/unlock.js";
-import { applyMix } from "./mix.js?v=stall1";
-import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js?v=native1";
+import { applyMix } from "./mix.js";
+import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";

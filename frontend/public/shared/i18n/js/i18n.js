@@ -1,7 +1,7 @@
-import zh from "../locales/zh.js?v=mic3";
-import yue from "../locales/yue.js?v=mic3";
-import en from "../locales/en.js?v=mic3";
-import ja from "../locales/ja.js?v=mic3";
+import zh from "../locales/zh.js";
+import yue from "../locales/yue.js";
+import en from "../locales/en.js";
+import ja from "../locales/ja.js";
 
 export const LOCALES = ["zh", "yue", "en", "ja"];
 export const STORAGE_KEY = "lovktv.lang";

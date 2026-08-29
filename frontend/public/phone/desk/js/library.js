@@ -1,6 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { lanOrigin, roomUrl } from "../../origin.js?v=scan1";
+import { lanOrigin, roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";

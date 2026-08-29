@@ -1,23 +1,22 @@
-import "./install.js?v=scan2";
+import "./install.js";
 import { $must } from "../shared/ui/js/dom.js";
-import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js?v=i18n3";
+import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js";
 import { PAGES, state, pageTitle, searchEmpty } from "./state.js";
 import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho, loadWho } from "./ui/js/who.js";
 import { bindOverlays } from "./ui/js/overlays.js";
 import { bindNav, showPage } from "./nav/js/pages.js";
-import { bindSearch, paintSearchHits } from "./search/js/hits.js?v=queue6";
-import { bindLibrary, loadSongs } from "./desk/js/library.js?v=scan1";
+import { bindSearch, paintSearchHits } from "./search/js/hits.js";
+import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { loadRoom } from "./desk/js/queue.js";
-import { bindJoin, hasNativeScan, paintBindBtns } from "./room/js/join.js";
-import { tvBound } from "./origin.js?v=scan1";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=scan2";
-import { bindRoomRtc } from "./room/js/rtc.js?v=scan2";
-import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js?v=scan2";
+import { bindJoin, paintBindBtns } from "./room/js/join.js";
+import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js";
+import { bindRoomRtc } from "./room/js/rtc.js";
+import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
-import { bindAlign, updateAlignNow } from "./player/js/align.js?v=paint3";
-import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js?v=mic2";
-import { bindLearn } from "./player/js/learn.js?v=learn2";
+import { bindAlign, updateAlignNow } from "./player/js/align.js";
+import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js";
+import { bindLearn } from "./player/js/learn.js";
 
 const params = new URLSearchParams(location.search);
 if (params.get("login")) {
@@ -80,9 +79,7 @@ setInterval(() => {
 }, 2000);
 
 const bootHash = (location.hash || "").replace("#", "");
-const bootPage = PAGES.includes(bootHash)
-  ? bootHash
-  : (hasNativeScan() && !tvBound() ? "player" : "desk");
+const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
 showPage(bootPage, null, false);
 if (bootHash === "room") openOverlay("roomSheet");
 

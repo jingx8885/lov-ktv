@@ -4,9 +4,9 @@ import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
-import { mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js?v=stall1";
-import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js?v=native1";
-import { lyricsFingerprint, ensureStageFx } from "./lyrics.js?v=native1";
+import { mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js";
+import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
+import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 
 export function pageVisible() {
   return document.visibilityState === "visible";

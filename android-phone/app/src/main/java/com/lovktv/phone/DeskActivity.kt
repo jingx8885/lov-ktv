@@ -33,6 +33,7 @@ class DeskActivity : Activity() {
     private var pendingSend: Boolean? = null
     private var pendingIem: Boolean? = null
     private var scanning = false
+    private var publicFallbackDone = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -116,19 +117,14 @@ class DeskActivity : Activity() {
             ) {
                 if (!request.isForMainFrame) return
                 val failed = request.url?.toString().orEmpty()
-                if (lanOrigin.isNotBlank() && failed.startsWith(lanOrigin)) {
+                if (!publicFallbackDone && DeskPage.isLanPage(failed)) {
+                    publicFallbackDone = true
                     android.widget.Toast.makeText(
                         this@DeskActivity,
                         getString(R.string.lan_desk_fail),
                         android.widget.Toast.LENGTH_LONG,
                     ).show()
-                    view.loadDataWithBaseURL(
-                        lanOrigin,
-                        lanFailHtml(),
-                        "text/html",
-                        "utf-8",
-                        null,
-                    )
+                    view.loadUrl(publicDeskUrl())
                 }
             }
 
@@ -254,14 +250,8 @@ class DeskActivity : Activity() {
         MicService.apply(this, micHost, micPort, micRate, gain = value)
     }
 
-    private fun lanFailHtml(): String {
-        val msg = getString(R.string.lan_desk_fail)
-        val retry = getString(R.string.lan_desk_retry)
-        val href = DeskPage.url(server, roomCode, lanOrigin)
-        return """<!doctype html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>body{margin:0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0B1020;color:#f4f1ea;font-family:sans-serif;padding:24px;text-align:center}a{color:#ffd6a0}</style>
-</head><body><p>$msg</p><p><a href="$href">$retry</a></p></body></html>"""
+    private fun publicDeskUrl(): String {
+        return DeskPage.url(server.ifBlank { Prefs.DEFAULT_SERVER }, roomCode, "")
     }
 
     private fun hasLanMic(): Boolean = NativeMic.canStart(micHost, micPort)

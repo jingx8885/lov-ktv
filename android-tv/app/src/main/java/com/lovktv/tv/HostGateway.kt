@@ -32,7 +32,7 @@ object HostGateway {
     fun phoneUrl(origin: String, room: String, processOrigin: String = ""): String {
         val page = origin.trim().trimEnd('/')
         val code = room.trim().uppercase()
-        var url = "$page/m.html?room=$code&v=queue4"
+        var url = "$page/m.html?room=$code"
         val process = processOrigin.trim().trimEnd('/')
         if (process.isNotBlank() && !process.equals(page, ignoreCase = true)) {
             url += "&process=" + java.net.URLEncoder.encode(process, "UTF-8")

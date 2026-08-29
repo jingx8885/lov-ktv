@@ -1,9 +1,9 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { roomUrl } from "../../origin.js?v=scan1";
+import { roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js?v=paint5";
-import { paintLyricMode } from "../../room/js/mix.js?v=scan2";
+import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js";
+import { paintLyricMode } from "../../room/js/mix.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
@@ -553,7 +553,6 @@ export function bindPlayback() {
   $("playerNextBtn").onclick = () => playNextSong();
   updatePlayOrderBtns();
   $("playerToDesk").onclick = () => {
-    if (api.requestTvBind && api.requestTvBind()) return;
     api.showPage("desk");
   };
 }

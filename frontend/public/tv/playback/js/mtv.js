@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
-import { mediaUrl } from "./mix.js?v=stall1";
+import { mediaUrl } from "./mix.js";
 
 function nativePlayer() {
   return window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function";

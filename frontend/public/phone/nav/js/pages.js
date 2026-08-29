@@ -43,7 +43,6 @@ export function showPage(name, songId, push) {
 export function bindNav() {
   document.querySelectorAll("[data-nav]").forEach((btn) => {
     btn.onclick = () => {
-      if (btn.dataset.nav === "desk" && api.requestTvBind && api.requestTvBind()) return;
       showPage(btn.dataset.nav);
     };
   });

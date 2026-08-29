@@ -1,13 +1,13 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { lanOrigin, roomUrl } from "../../origin.js?v=scan1";
+import { lanOrigin, roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js?v=paint3";
+import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { closeOverlay } from "../../ui/js/overlays.js";
-import { nativeMicState, setNativeGain } from "./native-mic.js?v=micudp1";
+import { nativeMicState, setNativeGain } from "./native-mic.js";
 
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");

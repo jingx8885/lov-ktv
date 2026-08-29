@@ -59,14 +59,23 @@ class JoinLinkTest {
 
 class DeskPageTest {
     @Test
-    fun lanDeskOpensLocalMHtml() {
+    fun boundDeskStaysOnPublicHost() {
         val url = DeskPage.url(
             "https://ktv.lovbrowser.com",
             "eabab5",
             "http://192.168.1.8:8788",
         )
         assertEquals(
-            "http://192.168.1.8:8788/m.html?room=EABAB5&v=scan2&androidphone=1&process=https%3A%2F%2Fktv.lovbrowser.com",
+            "https://ktv.lovbrowser.com/m.html?room=EABAB5&androidphone=1&lan=http%3A%2F%2F192.168.1.8%3A8788",
+            url,
+        )
+    }
+
+    @Test
+    fun localServerStillOpensPublicPage() {
+        val url = DeskPage.url("http://192.168.1.8:8788", "EABAB5", "")
+        assertEquals(
+            "https://ktv.lovbrowser.com/m.html?room=EABAB5&androidphone=1&lan=http%3A%2F%2F192.168.1.8%3A8788",
             url,
         )
     }
@@ -74,12 +83,18 @@ class DeskPageTest {
     @Test
     fun publicDeskWhenNoLan() {
         val url = DeskPage.url("https://ktv.lovbrowser.com", "ABC123", "")
-        assertEquals("https://ktv.lovbrowser.com/m.html?room=ABC123&v=scan2&androidphone=1", url)
+        assertEquals("https://ktv.lovbrowser.com/m.html?room=ABC123&androidphone=1", url)
     }
 
     @Test
     fun publicDeskAllowsEmptyRoom() {
         val url = DeskPage.url("https://ktv.lovbrowser.com", "", "")
-        assertEquals("https://ktv.lovbrowser.com/m.html?room=&v=scan2&androidphone=1", url)
+        assertEquals("https://ktv.lovbrowser.com/m.html?room=&androidphone=1", url)
+    }
+
+    @Test
+    fun lanPageDetectsPrivateHost() {
+        org.junit.Assert.assertTrue(DeskPage.isLanPage("http://192.168.1.8:8788/m.html?room=EABAB5"))
+        org.junit.Assert.assertFalse(DeskPage.isLanPage("https://ktv.lovbrowser.com/m.html"))
     }
 }

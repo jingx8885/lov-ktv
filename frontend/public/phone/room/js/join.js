@@ -1,6 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { lanOrigin, roomUrl, tvBound } from "../../origin.js?v=scan1";
+import { lanOrigin, roomUrl, tvBound } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
@@ -43,10 +43,6 @@ export function paintBindBtns() {
 }
 
 export function needTvOrRoom() {
-  if (requestTvBind()) {
-    showToast(t("phone.desk.needTv"));
-    return true;
-  }
   const code = $("room") ? $("room").value.trim() : "";
   if (!code) {
     openOverlay("roomSheet");
@@ -103,7 +99,6 @@ export function bindJoin() {
   if ($("scanTv")) $("scanTv").onclick = () => scanTv();
   if ($("rebindTv")) $("rebindTv").onclick = () => scanTv();
   $("join").onclick = () => {
-    if (requestTvBind()) return;
     joinRoom(false);
   };
   $("openTv").onclick = (event) => {
@@ -112,7 +107,6 @@ export function bindJoin() {
     event.preventDefault();
     openTv(code);
   };
-  if (hasNativeScan() && !tvBound()) return;
   if ($("room").value) {
     $("openTv").href = tvUrl($("room").value);
     joinRoom(false, true);

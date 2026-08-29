@@ -4,13 +4,13 @@ import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { startPhoneMic } from "./mic.js?v=mic2";
+import { startPhoneMic } from "./mic.js";
 import { applyPlayerVocalMix, kickPlayerPaint, pausePlayer, unlockPlayerGesture } from "./playback.js";
-import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js?v=hold2";
+import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./learn-play.js";
 import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./learn-fx.js";
-import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js?v=hold2";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./learn-quiz.js";
 import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./learn-echo.js";
-import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js?v=hold2";
+import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./learn-tap.js";
 
 /** @type {{ mode: LearnMode | "", pack: LearnQuiz | null, vocalWas: number, boot: number }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };

@@ -10,7 +10,7 @@ import {
   needsLineHold,
   paintLearnLine,
   playCueWindow,
-} from "./learn-play.js?v=hold2";
+} from "./learn-play.js";
 
 let syncRaf = 0;
 
