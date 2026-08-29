@@ -11,6 +11,11 @@ from typing import Any
 
 from pydantic import BaseModel
 
+try:  # Pydantic v2; kept optional for older FastAPI deployments.
+    from pydantic import ConfigDict
+except ImportError:  # pragma: no cover - exercised only by pydantic v1
+    ConfigDict = None  # type: ignore[assignment,misc]
+
 
 class RoomCommandPayload(BaseModel):
     id: str | None = None
@@ -22,8 +27,12 @@ class RoomCommandPayload(BaseModel):
     lyric_mode: str | None = None
     paused: bool | int | float | str | None = None
 
-    class Config:
-        extra = "ignore"
+    if ConfigDict is not None and hasattr(BaseModel, "model_validate"):
+        model_config = ConfigDict(extra="ignore")
+    else:
+
+        class Config:
+            extra = "ignore"
 
     def as_dict(self) -> dict[str, Any]:
         # ``model_dump`` is pydantic v2; ``dict`` keeps this usable with the
