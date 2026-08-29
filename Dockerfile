@@ -28,6 +28,6 @@ RUN pip install --no-deps --no-cache-dir -e /app/backend
 
 EXPOSE 8787
 HEALTHCHECK --interval=20s --timeout=5s --start-period=40s --retries=6 \
-    CMD curl -fsS http://127.0.0.1:8787/api/host >/dev/null
+    CMD curl -fsS http://127.0.0.1:8787/healthz >/dev/null
 
 CMD ["python", "-m", "uvicorn", "lovktv.main:app", "--host", "0.0.0.0", "--port", "8787"]

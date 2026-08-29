@@ -546,11 +546,16 @@ class JobQueue:
         self._queued: set[str] = set()
         self._lock = threading.Lock()
         self._worker_started = False
+        self._worker_thread: threading.Thread | None = None
+        self._stop_event = threading.Event()
         self._worker_name = worker_name
 
     def _worker(self) -> None:
-        while True:
-            fn, args, kwargs, key = self._jobs.get()
+        while not self._stop_event.is_set():
+            try:
+                fn, args, kwargs, key = self._jobs.get(timeout=0.2)
+            except queue.Empty:
+                continue
             try:
                 print(f"[lovktv] start {key}", flush=True)
                 fn(*args, **kwargs)
@@ -561,6 +566,57 @@ class JobQueue:
                 with self._lock:
                     self._queued.discard(key)
                 self._jobs.task_done()
+        with self._lock:
+            self._worker_started = False
+            self._worker_thread = None
+
+    def start(self) -> bool:
+        """Start the queue worker once and report whether it was started."""
+        with self._lock:
+            if self._worker_started and self._worker_thread and self._worker_thread.is_alive():
+                return False
+            self._stop_event.clear()
+            self._worker_started = True
+            self._worker_thread = threading.Thread(
+                target=self._worker,
+                name=self._worker_name,
+                daemon=True,
+            )
+            self._worker_thread.start()
+            return True
+
+    def stop(self, timeout: float = 5.0) -> bool:
+        """Stop the worker and discard jobs that have not started yet."""
+        with self._lock:
+            thread = self._worker_thread
+            if not self._worker_started or thread is None:
+                return False
+            self._stop_event.set()
+        thread.join(max(0.0, timeout))
+        if thread.is_alive():
+            return False
+        while True:
+            try:
+                _fn, _args, _kwargs, key = self._jobs.get_nowait()
+            except queue.Empty:
+                break
+            with self._lock:
+                self._queued.discard(key)
+            self._jobs.task_done()
+        with self._lock:
+            self._worker_started = False
+            self._worker_thread = None
+        return True
+
+    def health(self) -> dict[str, Any]:
+        """Return non-secret worker state for readiness and diagnostics."""
+        with self._lock:
+            thread = self._worker_thread
+            return {
+                "running": bool(thread and thread.is_alive()),
+                "queued": len(self._queued),
+                "pending": self._jobs.qsize(),
+            }
 
     def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
         """Queue work and return ``False`` when an identical job is pending."""
@@ -569,10 +625,8 @@ class JobQueue:
             if key in self._queued:
                 return False
             self._queued.add(key)
-            if not self._worker_started:
-                self._worker_started = True
-                threading.Thread(target=self._worker, name=self._worker_name, daemon=True).start()
             self._jobs.put((fn, args, kwargs, key))
+        self.start()
         return True
 
 

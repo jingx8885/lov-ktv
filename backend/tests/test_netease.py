@@ -3,17 +3,16 @@ import json
 from lovktv.catalog import fetch, netease
 
 
-def test_eapi_params_roundtrip_with_openssl():
+def test_eapi_params_roundtrip_without_system_openssl():
     payload = {"ids": "[33894312]", "br": 320000}
     blob = netease.eapi_params(payload)
     assert blob.isupper()
     assert len(blob) >= 32
-    plain = __import__("subprocess").run(
-        ["openssl", "enc", "-aes-128-ecb", "-d", "-K", netease.EAPI_KEY.hex(), "-nosalt"],
-        input=bytes.fromhex(blob),
-        capture_output=True,
-        check=True,
-    ).stdout
+    from Crypto.Cipher import AES
+
+    encrypted = bytes.fromhex(blob)
+    plain = AES.new(netease.EAPI_KEY, AES.MODE_ECB).decrypt(encrypted)
+    plain = plain[:-plain[-1]]
     assert b"/api/song/enhance/player/url" in plain
     assert b"33894312" in plain
 

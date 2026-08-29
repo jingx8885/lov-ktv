@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from urllib.parse import quote
@@ -37,7 +38,7 @@ from lovktv.db import dialect as db_dialect
 from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
 from lovktv.host_volume import host_volume_meta, set_host_volume
 from lovktv.i18n import localize_error_text, localize_exc, localize_song, request_lang, t as i18n_t, translate, ws_lang
-from lovktv.jobs import process_import, process_realign, process_upload, resume_stuck_jobs, spawn
+from lovktv.jobs import job_queue, process_import, process_realign, process_upload, resume_stuck_jobs, spawn
 from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
@@ -81,7 +82,38 @@ class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
         return response
 
 
-app = FastAPI(title="lov-ktv")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """Initialize background services when the ASGI app starts.
+
+    FastAPI's ``on_event`` hooks are deprecated and are not guaranteed to be
+    composed correctly when applications are mounted.  A lifespan context
+    keeps the same startup ordering while giving TestClient and production
+    servers one canonical lifecycle entry point.
+    """
+    from lovktv.catalog.mugen_index import prefetch_index
+
+    _app.state.ready = False
+    job_queue.start()
+    try:
+        init_db()
+        resume_stuck_jobs()
+        prefetch_index()
+        if oss_ready():
+            try:
+                print(f"[lovktv] oss cors {ensure_bucket_cors()}", flush=True)
+            except Exception as exc:
+                print(f"[lovktv] oss cors skipped: {exc}", flush=True)
+        _app.state.ready = True
+        yield
+    finally:
+        _app.state.ready = False
+        stopped = job_queue.stop()
+        if not stopped and job_queue.health()["running"]:
+            print("[lovktv] job worker did not stop before shutdown timeout", flush=True)
+
+
+app = FastAPI(title="lov-ktv", lifespan=lifespan)
 app.add_middleware(NoStoreHtmlMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -207,18 +239,13 @@ def _run_room_command(code: str, command: RoomCommand) -> dict:
     return snap
 
 
-@app.on_event("startup")
-def _startup() -> None:
-    from lovktv.catalog.mugen_index import prefetch_index
-
-    init_db()
-    resume_stuck_jobs()
-    prefetch_index()
-    if oss_ready():
-        try:
-            print(f"[lovktv] oss cors {ensure_bucket_cors()}", flush=True)
-        except Exception as exc:
-            print(f"[lovktv] oss cors skipped: {exc}", flush=True)
+@app.get("/healthz", include_in_schema=False)
+def healthz(request: Request) -> JSONResponse:
+    """Readiness probe used by Compose and external monitors."""
+    worker = job_queue.health()
+    ready = bool(getattr(request.app.state, "ready", False)) and worker["running"]
+    payload = {"status": "ok" if ready else "starting", "ready": ready, "worker": worker}
+    return JSONResponse(payload, status_code=200 if ready else 503)
 
 
 @app.get("/api/host")
@@ -236,6 +263,7 @@ def api_host(request: Request) -> dict:
         "oss": oss_status(),
         "agent": agent_status(),
         "database": db_dialect(store.DB_PATH),
+        "worker": job_queue.health(),
     }
 
 

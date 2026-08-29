@@ -31,7 +31,7 @@ services:
       LOVKTV_DATABASE_URL: ${LOVKTV_DATABASE_URL:-}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8787/api/host"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8787/healthz >/dev/null && curl -fsS http://127.0.0.1:8787/api/host >/dev/null"]
       interval: 20s
       timeout: 5s
       retries: 6
