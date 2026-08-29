@@ -9,11 +9,10 @@ room semantics.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal, Mapping
+from typing import Any, Mapping
 
+from lovktv.contracts import RoomAction, RoomSnapshot
 from lovktv.room_store import RoomRepository, SqliteRoomStore
-
-RoomAction = Literal["enqueue", "bump", "skip", "play", "mix"]
 
 
 @dataclass(frozen=True)
@@ -72,7 +71,7 @@ class RoomService:
     def __init__(self, repository: RoomRepository | None = None) -> None:
         self.repository = repository or SqliteRoomStore()
 
-    def snapshot(self, code: str) -> dict[str, Any]:
+    def snapshot(self, code: str) -> RoomSnapshot:
         return self.repository.room_snapshot(str(code or "").upper())
 
     def execute(self, code: str, command: RoomCommand) -> dict[str, Any]:

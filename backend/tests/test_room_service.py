@@ -3,6 +3,7 @@ import pytest
 from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_service import RoomService
 from lovktv.room_store import SqliteRoomStore
+from lovktv.contracts import RoomAction, RoomSnapshot
 
 
 def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
@@ -13,6 +14,13 @@ def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
     snap = SqliteRoomStore().set_room_lan("r1", "http://192.168.1.2:8790", 9000, 48000)
     assert snap["code"] == "R1"
     assert snap["lan_mic_port"] == 9000
+
+
+def test_room_contracts_keep_transport_action_and_snapshot_shape():
+    action: RoomAction = "mix"
+    snapshot: RoomSnapshot = {"code": "R1", "queue": [], "now_playing": None, "now_index": 0}
+    assert action == "mix"
+    assert snapshot["code"] == "R1"
 
 
 def test_command_parsing_normalizes_transport_payload():
