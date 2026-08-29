@@ -50,7 +50,8 @@
 - [x] 增加歌词 timeline 的运行时校验和时间边界修复（`timeline_contract.py`）。
 - [x] 固化播放控制事件的运行时校验，并在 WebSocket 入口接入。
 - [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
-- [ ] 前端按 `api / room-state / playback` 拆分状态，减少动态全局对象。
+- [x] 手机端播放顺序决策提取到独立 `player/state.js`。
+- [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
 ### R6 生命周期与部署 — 待开始

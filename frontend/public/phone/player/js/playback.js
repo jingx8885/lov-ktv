@@ -9,6 +9,7 @@ import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
+import { nextSongId } from "./state.js";
 
 export function mediaUrl(songId, name) {
   const song = state.playerSong;
@@ -273,18 +274,9 @@ export function renderPlayerList() {
 }
 
 export function playNextSong() {
-  const ids = state.playerCatalog.map((song) => song.id);
-  if (!ids.length) return;
   const cur = state.playerSong && state.playerSong.id;
-  let next = ids[0];
-  if (state.playOrder === "shuffle") {
-    const pool = ids.filter((id) => id !== cur);
-    const src = pool.length ? pool : ids;
-    next = src[Math.floor(Math.random() * src.length)];
-  } else {
-    const index = Math.max(0, ids.indexOf(cur));
-    next = ids[(index + 1) % ids.length];
-  }
+  const next = nextSongId(state.playerCatalog, cur, state.playOrder);
+  if (!next) return;
   loadPlayerSong(next, { play: true });
 }
 
