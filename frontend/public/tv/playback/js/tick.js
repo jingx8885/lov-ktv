@@ -7,6 +7,7 @@ import { roomCode } from "../../auth/js/login.js";
 import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
+import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
 
 export function pageVisible() {
   return document.visibilityState === "visible";
@@ -26,10 +27,7 @@ export function srcHasSong(el, songId) {
 
 export function songReallyEnded(el) {
   if (!el) return false;
-  const dur = el.duration;
-  const t = el.currentTime || 0;
-  if (!Number.isFinite(dur) || dur < 2) return false;
-  return t >= dur - 1.5;
+  return mediaEndedAt(el.currentTime, el.duration);
 }
 
 export function isMediaStalled(el) {
@@ -252,11 +250,10 @@ export async function applyRoom(room) {
     $("next").textContent = "";
     return;
   }
-  const itemKey = now.id || now.song_id;
-  const rev = now.media_rev || "";
-  if (state.lastItem !== itemKey || (rev && rev !== state.lastMediaRev)) {
+  const { itemKey, mediaRev } = roomItemIdentity(now);
+  if (shouldReloadRoomItem(state.lastItem, state.lastMediaRev, now)) {
     state.lastItem = itemKey;
-    state.lastMediaRev = rev;
+    state.lastMediaRev = mediaRev;
     state.lyricPaint.prev = "";
     state.lyricPaint.cur = "";
     state.lyricPaint.next = "";

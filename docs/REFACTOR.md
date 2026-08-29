@@ -42,7 +42,7 @@
 - [x] `lovktv.store` 仅保留无 SQL 的迁移导出，业务调用方改用 `room_store`。
 - [x] 验收：事务边界和现有 schema 不变，房间/LAN/schema 回归通过（23 项）。
 
-### R5 播放协议与前端状态 — 待开始
+### R5 播放协议与前端状态 — 进行中
 
 - [x] 固化后端房间 action 和 snapshot 字段契约（`contracts.py`）。
 - [x] 在前端类型层补齐房间命令和歌词 timeline 字段。
@@ -51,6 +51,7 @@
 - [x] 固化播放控制事件的运行时校验，并在 WebSocket 入口接入。
 - [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
 - [x] 手机端播放顺序决策提取到独立 `player/state.js`。
+- [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/state.js`。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 

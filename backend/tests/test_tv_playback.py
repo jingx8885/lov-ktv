@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 def test_tv_does_not_restart_on_network_stall():
     tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
+    playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
     mix = (ROOT / "tv" / "playback" / "js" / "mix.js").read_text(encoding="utf-8")
@@ -13,6 +14,10 @@ def test_tv_does_not_restart_on_network_stall():
     assert "/ws/box/" in tick
     assert "export async function applyRoom" in tick
     assert "export function songReallyEnded" in tick
+    assert 'from "./state.js"' in tick
+    assert "export function mediaEndedAt" in playback_state
+    assert "export function roomItemIdentity" in playback_state
+    assert "export function shouldReloadRoomItem" in playback_state
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
