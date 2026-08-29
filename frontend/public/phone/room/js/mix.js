@@ -7,7 +7,7 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { closeOverlay } from "../../ui/js/overlays.js";
-import { nativeMicState, setNativeGain } from "./native/mic.js";
+import { nativeMicState, setNativeGain } from "./native-mic.js";
 
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
@@ -158,7 +158,7 @@ export function bindMix() {
       if (api.needTvOrRoom && api.needTvOrRoom()) return;
       $("skip").disabled = true;
       try {
-        /** @type {{ ok: boolean, data: Room }} */
+        /** @type {{ ok: boolean, data: any }} */
         const skipHit = await fetchJson(roomUrl(`/api/rooms/${code}/skip`), { method: "POST" });
         if (!skipHit.ok || !skipHit.data || !skipHit.data.code) {
           showToast(lanOrigin() ? t("phone.room.lanFail") : skipHit.data.detail || t("phone.desk.cantQueue"));

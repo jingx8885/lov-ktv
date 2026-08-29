@@ -49,12 +49,12 @@ TV APK 提供给手机的 `m.html` 也是 APK 内嵌快照。因此公网手机�
 - `tv/state.js` 同时容纳房间同步、播放恢复、歌词、MTV、音频、特效、登录和麦状态。
 - `phone/install.js` 通过 `installApi()` 注入一个可变 service locator；各模块既读 `state` 又调用 `api` 中的其他模块。
 - TV 的 `tick.js` 同时负责房间同步、媒体恢复、歌词、MTV、预取和播放生命周期；`remote.js`、`audio/*`、`lyrics.js`、`mtv.js` 都直接依赖它。
-- Phone 的 `playback.js` 直接依赖房间 `mix.js`，队列和曲库模块互相调用；`room/state.js` 已建立，但仍需把重复的 snapshot/stamp 逻辑迁移进去。
+- Phone 播放、队列和曲库按职责拆分；旧 `playback.js` 兼容门面与重复 snapshot 入口已移除。
 
 ### P1：跨目录泄漏
 
-- `m.html` 直接加载 `tv/fx/js/stage-fx.js`，Phone 学习模式依赖 `window.LovStageFx`。
-- `timeline.js`、`stage-fx.js` 是非 module 全局脚本，且被 TypeScript 检查排除。
+- `m.html` 只加载按功能拆分的 Phone 模块，学习模式不再依赖 `tv/` 兼容入口。
+- 舞台特效保留按能力拆分的有序脚本，Phone 不加载 TV 资源。
 - `tv/stage/css/stage.css` 包含 `body.phone` 选择器，说明样式边界发生过反向渗透。
 
 ### P1：发布和协议漂移
@@ -116,7 +116,7 @@ platform/android-phone  LovKtvPhone adapter + LAN fetch 适配
 
 ### 5. 收回 shared 和类型检查边界
 
-- `stage-fx.js`、`timeline.js` 改为 ESM，移入可检查的 core/shared 路径。
+- 旧 `stage-fx.js` 兼容入口已移除，舞台特效继续由拆分脚本提供能力。
 - Phone 学习特效不再从 `tv/` 目录加载。
 - shared 模块不得引用 phone/tv 或原生全局。
 - 将原生桥、`LovI18n`、内部事件和 API 返回模型补进类型层；逐步清空 `npm run check` 错误。

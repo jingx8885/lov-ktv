@@ -72,13 +72,17 @@ export function catalogUrl(path) {
   return process + (path.charAt(0) === "/" ? path : "/" + path);
 }
 
-import { useLan as platformUseLan } from "./platform.js";
-
 /** Ask the Android phone app to bind the TV LAN URL discovered from the room. */
 export function adoptLan(room) {
   const lan = String((room && (room.lan_origin || room.lanOrigin)) || "").replace(/\/$/, "");
   const code = String((room && room.code) || "").toUpperCase();
   if (!lan || !code) return false;
   if (lanOrigin() === lan) return false;
-  return platformUseLan(lan, code);
+  try {
+    if (window.LovKtvPhone && typeof window.LovKtvPhone.useLan === "function") {
+      window.LovKtvPhone.useLan(lan, code);
+      return true;
+    }
+  } catch (err) {}
+  return false;
 }

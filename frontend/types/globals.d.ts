@@ -242,50 +242,6 @@ interface LovI18nApi {
   bootI18n(): string;
 }
 
-interface HttpPort {
-  available(): boolean;
-  isLan(url: string): boolean;
-  fetchJson(url: string, opts?: RequestInit): Promise<any> | null;
-}
-
-interface MediaPort {
-  url(path: string): string;
-}
-interface MicPort {
-  hasNative(): boolean;
-  capabilities(): Record<string, unknown>;
-  state(): Record<string, unknown>;
-  call(method: string): Promise<string>;
-  setGain(value: number): void;
-}
-interface RemotePort {
-  open(url: string): boolean;
-}
-interface ScannerPort {
-  available(): boolean;
-  scan(): boolean;
-  useLan(lan: string, room: string): boolean;
-}
-
-interface PhonePlatform {
-  mic: MicPort;
-  scanner: ScannerPort;
-  media: MediaPort;
-  remote: RemotePort;
-  http: HttpPort;
-  __onHttp?: (msg: any) => void;
-}
-
-interface TvPlatform {
-  http: { available(): boolean; fetchJson: null };
-  media: { url(path: string): string };
-  mic: { available(): boolean };
-  remote: { available(): boolean };
-  scanner: { available(): boolean };
-}
-
-type Platform = PhonePlatform | TvPlatform;
-
 interface LovKtvNativeBridge {
   playMtv?: (url: string) => void;
   stopMtv?: () => void;
@@ -340,7 +296,6 @@ interface Window {
   LovKtvRemote?: LovKtvRemoteApi;
   LovKtvPhone?: LovKtvPhoneBridge;
   LovI18n?: LovI18nApi;
-  LovKtvPlatform?: PhonePlatform;
   LovKtvNative?: LovKtvNativeBridge;
   LovKtvOnMic?: ((ok: boolean, err?: string) => void) | null;
   LovKtvOnHttp?: (msg: { id?: string; ok?: boolean; status?: number; body?: unknown }) => void;

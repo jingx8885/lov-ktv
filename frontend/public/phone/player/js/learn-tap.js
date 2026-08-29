@@ -11,7 +11,7 @@ import {
   isLineHold,
   needsLineHold,
   paintLearnLine,
-  playCueWindow,
+  playCueWindow
 } from "./learn-play.js";
 import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
 
@@ -21,7 +21,7 @@ const TILE_SKINS = [
   { bg: "rgba(110, 200, 255, .36)", line: "#6ec8ff", ink: "#e7f6ff" },
   { bg: "rgba(180, 140, 255, .38)", line: "#b48cff", ink: "#f3ebff" },
   { bg: "rgba(72, 220, 160, .34)", line: "#48dca0", ink: "#dcfff2" },
-  { bg: "rgba(255, 120, 80, .36)", line: "#ff7850", ink: "#ffe8e0" },
+  { bg: "rgba(255, 120, 80, .36)", line: "#ff7850", ink: "#ffe8e0" }
 ];
 
 /** @type {StageFxHandle | null} */
@@ -41,7 +41,7 @@ const session = {
   perfect: 0,
   lineMisses: 0,
   done: new Set(),
-  jump: -1,
+  jump: -1
 };
 let tapSync = 0;
 
@@ -101,7 +101,7 @@ function paintHint(line) {
     zh: "learnTapZh",
     text: line ? line.text : "",
     romaji: line ? line.romaji : "",
-    zhText: (line && line.zh) || "",
+    zhText: (line && line.zh) || ""
   });
 }
 
@@ -123,15 +123,19 @@ function clearBoard() {
 }
 
 function overlaps(a, b, gap) {
-  return !(a.left + a.w + gap < b.left || b.left + b.w + gap < a.left
-    || a.top + a.h + gap < b.top || b.top + b.h + gap < a.top);
+  return !(
+    a.left + a.w + gap < b.left ||
+    b.left + b.w + gap < a.left ||
+    a.top + a.h + gap < b.top ||
+    b.top + b.h + gap < a.top
+  );
 }
 
 function tileBox(text) {
   const len = Math.max(1, Array.from(text || "").length);
   return {
     w: Math.min(156, Math.max(58, 32 + len * 20 + Math.random() * 18)),
-    h: 50 + (Math.random() < 0.4 ? 10 : 0),
+    h: 50 + (Math.random() < 0.4 ? 10 : 0)
   };
 }
 
@@ -161,7 +165,7 @@ function scatterTiles(words, field) {
         left: pad + Math.random() * Math.max(12, viewW - size.w - pad * 2),
         top: pad + Math.random() * Math.max(12, viewH - size.h - pad * 2),
         w: size.w,
-        h: size.h,
+        h: size.h
       };
       if (!placed.some((item) => overlaps(next, item, 12))) {
         box = next;
@@ -173,7 +177,7 @@ function scatterTiles(words, field) {
         left: pad + ((i * 73) % Math.max(12, viewW - size.w - pad)),
         top: pad + ((i * 97) % Math.max(12, viewH - size.h - pad)),
         w: size.w,
-        h: size.h,
+        h: size.h
       };
     }
     placed.push({
@@ -182,7 +186,7 @@ function scatterTiles(words, field) {
       bob: -(6 + Math.random() * 10),
       delay: Math.floor(Math.random() * 1200),
       dur: 2.2 + Math.random() * 1.8,
-      skin: skins[i % skins.length],
+      skin: skins[i % skins.length]
     });
   });
   return placed;
@@ -206,16 +210,14 @@ function tapBeat() {
   }
   if (freq && freq.length) {
     for (let i = 2; i < Math.min(40, freq.length); i += 1) sum += freq[i];
-    return Math.max(0, Math.min(1, (sum / 38) / 255));
+    return Math.max(0, Math.min(1, sum / 38 / 255));
   }
   return 0;
 }
 
 function ensureTapFx() {
-  if (tapFx || !window.LovStageFx) return tapFx;
-  const canvas = $("learnTapFx");
-  if (!canvas) return null;
-  tapFx = LovStageFx.create(canvas);
+  // Phone learning effects are self-contained; never reach into the TV FX
+  // globals (the TV stage bundle is not loaded by m.html).
   return tapFx;
 }
 
@@ -452,7 +454,7 @@ export async function runTap() {
       misses: session.misses,
       maxCombo: session.maxCombo,
       perfect: session.perfect,
-      total: session.lines.length,
+      total: session.lines.length
     };
   } finally {
     session.running = false;
@@ -509,8 +511,12 @@ export function tapScoreView(score, grade) {
     title: t("learn.score.tap"),
     again: t("learn.again.tap"),
     sub: t("learn.score.tapped", { grade: grade(score.pct), hits: score.hits || 0, tried }),
-    detail: t("learn.score.tapHint", { combo: score.maxCombo || 0, perfect: score.perfect || 0, total: score.total || 0 }),
-    celebrate: score.pct >= 70,
+    detail: t("learn.score.tapHint", {
+      combo: score.maxCombo || 0,
+      perfect: score.perfect || 0,
+      total: score.total || 0
+    }),
+    celebrate: score.pct >= 70
   };
 }
 

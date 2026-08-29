@@ -37,7 +37,6 @@ export const state = guardState(
     resumeAt: 0,
     emptyNow: 0,
     mediaStall: 0,
-    mediaFallback: "",
     lastRecoverAt: 0
   },
   "tv"

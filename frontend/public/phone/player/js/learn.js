@@ -20,7 +20,7 @@ const ui = { mode: "", pack: null, vocalWas: 1, boot: 0 };
 const MODES = {
   quiz: { pane: "learnQuiz", setup: startQuiz, run: runQuiz, stop: stopQuiz, score: quizScoreView },
   tap: { pane: "learnTap", setup: startTap, run: runTap, stop: stopTap, score: tapScoreView },
-  echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView },
+  echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView }
 };
 const CYCLE = ["quiz", "tap", "echo"];
 const PANES = ["learnHome", "learnQuiz", "learnTap", "learnEcho", "learnScore"];

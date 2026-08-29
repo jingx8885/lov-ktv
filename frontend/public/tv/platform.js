@@ -130,14 +130,3 @@ export function nativeSetupAvailable() {
 export function hasNativeTv() {
   return !!bridge();
 }
-
-/** Named ports keep browser and Android-TV playback on one capability shape. */
-export const tvPlatform = {
-  http: { available: () => true, fetchJson: null },
-  media: { url: (path) => String(path || "") },
-  mic: { available: hasNativeTv },
-  remote: { available: hasNativeTv },
-  scanner: { available: () => false }
-};
-
-export const platform = tvPlatform;

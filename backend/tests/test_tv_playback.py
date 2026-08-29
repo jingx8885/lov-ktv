@@ -8,7 +8,7 @@ def test_tv_does_not_restart_on_network_stall():
     playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(
         encoding="utf-8"
     )
-    room_state = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(
+    room_state = (ROOT / "tv" / "playback" / "js" / "room-state.js").read_text(
         encoding="utf-8"
     )
     platform = (ROOT / "tv" / "platform.js").read_text(encoding="utf-8")
@@ -26,12 +26,12 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function shouldReloadRoomItem" in playback_state
     assert "export function watchRoom" in room_state
     assert "export function fetchRoomSnapshot" in room_state
-    assert 'from "./room/state.js"' in tick
+    assert 'from "./room-state.js"' in tick
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
     assert "state.emptyNow < 3" in tick
-    assert 'karaoke.src = mediaUrl(songId, "original.mp3")' in tick
+    assert 'karaoke.src = mediaUrl(songId, "karaoke.m4a")' in tick
     assert "if (srcHasSong(karaoke, songId))" in tick
     assert "wantsResume(karaoke)" in tick
     assert "wantsResume(karaoke)" in keep
@@ -97,7 +97,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "PixelFormat.OPAQUE" not in silent
     assert "resumeMtv()" in activity
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
-    clock = (ROOT / "tv" / "playback" / "js" / "lyric" / "clock.js").read_text(
+    clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(
         encoding="utf-8"
     )
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")

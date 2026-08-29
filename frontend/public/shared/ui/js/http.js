@@ -46,17 +46,59 @@ function privateHttpHost(url) {
   }
 }
 
+function nativePhoneHttp() {
+  try {
+    return typeof window !== "undefined" && window.LovKtvPhone && typeof window.LovKtvPhone.http === "function";
+  } catch (_) {
+    return false;
+  }
+}
+
+let httpSeq = 0;
+const httpWait = {};
+
 if (typeof window !== "undefined") {
   window.LovKtvOnHttp = function (msg) {
-    if (window.LovKtvPlatform && window.LovKtvPlatform.__onHttp) window.LovKtvPlatform.__onHttp(msg);
+    const pending = msg && httpWait[msg.id];
+    if (!pending) return;
+    delete httpWait[msg.id];
+    let data = {};
+    try {
+      data = typeof msg.body === "string" ? JSON.parse(msg.body || "{}") : msg.body || {};
+    } catch (_) {
+      data = {};
+    }
+    pending({ ok: !!msg.ok, status: Number(msg.status) || 0, data: data });
   };
+  if (nativePhoneHttp()) window.__lovktvNativeLan = true;
+}
+
+function nativeFetchJson(url, opts) {
+  const method = String((opts && opts.method) || "GET").toUpperCase();
+  const body = opts && typeof opts.body === "string" ? opts.body : "";
+  const id = String(++httpSeq);
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      delete httpWait[id];
+      reject(new Error("lan-timeout"));
+    }, 20000);
+    httpWait[id] = (hit) => {
+      clearTimeout(timer);
+      resolve(hit);
+    };
+    try {
+      window.LovKtvPhone.http(id, url, method, body);
+    } catch (err) {
+      clearTimeout(timer);
+      delete httpWait[id];
+      reject(err);
+    }
+  });
 }
 
 export async function fetchJson(url, opts) {
-  const platformHttp = typeof window !== "undefined" && window.LovKtvPlatform && window.LovKtvPlatform.http;
-  if (platformHttp && platformHttp.fetchJson) {
-    const native = platformHttp.fetchJson(url, opts);
-    if (native) return native;
+  if (nativePhoneHttp() && privateHttpHost(url)) {
+    return nativeFetchJson(url, opts);
   }
   const headers = new Headers((opts && opts.headers) || {});
   if (!headers.has("Accept-Language")) headers.set("Accept-Language", acceptLanguage());

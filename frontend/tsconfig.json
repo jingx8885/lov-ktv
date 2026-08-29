@@ -20,7 +20,6 @@
     "public/shared/ui/**/*.js",
     "public/shared/lyrics/**/*.js",
     "public/phone/player/js/timeline.js",
-    "public/tv/fx/js/stage-fx.js",
     "public/login/**/*.js",
     "public/landing/**/*.js"
   ],

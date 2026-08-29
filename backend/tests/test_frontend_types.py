@@ -32,9 +32,8 @@ def test_shared_visual_assets_are_inside_type_boundary():
     includes = set(config["include"])
     excludes = set(config.get("exclude", []))
     assert "public/phone/player/js/timeline.js" in includes
-    assert "public/tv/fx/js/stage-fx.js" in includes
+    assert "public/tv/fx/js/stage-fx.js" not in includes
     assert "public/phone/player/js/timeline.js" not in excludes
-    assert "public/tv/fx/js/stage-fx.js" not in excludes
 
     # Phone modules must consume the shared bridge contracts, never TV modules.
     phone_root = FRONTEND / "public" / "phone"
