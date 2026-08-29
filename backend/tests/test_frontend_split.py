@@ -22,7 +22,8 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert "LovKtvPlatform.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
-    assert (ROOT / "phone" / "player" / "js" / "playback.js").is_file()
+    for module in ("media.js", "controls.js", "queue.js", "lyrics.js", "song.js", "ui.js"):
+        assert (ROOT / "phone" / "player" / "js" / module).is_file()
     assert (ROOT / "phone" / "player" / "js" / "learn.js").is_file()
     assert (ROOT / "phone" / "player" / "css" / "learn.css").is_file()
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()

@@ -38,7 +38,7 @@ def test_phone_player_overlays_guide_on_karaoke():
 
     root = Path(__file__).resolve().parents[2] / "frontend" / "public"
     html = (root / "m.html").read_text(encoding="utf-8")
-    player = (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    player = "\n".join((root / "phone" / "player" / "js" / name).read_text(encoding="utf-8") for name in ("media.js", "controls.js", "song.js"))
     assert 'id="playerGuide" preload="auto"' in html
     assert 'id="playerOriginal"' not in html
     assert "function syncOriginal" not in player
@@ -57,7 +57,7 @@ def test_phone_player_starts_when_song_clicked():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2] / "frontend" / "public"
-    player = (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    player = "\n".join((root / "phone" / "player" / "js" / name).read_text(encoding="utf-8") for name in ("controls.js", "queue.js"))
     nav = (root / "phone" / "nav" / "js" / "pages.js").read_text(encoding="utf-8")
     assert "unlockPlayerGesture" in player
     assert 'loadPlayerSong(btn.dataset.pick, { play: true })' in player

@@ -188,7 +188,7 @@ def test_phone_learn_shell_is_wired():
     assert 'fitKey = `${id}:${Math.round(el.clientWidth)}`' in paint
     assert "el.clientHeight" not in paint
     assert "line-words" in paint
-    assert "kickPlayerPaint" in (root / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    assert "kickPlayerPaint" in (root / "phone" / "player" / "js" / "lyrics.js").read_text(encoding="utf-8")
     play = (root / "phone" / "player" / "js" / "learn-play.js").read_text(encoding="utf-8")
     assert "setLearnDiff" in play
     assert "playbackRate" in play
