@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Mapping, Protocol
 
-from lovktv import store
+from lovktv.room_store import SqliteRoomStore
 
 RoomAction = Literal["enqueue", "bump", "skip", "play", "mix"]
 
@@ -96,41 +96,15 @@ class RoomRepository(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class StoreRoomRepository:
-    """Adapter for the current SQLite-backed store module."""
-
-    def room_snapshot(self, code: str) -> dict[str, Any]:
-        return store.room_snapshot(code)
-
-    def enqueue(self, code: str, song_id: str) -> dict[str, Any]:
-        return store.enqueue(code, song_id)
-
-    def bump(self, code: str, item_id: str) -> dict[str, Any]:
-        return store.bump(code, item_id)
-
-    def skip(self, code: str) -> dict[str, Any]:
-        return store.skip(code)
-
-    def play_now(self, code: str, item_id: str = "", song_id: str = "") -> dict[str, Any]:
-        return store.play_now(code, item_id, song_id)
-
-    def set_mix(
-        self,
-        code: str,
-        vocal_mix: float | None = None,
-        volume: int | None = None,
-        mic_gain: int | None = None,
-        lyric_mode: str | None = None,
-        paused: bool | None = None,
-    ) -> dict[str, Any]:
-        return store.set_mix(code, vocal_mix, volume, mic_gain, lyric_mode, paused)
+# Compatibility name for callers that imported the adapter from this module.
+StoreRoomRepository = SqliteRoomStore
 
 
 class RoomService:
     """Execute room mutations independently of HTTP/WebSocket transport."""
 
     def __init__(self, repository: RoomRepository | None = None) -> None:
-        self.repository = repository or StoreRoomRepository()
+        self.repository = repository or SqliteRoomStore()
 
     def snapshot(self, code: str) -> dict[str, Any]:
         return self.repository.room_snapshot(str(code or "").upper())

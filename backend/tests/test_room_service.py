@@ -1,7 +1,12 @@
 import pytest
 
 from lovktv.room_service import RoomCommand, room_service
-from lovktv.room_service import RoomService
+from lovktv.room_service import RoomService, StoreRoomRepository
+from lovktv.room_store import SqliteRoomStore
+
+
+def test_sqlite_adapter_has_stable_compatibility_alias():
+    assert StoreRoomRepository is SqliteRoomStore
 
 
 def test_command_parsing_normalizes_transport_payload():
