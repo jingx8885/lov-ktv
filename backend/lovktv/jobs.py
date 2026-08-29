@@ -12,7 +12,9 @@ from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, trans
 from lovktv.catalog.fetch import import_song, parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
 from lovktv.config import MEDIA_DIR
-from lovktv.pipeline.align import align_lyrics, extract_envelope, pack_tokens_to_singing, probe_duration_ms
+from lovktv.pipeline.align import align_lyrics
+from lovktv.pipeline.audio import extract_envelope, probe_duration_ms
+from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.language import resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,

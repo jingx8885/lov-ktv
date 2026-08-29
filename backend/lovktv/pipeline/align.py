@@ -17,28 +17,21 @@ from lovktv.pipeline.lyrics import (
     timeline_from_lrc,
     tokenize,
 )
-from lovktv.pipeline.constants import *
-from lovktv.pipeline.audio import *
-from lovktv.pipeline.matching import *
-from lovktv.pipeline.matching import (
-    _asr_window,
-    _best_asr_window,
-    _cjk_asr_token_spans,
-    _edit_distance,
-    _en_asr_token_spans,
-    _en_word_eq,
-    _finish_token_hits,
-    _join_asr,
-    _norm_word,
-    _usable_asr_words,
-    _WORD,
-    _JA_LEAD_FILLER,
+from lovktv.pipeline.constants import HOP_MS
+from lovktv.pipeline.audio import (
+    energy_token_spans as _energy_token_spans,
+    extract_envelope as _extract_envelope,
+    probe_duration_ms as _probe_duration_ms,
+    vocal_regions as _vocal_regions,
 )
-from lovktv.pipeline.bounds import *
-from lovktv.pipeline.bounds import _append_bound, _fallback_line_bounds, _voice_covers
-from lovktv.pipeline.energy import *
-from lovktv.pipeline.energy import _finalize_line_bounds, _vocal_end_near
-from lovktv.pipeline.clock import *
+from lovktv.pipeline.matching import (
+    asr_token_spans as _asr_token_spans,
+    estimate_lrc_offset as _estimate_lrc_offset,
+    vocal_phrases as _vocal_phrases,
+)
+from lovktv.pipeline.bounds import align_lines_to_asr as _align_lines_to_asr, assign_plain_lines as _assign_plain_lines
+from lovktv.pipeline.energy import _finalize_line_bounds, merge_with_energy as _merge_with_energy
+from lovktv.pipeline.clock import align_lines_official_clock as _align_lines_official_clock
 
 def align_lyrics(
     lines: list[dict[str, Any]],
@@ -57,8 +50,8 @@ def align_lyrics(
     plain = [str(item.get("text") or "") for item in lines if item.get("ms") is None]
 
     if envelope is None and audio_path is not None:
-        envelope, hop_ms = extract_envelope(audio_path, hop_ms)
-        duration_ms = duration_ms or probe_duration_ms(audio_path)
+        envelope, hop_ms = _extract_envelope(audio_path, hop_ms)
+        duration_ms = duration_ms or _probe_duration_ms(audio_path)
 
     if not lines:
         return {
@@ -71,17 +64,17 @@ def align_lyrics(
     if asr_words:
         timed_lines = [item for item in lines if item.get("ms") is not None]
         if timed_lines:
-            bounds = align_lines_official_clock(
+            bounds = _align_lines_official_clock(
                 lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
             )
         else:
             from lovktv.pipeline.lyric_anchor import align_lines_with_anchor, merge_whisper_and_anchor
 
-            whisper_bounds = align_lines_to_asr(lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms)
+            whisper_bounds = _align_lines_to_asr(lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms)
             if not whisper_bounds:
                 bounds = []
             else:
-                bounds = merge_with_energy(
+                bounds = _merge_with_energy(
                     merge_whisper_and_anchor(
                         whisper_bounds,
                         align_lines_with_anchor(lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms),
@@ -93,9 +86,9 @@ def align_lyrics(
             cues = []
             for row in bounds:
                 pieces = tokenize(str(row["text"]), lang)
-                spans = asr_token_spans(pieces, row["start_ms"], row["end_ms"], asr_words, lang)
+                spans = _asr_token_spans(pieces, row["start_ms"], row["end_ms"], asr_words, lang)
                 if not spans:
-                    spans = energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope or [], hop_ms)
+                    spans = _energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope or [], hop_ms)
                 cue = build_cue(str(row["text"]), row["start_ms"], row["end_ms"], lang, spans)
                 if cue:
                     cues.append(cue)
@@ -107,13 +100,13 @@ def align_lyrics(
             }
 
     if envelope:
-        regions = vocal_regions(envelope, hop_ms)
-        phrases = vocal_phrases(regions)
+        regions = _vocal_regions(envelope, hop_ms)
+        phrases = _vocal_phrases(regions)
         if plain and not timed:
             duration = duration_ms or 60_000
-            work = assign_plain_lines(plain, phrases or regions, duration)
+            work = _assign_plain_lines(plain, phrases or regions, duration)
         elif timed:
-            shift = estimate_lrc_offset(timed, phrases)
+            shift = _estimate_lrc_offset(timed, phrases)
             shifted = []
             for item in timed:
                 row = dict(item)
@@ -127,7 +120,7 @@ def align_lyrics(
         cues = []
         for row in bounds:
             pieces = tokenize(str(row["text"]), lang)
-            spans = energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope, hop_ms)
+            spans = _energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope, hop_ms)
             cue = build_cue(str(row["text"]), row["start_ms"], row["end_ms"], lang, spans)
             if cue:
                 cues.append(cue)
@@ -147,7 +140,7 @@ def align_lyrics(
 
     duration = duration_ms or max(len(lines) * 4000, 4000)
     texts = [str(item.get("text") or "") for item in lines if item.get("text")]
-    assigned = assign_plain_lines(texts, [], duration)
+    assigned = _assign_plain_lines(texts, [], duration)
     timeline = timeline_from_lrc(assigned, lang, duration_ms=duration)
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
