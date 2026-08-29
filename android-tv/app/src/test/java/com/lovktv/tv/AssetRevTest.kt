@@ -13,7 +13,7 @@ class AssetRevTest {
             import { y } from "./tick.js?v=native1";
             <script type="module" src="/tv/app.js"></script>
             <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split10" />
-            addModule("/shared/audio/js/aec-worklet.js");
+addModule("/shared/audio/js/aec/worklet.js");
             @import url("/shared/ui/css/tokens.css");
             const lyrics = `/media/${'$'}{id}/lyrics.json?v=ja-kanji`;
             const stem = `/media/${'$'}{id}/karaoke.m4a?v=stem2`;
@@ -23,7 +23,7 @@ class AssetRevTest {
         assertTrue(out.contains("""from "./tick.js?v=abc123""""))
         assertTrue(out.contains("""src="/tv/app.js?v=abc123""""))
         assertTrue(out.contains("""href="/tv/stage/css/stage.css?v=abc123""""))
-        assertTrue(out.contains("""addModule("/shared/audio/js/aec-worklet.js?v=abc123")"""))
+assertTrue(out.contains("""addModule("/shared/audio/js/aec/worklet.js?v=abc123")"""))
         assertTrue(out.contains("""@import url("/shared/ui/css/tokens.css?v=abc123")"""))
         assertTrue(out.contains("`/media/\${id}/lyrics.json?v=ja-kanji`"))
         assertTrue(out.contains("`/media/\${id}/karaoke.m4a?v=stem2`"))

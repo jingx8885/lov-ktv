@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 def test_tv_does_not_restart_on_network_stall():
     tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
     playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(encoding="utf-8")
-    room_state = (ROOT / "tv" / "playback" / "js" / "room-state.js").read_text(encoding="utf-8")
+    room_state = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(encoding="utf-8")
     platform = (ROOT / "tv" / "platform.js").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
@@ -22,7 +22,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function shouldReloadRoomItem" in playback_state
     assert "export function watchRoom" in room_state
     assert "export function fetchRoomSnapshot" in room_state
-    assert 'from "./room-state.js"' in tick
+    assert 'from "./room/state.js"' in tick
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
@@ -71,7 +71,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "PixelFormat.OPAQUE" not in silent
     assert "resumeMtv()" in activity
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
-    clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(encoding="utf-8")
+    clock = (ROOT / "tv" / "playback" / "js" / "lyric" / "clock.js").read_text(encoding="utf-8")
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")
     assert "nativeMtvAvailable" in mtv
     assert "export function playNativeMtv" in platform

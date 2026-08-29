@@ -1,8 +1,8 @@
-import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
-import { state } from "../../state.js";
-import { showToast } from "../../ui/js/toast.js";
-import { hookPlayerAudio } from "./controls.js";
+import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { state } from "../../../state.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { hookPlayerAudio } from "../controls.js";
 import {
   cancelCueWindow,
   cancelLineHold,
@@ -12,8 +12,8 @@ import {
   needsLineHold,
   paintLearnLine,
   playCueWindow
-} from "./learn-play.js";
-import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
+} from "./play.js";
+import { celebrateCorrect, playMissSfx } from "./fx.js";
 
 const TILE_SKINS = [
   { bg: "rgba(255, 77, 141, .38)", line: "#ff4d8d", ink: "#ffe7f1" },

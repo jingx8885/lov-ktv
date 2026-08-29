@@ -18,7 +18,7 @@ def test_rewrite_versions_frontend_refs_and_keeps_media():
     import { y } from "./tick.js?v=native1";
     <script type="module" src="/tv/app.js"></script>
     <link rel="stylesheet" href="/tv/stage/css/stage.css?v=split10" />
-    addModule("/shared/audio/js/aec-worklet.js");
+    addModule("/shared/audio/js/aec/worklet.js");
     @import url("/shared/ui/css/tokens.css");
     const lyrics = `/media/${id}/lyrics.json?v=ja-kanji`;
     const stem = `/media/${id}/karaoke.m4a?v=stem2`;
@@ -28,7 +28,7 @@ def test_rewrite_versions_frontend_refs_and_keeps_media():
     assert 'from "./tick.js?v=abc123"' in out
     assert 'src="/tv/app.js?v=abc123"' in out
     assert 'href="/tv/stage/css/stage.css?v=abc123"' in out
-    assert 'addModule("/shared/audio/js/aec-worklet.js?v=abc123")' in out
+    assert 'addModule("/shared/audio/js/aec/worklet.js?v=abc123")' in out
     assert '@import url("/shared/ui/css/tokens.css?v=abc123")' in out
     assert "`/media/${id}/lyrics.json?v=ja-kanji`" in out
     assert "`/media/${id}/karaoke.m4a?v=stem2`" in out
@@ -127,4 +127,4 @@ def test_pages_inject_same_rev_into_html_and_modules(tmp_path, monkeypatch):
     assert "mediaRevFor" in mix_js.text
     assert "ja-kanji" not in mix_js.text
     assert "stem2" not in mix_js.text
-    assert 'addModule("/shared/audio/js/aec-worklet.js?v=testhash")' in aec_js.text
+    assert 'addModule("/shared/audio/js/aec/worklet.js?v=testhash")' in aec_js.text

@@ -1,6 +1,6 @@
-import { $ } from "../../../shared/ui/js/dom.js";
-import { state } from "../../state.js";
-import { ensurePhoneCtx } from "./mic.js";
+import { $ } from "../../../../shared/ui/js/dom.js";
+import { state } from "../../../state.js";
+import { ensurePhoneCtx } from "../mic.js";
 
 export const SFX_GAIN = 0.068;
 const COLORS = ["#f5c16c", "#ffe8bc", "#ff4d8d", "#ffffff", "#6ec8ff"];

@@ -4,7 +4,7 @@ import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./controls.js";
-import { hasNativeMic, nativeCaps, nativeCall, nativeMicState, setNativeGain } from "../../room/js/native-mic.js";
+import { hasNativeMic, nativeCaps, nativeCall, nativeMicState, setNativeGain } from "../../room/js/native/mic.js";
 import { micErrorText as platformMicErrorText } from "../../platform.js";
 
 const MIC_WAIT_MS = 12000;

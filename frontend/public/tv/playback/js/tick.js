@@ -8,7 +8,7 @@ import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } f
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
-import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room-state.js";
+import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room/state.js";
 import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
 
 export { roomWsLive, watchRoom };

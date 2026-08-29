@@ -1,4 +1,4 @@
-import { fetchJson } from "../../../shared/ui/js/http.js";
+import { fetchJson } from "../../../../shared/ui/js/http.js";
 
 let roomWs = null;
 let roomWsCode = "";

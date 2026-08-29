@@ -7,7 +7,7 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { closeOverlay } from "../../ui/js/overlays.js";
-import { nativeMicState, setNativeGain } from "./native-mic.js";
+import { nativeMicState, setNativeGain } from "./native/mic.js";
 
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");

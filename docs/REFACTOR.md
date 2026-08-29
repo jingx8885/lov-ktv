@@ -56,7 +56,7 @@
 - [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
 - [x] 手机端播放顺序决策提取到独立 `player/state.js`。
 - [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/state.js`。
-- [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room-state.js`。
+- [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room/state.js`。
 - [x] 电视端 `LovKtvNative` MTV/歌词/设置能力集中到 `tv/platform.js` adapter。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。

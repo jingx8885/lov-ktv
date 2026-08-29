@@ -27,7 +27,7 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert (ROOT / "phone" / "player" / "js" / "learn.js").is_file()
     assert (ROOT / "phone" / "player" / "css" / "learn.css").is_file()
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()
-    assert (ROOT / "shared" / "audio" / "js" / "aec-worklet.js").is_file()
+    assert (ROOT / "shared" / "audio" / "js" / "aec" / "worklet.js").is_file()
     assert (ROOT / "landing" / "css" / "landing.css").is_file()
     assert (ROOT / "brand" / "logo.svg").is_file()
     assert (ROOT / "brand" / "icon.png").is_file()
@@ -67,12 +67,12 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/phone/player/css/learn-tap.css",
             "/phone/player/css/learn-echo.css",
             "/phone/player/js/learn.js",
-            "/phone/player/js/learn-fx.js",
-            "/phone/player/js/learn-tap.js",
+            "/phone/player/js/learn/fx.js",
+            "/phone/player/js/learn/tap.js",
             "/tv/fx/js/stage-fx.js",
             "/tv/stage/css/stage.css",
             "/shared/audio/js/aec.js",
-            "/shared/audio/js/aec-worklet.js",
+            "/shared/audio/js/aec/worklet.js",
             "/landing/css/landing.css",
             "/brand/logo.svg",
             "/brand/icon.png",
