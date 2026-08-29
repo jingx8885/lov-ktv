@@ -52,7 +52,12 @@ class HostService : Service() {
                 cache = media
                 HostRuntime.micPort = startMic()
                 HostRuntime.roomCode = Prefs.roomCode(this)
-                val created = HostServer(assets, process, media) { code ->
+                val created = HostServer(
+                    assets,
+                    process,
+                    media,
+                    assetRev = packageRev(),
+                ) { code ->
                     Prefs.saveRoom(this, code)
                 }
                 val port = created.start()
@@ -116,6 +121,12 @@ class HostService : Service() {
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
             .build()
+    }
+
+    private fun packageRev(): String {
+        val info = packageManager.getPackageInfo(packageName, 0)
+        val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode else @Suppress("DEPRECATION") info.versionCode.toLong()
+        return "%x%x".format(code, info.lastUpdateTime).take(12)
     }
 
     private fun ensureChannel() {

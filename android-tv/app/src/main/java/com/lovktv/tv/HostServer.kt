@@ -60,6 +60,7 @@ class HostServer(
     processOrigin: String,
     private val cache: MediaCache,
     private val preferredPort: Int = HostRuntime.DEFAULT_PORT,
+    private val assetRev: String = "",
     private val persistRoom: (String) -> Unit = {},
 ) {
     @Volatile
@@ -424,11 +425,18 @@ class HostServer(
             call.respond(HttpStatusCode.NotFound, "not found")
             return
         }
+        val body = if (AssetRev.shouldRewrite(name) && assetRev.isNotBlank()) {
+            AssetRev.rewrite(String(bytes, Charsets.UTF_8), assetRev).toByteArray(Charsets.UTF_8)
+        } else {
+            bytes
+        }
         if (name.endsWith(".html")) {
             call.response.headers.append(HttpHeaders.CacheControl, "no-store, max-age=0")
             call.response.headers.append("Pragma", "no-cache")
+        } else if (AssetRev.shouldRewrite(name) && assetRev.isNotBlank()) {
+            call.response.headers.append(HttpHeaders.CacheControl, "public, max-age=31536000, immutable")
         }
-        call.respondBytes(bytes, contentType = mime(name))
+        call.respondBytes(body, contentType = mime(name))
     }
 
     private suspend fun proxyHttp(call: ApplicationCall, incoming: ByteArray) {
