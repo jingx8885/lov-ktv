@@ -167,6 +167,23 @@ interface LovKtvPhoneBridge {
   setGain?: (value: number) => void;
 }
 
+interface LovKtvNativeBridge {
+  playMtv?: (url: string) => void;
+  stopMtv?: () => void;
+  clearLyrics?: () => void;
+  pauseMtv?: () => void;
+  resumeMtv?: () => void;
+  durationMs?: () => number;
+  positionMs?: () => number;
+  playing?: () => boolean;
+  seekMtv?: (positionMs: number) => void;
+  openSetup?: () => void;
+  startMic?: () => void;
+  stopMic?: () => void;
+  hasLanMic?: () => boolean;
+  isMicLive?: () => boolean;
+}
+
 interface Window {
   webkitAudioContext?: typeof AudioContext;
   webkitOfflineAudioContext?: typeof OfflineAudioContext;
@@ -177,6 +194,11 @@ interface Window {
   LovStageFx?: LovStageFxApi;
   LovKtvRemote?: LovKtvRemoteApi;
   LovKtvPhone?: LovKtvPhoneBridge;
+  LovKtvNative?: LovKtvNativeBridge;
+  LovKtvOnMic?: (ok: boolean, error?: string) => void;
+  __lovktvNativeLan?: boolean;
+  __lovktvPlayBooted?: boolean;
+  __lovktvQrBooted?: boolean;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
 }
 
