@@ -1,7 +1,5 @@
 package com.lovktv.tv.feature.host
 
-import com.lovktv.tv.feature.host.StaticAssetHandler
-import com.lovktv.tv.feature.host.HostGateway
 import com.lovktv.tv.media.MediaRequestHandler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

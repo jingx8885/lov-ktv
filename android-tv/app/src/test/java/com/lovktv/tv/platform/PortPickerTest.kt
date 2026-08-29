@@ -1,6 +1,5 @@
 package com.lovktv.tv.platform
 
-import com.lovktv.tv.platform.PortPicker
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test

@@ -1,6 +1,5 @@
 package com.lovktv.tv.platform
 
-import com.lovktv.tv.platform.AssetRev
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

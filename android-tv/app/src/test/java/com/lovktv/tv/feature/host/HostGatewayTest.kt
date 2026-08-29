@@ -1,7 +1,5 @@
 package com.lovktv.tv.feature.host
 
-import com.lovktv.tv.feature.host.HostServer
-import com.lovktv.tv.feature.host.HostGateway
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

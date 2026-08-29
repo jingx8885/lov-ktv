@@ -1,6 +1,5 @@
 package com.lovktv.tv.ui
 
-import com.lovktv.tv.ui.LyricClock
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

@@ -1,6 +1,5 @@
 package com.lovktv.tv.room
 
-import com.lovktv.tv.room.RoomSync
 import org.junit.Assert.assertFalse
 import org.junit.Test
 

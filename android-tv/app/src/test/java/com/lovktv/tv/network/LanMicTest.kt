@@ -1,6 +1,5 @@
 package com.lovktv.tv.network
 
-import com.lovktv.tv.network.LanMic
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull

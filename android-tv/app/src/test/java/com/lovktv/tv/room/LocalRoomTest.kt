@@ -2,7 +2,6 @@ package com.lovktv.tv.room
 
 import com.lovktv.tv.media.CachedSong
 
-import com.lovktv.tv.room.LocalRoom
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull

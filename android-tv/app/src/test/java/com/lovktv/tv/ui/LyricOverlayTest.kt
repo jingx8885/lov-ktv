@@ -1,6 +1,5 @@
 package com.lovktv.tv.ui
 
-import com.lovktv.tv.ui.LyricOverlay
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

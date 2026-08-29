@@ -1,6 +1,5 @@
 package com.lovktv.tv.media
 
-import com.lovktv.tv.media.MediaCache
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
