@@ -748,3 +748,112 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     padding: 8px 12px;
   }
 }
+
+@media (min-width: 700px) {
+  body.phone[data-page="player"] {
+    background:
+      radial-gradient(860px 520px at 12% 8%, rgba(255, 55, 95, .14), transparent 68%),
+      radial-gradient(760px 520px at 88% 24%, rgba(92, 74, 255, .12), transparent 70%),
+      var(--bg);
+  }
+
+  body.phone[data-page="player"] .page-player {
+    width: min(1180px, 100%);
+    min-height: calc(100vh - 24px);
+    height: auto;
+    margin: 0 auto;
+    padding: 24px 40px 112px;
+    overflow: visible;
+  }
+
+  body.phone[data-page="player"] .player-main {
+    display: grid;
+    grid-template-columns: minmax(280px, .85fr) minmax(420px, 1.15fr);
+    grid-template-rows: auto minmax(360px, 1fr);
+    gap: 20px 28px;
+    max-width: 1080px;
+    margin: 0 auto;
+    overflow: visible;
+  }
+
+  body.phone[data-page="player"] .player-main > audio {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-head {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    padding: 0 4px;
+  }
+
+  body.phone[data-page="player"] .player-head .player-titles b {
+    font-size: 22px;
+  }
+
+  body.phone[data-page="player"] .player-stage {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    gap: 10px;
+  }
+
+  body.phone[data-page="player"] .player-art {
+    height: clamp(220px, 32vw, 340px);
+    max-height: 340px;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .3);
+  }
+
+  body.phone[data-page="player"] .player-clock {
+    min-height: 34px;
+  }
+
+  body.phone[data-page="player"] .player-lyric-stack {
+    grid-column: 2;
+    grid-row: 2;
+    min-height: 360px;
+    padding: 8px 0 0;
+    border-radius: 20px;
+    background: rgba(23, 26, 36, .64);
+    border: 1px solid rgba(255, 255, 255, .08);
+  }
+
+  body.phone[data-page="player"] .player-lyric-stack .lyric-seg {
+    width: min(460px, calc(100% - 32px));
+    margin: 16px auto 10px;
+  }
+
+  body.phone[data-page="player"] .player-lyrics {
+    padding: 0 24px 18px;
+  }
+
+  body.phone[data-page="player"] .player-lyrics .line {
+    font-size: clamp(28px, min(4.2cqi, 7.5cqh), 54px);
+  }
+
+  body.phone[data-page="player"] .player-dock {
+    position: sticky;
+    bottom: 0;
+    margin: 28px -40px -112px;
+    padding: 10px 40px 18px;
+    border-top: 1px solid rgba(255, 255, 255, .08);
+    background: rgba(11, 13, 19, .86);
+  }
+
+  body.phone[data-page="player"] .player-transport {
+    width: min(700px, 100%);
+    margin: 0 auto;
+  }
+
+  body.phone[data-page="player"] .player-sheet {
+    max-width: 620px;
+    left: 50%;
+    right: auto;
+    width: calc(100% - 48px);
+    transform: translate3d(-50%, calc(100% - var(--sheet-peek, 58px)), 0);
+  }
+
+  body.phone[data-page="player"] .player-sheet.is-open {
+    transform: translate3d(-50%, 0, 0);
+  }
+}

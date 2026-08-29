@@ -69,3 +69,64 @@
 .search-upload:disabled { opacity: .35; }
 .hits { margin-top: 4px; }
 .search-empty { margin: 28px 8px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+@media (min-width: 700px) {
+  .page-search {
+    padding-top: 30px;
+  }
+
+  .page-search .search-hero {
+    position: static;
+    padding: 0 0 18px;
+    background: transparent;
+  }
+
+  .page-search .search-row {
+    max-width: 820px;
+    gap: 12px;
+  }
+
+  .page-search .search-bar {
+    min-height: 52px;
+    padding: 0 14px 0 16px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .08);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .14);
+  }
+
+  .page-search .search-ico svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .page-search .search-bar input {
+    min-height: 50px;
+    padding: 12px 8px;
+    font-size: 17px;
+  }
+
+  .page-search .search-upload {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .08);
+  }
+
+  .page-search .hits {
+    max-width: 920px;
+    margin-top: 4px;
+    padding: 4px 14px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 16px;
+    background: rgba(23, 26, 36, .74);
+  }
+
+  .page-search .hits .list-row {
+    min-height: 60px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+  }
+}

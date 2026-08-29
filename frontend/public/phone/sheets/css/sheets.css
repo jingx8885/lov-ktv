@@ -94,3 +94,56 @@
   cursor: pointer;
 }
 .ktv-hint .tiny { margin: 6px 0 0; line-height: 1.45; }
+
+@media (min-width: 700px) {
+  body.phone .overlay {
+    inset: 0;
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  body.phone .sheet {
+    width: min(500px, calc(100vw - 48px));
+    max-height: min(82vh, 720px);
+    padding: 28px 30px 30px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 22px;
+    background: rgba(35, 37, 47, .96);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .48);
+  }
+
+  body.phone .sheet-handle {
+    display: none;
+  }
+
+  body.phone .sheet h2 {
+    margin-bottom: 20px;
+    font-size: 22px;
+  }
+
+  body.phone .sheet .btn {
+    margin-top: 10px;
+  }
+
+  body.phone .action-sheet {
+    width: min(520px, calc(100vw - 48px));
+    padding: 0;
+  }
+
+  body.phone .action-card,
+  body.phone .action-cancel {
+    border: 1px solid rgba(255, 255, 255, .1);
+    background: rgba(35, 37, 47, .96);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, .42);
+  }
+
+  body.phone .action-card {
+    padding: 18px 18px 10px;
+  }
+
+  body.phone .action-cancel {
+    margin-top: 10px;
+  }
+}

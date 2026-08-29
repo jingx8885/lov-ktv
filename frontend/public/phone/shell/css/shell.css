@@ -9,6 +9,125 @@
   body.phone .tabbar,
   body.phone .player-dock { background: #000; backdrop-filter: none; }
 }
+
+/* —— 桌面端自适应：保留手机交互逻辑，放大内容层级与留白 —— */
+@media (min-width: 700px) {
+  body.phone {
+    --nav-h: 0px;
+    --bar-h: 72px;
+    --bg: #0b0d13;
+    --card: #171a24;
+    --surface: #171a24;
+    --fill: rgba(255, 255, 255, .08);
+    min-height: 100vh;
+    height: auto;
+    max-height: none;
+    overflow: auto;
+    background:
+      radial-gradient(900px 520px at 8% -8%, rgba(255, 55, 95, .13), transparent 65%),
+      radial-gradient(760px 460px at 92% 0%, rgba(112, 88, 255, .12), transparent 68%),
+      var(--bg);
+  }
+
+  body.phone .app {
+    width: min(1240px, 100%);
+    min-height: 100vh;
+    height: auto;
+    max-height: none;
+    margin: 0 auto;
+    overflow: visible;
+  }
+
+  body.phone .topbar {
+    position: sticky;
+    top: 0;
+    grid-template-columns: 180px 1fr 180px;
+    min-height: var(--bar-h);
+    padding: 12px 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    background: rgba(11, 13, 19, .82);
+    backdrop-filter: saturate(150%) blur(24px);
+    -webkit-backdrop-filter: saturate(150%) blur(24px);
+  }
+
+  body.phone .topbar h1 {
+    font-size: 20px;
+    letter-spacing: -.025em;
+  }
+
+  body.phone .nav-chip {
+    height: 42px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .07);
+    font-size: 14px;
+  }
+
+  body.phone .who-mini {
+    width: 42px;
+    height: 42px;
+    padding: 5px;
+  }
+
+  body.phone .page {
+    width: min(1120px, 100%);
+    margin: 0 auto;
+    padding: 28px 32px 112px;
+    overflow: visible;
+  }
+
+  body.phone .page-search {
+    max-width: 920px;
+  }
+
+  body.phone .tabbar {
+    position: fixed;
+    left: 50%;
+    right: auto;
+    bottom: 20px;
+    width: min(500px, calc(100vw - 40px));
+    height: 64px;
+    padding: 6px;
+    transform: translateX(-50%);
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 18px;
+    background: rgba(28, 30, 38, .88);
+    box-shadow: 0 14px 40px rgba(0, 0, 0, .38);
+    backdrop-filter: saturate(150%) blur(24px);
+    -webkit-backdrop-filter: saturate(150%) blur(24px);
+  }
+
+  body.phone .tabbar button {
+    min-height: 50px;
+    border-radius: 13px;
+    font-size: 11px;
+  }
+
+  body.phone .tabbar button.on {
+    background: rgba(255, 55, 95, .16);
+  }
+
+  body.phone .tabbar svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  body.phone .btn {
+    min-height: 44px;
+  }
+
+  body.phone .empty-state {
+    padding: 80px 32px 64px;
+  }
+}
+
+@media (min-width: 1100px) {
+  body.phone .page {
+    padding-left: 48px;
+    padding-right: 48px;
+  }
+}
 /* —— 手机 App 壳 —— */
 body.phone {
   --nav-h: 49px;
