@@ -121,7 +121,7 @@ def transcribe_words(
             waited = _wait_for_whisper_result(audio_path, sibling, cache_path)
             if waited:
                 return waited
-    if not WHISPER_BIN or not audio_path.exists():
+    if not audio_path.exists():
         return []
 
     out_dir = sibling.parent
@@ -131,9 +131,11 @@ def transcribe_words(
             return _wait_for_whisper_result(audio_path, sibling, cache_path)
         _wait_until_whisper_idle()
         if sibling.exists():
-            return _copy_cache(sibling, cache_path)
+            cached = _copy_cache(sibling, cache_path)
+            if cached:
+                return cached
     cmd = [
-        WHISPER_BIN,
+        WHISPER_BIN or "whisper",
         str(audio_path),
         "--model",
         model,
@@ -156,7 +158,10 @@ def transcribe_words(
     ]
     if prompt.strip():
         cmd.extend(["--initial_prompt", prompt.strip()[:400]])
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
+    except OSError:
+        return []
     produced = out_dir / f"{audio_path.stem}.json"
     if result.returncode != 0 or not produced.exists():
         return []
