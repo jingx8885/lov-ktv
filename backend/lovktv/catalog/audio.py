@@ -1,12 +1,12 @@
 """Audio source cache and provider adapters."""
 from __future__ import annotations
-import subprocess, shutil
+import subprocess, shutil, urllib.request
 from pathlib import Path
 from typing import Any
 from lovktv.catalog import bilibili
 from lovktv.catalog.http import curl_proxy_args, urlopen, ytdlp_proxy_args
 from lovktv.catalog.netease import eapi_play_url, media_request
-from .search import BROWSER_UA, clean_search_title, is_clean_title
+from .search import BROWSER_UA, clean_search_title, is_clean_title, _list_ytdlp
 
 _AUDIO_CACHE: dict[str, dict[str, Any]] = {}
 def remember_audio_source(song_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -90,6 +90,64 @@ def _resolve_bilibili_source(song_id: str, title: str = "", artist: str = "") ->
     return remember_audio_source(song_id, {"kind": "bilibili", "bvid": hit["bvid"], "title": str(hit.get("title") or title), "cover": str(hit.get("pic") or urls.get("cover") or "")})
 
 def _resolve_netease_source(song_id: str, title: str = "") -> dict[str, Any]:
-    from lovktv.catalog import fetch as facade
-    if song_id and facade.probe_netease_url(song_id): return remember_audio_source(song_id, {"kind": "netease", "id": song_id, "title": title})
+    if song_id and probe_netease_url(song_id): return remember_audio_source(song_id, {"kind": "netease", "id": song_id, "title": title})
     return {}
+
+def _resolve_ytdlp_source(song_id: str, title: str = "", artist: str = "", providers: tuple[str, ...] = ("soundcloud", "youtube")) -> dict[str, Any]:
+    query = " ".join(p for p in (title, artist) if p).strip(); ytdlp = shutil.which("yt-dlp")
+    if not ytdlp or not query: return {}
+    for provider in providers:
+        best = _pick_best_match(_list_ytdlp(query, ytdlp, provider, count=8))
+        if best and (page := str(best.get("url") or "")) and _ytdlp_direct_url(page):
+            return remember_audio_source(song_id, {"kind": "ytdlp", "page": page, "title": str(best.get("title") or title), "provider": provider})
+    return {}
+
+def is_preview_id(song_id: str) -> bool:
+    value = str(song_id or "").strip()
+    from lovktv.catalog.mugen import is_mugen_kid
+    return bool(value) and (is_mugen_kid(value) or bilibili.is_bvid(value) or value.isdigit() or bool(peek_audio_source(value).get("kind")))
+
+def resolve_audio_source(song_id: str, title: str = "", artist: str = "") -> dict[str, Any]:
+    if bilibili.is_bvid(song_id):
+        cached = peek_audio_source(song_id)
+        if cached.get("kind") == "bilibili": return cached
+        urls = bilibili.play_urls(song_id)
+        if not urls.get("audio_url"): return {}
+        return remember_audio_source(song_id, {"kind": "bilibili", "bvid": song_id, "title": str(urls.get("title") or title), "cover": str(urls.get("cover") or "")})
+    cached = peek_audio_source(song_id)
+    if cached.get("kind") == "bilibili": return cached
+    if cached.get("kind") == "ytdlp" and not str(song_id).isdigit(): return cached
+    if not str(song_id).isdigit(): return cached if cached.get("kind") else {}
+    return (_resolve_netease_source(song_id, title) or _resolve_bilibili_source(song_id, title, artist)
+            or (cached if cached.get("kind") in {"netease", "ytdlp"} else {})
+            or _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",))
+            or _resolve_ytdlp_source(song_id, title, artist, ("youtube",)))
+
+def _open_ytdlp_stream(page: str):
+    direct = _ytdlp_direct_url(page)
+    if not direct: return None
+    req = urllib.request.Request(direct, headers={"User-Agent": BROWSER_UA})
+    try: return urlopen(req, timeout=30, via_proxy=True)
+    except Exception: return None
+
+def open_preview_stream(song_id: str, title: str = "", artist: str = "", media: str = ""):
+    from lovktv.catalog.mugen import is_mugen_kid, open_mugen_preview
+    if is_mugen_kid(song_id): return open_mugen_preview(song_id, media_name=media), {"kind": "mugen", "title": title}
+    source = resolve_audio_source(song_id, title, artist)
+    if source.get("kind") == "bilibili":
+        resp = open_bilibili_audio(str(source.get("bvid") or ""))
+        if resp is not None: return resp, source
+        forget_audio_source(song_id); source = _resolve_ytdlp_source(song_id, title, artist, ("soundcloud",)) or _resolve_netease_source(song_id, title) or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+    if source.get("kind") == "ytdlp" and source.get("provider") == "soundcloud":
+        resp = _open_ytdlp_stream(str(source.get("page") or ""))
+        if resp is not None: return resp, source
+        forget_audio_source(song_id); source = _resolve_netease_source(song_id, title) or _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+    if source.get("kind") == "netease":
+        resp = open_netease_audio(song_id)
+        if resp is not None: return resp, source
+        forget_audio_source(song_id); source = _resolve_ytdlp_source(song_id, title, artist, ("youtube",))
+    if source.get("kind") == "ytdlp":
+        resp = _open_ytdlp_stream(str(source.get("page") or ""))
+        if resp is not None: return resp, source
+        forget_audio_source(song_id)
+    return None, source

@@ -6,8 +6,7 @@ def test_fetch_facade_exports_split_implementations():
     assert fetch.clean_search_title is search.clean_search_title
     assert fetch.parse_lrc is lyrics.parse_lrc
     assert fetch._AUDIO_CACHE is audio._AUDIO_CACHE
-    assert fetch.import_song.__module__ == "lovktv.catalog.fetch"
-    assert importer.import_song is not fetch.import_song
+    assert fetch.import_song is importer.import_song
 
 
 def test_parse_lrc_ignores_malformed_and_metadata_lines():
