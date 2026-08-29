@@ -198,8 +198,11 @@ async def _broadcast(code: str, payload: dict, skip: WebSocket | None = None) ->
 
 @app.on_event("startup")
 def _startup() -> None:
+    from lovktv.catalog.mugen_index import prefetch_index
+
     init_db()
     resume_stuck_jobs()
+    prefetch_index()
     if oss_ready():
         try:
             print(f"[lovktv] oss cors {ensure_bucket_cors()}", flush=True)

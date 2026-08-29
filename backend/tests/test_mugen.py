@@ -629,3 +629,130 @@ def test_prepare_media_single_mix_still_needs_separation(tmp_path, monkeypatch):
     assert info["needs_separate"] is True
     assert info["source"] == "mugen"
     assert mapped == ["original.mp3"]
+
+
+GUNJOU_KARA = {
+    "medias": [
+        {
+            "default": True,
+            "duration": 262,
+            "filename": "gunjou.mp4",
+            "lyrics": [{"default": True, "filename": "gunjou.ass"}],
+        }
+    ],
+    "data": {
+        "kid": "2e626891-5435-4333-b9bc-90e270f74e8f",
+        "songname": "JPN - YOASOBI - MV - Gunjô",
+        "titles": {"jpn": "群青", "eng": "Gunjou", "qro": "Gunjô"},
+        "titles_default_language": "eng",
+        "tags": {
+            "langs": ["lang-jpn"],
+            "singers": ["singer-yoasobi"],
+            "series": [],
+        },
+    },
+}
+GUNJOU_TAGS = [
+    {"tag": {"tid": "lang-jpn", "name": "jpn"}},
+    {"tag": {"tid": "singer-yoasobi", "name": "YOASOBI", "i18n": {"jpn": "YOASOBI"}}},
+]
+
+
+def test_index_builds_from_zip(tmp_path):
+    import json
+    import zipfile
+
+    from lovktv.catalog import mugen_index
+
+    kara_zip = tmp_path / "karaokes.zip"
+    tag_zip = tmp_path / "tags.zip"
+    with zipfile.ZipFile(kara_zip, "w") as archive:
+        archive.writestr("karaokes/gunjou.kara.json", json.dumps(GUNJOU_KARA))
+    with zipfile.ZipFile(tag_zip, "w") as archive:
+        for index, tag in enumerate(GUNJOU_TAGS):
+            archive.writestr(f"tags/{index}.tag.json", json.dumps(tag))
+    items = mugen_index.build_items_from_zip(kara_zip, tag_zip)
+    assert items[0]["titles"]["jpn"] == "群青"
+    assert items[0]["artists"] == ["YOASOBI"]
+
+
+def test_index_builds_and_searches_japanese_title():
+    from lovktv.catalog import mugen_index
+
+    items = mugen_index.build_items_from_files([GUNJOU_KARA], GUNJOU_TAGS)
+    assert items[0]["kid"] == "2e626891-5435-4333-b9bc-90e270f74e8f"
+    assert items[0]["artists"] == ["YOASOBI"]
+    assert items[0]["language"] == "ja"
+    found = mugen_index.search_items(items, "群青", count=5)
+    assert found["total"] == 1
+    assert found["hits"][0]["kid"] == items[0]["kid"]
+    by_artist = mugen_index.search_items(items, "YOASOBI", count=5)
+    assert by_artist["total"] == 1
+    by_romaji = mugen_index.search_items(items, "gunjo", count=5)
+    assert by_romaji["total"] == 1
+    miss = mugen_index.search_items(items, "晴天", count=5)
+    assert miss["total"] == 0
+
+
+def test_search_mugen_uses_local_index(monkeypatch):
+    from lovktv.catalog import mugen_index
+
+    items = mugen_index.build_items_from_files([GUNJOU_KARA], GUNJOU_TAGS)
+    mugen_index.set_items_for_tests(items)
+    try:
+        monkeypatch.setattr(
+            mugen,
+            "_search_mugen_api",
+            lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("kara.moe must stay unused")),
+        )
+        result = mugen.search_mugen("群青", count=10, page=1)
+    finally:
+        mugen_index.reset_for_tests()
+    assert result["hits"][0]["source"] == "mugen"
+    assert result["hits"][0]["title"] == "群青"
+    assert result["hits"][0]["artist"] == "YOASOBI"
+    assert result["hits"][0]["id"] == "2e626891-5435-4333-b9bc-90e270f74e8f"
+
+
+def test_fetch_kara_uses_index_before_live_api(monkeypatch):
+    from lovktv.catalog import mugen_index
+
+    items = mugen_index.build_items_from_files([GUNJOU_KARA], GUNJOU_TAGS)
+    mugen_index.set_items_for_tests(items)
+    try:
+        monkeypatch.setattr(
+            mugen,
+            "get_json",
+            lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("live kara.moe")),
+        )
+        kara = mugen.fetch_kara("2e626891-5435-4333-b9bc-90e270f74e8f")
+    finally:
+        mugen_index.reset_for_tests()
+    assert kara["kid"] == "2e626891-5435-4333-b9bc-90e270f74e8f"
+    assert kara["mediafile"] == "gunjou.mp4"
+    assert kara["lyrics_infos"][0]["filename"] == "gunjou.ass"
+
+
+def test_complete_mugen_audio_keeps_lyrics_when_media_missing(tmp_path, monkeypatch):
+    (tmp_path / "lyrics.json").write_text('{"cues":[]}', encoding="utf-8")
+    skeleton = {
+        "title": "群青 · YOASOBI",
+        "artist": "YOASOBI",
+        "source": {"provider": "karaoke-mugen", "kid": "kid"},
+        "audio": {"file": "", "source": "mugen"},
+        "needs_separate": True,
+    }
+    monkeypatch.setattr(
+        fetch,
+        "pick_bilibili_mv",
+        lambda title, artist="": {"bvid": "BV1xx", "title": "群青 MV"},
+    )
+    monkeypatch.setattr(
+        fetch,
+        "try_bilibili_download",
+        lambda bvid, mp3, video: mp3.write_bytes(b"a" * 2000) or True,
+    )
+    filled = fetch._complete_mugen_audio(skeleton, tmp_path, "群青")
+    assert filled["audio"]["source"] == "mugen-bilibili"
+    assert (tmp_path / "original.mp3").exists()
+    assert filled["source"]["provider"] == "karaoke-mugen"

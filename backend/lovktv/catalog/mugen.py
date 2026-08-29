@@ -20,6 +20,8 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+from lovktv.catalog.http import outbound_proxy, urlopen
+
 MUGEN_HOST = "https://kara.moe"
 MUGEN_SEARCH = f"{MUGEN_HOST}/api/karas/search"
 MUGEN_KARA = f"{MUGEN_HOST}/api/karas/{{kid}}"
@@ -69,26 +71,33 @@ def is_mugen_kid(value: str | None) -> bool:
 
 
 def _request(url: str, timeout: float = 20) -> urllib.request.Request:
+    host = urllib.parse.urlparse(url).scheme + "://" + (urllib.parse.urlparse(url).netloc or "kara.moe")
     return urllib.request.Request(
         url,
         headers={
             "User-Agent": BROWSER_UA,
             "Accept": "*/*",
-            "Referer": f"{MUGEN_HOST}/",
+            "Referer": host + "/",
         },
     )
 
 
-def get_json(url: str, timeout: float = 20) -> Any:
-    with urllib.request.urlopen(_request(url), timeout=timeout) as resp:
+def get_json(url: str, timeout: float = 20, via_proxy: bool = False) -> Any:
+    with urlopen(_request(url), timeout=timeout, via_proxy=via_proxy) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
-def download_file(url: str, dest: Path, timeout: float = 600, min_size: int = 200) -> None:
+def download_file(
+    url: str,
+    dest: Path,
+    timeout: float = 600,
+    min_size: int = 200,
+    via_proxy: bool = False,
+) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
     try:
-        with urllib.request.urlopen(_request(url), timeout=timeout) as resp, tmp.open("wb") as handle:
+        with urlopen(_request(url), timeout=timeout, via_proxy=via_proxy) as resp, tmp.open("wb") as handle:
             shutil.copyfileobj(resp, handle)
         if tmp.stat().st_size < min_size:
             raise RuntimeError(f"下载太小：{url}")
@@ -96,6 +105,16 @@ def download_file(url: str, dest: Path, timeout: float = 600, min_size: int = 20
     finally:
         if tmp.exists():
             tmp.unlink(missing_ok=True)
+
+
+def download_file_resilient(url: str, dest: Path, timeout: float = 60, min_size: int = 200) -> None:
+    try:
+        download_file(url, dest, timeout=timeout, min_size=min_size, via_proxy=False)
+        return
+    except Exception:
+        if not outbound_proxy():
+            raise
+    download_file(url, dest, timeout=timeout, min_size=min_size, via_proxy=True)
 
 
 def pick_title(item: dict[str, Any]) -> str:
@@ -185,15 +204,14 @@ def map_hit(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
-    page = max(1, int(page))
-    count = max(1, min(int(count), 30))
+def _empty_search(query: str, page: int, count: int) -> dict[str, Any]:
+    return {"query": query, "page": page, "count": count, "has_more": False, "hits": [], "total": 0}
+
+
+def _search_mugen_api(query: str, count: int, page: int) -> dict[str, Any]:
     start = (page - 1) * count
     params = urllib.parse.urlencode({"filter": query, "from": start, "size": count})
-    try:
-        data = get_json(f"{MUGEN_SEARCH}?{params}", timeout=5)
-    except Exception:
-        return {"query": query, "page": page, "count": count, "has_more": False, "hits": [], "total": 0}
+    data = get_json(f"{MUGEN_SEARCH}?{params}", timeout=5)
     content = data.get("content") if isinstance(data, dict) else []
     infos = data.get("infos") if isinstance(data, dict) else {}
     hits = [map_hit(item) for item in content or [] if isinstance(item, dict) and item.get("kid")]
@@ -207,6 +225,25 @@ def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
         "hits": hits,
         "total": total,
     }
+
+
+def search_mugen(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
+    from lovktv.catalog import mugen_index
+
+    page = max(1, int(page))
+    count = max(1, min(int(count), 30))
+    items = mugen_index.cached_items()
+    if not items:
+        items = mugen_index.ensure_index(wait=25)
+    if items:
+        result = mugen_index.search_items(items, query, count, page)
+        result["hits"] = [map_hit(mugen_index.item_to_kara(item)) for item in result["hits"]]
+        return result
+    try:
+        return _search_mugen_api(query, count, page)
+    except Exception as exc:
+        print(f"[lovktv] mugen search api failed: {exc}", flush=True)
+        return _empty_search(query, page, count)
 
 
 def open_mugen_preview(kid: str, media_name: str = ""):
@@ -231,7 +268,22 @@ def open_mugen_preview(kid: str, media_name: str = ""):
 
 
 def fetch_kara(kid: str) -> dict[str, Any]:
-    data = get_json(MUGEN_KARA.format(kid=kid), timeout=20)
+    from lovktv.catalog import mugen_index
+
+    item = mugen_index.find_item(kid)
+    if item:
+        return mugen_index.item_to_kara(item)
+    try:
+        raw = mugen_index.fetch_kara_json(kid)
+        item = mugen_index.kara_to_item(raw, {})
+        if item:
+            return mugen_index.item_to_kara(item)
+    except Exception:
+        pass
+    try:
+        data = get_json(MUGEN_KARA.format(kid=kid), timeout=12)
+    except Exception as exc:
+        raise RuntimeError(f"Karaoke Mugen 没有这首：{kid}") from exc
     if not isinstance(data, dict) or not data.get("kid"):
         raise RuntimeError(f"Karaoke Mugen 没有这首：{kid}")
     return data
@@ -548,24 +600,30 @@ def import_mugen_song(kid: str, out_dir: Path, query: str = "") -> dict[str, Any
     if not lyrics_name:
         raise RuntimeError("这首没有 Karaoke Mugen 歌词")
     ass_path = out_dir / "mugen.ass"
-    download_file(MUGEN_LYRICS.format(name=urllib.parse.quote(lyrics_name)), ass_path, timeout=30)
+    from lovktv.catalog.mugen_index import GITLAB_LYRICS
+
+    quoted = urllib.parse.quote(lyrics_name)
+    try:
+        download_file(GITLAB_LYRICS.format(name=quoted), ass_path, timeout=30)
+    except Exception:
+        download_file_resilient(MUGEN_LYRICS.format(name=quoted), ass_path, timeout=20)
     timeline = timeline_from_ass(ass_path.read_text(encoding="utf-8", errors="replace"), language)
     write_subtitles(timeline, out_dir)
     (out_dir / "lyrics.lrc").write_text(lrc_from_cues(timeline["cues"]), encoding="utf-8")
 
     media_name = str(kara.get("mediafile") or "")
-    if not media_name:
-        raise RuntimeError("这首没有 Karaoke Mugen 媒体")
     media_path = out_dir / f"mugen{Path(media_name).suffix.lower() or '.mp4'}"
-    download_file(
-        MUGEN_MEDIA.format(name=urllib.parse.quote(media_name)),
-        media_path,
-        timeout=600,
-        min_size=20_000,
-    )
-    audio = prepare_media(media_path, out_dir)
-    if not audio.get("file"):
-        raise RuntimeError("Karaoke Mugen 音频抽取失败")
+    audio = {"file": "", "source": "mugen", "dual_audio": False, "needs_separate": True, "has_video": False}
+    if media_name:
+        media_url = MUGEN_MEDIA.format(name=urllib.parse.quote(media_name))
+        try:
+            try:
+                download_file(media_url, media_path, timeout=45, min_size=20_000)
+            except Exception:
+                download_file_resilient(media_url, media_path, timeout=45, min_size=20_000)
+            audio = prepare_media(media_path, out_dir)
+        except Exception as exc:
+            print(f"[lovktv] mugen media skipped: {exc}", flush=True)
     if audio.get("has_video"):
         timeline["native_video"] = True
         write_subtitles(timeline, out_dir)
