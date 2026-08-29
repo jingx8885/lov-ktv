@@ -34,7 +34,7 @@ def test_queue_needs_room_not_forced_tv_scan():
     lib = (ROOT / "phone" / "desk" / "js" / "library.js").read_text(encoding="utf-8")
     mix = (ROOT / "phone" / "room" / "js" / "mix.js").read_text(encoding="utf-8")
     rtc = (ROOT / "phone" / "room" / "js" / "rtc.js").read_text(encoding="utf-8")
-    playback = (ROOT / "phone" / "player" / "js" / "playback.js").read_text(encoding="utf-8")
+    playback = "\n".join((ROOT / "phone" / "player" / "js" / name).read_text(encoding="utf-8") for name in ("controls.js", "song.js"))
     join = (ROOT / "phone" / "room" / "js" / "join.js").read_text(encoding="utf-8")
     assert "api.needTvOrRoom" in lib
     assert "api.needTvOrRoom" in mix
