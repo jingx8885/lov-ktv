@@ -4,6 +4,36 @@ let roomWs = null;
 let roomWsCode = "";
 let roomWsRetry = 0;
 let roomWsTimer = 0;
+let roomWsStamp = "";
+
+export function snapshotStamp(room) {
+  if (!room) return "";
+  return JSON.stringify({
+    code: room.code,
+    now: room.now_playing && [
+      room.now_playing.id,
+      room.now_playing.song_id,
+      room.now_playing.status,
+      room.now_playing.media_rev,
+      room.now_playing.title,
+      room.now_playing.artist,
+      room.now_playing.language
+    ],
+    paused: room.paused,
+    mix: room.vocal_mix,
+    volume: room.volume,
+    mic: room.mic_on,
+    lyric_mode: room.lyric_mode,
+    queue: (room.queue || []).map((item) => [
+      item.id,
+      item.song_id,
+      item.status,
+      item.media_rev,
+      item.title,
+      item.artist
+    ])
+  });
+}
 
 export function roomWsLive() {
   return !!(roomWs && roomWs.readyState === 1);
@@ -22,6 +52,7 @@ export function watchRoom(code, onRoom) {
   if (roomWs && roomWsCode === next && roomWs.readyState <= 1) return;
   closeRoomWs();
   roomWsCode = next;
+  roomWsStamp = "";
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   let sock;
   try {
@@ -33,7 +64,12 @@ export function watchRoom(code, onRoom) {
   sock.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-      if (msg && msg.type === "snapshot" && msg.room && typeof onRoom === "function") onRoom(msg.room);
+      if (msg && msg.type === "snapshot" && msg.room && typeof onRoom === "function") {
+        const stamp = snapshotStamp(msg.room);
+        if (stamp === roomWsStamp) return;
+        roomWsStamp = stamp;
+        onRoom(msg.room);
+      }
     } catch (err) {}
   };
   sock.onopen = () => {
@@ -56,6 +92,7 @@ export function closeRoomWs() {
   const sock = roomWs;
   roomWs = null;
   roomWsCode = "";
+  roomWsStamp = "";
   if (!sock) return;
   try {
     sock.onclose = null;

@@ -9,7 +9,8 @@ export const roomState = guardState(
     lastMediaRev: "",
     lastLyricsAt: 0,
     loginTicket: "",
-    loginTimer: 0
+    loginTimer: 0,
+    hostPollTimer: 0
   },
   "tv.room"
 );

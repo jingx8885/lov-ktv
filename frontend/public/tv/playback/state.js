@@ -18,7 +18,8 @@ export const playbackState = guardState(
     emptyNow: 0,
     mediaStall: 0,
     mediaFallback: "",
-    lastRecoverAt: 0
+    lastRecoverAt: 0,
+    lastRoomStamp: ""
   },
   "tv.playback"
 );

@@ -97,6 +97,13 @@ export async function startLoginQr() {
   state.loginTimer = setInterval(pollLogin, 2000);
 }
 
+export function stopAuthTimers() {
+  if (state.loginTimer) clearInterval(state.loginTimer);
+  if (state.hostPollTimer) clearInterval(state.hostPollTimer);
+  state.loginTimer = 0;
+  state.hostPollTimer = 0;
+}
+
 export async function bootAuth() {
   if (/LovKtvAndroidTV/i.test(navigator.userAgent || "") || new URLSearchParams(location.search).get("androidtv")) {
     document.body.classList.add("androidtv");
@@ -129,7 +136,8 @@ export async function bootAuth() {
   $("phoneLink").href = url;
   renderQr(url);
   let lastPhoneUrl = url;
-  setInterval(async () => {
+  if (state.hostPollTimer) clearInterval(state.hostPollTimer);
+  state.hostPollTimer = setInterval(async () => {
     try {
       const { data } = await fetchJson("/api/host");
       const next = data && data.phone_url ? String(data.phone_url) : "";

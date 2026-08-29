@@ -103,12 +103,18 @@
       g.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    function destroy() {
+      global.removeEventListener("resize", resize);
+      clear();
+    }
+
     resize();
     global.addEventListener("resize", resize);
     return {
       spawn,
       draw,
       clear,
+      destroy,
       resize,
       setBeat: (p) => {
         beatP = clamp01(p);

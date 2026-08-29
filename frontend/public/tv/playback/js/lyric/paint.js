@@ -89,10 +89,37 @@ export function lyricsFingerprint(data) {
   return [cues.length, first.start_ms, first.text, last.start_ms, last.text].join("|");
 }
 
+let paintActive = false;
+let paintFrame = 0;
+let lastLyricPaintAt = 0;
+
+export function startPaint() {
+  if (paintActive) return;
+  paintActive = true;
+  paintFrame = requestAnimationFrame(paint);
+}
+
+export function stopPaint() {
+  paintActive = false;
+  if (paintFrame) cancelAnimationFrame(paintFrame);
+  paintFrame = 0;
+  lastLyricPaintAt = 0;
+}
+
+export function disposePaint() {
+  stopPaint();
+  if (state.stageFx && typeof state.stageFx.destroy === "function") state.stageFx.destroy();
+  state.stageFx = null;
+}
+
 export function paint() {
+  if (!paintActive) return;
   const now = state.room && state.room.now_playing;
-  const mode = applyLyricMode(document.body, (state.room && state.room.lyric_mode) || "all", now && now.language);
-  if (now && now.status === "ready") {
+  const frameNow = performance.now();
+  const drawLyrics = frameNow - lastLyricPaintAt >= 33;
+  if (now && now.status === "ready" && drawLyrics) {
+    lastLyricPaintAt = frameNow;
+    const mode = applyLyricMode(document.body, (state.room && state.room.lyric_mode) || "all", now && now.language);
     const karaoke = $("karaoke");
     const mtv = $("mtv");
     const t = lyricClockMs((karaoke.currentTime || 0) * 1000, state.lyrics);
@@ -152,5 +179,5 @@ export function paint() {
       now: performance.now() / 1000
     });
   }
-  requestAnimationFrame(paint);
+  if (paintActive) paintFrame = requestAnimationFrame(paint);
 }

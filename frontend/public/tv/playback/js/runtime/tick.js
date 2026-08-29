@@ -8,10 +8,12 @@ import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } f
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
-import { fetchRoomSnapshot, roomWsLive, watchRoom } from "../room/state.js";
+import { closeRoomWs, fetchRoomSnapshot, roomWsLive, snapshotStamp, watchRoom } from "../room/state.js";
 import { nativeMtvAvailable, stopNativeMtv } from "../../../platform.js";
 
-export { roomWsLive, watchRoom };
+export { closeRoomWs, roomWsLive, watchRoom };
+
+let applyGeneration = 0;
 
 export function pageVisible() {
   return document.visibilityState === "visible";
@@ -184,6 +186,10 @@ export async function tick() {
 
 export async function applyRoom(room) {
   if (!room || !room.code) return;
+  const stamp = snapshotStamp(room);
+  if (stamp === state.lastRoomStamp) return;
+  state.lastRoomStamp = stamp;
+  const generation = ++applyGeneration;
   state.room = room;
   localStorage.setItem("tvRoom", state.room.code);
   prefetchQueue(state.room);
@@ -220,11 +226,12 @@ export async function applyRoom(room) {
     state.lyricPaint.cur = "";
     state.lyricPaint.next = "";
     const lyricsHit = await fetchJson(mediaUrl(now.song_id, "lyrics.json"));
-    state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
     const skeletonHit = await fetchJson(mediaUrl(now.song_id, "skeleton.json")).catch(() => ({
       ok: false,
       data: null
     }));
+    if (generation !== applyGeneration) return;
+    state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
     state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;

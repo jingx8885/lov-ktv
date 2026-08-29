@@ -306,4 +306,8 @@ export function bindRemote() {
   if ($("tvSetup")) $("tvSetup").onclick = () => openProcessSetup();
   if ($("tvSheetBack")) $("tvSheetBack").onclick = () => closeSettings();
   document.addEventListener("keydown", onRemoteKey, true);
+  return () => {
+    document.removeEventListener("keydown", onRemoteKey, true);
+    if (window.LovKtvRemote && window.LovKtvRemote.__module) delete window.LovKtvRemote;
+  };
 }

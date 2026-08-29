@@ -20,8 +20,10 @@ def test_tv_does_not_restart_on_network_stall():
         encoding="utf-8"
     )
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
-    assert "export { roomWsLive, watchRoom }" in tick
+    assert "export { closeRoomWs, roomWsLive, watchRoom }" in tick
     assert "/ws/rooms/" in room_state
+    assert "/ws/box/" not in room_state
+    assert "snapshotStamp" in room_state
     assert "export async function applyRoom" in tick
     assert "export function songReallyEnded" in tick
     assert 'from "./state.js"' in tick
@@ -40,7 +42,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "wantsResume(karaoke)" in tick
     assert "wantsResume(karaoke)" in keep
     assert 'addEventListener("ended", () => $must("skip").click())' not in app
-    assert "if (songReallyEnded(karaoke))" in app
+    assert "karaoke.ended && songReallyEnded(karaoke)" in app
     assert "restoreResume(karaoke)" in app
     assert "item.song_id !== nowId" in mix
     assert 'if (now && now.status === "ready") add(now.song_id)' not in mix
@@ -50,6 +52,10 @@ def test_tv_does_not_restart_on_network_stall():
     assert 'src="/tv/boot-play.js"' not in html
     assert 'from "./playback/js/runtime/tick.js"' in app
     assert "watchRoom(state.room.code, applyRoom)" in app
+    assert "startPaint();" in app
+    assert "disposePaint();" in app
+    assert "stopAuthTimers();" in app
+    assert "clearInterval(tickTimer);" in app
     assert "export function setWaiting" in tick
     assert "setWaiting(true)" in tick
     assert 'setWaiting(now.status !== "ready")' in tick
@@ -138,7 +144,7 @@ def test_tv_has_one_runtime_owner_and_no_legacy_boot_entries():
     assert joined.count("window.LovKtvRemote =") == 1
     assert joined.count("setInterval(tick, 1500)") == 1
     assert app.count("setInterval(tick, 1500)") == 1
-    assert "bindRemote();" in app
+    assert "bindRemote()" in app
     assert "__module: true" in remote
 
 
@@ -195,8 +201,35 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "state.mediaStall" in tick
     assert "if (isMediaStalled(el)) return false;" in tick
     assert "state.resumeAt = t;" in tick
+    assert "if (stamp === state.lastRoomStamp) return;" in tick
     # Browser MTV failure degrades to a cover; native MTV remains the same bind path.
     assert "mtv.onerror = () =>" in mtv
     assert 'classList.add("has-mtv-cover")' in mtv
     assert "mtv.hidden = true" in mtv
     assert "playNativeMtv" in mtv
+
+
+def test_tv_runtime_lifecycle_and_rendering_are_bounded():
+    app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
+    paint = (ROOT / "tv" / "playback" / "js" / "lyric" / "paint.js").read_text(
+        encoding="utf-8"
+    )
+    room = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(
+        encoding="utf-8"
+    )
+    # A repeated mount of the same root is a no-op; a real unmount removes all
+    # timers, listeners, websocket and animation-frame resources.
+    assert "const mounted = new WeakSet()" in app
+    assert "if (!root || mounted.has(root)) return () => {};" in app
+    assert "cleanups" in app and "reverse()" in app
+    assert "removeEventListener" in app
+    assert "clearInterval(tickTimer)" in app
+    assert "cancelAnimationFrame(paintFrame)" in paint
+    assert 'global.removeEventListener("resize", resize)' in (
+        ROOT / "shared" / "fx" / "js" / "stage" / "runtime.js"
+    ).read_text(encoding="utf-8")
+    # Duplicate snapshots are discarded and lyric DOM work is capped at ~30fps
+    # while the canvas animation may continue at requestAnimationFrame cadence.
+    assert "if (stamp === roomWsStamp) return;" in room
+    assert "const drawLyrics = frameNow - lastLyricPaintAt >= 33;" in paint
+    assert "if (paintActive) paintFrame = requestAnimationFrame(paint);" in paint

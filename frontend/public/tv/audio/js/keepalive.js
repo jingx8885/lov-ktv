@@ -77,6 +77,11 @@ export function startKeepAlive() {
   }, 1500);
 }
 
+export function stopKeepAlive() {
+  if (state.keepAliveTimer) clearInterval(state.keepAliveTimer);
+  state.keepAliveTimer = 0;
+}
+
 export function schedulePlayRetries() {
   if (state.playRetryTimer) return;
   const delays = [250, 600, 1200, 2500, 5000];
