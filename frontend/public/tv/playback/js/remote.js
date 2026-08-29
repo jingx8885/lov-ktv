@@ -192,7 +192,9 @@ export function closeSettings() {
   const sheet = settingsBox();
   if (!sheet) return;
   const active = document.activeElement;
-  if (active && sheet.contains(active) && "blur" in active) active.blur();
+  if (active && sheet.contains(active) && "blur" in active) {
+    /** @type {HTMLElement} */ (active).blur();
+  }
   settingsItems().forEach((el) => el.classList.remove("is-focused"));
   sheet.hidden = true;
   const start = $("start");

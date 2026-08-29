@@ -26,6 +26,7 @@ interface SearchHit {
 
 interface Song {
   id: string;
+  song_id?: string;
   title: string;
   artist?: string;
   language?: string;
@@ -122,6 +123,7 @@ interface SongListPage {
 }
 
 interface SearchPage {
+  page?: number;
   hits?: SearchHit[];
   has_more?: boolean;
   detail?: string;
@@ -217,6 +219,7 @@ interface LearnEchoSession {
   running: boolean;
   review: ((action: LearnEchoReview) => void) | null;
   previewUrl: string;
+  skipped: boolean;
 }
 
 type LearnEchoReview = "next" | "retry" | "skip" | "stop";

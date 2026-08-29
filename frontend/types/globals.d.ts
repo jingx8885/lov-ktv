@@ -152,6 +152,11 @@ interface LovKtvRemoteApi {
   volumeDown(): void | Promise<void>;
   confirm(): void;
   start(): boolean;
+  togglePaused?: () => void | Promise<void>;
+  settings?: () => void;
+  back?: () => boolean;
+  __ready?: boolean;
+  __module?: boolean;
 }
 
 interface LovKtvPhoneBridge {
