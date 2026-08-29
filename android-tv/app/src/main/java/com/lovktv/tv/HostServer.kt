@@ -31,7 +31,7 @@ import org.json.JSONObject
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Compatibility facade for the LAN host. Handlers own protocol-specific work. */
+/** LAN host lifecycle and route composition. Protocol work lives in dedicated handlers. */
 class HostServer(
     private val assets: AssetManager,
     processOrigin: String,
@@ -46,13 +46,13 @@ class HostServer(
     }
 
     @Volatile var processOrigin: String = Prefs.normalize(processOrigin)
-    val localRoom = LocalRoom { cache.getSong(it) }
+    private val localRoom = LocalRoom { cache.getSong(it) }
     private val http = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS).readTimeout(0, TimeUnit.SECONDS)
         .writeTimeout(0, TimeUnit.SECONDS).pingInterval(20, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
     private val apiHttp = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
     private val webSockets = HostWebSocketHandler(localRoom, http) { this.processOrigin }
-    val puller = SongPuller(cache, http, { this.processOrigin }) { songId ->
+    private val puller = SongPuller(cache, http, { this.processOrigin }) { songId ->
         localRoom.refreshSong(songId)
         val code = HostRuntime.roomCode.ifBlank { localRoom.activeCode() }
         if (code.isNotBlank()) webSockets.broadcastAsync(code, localRoom.snapshot(code).toJson())
@@ -60,7 +60,7 @@ class HostServer(
     private val api = HostApiHandler(cache, localRoom, puller, apiHttp, http,
         processOrigin = { this.processOrigin }, lanOrigin = { HostRuntime.lanOrigin },
         rememberCode = { rememberCode(it) }, broadcast = { code, json -> webSockets.broadcastAsync(code, json) })
-    private val media = MediaRequestHandler(cache, apiHttp, { this.processOrigin }, puller::hint, api::proxyEmpty)
+    private val media = MediaRequestHandler(cache, apiHttp, { this.processOrigin }, puller::hint, api::proxy)
     private val assetsHandler = StaticAssetHandler(assets, assetRev)
     private val roomSync = Executors.newSingleThreadScheduledExecutor { runnable -> Thread(runnable, "lovktv-room").apply { isDaemon = true } }
     @Volatile private var lastPublishedLan = ""

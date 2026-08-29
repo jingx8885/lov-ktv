@@ -83,9 +83,6 @@ class HostApiHandler(
         proxyHttp(call, incoming)
     }
 
-    /** Media fallback historically proxied with an empty body, even for unusual verbs. */
-    suspend fun proxyEmpty(call: ApplicationCall) = proxyHttp(call, ByteArray(0))
-
     private fun rememberRemote(kind: ApiKind, body: ByteArray) {
         val text = body.toString(Charsets.UTF_8)
         if (text.isBlank()) return
