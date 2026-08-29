@@ -10,6 +10,28 @@ from lovktv.config import MEDIA_DIR
 from lovktv.pipeline.lyrics import write_subtitles
 from lovktv.store import get_song, list_songs, update_song
 
+LYRIC_PUBLISH_NAMES = (
+    "lyrics.json",
+    "lyrics.elrc",
+    "lyrics.ass",
+    "ja-annotate.json",
+)
+
+
+def _publish_lyrics(song_id: str) -> list[str]:
+    from lovktv.oss import oss_ready, put_file
+
+    if not oss_ready():
+        return []
+    uploaded: list[str] = []
+    folder = MEDIA_DIR / song_id
+    for name in LYRIC_PUBLISH_NAMES:
+        path = folder / name
+        if path.exists():
+            put_file(song_id, path)
+            uploaded.append(name)
+    return uploaded
+
 
 def cue_source(cue: dict) -> str:
     return str(cue.get("source_text") or cue.get("text") or "")
@@ -66,9 +88,11 @@ def restore_song(
     if "注音降级" in previous:
         update_song(song_id, error="")
     if publish:
-        from lovktv.oss import publish_song
+        names = _publish_lyrics(song_id) if reapply else None
+        if names is None:
+            from lovktv.oss import publish_song
 
-        names = publish_song(song_id)
+            names = publish_song(song_id)
         return {"id": song_id, "ok": True, "published": names}
     return {"id": song_id, "ok": True, "published": []}
 

@@ -435,8 +435,12 @@ def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
     monkeypatch.setattr(restore_ja, "MEDIA_DIR", tmp_path)
     monkeypatch.setattr(restore_ja, "get_song", lambda sid: {"title": "x", "error": ""})
     monkeypatch.setattr(restore_ja, "update_song", lambda *args, **kwargs: None)
-    result = restore_ja.restore_song("s1", publish=False, reapply=True)
+    published: list[str] = []
+    monkeypatch.setattr(restore_ja, "_publish_lyrics", lambda sid: published.append(sid) or ["lyrics.json"])
+    result = restore_ja.restore_song("s1", publish=True, reapply=True)
     assert result["ok"] is True
+    assert published == ["s1"]
+    assert result["published"] == ["lyrics.json"]
     timeline = json.loads((song_dir / "lyrics.json").read_text(encoding="utf-8"))
     tokens = timeline["cues"][0]["tokens"]
     assert "".join(tok["text"] for tok in tokens) == "溢れるメモリー"
