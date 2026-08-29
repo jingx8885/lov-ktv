@@ -1,4 +1,4 @@
-from lovktv.pipeline.align import pack_tokens_to_singing
+from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.lyrics import rebuild_manual_timeline, shift_cues, validate_timeline
 
 

@@ -18,16 +18,10 @@ if _VENDOR.is_dir() and str(_VENDOR) not in sys.path:
 from lyric_align.model import Segment, Word  # noqa: E402
 from lyric_align.normalize import default_threshold, normalize, similarity  # noqa: E402
 
-from lovktv.pipeline.align import (
-    HOLD_GAP_MS,
-    MAX_LINE_MS,
-    MIN_LINE_MS,
-    _usable_asr_words,
-    _voice_covers,
-    hold_lines_until_next,
-    snap_to_onset,
-    vocal_regions,
-)
+from lovktv.pipeline.constants import HOLD_GAP_MS, MAX_LINE_MS, MIN_LINE_MS
+from lovktv.pipeline.matching import _usable_asr_words
+from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
+from lovktv.pipeline.audio import snap_to_onset, vocal_regions
 from lovktv.pipeline.lyrics import drop_credit_lines
 
 ANCHOR_AGREE_MS = 800

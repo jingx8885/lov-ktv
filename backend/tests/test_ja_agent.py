@@ -461,7 +461,7 @@ def test_pack_timeline_to_voice_uses_vocals(tmp_path, monkeypatch):
         seen["path"] = path.name
         return [20.0] * 50 + [800.0] * 80 + [10.0] * 200, 20
 
-    monkeypatch.setattr("lovktv.pipeline.align.extract_envelope", fake_env)
+    monkeypatch.setattr("lovktv.pipeline.audio.extract_envelope", fake_env)
     timeline = {
         "cues": [
             {

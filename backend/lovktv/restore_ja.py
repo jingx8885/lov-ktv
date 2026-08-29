@@ -35,7 +35,8 @@ def _publish_lyrics(song_id: str) -> list[str]:
 
 def pack_timeline_to_voice(timeline: dict, out_dir) -> bool:
     """Sweep karaoke tokens over the sung burst, not the hold until the next line."""
-    from lovktv.pipeline.align import extract_envelope, pack_tokens_to_singing
+    from lovktv.pipeline.audio import extract_envelope
+    from lovktv.pipeline.bounds import pack_tokens_to_singing
 
     for name in ("vocals.wav", "karaoke.m4a", "original.mp3"):
         audio = out_dir / name
