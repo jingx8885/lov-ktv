@@ -156,7 +156,7 @@ def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def list_songs() -> list[dict[str, Any]]:
     with connect() as conn:
-        rows = execute(conn, "SELECT * FROM songs ORDER BY created_at DESC").fetchall()
+        rows = execute(conn, "SELECT * FROM songs ORDER BY created_at DESC, id DESC").fetchall()
     return [dict(row) for row in rows]
 
 

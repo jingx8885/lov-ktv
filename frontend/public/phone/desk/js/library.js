@@ -140,16 +140,23 @@ function bindSongActions() {
   }
 }
 
+function libSongId(song) {
+  return String((song && song.id) || "").trim();
+}
+
 function knownLibIds() {
-  const fromState = (state.libSongs || []).map((song) => song.id);
+  const fromState = (state.libSongs || []).map(libSongId);
   const fromDom = [...document.querySelectorAll("#songs [data-song]")].map((el) => el.getAttribute("data-song") || "");
   return new Set([...fromState, ...fromDom].filter(Boolean));
 }
 
 export async function loadSongs(append = false) {
   if (state.libLoading) return;
-  if (append && state.libState.page >= (state.libPages || 1)) return;
-  const nextPage = append ? state.libState.page + 1 : 1;
+  const have = state.libSongs || [];
+  if (append && (Number(state.libState.page) || 1) >= (state.libPages || 1)) return;
+  if (append && !have.length) return;
+  const nextPage = append ? (Number(state.libState.page) || 1) + 1 : 1;
+  const after = append ? libSongId(have[have.length - 1]) : "";
   state.libLoading = true;
   const params = new URLSearchParams({
     q: state.libState.q,
@@ -158,6 +165,7 @@ export async function loadSongs(append = false) {
     page: String(nextPage),
     count: "8",
   });
+  if (after) params.set("after", after);
   /** @type {{ data: SongListPage } | null} */
   const loaded = await fetchJson("/api/songs?" + params.toString()).catch(() => null);
   state.libLoading = false;
@@ -180,25 +188,22 @@ export async function loadSongs(append = false) {
     });
     if (stamp === state.libStamp && $("songs").querySelector(".desk-row")) return;
     state.libStamp = stamp;
-    state.libState.page = data.page || 1;
+    state.libState.page = Number(data.page) || 1;
     state.libSongs = songs;
     renderLibIndex(data.letters || []);
     $("songs").innerHTML = songs.map(songRow).join("") || emptyLibHint();
     $("songs").scrollTop = 0;
   } else {
-    const gotPage = data.page || nextPage;
-    if (gotPage !== nextPage) {
-      state.libState.page = state.libPages;
-      renderLibTail(state.libState.page, state.libPages, data.total || 0);
-      return;
-    }
     const seen = knownLibIds();
-    const extra = songs.filter((song) => song.id && !seen.has(song.id));
-    state.libSongs = (state.libSongs || []).concat(extra);
+    const extra = songs.filter((song) => {
+      const id = libSongId(song);
+      return id && !seen.has(id) && id !== after;
+    });
+    state.libSongs = have.concat(extra);
     if (!extra.length) {
       state.libState.page = state.libPages;
     } else {
-      state.libState.page = nextPage;
+      state.libState.page = Number(data.page) || nextPage;
       $("songs").insertAdjacentHTML("beforeend", extra.map(songRow).join(""));
     }
   }
@@ -238,7 +243,11 @@ export function bindLibrary() {
       loadSongs(false);
     };
   });
-  $("songs").addEventListener("scroll", () => {
-    if (nearBottom($("songs"))) loadSongs(true);
-  });
+  if (!$("songs").dataset.libScroll) {
+    $("songs").dataset.libScroll = "1";
+    $("songs").addEventListener("scroll", () => {
+      if (state.libLoading) return;
+      if (nearBottom($("songs"))) loadSongs(true);
+    });
+  }
 }

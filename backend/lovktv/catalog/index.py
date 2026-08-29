@@ -153,6 +153,7 @@ def query_library(
     letter: str = "",
     page: int = 1,
     count: int = PAGE_SIZE,
+    after: str = "",
 ) -> dict[str, Any]:
     by = by if by in {"all", "title", "artist"} else "all"
     key = letter.strip().upper()
@@ -172,12 +173,23 @@ def query_library(
             item["letter"],
             display_title(item).casefold(),
             display_artist(item).casefold(),
+            str(item.get("id") or ""),
         )
     )
     total = len(indexed)
     pages = max(1, math.ceil(total / count)) if total else 1
-    page = min(max(1, int(page) or 1), pages)
-    start = (page - 1) * count
+    after_id = str(after or "").strip()
+    start = None
+    if after_id:
+        for index, item in enumerate(indexed):
+            if str(item.get("id") or "") == after_id:
+                start = index + 1
+                break
+    if start is None:
+        page = min(max(1, int(page) or 1), pages)
+        start = (page - 1) * count
+    else:
+        page = min(pages, start // count + 1) if total else 1
     return {
         "songs": indexed[start : start + count],
         "total": total,
@@ -188,5 +200,6 @@ def query_library(
         "q": q,
         "by": by,
         "letter": key,
+        "after": after_id,
         "letters": [{"key": item, "count": counts[item]} for item in LETTERS if counts[item]],
     }

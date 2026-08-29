@@ -570,15 +570,16 @@ def api_songs(
     letter: str = "",
     page: int | None = None,
     count: int = 12,
+    after: str = "",
 ) -> dict:
     lang = request_lang(request)
     songs = prefer_native_library([
         localize_song(lang, with_media_flags(song) or song) for song in list_songs()
     ])
-    if page is None and not q and not letter:
+    if page is None and not q and not letter and not after:
         tagged = [{**song, "letter": song_letter(song)} for song in songs]
         return {"songs": tagged, "total": len(tagged)}
-    return query_library(songs, q=q, by=by, letter=letter, page=page or 1, count=count)
+    return query_library(songs, q=q, by=by, letter=letter, page=page or 1, count=count, after=after)
 
 
 @app.get("/api/songs/{song_id}")

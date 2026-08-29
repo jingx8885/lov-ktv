@@ -34,6 +34,33 @@ def test_prefer_native_library_hides_composed_duplicates():
     assert [song["id"] for song in kept] == ["mv", "keep"]
 
 
+def test_query_library_after_skips_last_id():
+    songs = [
+        {"id": f"s{i:02d}", "title": f"Song {i:02d}", "artist": "A"}
+        for i in range(1, 21)
+    ]
+    page1 = query_library(songs, count=8, page=1)
+    last = page1["songs"][-1]["id"]
+    page2 = query_library(songs, count=8, page=2, after=last)
+    ids1 = [row["id"] for row in page1["songs"]]
+    ids2 = [row["id"] for row in page2["songs"]]
+    assert last not in ids2
+    assert ids2[0] != last
+    assert not set(ids1) & set(ids2)
+    assert page2["after"] == last
+
+
+def test_query_library_pages_do_not_overlap():
+    songs = [
+        {"id": f"s{i:02d}", "title": f"Song {i:02d}", "artist": "A"}
+        for i in range(1, 13)
+    ]
+    page1 = query_library(songs, count=8, page=1)
+    page2 = query_library(songs, count=8, page=2)
+    assert page1["songs"][-1]["id"] != page2["songs"][0]["id"]
+    assert not {row["id"] for row in page1["songs"]} & {row["id"] for row in page2["songs"]}
+
+
 def test_query_library_filters_letter_and_pages():
     songs = [
         {"id": "1", "title": "NIGHT DANCER · imase", "artist": "imase"},

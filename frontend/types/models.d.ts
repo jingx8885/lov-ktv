@@ -95,6 +95,7 @@ interface SongListPage {
   pages?: number;
   total?: number;
   lib_total?: number;
+  after?: string;
   letters?: string[];
 }
 

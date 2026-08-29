@@ -9,7 +9,7 @@ interface PhoneApi {
   loadWho(): Promise<void>;
   showPage(name: string, songId?: string | null, push?: boolean): void;
   showDeskPane(name: string): void;
-  loadSongs(): Promise<void>;
+  loadSongs(append?: boolean): Promise<void>;
   loadRoom(): Promise<void>;
   runSearch(page: number, append?: boolean): Promise<void>;
   stopPreview(): void;

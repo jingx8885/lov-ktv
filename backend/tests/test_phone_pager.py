@@ -9,7 +9,9 @@ def test_library_append_dedupes_and_poll_does_not_rewind_page():
     app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
     hits = (ROOT / "phone" / "search" / "js" / "hits.js").read_text(encoding="utf-8")
     assert "function knownLibIds" in lib
-    assert "song.id && !seen.has(song.id)" in lib
+    assert "function libSongId" in lib
+    assert 'params.set("after", after)' in lib
+    assert "id !== after" in lib
     assert 'data-song="${escapeHtml(song.id)}"' in lib
     assert "if (state.libState.page <= 1) loadSongs(false)" in app
     assert "extra.length > 0" in hits
