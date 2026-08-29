@@ -2,7 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { mediaUrl } from "./playback.js";
+import { mediaUrl } from "./media.js";
 import { startPhoneMic, stopPhoneMic } from "./mic.js";
 import { cancelCueWindow, paintLearnLine, playCueWindow } from "./learn-play.js";
 

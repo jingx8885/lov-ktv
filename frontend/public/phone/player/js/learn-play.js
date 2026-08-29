@@ -1,7 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
-import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "./playback.js";
+import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "./controls.js";
 
 /** @param {string | HTMLElement | null | undefined} id */
 function node(id) {
