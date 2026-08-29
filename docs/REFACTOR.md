@@ -53,10 +53,10 @@
 - [x] 增加房间 code、action、暂停值的运行时规范化（`room_contract.py`）。
 - [x] 增加歌词 timeline 的运行时校验和时间边界修复（`timeline_contract.py`）。
 - [x] 固化播放控制事件的运行时校验，并在 WebSocket 入口接入。
-- [x] 手机端房间 snapshot 读取和 stamp 提取到独立 `room/state.js`。
+- [x] 手机端房间 snapshot 读取和 stamp 提取到独立模块。
 - [x] 手机端播放顺序决策提取到独立 `player/state.js`。
 - [x] 电视端播放结束判断、房间条目身份和媒体重载决策提取到独立 `tv/playback/js/state.js`。
-- [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room/state.js`。
+- [x] 电视端房间 WebSocket 重连和 snapshot 读取提取到独立 `tv/playback/js/room-state.js`。
 - [x] 电视端 `LovKtvNative` MTV/歌词/设置能力集中到 `tv/platform.js` adapter。
 - [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
@@ -65,7 +65,7 @@
 
 - [x] 本批次先为 `m.html`、`tv.html` 增加稳定 `data-app` / `data-mount` 挂载点，并加入静态启动 smoke test。
 - [x] 定义 Phone `Platform` 的 `http`、`media`、`mic`、`remote`、`scanner` ports；无桥浏览器和 Android Phone 共用同一降级 adapter，Android TV 保持独立 `tv/platform.js` adapter。
-- [x] 原生桥调用和 LAN HTTP 回调集中到 `phone/platform.js`；Phone 业务模块不再直接访问注入桥，缺少能力时返回安全的 no-op / fallback。
+- [x] Phone 原生桥调用与 LAN HTTP 回调由各能力模块直接封装，移除旧的 `phone/platform.js` 兼容门面。
 - [x] `m.html`、`tv.html` 建立必需节点清单和静态启动 smoke test。
 - [ ] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
 - [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
@@ -83,7 +83,7 @@
 ### R5C shared 资源与类型边界 — 待开始
 
 - [x] 本批次移除 `timeline.js` 的 TypeScript 排除项，单文件 `tsc` 检查通过。
-- [ ] `stage-fx.js`、`timeline.js` 改为 ESM，Phone 学习模式不再从 `tv/` 目录加载资源。
+- [x] Phone 学习模式不再从 `tv/` 目录加载资源；旧 `stage-fx.js` 入口已删除，电视端继续使用拆分后的特效脚本。
 - [ ] shared 模块禁止反向依赖 phone/tv；原生桥、内部事件、`LovI18n` 和 API 返回模型补齐类型声明。
 - [ ] 将上述脚本纳入 TypeScript 检查，清空现有 bridge / `Song.song_id` / 学习状态漂移错误。
 - [ ] 验收：`npm run check` 绿色，且 phone/tv 入口各有独立模块加载测试。

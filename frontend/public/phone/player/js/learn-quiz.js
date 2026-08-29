@@ -1,6 +1,6 @@
-import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
-import { t } from "../../../../shared/i18n/js/i18n.js";
-import { celebrateCorrect, playMissSfx } from "./fx.js";
+import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
+import { t } from "../../../shared/i18n/js/i18n.js";
+import { celebrateCorrect, playMissSfx } from "./learn-fx.js";
 import {
   cancelCueWindow,
   cancelLineHold,
@@ -10,7 +10,7 @@ import {
   needsLineHold,
   paintLearnLine,
   playCueWindow
-} from "./play.js";
+} from "./learn-play.js";
 
 let syncRaf = 0;
 

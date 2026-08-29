@@ -3,7 +3,7 @@ import { applyLyricMode, paintLine } from "../../../shared/lyrics/js/paint.js";
 import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js";
-import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./lyric/clock.js";
+import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./lyric-clock.js";
 import {
   nativeMtvAvailable,
   nativeMtvDurationMs,

@@ -1,7 +1,14 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { tvBound } from "../../origin.js";
-import { hasNativeScan as nativePhone } from "../../platform.js";
+
+function nativePhone() {
+  try {
+    return typeof window.LovKtvPhone !== "undefined" && typeof window.LovKtvPhone.scanTv === "function";
+  } catch (err) {
+    return false;
+  }
+}
 
 export const WHO_ICO =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 1.8c-4.2 0-7.6 2.1-7.6 4.7V20h15.2v-1.5c0-2.6-3.4-4.7-7.6-4.7z"/></svg>';

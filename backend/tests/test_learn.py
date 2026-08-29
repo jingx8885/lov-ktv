@@ -211,16 +211,16 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnFx"' in html
     shell = (root / "phone" / "player" / "js" / "learn.js").read_text(encoding="utf-8")
     css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
-    quiz = (root / "phone" / "player" / "js" / "learn" / "quiz.js").read_text(
+    quiz = (root / "phone" / "player" / "js" / "learn-quiz.js").read_text(
         encoding="utf-8"
     )
-    tap = (root / "phone" / "player" / "js" / "learn" / "tap.js").read_text(
+    tap = (root / "phone" / "player" / "js" / "learn-tap.js").read_text(
         encoding="utf-8"
     )
-    echo = (root / "phone" / "player" / "js" / "learn" / "echo.js").read_text(
+    echo = (root / "phone" / "player" / "js" / "learn-echo.js").read_text(
         encoding="utf-8"
     )
-    fx = (root / "phone" / "player" / "js" / "learn" / "fx.js").read_text(
+    fx = (root / "phone" / "player" / "js" / "learn-fx.js").read_text(
         encoding="utf-8"
     )
     assert ".learn-body[hidden]" in css
@@ -255,7 +255,7 @@ def test_phone_learn_shell_is_wired():
     assert "kickPlayerPaint" in (
         root / "phone" / "player" / "js" / "lyrics.js"
     ).read_text(encoding="utf-8")
-    play = (root / "phone" / "player" / "js" / "learn" / "play.js").read_text(
+    play = (root / "phone" / "player" / "js" / "learn-play.js").read_text(
         encoding="utf-8"
     )
     assert "setLearnDiff" in play
@@ -270,7 +270,7 @@ def test_phone_learn_shell_is_wired():
     assert "holdAfterLine" in quiz
     assert "holdAfterLine" in tap
     rtc = (root / "phone" / "room" / "js" / "rtc.js").read_text(encoding="utf-8")
-    assert 'from "../../platform.js"' in rtc
+    assert "LovKtvNative" in rtc
     assert "usesNativeMic" in rtc
     assert "phone.mic.needTv" in rtc
     assert "paintLearnLine" in quiz
@@ -286,7 +286,7 @@ def test_phone_learn_shell_is_wired():
     assert "lineAt" in tap
     assert "scatterTiles" in tap
     assert "TILE_SKINS" in tap
-    assert "LovStageFxRuntime" in tap
+    assert "LovStageFx" not in tap
     assert "--tile-bg" in tap
     assert "bindEcho" in echo
     assert "export function singWindowEnd" in echo
@@ -313,11 +313,11 @@ def test_phone_learn_shell_is_wired():
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import config, main, store
+    from lovktv import main, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
-    config.MEDIA_DIR = store.MEDIA_DIR
+    main.MEDIA_DIR = store.MEDIA_DIR
     store.init_db()
     song = store.create_song("群青", "YOASOBI", "ja")
     store.update_song(song["id"], status="ready")

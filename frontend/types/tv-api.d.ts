@@ -69,6 +69,5 @@ interface TvState {
   resumeAt: number;
   emptyNow: number;
   mediaStall: number;
-  mediaFallback: string;
   lastRecoverAt: number;
 }

@@ -37,6 +37,17 @@ export function stopNativeMtv() {
   }
 }
 
+export function clearNativeLyrics() {
+  const native = bridge();
+  if (!native || typeof native.clearLyrics !== "function") return false;
+  try {
+    native.clearLyrics();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 export function pauseNativeMtv() {
   const native = bridge();
   if (!native || typeof native.pauseMtv !== "function") return false;
@@ -119,14 +130,3 @@ export function nativeSetupAvailable() {
 export function hasNativeTv() {
   return !!bridge();
 }
-
-/** Named ports keep browser and Android-TV playback on one capability shape. */
-export const tvPlatform = {
-  http: { available: () => true, fetchJson: null },
-  media: { url: (path) => String(path || "") },
-  mic: { available: hasNativeTv },
-  remote: { available: hasNativeTv },
-  scanner: { available: () => false }
-};
-
-export const platform = tvPlatform;

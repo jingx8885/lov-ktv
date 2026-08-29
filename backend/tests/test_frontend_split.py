@@ -19,7 +19,7 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     http = (ROOT / "shared" / "ui" / "js" / "http.js").read_text(encoding="utf-8")
     join = (ROOT / "phone" / "room" / "js" / "join.js").read_text(encoding="utf-8")
     assert "X-LovKtv-Machine" in http
-    assert "LovKtvPlatform.http" in http
+    assert "LovKtvPlatform" not in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
     for module in (
@@ -34,7 +34,7 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert (ROOT / "phone" / "player" / "js" / "learn.js").is_file()
     assert (ROOT / "phone" / "player" / "css" / "learn.css").is_file()
     assert (ROOT / "tv" / "auth" / "js" / "login.js").is_file()
-    assert (ROOT / "shared" / "audio" / "js" / "aec" / "worklet.js").is_file()
+    assert (ROOT / "shared" / "audio" / "js" / "aec-worklet.js").is_file()
     assert (ROOT / "landing" / "css" / "landing.css").is_file()
     assert (ROOT / "brand" / "logo.svg").is_file()
     assert (ROOT / "brand" / "icon.png").is_file()
@@ -74,8 +74,12 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/phone/player/css/learn-tap.css",
             "/phone/player/css/learn-echo.css",
             "/phone/player/js/learn.js",
-            "/phone/player/js/learn/fx.js",
-            "/phone/player/js/learn/tap.js",
+            "/phone/player/js/learn-echo.js",
+            "/phone/player/js/learn-fx.js",
+            "/phone/player/js/learn-play.js",
+            "/phone/player/js/learn-quiz.js",
+            "/phone/player/js/learn-tap.js",
+            "/phone/room/js/native-mic.js",
             "/tv/fx/js/stage-fx/primitives.js",
             "/tv/fx/js/stage-fx/build.js",
             "/tv/fx/js/stage-fx/draw.js",
@@ -84,7 +88,10 @@ def test_split_assets_are_served(tmp_path, monkeypatch):
             "/tv/fx/js/stage-fx/hooks.js",
             "/tv/stage/css/stage.css",
             "/shared/audio/js/aec.js",
-            "/shared/audio/js/aec/worklet.js",
+            "/shared/audio/js/aec-worklet.js",
+            "/shared/audio/js/rtc-mic.js",
+            "/tv/playback/js/lyric-clock.js",
+            "/tv/playback/js/room-state.js",
             "/landing/css/landing.css",
             "/brand/logo.svg",
             "/brand/icon.png",

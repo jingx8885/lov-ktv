@@ -24,7 +24,7 @@
     }
     ctx = new AC();
     workletReady = ctx.audioWorklet
-      .addModule("/shared/audio/js/aec/worklet.js")
+      .addModule("/shared/audio/js/aec-worklet.js")
       .then(() => ctx)
       .catch(() => {
         workletReady = null;

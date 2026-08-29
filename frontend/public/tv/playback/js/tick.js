@@ -8,8 +8,8 @@ import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } f
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
-import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room/state.js";
-import { nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
+import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room-state.js";
+import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
 
 export { roomWsLive, watchRoom };
 
@@ -95,29 +95,6 @@ function recoverSameSrc(el) {
   );
 }
 
-function bindKaraokeFallback(karaoke, vocal, songId) {
-  karaoke.onerror = () => {
-    const t = karaoke.currentTime || state.resumeAt || 0;
-    if (t > 0.5) {
-      state.resumeAt = t;
-      return;
-    }
-    if (state.mediaFallback === songId) return;
-    state.mediaFallback = songId;
-    karaoke.src = mediaUrl(songId, "original.mp3");
-    karaoke.onloadedmetadata = () => {
-      restoreResume(karaoke);
-      syncVocal(karaoke.currentTime || 0);
-    };
-  };
-  vocal.onerror = () => {
-    const t = vocal.currentTime || state.resumeAt || 0;
-    if (t > 0.5 || String(vocal.getAttribute("src") || "").includes("guide.m4a")) return;
-    vocal.src = mediaUrl(songId, "guide.m4a");
-    vocal.onloadedmetadata = () => restoreResume(vocal);
-  };
-}
-
 export function claimLeader() {
   if (state.isLeader) return;
   state.isLeader = true;
@@ -149,7 +126,6 @@ export function stopPlayback() {
   state.resumeAt = 0;
   state.emptyNow = 0;
   state.mediaStall = 0;
-  state.mediaFallback = "";
   state.lastRecoverAt = 0;
   state.lyricPaint.prev = "";
   state.lyricPaint.cur = "";
@@ -164,6 +140,7 @@ export function stopPlayback() {
   state.boundMtvSong = "";
   document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player");
   stopNativeMtv();
+  clearNativeLyrics();
   state.lastFxCue = -1;
   state.hookLines = new Set();
   if (state.stageFx) state.stageFx.clear();
@@ -310,11 +287,9 @@ export function startPlayback() {
     return;
   }
   state.resumeAt = 0;
-  state.mediaFallback = "";
   state.mediaStall = 0;
   karaoke.src = mediaUrl(songId, "karaoke.m4a");
   vocal.src = mediaUrl(songId, "original.mp3");
-  bindKaraokeFallback(karaoke, vocal, songId);
   applyMix();
   silenceMtv($("mtv"));
   if (state.audioUnlocked) api.hookAudio();
