@@ -1,5 +1,6 @@
 package com.lovktv.tv.ui
 
+import com.lovktv.tv.R
 
 import android.app.Activity
 import android.content.Intent

@@ -1,5 +1,6 @@
 package com.lovktv.tv.room
 
+import com.lovktv.tv.media.CachedSong
 
 import org.json.JSONArray
 import org.json.JSONObject

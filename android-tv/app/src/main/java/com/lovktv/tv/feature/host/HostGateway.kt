@@ -1,5 +1,8 @@
 package com.lovktv.tv.feature.host
 
+import com.lovktv.tv.media.MediaCache
+import com.lovktv.tv.platform.AssetRev
+import com.lovktv.tv.network.LanMic
 
 sealed class ApiKind {
     data object Host : ApiKind()
@@ -17,9 +20,6 @@ sealed class ApiKind {
     data object Static : ApiKind()
 }
 
-import com.lovktv.tv.media.MediaCache
-import com.lovktv.tv.platform.AssetRev
-import com.lovktv.tv.network.LanMic
 data class HostInfo(
     val origin: String,
     val processOrigin: String,

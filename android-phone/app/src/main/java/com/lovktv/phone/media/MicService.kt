@@ -2,6 +2,7 @@ package com.lovktv.phone.media
 
 import com.lovktv.phone.R
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,6 +10,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -127,6 +129,9 @@ class MicService : Service() {
     }
 
     private fun openRecord(rate: Int): AudioRecord? {
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            return null
+        }
         val sources = listOf(
             MediaRecorder.AudioSource.UNPROCESSED,
             MediaRecorder.AudioSource.VOICE_RECOGNITION,
@@ -140,6 +145,7 @@ class MicService : Service() {
         return null
     }
 
+    @SuppressLint("MissingPermission")
     private fun buildRecord(source: Int, rate: Int): AudioRecord? {
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (min <= 0) return null
