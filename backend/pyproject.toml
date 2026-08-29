@@ -16,6 +16,7 @@ dependencies = [
   "onnxruntime>=1.18",
   "psycopg[binary]>=3.2",
   "lyric-align>=0.3",
+  "pycryptodome>=3.20",
 ]
 
 [project.optional-dependencies]

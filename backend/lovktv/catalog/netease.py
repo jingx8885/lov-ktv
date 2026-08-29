@@ -32,6 +32,19 @@ def china_ip() -> str:
 
 
 def aes_ecb_encrypt(plain: bytes, key: bytes = EAPI_KEY) -> bytes:
+    """Encrypt EAPI payloads without requiring a system OpenSSL binary.
+
+    PyCryptodome is used in normal deployments so Windows and slim containers
+    behave like Linux hosts.  Keep the subprocess fallback for installations
+    that deliberately omit the optional crypto wheel.
+    """
+    try:
+        from Crypto.Cipher import AES
+
+        pad = 16 - (len(plain) % 16)
+        return AES.new(key, AES.MODE_ECB).encrypt(plain + bytes([pad]) * pad)
+    except ImportError:
+        pass
     result = subprocess.run(
         ["openssl", "enc", "-aes-128-ecb", "-K", key.hex(), "-nosalt"],
         input=plain,
