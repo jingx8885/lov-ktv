@@ -26,7 +26,9 @@ _INDEX_UNIT = re.compile(r"^\d+\.$")
 _LATIN_PART = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
 _LATIN_WORD = re.compile(r"[A-Za-z]+")
 _HIRA = re.compile(r"[\u3040-\u309f]")
-ANNOTATION_SCHEMA = "restore-ja-v1"
+# The agent also supplies Chinese line/unit meanings. Bump the cache schema so
+# old literal glosses are regenerated after semantic-translation prompt changes.
+ANNOTATION_SCHEMA = "restore-ja-v3"
 
 SYSTEM = """You restore Japanese karaoke lyrics and annotate them.
 Return JSON only:
@@ -41,8 +43,12 @@ Rules:
 6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
 7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
 8. Already-English words in the lyric (Give a reason, Here we go): keep them in `sing`; `label` and `romaji` empty.
-9. Every line MUST include `zh`: a natural Simplified Chinese translation of the whole sung line. No notes, no brackets.
-10. Every unit MUST include `zh`: a short Chinese gloss (usually 1–6 characters). の→的, に→在, メモリー→记忆.
+9. Every line MUST include `zh`: a faithful, clear Simplified Chinese translation of the whole sung line. Keep close to the source wording and structure; use the complete line, surrounding input lines, song title, and artist to resolve meaning. Make only the smallest adjustment needed for understandable Chinese—do not freely paraphrase or add poetic information. Preserve agency, negation, tense/aspect, modality, and emotional tone. No notes, no brackets.
+10. Every unit MUST include the `zh` key. Its value is a short *contextual contribution* (usually 1–6 Chinese characters), not a dictionary definition. If a Japanese word/compound is written in Hanzi that modern Chinese can directly understand, prefer copying that same Hanzi into `zh`, converting Japanese/traditional forms to Simplified Chinese as needed (for example, 電光石火 → 电光石火, not “转瞬即逝”). Only change it when it is a Japanese false friend or would mislead in this line.
+11. Resolve remaining ambiguity from grammar and lyric context (for example, 君 can be “你” or “君”; miss can be “想念” or “错过”). Keep the closest understandable meaning, without freer poetic paraphrase.
+12. Particles and function words are grammatical. Their `zh` may be empty (`""`) when Chinese word order or the whole-line translation already expresses them. If they add meaning, use the contextual relation; never use fixed mappings such as の→的, に→在, を→把, は→是. Do not force a Chinese word for every token.
+13. Several source units may share one Chinese phrase, and a unit gloss may be empty when its meaning is absorbed by the phrase. Keep source coverage/order and let the faithful, clear line translation take priority over literal gloss alignment.
+14. Before returning, compare every unit gloss with the completed `zh` line. Remove or revise any gloss that is a literal dictionary substitute but does not express that unit's role in this line.
 """
 
 
@@ -214,7 +220,7 @@ def _request_chunk(lines: list[str], title: str, artist: str) -> list[dict[str, 
     numbered = "\n".join(f"{index + 1}. {line}" for index, line in enumerate(lines))
     user = (
         f"Song: {title} / {artist}\n"
-        "Annotate every line below. Keep source exactly the same.\n\n"
+        "Annotate every line below. Read the batch as surrounding lyric context when choosing readings and Chinese meanings; keep source exactly the same. The faithful, clear whole-line Chinese meaning takes priority over literal unit glosses.\n\n"
         f"{numbered}"
     )
     payload = complete_json(

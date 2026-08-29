@@ -19,20 +19,33 @@ from lovktv.agents.ja_lyrics import (
     lyric_source_key,
 )
 
-TRANSLATE_SCHEMA = "lovjpn-zh-v1"
+# Bump this whenever the semantic-translation instructions change.  Existing
+# notes contain per-word glosses and must not silently survive a prompt change.
+TRANSLATE_SCHEMA = "lovjpn-zh-v3"
 CHINESE_LANGS = {"zh", "zh-cn", "zh-hans", "zh-hant", "yue", "cmn", "chinese"}
 
-SYSTEM = """You translate karaoke lyrics for Chinese singers.
+SYSTEM = """You translate karaoke lyrics for Chinese singers. Aim for a faithful,
+literal-first Chinese translation that is easy to understand. Read the whole
+batch as context and use the song title, artist, surrounding lines, grammar,
+tense, tone, and imagery to resolve each line. Keep the original meaning and
+structure whenever Chinese permits; make only the smallest adjustment needed
+when a literal rendering would be ungrammatical, ambiguous, or misleading. Do
+not beautify, paraphrase freely, or add information. The line translation is
+the source of truth; word glosses explain how words contribute to that line.
 Return JSON only:
-{"lines":[{"source":"<exact original line>","zh":"<natural Simplified Chinese>","units":[{"sing":"<surface>","zh":"<short gloss>"}]}]}
+{"lines":[{"source":"<exact original line>","zh":"<faithful, clear Simplified Chinese>","units":[{"sing":"<surface>","zh":"<short contextual gloss>"}]}]}
 
 Rules:
 1. `source` must equal the input line exactly.
-2. `zh` is one natural Chinese sentence/phrase for the whole sung line. Do not leave it empty. Do not explain. Do not add 括号备注.
-3. `units` follow the sung words in order. `sing` is the surface from the line (Japanese kana/kanji, English word, etc). `zh` is a short gloss, usually 1–6 Chinese characters.
-4. Particles / function words still get a gloss: の→的, に→在, を→把, は→是, the→这, a→一个.
-5. Keep the same number of units as meaningful sung pieces. Do not invent extra words.
-6. Already-Chinese lines: copy the line into `zh` and leave unit glosses empty.
+2. `zh` is one faithful, clear Simplified Chinese sentence/phrase for the whole sung line. Preserve who does what to whom, negation, tense/aspect, modality, and emotional tone. Stay as close to the source wording as Chinese allows; do not freely paraphrase, explain, or add 括号备注.
+3. `units` follow the sung pieces in order. `sing` is the surface from the line (Japanese kana/kanji, English word, etc.). A unit's `zh` is a concise *contextual contribution* to the line, normally 1–6 Chinese characters, not a dictionary definition.
+4. When a Japanese source word/compound is written in Hanzi that is directly understandable in modern Chinese, prefer copying that same Hanzi into its unit `zh` (and retain it in the line translation), converting Japanese/traditional forms to Simplified Chinese as needed. For example, 電光石火 → 电光石火; do not rewrite it as “转瞬即逝”. Only change it when the Japanese and Chinese meanings differ or copying it would mislead (a Japanese false friend); then make the smallest context-appropriate correction.
+5. Resolve remaining polysemy from context (for example, Japanese 君 may be “你” or “君”; English miss may be “想念” or “错过”). Prefer the closest sense that makes the whole line understandable and coherent with nearby lines. Do not preserve a dictionary/literal sense when it would change the lyric's meaning, but do not replace it with a freer poetic interpretation either.
+6. Function words and particles are grammatical, not standalone vocabulary. Their `zh` may be empty (`""`) when their meaning is already expressed by Chinese word order, aspect, or the line gloss. If they do contribute meaning, use the contextual relation (such as “向/对/从/把/的/吗”), never a fixed mapping. Do not force a visible Chinese word for every particle.
+7. Units may be grouped at natural sung-word boundaries. Keep the same source coverage and order; do not invent extra source words. It is acceptable for several source units to share one Chinese phrase, or for a unit's gloss to be empty when the line translation absorbs it.
+8. Already-Chinese lines: copy the line into `zh` and leave unit glosses empty.
+9. Return every requested line, including repeated lines. Keep each `source` exact.
+10. Before returning, compare every unit gloss with the completed `zh` line. Remove or revise any gloss that is a literal dictionary substitute but does not express that unit's role in this line.
 """
 
 
@@ -86,7 +99,7 @@ def translate_lines(
         user = (
             f"Song: {title} / {artist}\n"
             f"Language: {lang}\n"
-            "Translate every line below. Keep source exactly the same.\n\n"
+            "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses.\n\n"
             f"{numbered}"
         )
         payload = complete_json(
