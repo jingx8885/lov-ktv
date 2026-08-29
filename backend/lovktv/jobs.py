@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import threading
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Protocol
 
 from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation, line_is_romaji
 from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, translate_lines
@@ -24,7 +24,55 @@ from lovktv.pipeline.lyrics import (
 from lovktv.pipeline.mtv import compose_mtv
 from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
-from lovktv.store import get_song, list_songs, retry_query, update_song
+from lovktv import store as _store
+
+
+class SongRepository(Protocol):
+    """Persistence boundary for background song processing."""
+
+    def get(self, song_id: str) -> dict | None: ...
+
+    def list(self) -> list[dict]: ...
+
+    def update(self, song_id: str, **fields: Any) -> None: ...
+
+    def retry_query(self, song: dict) -> str: ...
+
+
+class StoreSongRepository:
+    """Adapter for the current store; replaceable in workers and tests."""
+
+    def get(self, song_id: str) -> dict | None:
+        return _store.get_song(song_id)
+
+    def list(self) -> list[dict]:
+        return _store.list_songs()
+
+    def update(self, song_id: str, **fields: Any) -> None:
+        _store.update_song(song_id, **fields)
+
+    def retry_query(self, song: dict) -> str:
+        return _store.retry_query(song)
+
+
+song_repository: SongRepository = StoreSongRepository()
+
+# Compatibility seams for existing callers/tests.  Worker code calls these
+# names, while the actual persistence dependency is now injected above.
+def get_song(song_id: str) -> dict | None:
+    return song_repository.get(song_id)
+
+
+def list_songs() -> list[dict]:
+    return song_repository.list()
+
+
+def update_song(song_id: str, **fields: Any) -> None:
+    song_repository.update(song_id, **fields)
+
+
+def retry_query(song: dict) -> str:
+    return song_repository.retry_query(song)
 
 
 def _publish_ready(song_id: str) -> None:

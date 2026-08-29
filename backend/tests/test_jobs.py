@@ -62,6 +62,26 @@ def test_job_queue_deduplicates_only_while_pending():
     queue._jobs.join()
 
 
+def test_song_repository_is_replaceable(monkeypatch):
+    class FakeSongs:
+        def get(self, song_id):
+            return {"id": song_id, "status": "ready"}
+
+        def list(self):
+            return [{"id": "s1"}]
+
+        def update(self, song_id, **fields):
+            return None
+
+        def retry_query(self, song):
+            return "fake query"
+
+    monkeypatch.setattr(jobs, "song_repository", FakeSongs())
+    assert jobs.get_song("s1")["status"] == "ready"
+    assert jobs.list_songs() == [{"id": "s1"}]
+    assert jobs.retry_query({}) == "fake query"
+
+
 def test_finish_ready_lyrics_forces_romaji_restore(tmp_path, monkeypatch):
     out_dir = tmp_path / "s1"
     out_dir.mkdir()
