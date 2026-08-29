@@ -1,6 +1,7 @@
 {
   "name": "lovktv-frontend",
   "private": true,
+  "type": "module",
   "scripts": {
     "check": "tsc --noEmit",
     "build:dist": "python ../scripts/build-frontend-dist.py --source public --output frontend-dist"
