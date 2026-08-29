@@ -57,7 +57,9 @@ docker compose up -d --build
 ```bash
 python -m venv .venv
 # Linux / macOS
-.venv/bin/pip install -e backend
+UV_PROJECT_ENVIRONMENT="$PWD/.venv" uv sync --project backend --extra dev --frozen
+# 搜歌回落需要：
+# brew install ffmpeg yt-dlp
 PYTHONPATH=backend .venv/bin/uvicorn lovktv.main:app --host 0.0.0.0 --port 8787
 ```
 
@@ -84,6 +86,11 @@ Windows PowerShell 可使用 `.venv\Scripts\python -m pip install -e backend`，
 | `LOVKTV_HTTPS_PROXY` | 仅供网易试听 / yt-dlp 下载链路使用的 HTTPS 代理 |
 
 不要提交 `.env`、密钥、`data/`、曲库或构建出的 APK。
+
+本地验收：`scripts/accept.sh` 使用仓库根目录 `.venv` 和锁定的 `backend/uv.lock`；公网验收可运行
+`.venv/bin/python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
+
+公网（`ktv.lovbrowser.com`，43 上只绑 `127.0.0.1:8790`）：
 
 ## 项目文档
 

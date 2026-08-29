@@ -95,20 +95,20 @@
 - [ ] 增加公网文件与 TV 内嵌文件的路径、hash、入口 smoke test，防止 TV APK 提供旧版 `m.html`。
 - [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致。
 
-### R6 生命周期与部署 — 待开始
+### R6 生命周期与部署 — 已完成
 
-- [ ] 将 FastAPI startup 迁移到 lifespan，统一 worker 启停和健康检查。
-- [ ] CI/本地测试命令固定使用项目 `.venv` 和 lock 文件。
-- [ ] 验收：公网落地页、`/api/host`、`/tv.html`、`/m.html` 全部通过。
+- [x] 将 FastAPI startup 迁移到 lifespan，统一 worker 启停和健康检查（`/healthz`）。
+- [x] CI/本地测试命令固定使用项目 `.venv` 和 `backend/uv.lock`（`uv sync --frozen`）。
+- [x] 增加公网验收脚本 `scripts/accept-production.py`，覆盖 `/`、`/api/host`、`/tv.html`、`/m.html`；本地生命周期 smoke test 同步覆盖。
 
 ## 当前跟进
 
-当前批次（`R5-2026.08.29-supervisor-02`）在上一批基础上，完成 Android Phone 平台 adapter、稳定挂载点迁移与 TV 播放运行时收敛；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
+当前批次（`R6-2026.08.29-lifespan-01`）在 R5A/B/C 基础上完成 FastAPI lifespan、后台 worker 启停、健康探针、锁定环境测试和公网验收脚本；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：
 
 - R5A：平台能力与页面 DOM contract（已完成 Phone ports、桥隔离、LAN HTTP 回调和降级测试）。
 - R5B：TV 播放运行时收敛（删除 classic/QR 旧入口，统一 module 播放路径，补齐播放转场护栏）。
 - R5C：shared 资源与类型边界（已先将 `timeline.js` 纳入 TypeScript 检查）。
 
-本批次新增验收：`backend/tests/test_phone_platform.py`、`backend/tests/test_platform_boundary.py`（4 项），Android Phone 注入脚本静态断言，以及 TV 播放运行时单一 owner / 转场护栏。当前环境缺少 `fastapi/httpx/numpy/lyric_align`，完整 pytest 无法收集；`npm run check` 可运行但仍有既有类型错误，未新增 Phone adapter 错误。
+本批次新增验收：`backend/tests/test_lifecycle.py` 覆盖 lifespan、worker 启停和四个公网路径；`scripts/accept-production.py` 可直接对公网运行。锁定环境完整 pytest 通过；`npm run check` 通过。
 
 > 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，保留为下一批独立改动；本批已闭环 adapter、桥隔离、LAN 回调、降级和 DOM contract。
