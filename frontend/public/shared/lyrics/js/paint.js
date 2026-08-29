@@ -26,7 +26,7 @@ export function lyricModeForScript(mode, script) {
   return next;
 }
 
-/** @param {HTMLElement | Document} [root] @param {unknown} [value] */
+/** @param {HTMLElement | Document} [root] @param {unknown} [value] @param {string} [language] */
 export function applyLyricMode(root, value, language) {
   const el = root && "dataset" in root ? root : document.body;
   const script = language !== undefined ? lyricScript(language) : String(el.dataset.lyricScript || "");

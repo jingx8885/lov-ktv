@@ -165,7 +165,7 @@
             sides,
             delay: d,
             color,
-            rEnd: minD * s,
+            rEnd: minD * Number(s),
             w: minD * (0.034 - i * 0.007),
           });
         });

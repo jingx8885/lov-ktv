@@ -51,6 +51,7 @@ interface LovMicHandlers {
 
 interface LovMicSession {
   peerId: string;
+  native?: boolean;
   connect(roomCode: string, handlers?: LovMicHandlers): void;
   disconnect(): void;
   send(msg: unknown): void;
@@ -133,11 +134,12 @@ interface StageFxHandle {
 }
 
 interface LovStageFxApi {
+  EFFECTS: readonly string[];
   create(el: HTMLElement | null): StageFxHandle;
   bindParty(el: HTMLElement | null): void;
   celebrate(kind?: string): void;
   hookTexts(cues?: LyricCue[] | null): Set<string>;
-  reduceMotion?: boolean;
+  reduceMotion?: (() => boolean) | boolean;
 }
 
 interface KeepAliveTone {
@@ -151,7 +153,46 @@ interface LovKtvRemoteApi {
   volumeUp(): void | Promise<void>;
   volumeDown(): void | Promise<void>;
   confirm(): void;
-  start(): boolean;
+  start(): void | boolean;
+  togglePaused?: () => void | Promise<void>;
+  settings?: () => void | boolean;
+  back?: () => void | boolean;
+  __ready?: boolean;
+  __module?: boolean;
+}
+
+interface LovI18nApi {
+  LOCALES: readonly string[];
+  t(key: string, vars?: Record<string, string | number>): string;
+  lang(): string;
+  setLang(next: string): string;
+  applyDom(root?: ParentNode): void;
+  bindLangPicker(root?: ParentNode): void;
+  onLangChange(fn: (lang: string) => void): () => boolean;
+  acceptLanguage(): string;
+  parseLang(raw: string): string;
+  bootI18n(): string;
+}
+
+interface LovKtvNativeBridge {
+  startMic?: () => void;
+  stopMic?: () => void;
+  isMicLive?: () => boolean;
+  hasLanMic?: () => boolean;
+  openSetup?: () => void;
+  stopMtv?: () => void;
+  playMtv?: (url: string) => void;
+  pauseMtv?: () => void;
+  resumeMtv?: () => void;
+  clearLyrics?: () => void;
+  startTvMic?: () => void;
+  stopTvMic?: () => void;
+  startIem?: () => void;
+  stopIem?: () => void;
+  capabilities?: () => string;
+  state?: () => string;
+  setGain?: (value: number) => void;
+  [key: string]: unknown;
 }
 
 interface LovKtvPhoneBridge {
@@ -177,6 +218,14 @@ interface Window {
   LovStageFx?: LovStageFxApi;
   LovKtvRemote?: LovKtvRemoteApi;
   LovKtvPhone?: LovKtvPhoneBridge;
+  LovI18n?: LovI18nApi;
+  LovKtvNative?: LovKtvNativeBridge;
+  LovKtvOnMic?: ((ok: boolean, err?: string) => void) | null;
+  LovKtvOnHttp?: (msg: { id?: string; ok?: boolean; status?: number; body?: unknown }) => void;
+  __lovktvLanFetch?: boolean;
+  __lovktvNativeLan?: boolean;
+  __lovktvPlayBooted?: boolean;
+  __lovktvQrBooted?: boolean;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
 }
 
@@ -190,6 +239,9 @@ declare function qrcode(typeNumber: number, errorCorrectionLevel: string): {
   addData(data: string): void;
   make(): void;
   createSvgTag(cellSize?: number, margin?: number): string;
+  createImgTag?(cellSize?: number, margin?: number): string;
+  getModuleCount?(): number;
+  isDark?(row: number, col: number): boolean;
 };
 
 interface Element {
@@ -198,6 +250,23 @@ interface Element {
   style: CSSStyleDeclaration;
   disabled: boolean;
   hidden: boolean;
+  value: string;
+  blur?: () => void;
+}
+
+interface HTMLElement {
+  href?: string;
+  muted?: boolean;
+  defaultMuted?: boolean;
+  volume?: number;
+  currentTime?: number;
+  duration?: number;
+  paused?: boolean;
+  ended?: boolean;
+  src?: string;
+  play?: () => Promise<void>;
+  pause?: () => void;
+  load?: () => void;
 }
 
 interface EventTarget {

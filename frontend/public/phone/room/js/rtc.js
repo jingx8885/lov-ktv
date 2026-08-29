@@ -51,6 +51,7 @@ function nativeStartMic() {
 
 function createNativeRtc() {
   return {
+    peerId: "native",
     native: true,
     isLive() {
       const n = nativeMic();
@@ -66,9 +67,12 @@ function createNativeRtc() {
       if (n && typeof n.stopMic === "function") n.stopMic();
     },
     connect() {},
+    send() {},
     makeOffer: async () => {},
-    handleAnswer() {},
-    addIce() {},
+    handleAnswer: async () => {},
+    handleOffer: async () => {},
+    addIce: async () => {},
+    resetPc: async () => {},
   };
 }
 

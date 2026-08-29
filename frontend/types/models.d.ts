@@ -25,6 +25,7 @@ interface SearchHit {
 
 interface Song {
   id: string;
+  song_id?: string;
   title: string;
   artist?: string;
   language?: string;
@@ -81,6 +82,7 @@ interface LyricCue {
 interface LyricsDoc {
   cues: LyricCue[];
   native_video?: boolean;
+  language?: string;
 }
 
 interface MtvSkeleton {
@@ -108,6 +110,7 @@ interface SearchPage {
   hits?: SearchHit[];
   has_more?: boolean;
   detail?: string;
+  page?: number;
 }
 
 interface PhoneLibState {
@@ -200,6 +203,7 @@ interface LearnEchoSession {
   running: boolean;
   review: ((action: LearnEchoReview) => void) | null;
   previewUrl: string;
+  skipped?: boolean;
 }
 
 type LearnEchoReview = "next" | "retry" | "skip" | "stop";

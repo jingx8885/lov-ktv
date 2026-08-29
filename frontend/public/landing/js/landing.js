@@ -23,7 +23,7 @@ if (hero && !reduced) {
 }
 
 document.querySelectorAll(".lp-features article").forEach((card) => {
-  card.addEventListener("pointermove", (event) => {
+  card.addEventListener("pointermove", /** @param {PointerEvent} event */ (event) => {
     const box = card.getBoundingClientRect();
     card.style.setProperty("--mx", `${event.clientX - box.left}px`);
     card.style.setProperty("--my", `${event.clientY - box.top}px`);

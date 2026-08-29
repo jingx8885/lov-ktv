@@ -153,7 +153,7 @@ export function bindMix() {
     if (api.needTvOrRoom && api.needTvOrRoom()) return;
     $("skip").disabled = true;
     try {
-      /** @type {{ data: Room }} */
+      /** @type {{ ok: boolean, data: Room }} */
       const skipHit = await fetchJson(roomUrl(`/api/rooms/${code}/skip`), { method: "POST" });
       if (!skipHit.ok || !skipHit.data || !skipHit.data.code) {
         showToast(lanOrigin() ? t("phone.room.lanFail") : (skipHit.data.detail || t("phone.desk.cantQueue")));
