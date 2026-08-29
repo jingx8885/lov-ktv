@@ -15,6 +15,7 @@ from lovktv.catalog.audio import (
 from lovktv.catalog.index import prefer_native_library, query_library, song_letter
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
+from lovktv.domain.timeline import normalize_timeline
 from lovktv.i18n import localize_exc, localize_song, request_lang
 from lovktv.i18n import t as i18n_t
 from lovktv.jobs import process_import, process_realign, process_upload, spawn
@@ -31,7 +32,6 @@ from lovktv.store import (
     update_song,
     with_media_flags,
 )
-from lovktv.timeline_contract import normalize_timeline
 
 router = APIRouter()
 

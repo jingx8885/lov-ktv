@@ -11,8 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from lovktv.contracts import RoomAction, RoomSnapshot
-from lovktv.room_contract import normalize_command, normalize_room_code
+from lovktv.domain.contracts import RoomAction, RoomSnapshot
+from lovktv.domain.room_contract import normalize_command, normalize_room_code
 from lovktv.room_store import RoomRepository, SqliteRoomStore
 
 

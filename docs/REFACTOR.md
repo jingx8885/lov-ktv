@@ -108,6 +108,7 @@
 - 删除 `catalog/fetch.py` 聚合门面和 `lovktv.catalog` 包级旧导出，调用方改用 `audio`、`search`、`lyrics`、`importer` 职责模块。
 - 将歌词编排实现归位到 `pipeline/orchestrator.py`，移除 `pipeline/align.py` 旧别名入口。
 - 删除 `main` 的动态路由再导出、`runtime` 对 `main` 的反向兼容 helper，以及 `store` 的房间函数兼容导出；公网 API 路径与房间 WebSocket 消息格式不变。
+- 房间与时间轴契约归档到 `lovktv/domain/`，根级契约入口同步移除；`domain` 保持纯协议定义，不反向依赖路由或存储。
 
 ## 当前跟进
 

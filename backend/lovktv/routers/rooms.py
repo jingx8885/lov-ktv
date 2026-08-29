@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from lovktv import store
 from lovktv.api_models import RoomCommandPayload, RoomLanPayload
+from lovktv.domain.room_contract import normalize_playback_event
 from lovktv.i18n import (
     localize_error_text,
     localize_exc,
@@ -13,7 +14,6 @@ from lovktv.i18n import (
     translate,
     ws_lang,
 )
-from lovktv.room_contract import normalize_playback_event
 from lovktv.room_service import RoomCommand
 from lovktv.room_store import ensure_room_for_host, room_for_hosts, set_room_lan
 from lovktv.runtime import _mics, _peers, _rooms

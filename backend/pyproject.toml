@@ -48,9 +48,9 @@ ignore = ["F403", "F405"]
 [tool.pyright]
 # Keep the gate focused on the typed contracts and alignment pipeline.
 include = [
-  "lovktv/contracts.py",
-  "lovktv/room_contract.py",
-  "lovktv/timeline_contract.py",
+  "lovktv/domain/contracts.py",
+  "lovktv/domain/room_contract.py",
+  "lovktv/domain/timeline.py",
   "lovktv/pipeline/audio.py",
   "lovktv/pipeline/orchestrator.py",
   "lovktv/pipeline/bounds.py",
