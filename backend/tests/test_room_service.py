@@ -5,6 +5,7 @@ from lovktv.room_service import RoomService
 from lovktv.room_store import SqliteRoomStore
 from lovktv.contracts import RoomAction, RoomSnapshot
 from lovktv.room_contract import normalize_room_code
+from lovktv.timeline_contract import normalize_timeline
 
 
 def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
@@ -28,6 +29,19 @@ def test_runtime_contract_normalizes_code_and_rejects_bad_code():
     assert normalize_room_code(" r1-a ") == "R1-A"
     with pytest.raises(ValueError, match="房间号无效"):
         normalize_room_code("bad room")
+
+
+def test_timeline_contract_clamps_and_orders_cues_and_tokens():
+    doc = normalize_timeline({
+        "cues": [
+            {"text": " second ", "start_ms": -4, "end_ms": 10,
+             "tokens": [{"text": "x", "start_ms": -2, "end_ms": 99}]},
+            {"text": "first", "start_ms": 20, "end_ms": 10, "tokens": []},
+        ]
+    })
+    assert [cue["text"] for cue in doc["cues"]] == ["second", "first"]
+    assert doc["cues"][0]["start_ms"] == 0
+    assert doc["cues"][0]["tokens"][0]["end_ms"] == 10
 
 
 def test_command_parsing_normalizes_transport_payload():

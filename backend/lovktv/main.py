@@ -43,6 +43,7 @@ from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_su
 from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.room_service import RoomCommand, room_service
 from lovktv.room_store import ensure_room_for_host, remember_host_room, room_for_hosts, set_room_lan
+from lovktv.timeline_contract import normalize_timeline
 from lovktv import store
 from lovktv.store import (
     confirm_login_ticket,
@@ -612,7 +613,9 @@ def api_learn(request: Request, song_id: str) -> dict:
         timeline = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         _fail(request, 409, "api.lyrics_not_ready")
-    if not isinstance(timeline, dict):
+    try:
+        timeline = normalize_timeline(timeline)
+    except ValueError as exc:
         _fail(request, 409, "api.lyrics_not_ready")
     quiz = build_learn_quiz(timeline, song, lang=request_lang(request))
     if not quiz["lines"]:
