@@ -46,6 +46,7 @@
 
 - [x] 固化后端房间 action 和 snapshot 字段契约（`contracts.py`）。
 - [x] 在前端类型层补齐房间命令和歌词 timeline 字段。
+- [x] 增加房间 code、action、暂停值的运行时规范化（`room_contract.py`）。
 - [ ] 固化播放控制、歌词 timeline 的运行时校验。
 - [ ] 前端按 `api / room-state / playback` 拆分状态，减少动态全局对象。
 - [ ] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
