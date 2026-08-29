@@ -17,3 +17,13 @@ jobs:
         run: UV_PROJECT_ENVIRONMENT="$GITHUB_WORKSPACE/.venv" uv sync --project backend --extra dev --frozen
       - name: Run backend tests
         run: PYTHONPATH=backend .venv/bin/python -m pytest -q backend/tests
+      - name: Check TV APK asset parity when an artifact is present
+        shell: bash
+        run: |
+          python scripts/build-frontend-dist.py
+          artifact="$(find android-tv/app/build/outputs -type f \( -name '*.apk' -o -name '*.aab' \) -print -quit 2>/dev/null || true)"
+          if [[ -n "$artifact" ]]; then
+            python scripts/check-asset-parity.py --artifact "$artifact" --require-artifact
+          else
+            python scripts/check-asset-parity.py
+          fi

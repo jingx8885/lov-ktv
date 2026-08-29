@@ -9,7 +9,8 @@ val buildFrontendDist = tasks.register<Exec>("buildFrontendDist") {
     workingDir(rootProject.projectDir.parentFile)
     commandLine("python", "scripts/build-frontend-dist.py", "--source", "frontend/public", "--output", "frontend/frontend-dist")
 }
-val copyWebAssets = tasks.register<Copy>("copyWebAssets") {
+// Sync removes files deleted from frontend-dist so stale assets cannot leak into an APK.
+val copyWebAssets = tasks.register<Sync>("copyWebAssets") {
     dependsOn(buildFrontendDist)
     from(frontendDist)
     into(generatedAssets.map { it.dir("web") })
