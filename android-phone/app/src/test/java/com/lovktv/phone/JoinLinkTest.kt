@@ -66,7 +66,7 @@ class DeskPageTest {
             "http://192.168.1.8:8788",
         )
         assertEquals(
-            "http://192.168.1.8:8788/m.html?room=EABAB5&v=queue3&androidphone=1&process=https%3A%2F%2Fktv.lovbrowser.com",
+            "http://192.168.1.8:8788/m.html?room=EABAB5&v=scan2&androidphone=1&process=https%3A%2F%2Fktv.lovbrowser.com",
             url,
         )
     }
@@ -74,6 +74,12 @@ class DeskPageTest {
     @Test
     fun publicDeskWhenNoLan() {
         val url = DeskPage.url("https://ktv.lovbrowser.com", "ABC123", "")
-        assertEquals("https://ktv.lovbrowser.com/m.html?room=ABC123&v=queue3&androidphone=1", url)
+        assertEquals("https://ktv.lovbrowser.com/m.html?room=ABC123&v=scan2&androidphone=1", url)
+    }
+
+    @Test
+    fun publicDeskAllowsEmptyRoom() {
+        val url = DeskPage.url("https://ktv.lovbrowser.com", "", "")
+        assertEquals("https://ktv.lovbrowser.com/m.html?room=&v=scan2&androidphone=1", url)
     }
 }

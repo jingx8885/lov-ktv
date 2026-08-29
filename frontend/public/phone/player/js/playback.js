@@ -1,8 +1,9 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { roomUrl } from "../../origin.js?v=scan1";
 import { t } from "../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js?v=paint3";
-import { paintLyricMode } from "../../room/js/mix.js?v=mix5";
+import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../shared/lyrics/js/paint.js?v=paint5";
+import { paintLyricMode } from "../../room/js/mix.js?v=scan2";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO, songLetter } from "../../ui/js/icons.js";
@@ -502,7 +503,7 @@ export async function bootPlayer() {
   if (state.playerSong) return;
   const code = $("room").value.trim();
   if (!code) return;
-  const roomHit = await fetchJson("/api/rooms/" + code).catch(() => null);
+  const roomHit = await fetchJson(roomUrl("/api/rooms/" + code)).catch(() => null);
   const room = roomHit && roomHit.data;
   if (room && room.now_playing && room.now_playing.status === "ready") {
     await loadPlayerSong(room.now_playing.song_id);
@@ -551,6 +552,9 @@ export function bindPlayback() {
   $("playerOrder").onclick = () => togglePlayOrder();
   $("playerNextBtn").onclick = () => playNextSong();
   updatePlayOrderBtns();
-  $("playerToDesk").onclick = () => api.showPage("desk");
+  $("playerToDesk").onclick = () => {
+    if (api.requestTvBind && api.requestTvBind()) return;
+    api.showPage("desk");
+  };
 }
 

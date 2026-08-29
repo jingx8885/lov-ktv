@@ -3,16 +3,49 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { mediaUrl } from "./mix.js?v=stall1";
 
-export function silenceMtv(mtv) {
+function nativePlayer() {
+  return window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function";
+}
+
+function killHtmlMtv(mtv) {
+  if (!mtv) return;
   mtv.muted = true;
   mtv.defaultMuted = true;
   mtv.volume = 0;
+  mtv.hidden = true;
+  mtv.pause();
+  if (mtv.getAttribute("src") || mtv.src) {
+    mtv.removeAttribute("src");
+    try { mtv.load(); } catch (err) {}
+  }
+}
+
+function glassStage(on) {
+  const root = document.documentElement;
+  const body = document.body;
+  if (root) {
+    root.style.background = on ? "transparent" : "";
+    root.style.backgroundColor = on ? "transparent" : "";
+  }
+  if (body) {
+    body.style.background = on ? "transparent" : "";
+    body.style.backgroundColor = on ? "transparent" : "";
+  }
+}
+
+export function silenceMtv(mtv) {
+  if (!mtv) return;
+  mtv.muted = true;
+  mtv.defaultMuted = true;
+  mtv.volume = 0;
+  if (nativePlayer()) killHtmlMtv(mtv);
 }
 
 export function nativeMv() {
   return !!(
     (state.skeleton && state.skeleton.has_video)
     || (state.lyrics && state.lyrics.native_video === true)
+    || document.body.classList.contains("has-native-player")
   );
 }
 
@@ -41,24 +74,41 @@ export function syncNativeMv() {
 export function bindMtv(songId) {
   const mtv = $("mtv");
   if (!songId) return;
+  const htmlSrc = mediaUrl(songId, "mtv.mp4");
+  const abs = (location.origin || "") + htmlSrc;
+  if (nativePlayer()) {
+    killHtmlMtv(mtv);
+    document.body.classList.add("has-mtv", "has-native-player");
+    glassStage(true);
+    syncNativeMv();
+    if (state.boundMtvSong === songId) return;
+    state.boundMtvSong = songId;
+    try { window.LovKtvNative.playMtv(abs); } catch (err) {}
+    return;
+  }
   if (state.boundMtvSong === songId && (mtv.getAttribute("src") || mtv.src)) return;
   state.boundMtvSong = songId;
   syncNativeMv();
+  const cover = mediaUrl(songId, "cover.jpg");
   silenceMtv(mtv);
   mtv.onerror = () => {
+    document.body.classList.add("has-mtv-cover");
+    document.body.style.backgroundImage = "url(" + cover + ")";
     if (document.body.classList.contains("has-mtv")) return;
     mtv.hidden = true;
-    document.body.classList.remove("has-mtv", "has-native-mv");
+    document.body.classList.remove("has-mtv");
     state.boundMtvSong = "";
   };
   mtv.onloadeddata = () => {
     silenceMtv(mtv);
     mtv.hidden = false;
     document.body.classList.add("has-mtv");
+    document.body.classList.remove("has-mtv-cover");
+    document.body.style.backgroundImage = "";
     syncNativeMv();
     if (api.canPlay()) mtv.play().catch(() => {});
   };
-  mtv.src = mediaUrl(songId, "mtv.mp4");
+  mtv.src = htmlSrc;
   silenceMtv(mtv);
 }
 

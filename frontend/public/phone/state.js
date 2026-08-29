@@ -10,6 +10,11 @@ export const state = guardState({
   libState: { q: "", by: "all", letter: "", page: 1 },
   libTimer: 0,
   libStamp: "",
+  libSongs: [],
+  libLoading: false,
+  libPages: 1,
+  searchLoading: false,
+  searchHasMore: false,
   playerSong: null,
   playerLyrics: { cues: [] },
   selectedCue: -1,
@@ -42,6 +47,8 @@ export const state = guardState({
   phoneCtx: null,
   phoneMicLevel: Number(localStorage.getItem("phoneMicGain") || 80),
   phoneIem: localStorage.getItem("phoneIem") !== "0",
+  phoneNativeLive: false,
+  phoneStartedTv: false,
 }, "phone");
 
 export const STEP_MS = 100;

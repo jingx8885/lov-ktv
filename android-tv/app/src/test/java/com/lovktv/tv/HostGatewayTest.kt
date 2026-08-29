@@ -9,7 +9,7 @@ class HostGatewayTest {
     @Test
     fun phoneUrlUsesLanOriginAndRoom() {
         val url = HostGateway.phoneUrl("http://192.168.1.8:8787", "EABAB5")
-        assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue3", url)
+        assertEquals("http://192.168.1.8:8787/m.html?room=EABAB5&v=queue4", url)
     }
 
     @Test
@@ -55,7 +55,7 @@ class HostGatewayTest {
         assertEquals("http://10.0.2.2:8787", payload.processOrigin)
         assertEquals("/m.html?room=EABAB5", payload.phonePath)
         assertEquals(
-            "http://10.0.2.2:8787/m.html?room=EABAB5&v=queue3&lan=http%3A%2F%2F192.168.1.8%3A8787",
+            "http://192.168.1.8:8787/m.html?room=EABAB5&v=queue4&process=http%3A%2F%2F10.0.2.2%3A8787",
             payload.phoneUrl,
         )
         assertEquals("EABAB5", payload.room)
@@ -70,7 +70,7 @@ class HostGatewayTest {
     }
 
     @Test
-    fun hostPayloadPhoneUrlUsesPublicProcessOrigin() {
+    fun hostPayloadPhoneUrlUsesLanPageAndProcessCatalog() {
         val payload = HostGateway.hostPayload(
             lanOrigin = "http://192.168.1.8:8788",
             processOrigin = "https://ktv.lovbrowser.com",
@@ -79,7 +79,7 @@ class HostGatewayTest {
         assertEquals("http://192.168.1.8:8788", payload.origin)
         assertEquals("https://ktv.lovbrowser.com", payload.processOrigin)
         assertEquals(
-            "https://ktv.lovbrowser.com/m.html?room=EABAB5&v=queue3&lan=http%3A%2F%2F192.168.1.8%3A8788",
+            "http://192.168.1.8:8788/m.html?room=EABAB5&v=queue4&process=https%3A%2F%2Fktv.lovbrowser.com",
             payload.phoneUrl,
         )
     }
@@ -89,6 +89,7 @@ class HostGatewayTest {
         assertEquals(ApiKind.SongsList, HostGateway.classify("/api/songs", "GET"))
         assertEquals(ApiKind.Song("abc"), HostGateway.classify("/api/songs/abc", "GET"))
         assertEquals(ApiKind.RoomCreate, HostGateway.classify("/api/rooms", "POST"))
+        assertEquals(ApiKind.RoomGet(""), HostGateway.classify("/api/rooms", "GET"))
         assertEquals(ApiKind.RoomGet("EABAB5"), HostGateway.classify("/api/rooms/eabab5", "GET"))
         assertEquals(ApiKind.RoomSkip("EABAB5"), HostGateway.classify("/api/rooms/EABAB5/skip", "POST"))
         assertEquals(ApiKind.RoomQueue("EABAB5"), HostGateway.classify("/api/rooms/EABAB5/queue", "POST"))

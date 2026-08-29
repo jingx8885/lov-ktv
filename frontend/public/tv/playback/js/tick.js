@@ -5,8 +5,8 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "./mix.js?v=stall1";
-import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js?v=stall1";
-import { lyricsFingerprint, ensureStageFx } from "./lyrics.js?v=paint4";
+import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js?v=native1";
+import { lyricsFingerprint, ensureStageFx } from "./lyrics.js?v=native1";
 
 export function pageVisible() {
   return document.visibilityState === "visible";
@@ -143,7 +143,13 @@ export function stopPlayback() {
   });
   $("mtv").hidden = true;
   state.boundMtvSong = "";
-  document.body.classList.remove("has-mtv", "has-native-mv");
+  document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player");
+  try {
+    if (window.LovKtvNative) {
+      if (window.LovKtvNative.stopMtv) window.LovKtvNative.stopMtv();
+      if (window.LovKtvNative.clearLyrics) window.LovKtvNative.clearLyrics();
+    }
+  } catch (err) {}
   state.lastFxCue = -1;
   state.hookLines = new Set();
   if (state.stageFx) state.stageFx.clear();
@@ -205,7 +211,9 @@ export async function tick() {
     startPlayback();
   } else {
     applyMix();
-    if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
+    if (window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function") {
+      bindMtv(now.song_id);
+    } else if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
       bindMtv(now.song_id);
     }
     if (Date.now() - state.lastLyricsAt > 8000) {

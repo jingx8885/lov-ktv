@@ -8,6 +8,8 @@
   var room = null;
   var lastItem = "";
   var lyrics = { cues: [] };
+  var lastNativeLyric = "";
+  var lastNativeSeek = 0;
 
   function $(id) {
     return document.getElementById(id);
@@ -68,13 +70,38 @@
     }
   }
 
+  function hasNativePlayer() {
+    return !!(window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function");
+  }
+
   function bindMtv(songId) {
     var mtv = $("mtv");
-    if (!mtv || !songId) return;
+    var htmlSrc = mediaUrl(songId, "mtv.mp4");
+    var cover = mediaUrl(songId, "cover.jpg");
+    if (!songId) return;
+    if (hasNativePlayer()) {
+      document.body.classList.add("has-mtv", "has-native-player");
+      if (document.documentElement) {
+        document.documentElement.style.background = "transparent";
+        document.documentElement.style.backgroundColor = "transparent";
+      }
+      document.body.style.background = "transparent";
+      document.body.style.backgroundColor = "transparent";
+      if (mtv) {
+        mtv.hidden = true;
+        mtv.pause();
+        mtv.removeAttribute("src");
+      }
+      try { window.LovKtvNative.playMtv((location.origin || "") + htmlSrc); } catch (err2) {}
+      return;
+    }
+    if (!mtv) return;
     mtv.muted = true;
     mtv.defaultMuted = true;
     mtv.volume = 0;
     mtv.onerror = function () {
+      document.body.classList.add("has-mtv-cover");
+      document.body.style.backgroundImage = "url(" + cover + ")";
       mtv.hidden = true;
       document.body.classList.remove("has-mtv");
     };
@@ -82,9 +109,11 @@
       mtv.muted = true;
       mtv.hidden = false;
       document.body.classList.add("has-mtv");
+      document.body.classList.remove("has-mtv-cover");
+      document.body.style.backgroundImage = "";
       playEl(mtv);
     };
-    mtv.src = mediaUrl(songId, "mtv.mp4");
+    mtv.src = htmlSrc;
   }
 
   function startSong(now) {
@@ -106,8 +135,16 @@
     applyMix();
     bindMtv(songId);
     playEl(karaoke);
-    playEl(vocal);
-    playEl($("mtv"));
+    if (vocal && !vocal.muted) playEl(vocal);
+    var mtv = $("mtv");
+    if (mtv && !hasNativePlayer()) {
+      mtv.muted = true;
+      mtv.volume = 0;
+      playEl(mtv);
+    } else if (mtv) {
+      mtv.pause();
+      mtv.removeAttribute("src");
+    }
     jsonFetch(mediaUrl(songId, "lyrics.json") + "&t=" + Date.now()).then(function (hit) {
       lyrics = hit.ok && hit.data ? hit.data : { cues: [] };
       return jsonFetch("/media/" + songId + "/skeleton.json");
@@ -133,14 +170,28 @@
     });
     var mtv = $("mtv");
     if (mtv) mtv.hidden = true;
-    document.body.classList.remove("has-mtv", "has-native-mv");
+    document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player", "has-mtv-cover");
+    document.body.style.backgroundImage = "";
+    document.body.style.background = "";
+    document.body.style.backgroundColor = "";
+    if (document.documentElement) {
+      document.documentElement.style.background = "";
+      document.documentElement.style.backgroundColor = "";
+    }
     lyrics = { cues: [] };
+    lastNativeLyric = "";
+    try {
+      if (window.LovKtvNative) {
+        if (window.LovKtvNative.stopMtv) window.LovKtvNative.stopMtv();
+        if (window.LovKtvNative.clearLyrics) window.LovKtvNative.clearLyrics();
+      }
+    } catch (err2) {}
     var cur = $("cur");
     var prev = $("prev");
     var next = $("next");
-    if (cur) cur.textContent = "";
-    if (prev) prev.textContent = "";
-    if (next) next.textContent = "";
+    if (cur) { cur.innerHTML = ""; cur.removeAttribute("data-html"); }
+    if (prev) { prev.innerHTML = ""; prev.removeAttribute("data-html"); }
+    if (next) { next.innerHTML = ""; next.removeAttribute("data-html"); }
   }
 
   function esc(s) {
@@ -170,12 +221,21 @@
       tok = tokens[i] || {};
       reading = tok.reading && tok.reading !== tok.text ? String(tok.reading) : "";
       body = '<span class="rb"><span class="rb-base">' + esc(tok.text || "") + '</span><span class="rb-fill" style="width:0">' + esc(tok.text || "") + "</span></span>";
-      roma = tok.romaji && tok.romaji !== tok.text ? '<span class="roma">' + esc(tok.romaji) + "</span>" : "";
-      gloss = tok.zh ? '<span class="gloss">' + esc(tok.zh) + "</span>" : "";
+      roma = tok.romaji && tok.romaji !== tok.text ? tok.romaji : "";
+      if (!roma && tok.reading && /^[A-Za-z0-9']/.test(String(tok.reading)) && tok.reading !== tok.text) {
+        roma = String(tok.reading);
+      }
+      roma = '<span class="roma">' + esc(roma) + "</span>";
+      var glossText = String(tok.zh || "").trim();
+      var tokText = String(tok.text || "").trim();
+      if (!tokText || /^[ー\-–~～、。！!？?…・·（）()「」『』【】\[\].,'"“”]$/.test(tokText) || /^(长音|促音|浊点|半浊点|！|!)$/.test(glossText)) {
+        glossText = "";
+      }
+      gloss = '<span class="gloss">' + esc(glossText) + "</span>";
       if (reading) {
         reading = '<span class="rt"><i>' + esc(reading).split("").join("</i><i>") + "</i></span>";
       } else {
-        reading = "";
+        reading = '<span class="rt"></span>';
       }
       parts.push('<span class="tok"><span class="anno">' + reading + body + roma + gloss + "</span></span>");
     }
@@ -224,33 +284,102 @@
     }
   }
 
+  function hideNativeLyrics() {
+    if (!window.LovKtvNative || typeof window.LovKtvNative.clearLyrics !== "function") return;
+    if (!lastNativeLyric) return;
+    lastNativeLyric = "";
+    try { window.LovKtvNative.clearLyrics(); } catch (err) {}
+  }
+
+  function syncNativeVideo(karaoke) {
+    var native = window.LovKtvNative;
+    var t;
+    var pos;
+    var target;
+    var mtvDur;
+    var karaokeDur;
+    var extra;
+    if (!native || !karaoke) return;
+    try {
+      if (karaoke.paused && native.pauseMtv) native.pauseMtv();
+      else if (!karaoke.paused && karaoke.currentTime > 0.05 && native.resumeMtv) native.resumeMtv();
+      if (karaoke.paused || typeof native.positionMs !== "function" || typeof native.seekMtv !== "function") return;
+      t = Math.floor((karaoke.currentTime || 0) * 1000);
+      karaokeDur = isFinite(karaoke.duration) ? Math.round(karaoke.duration * 1000) : 0;
+      mtvDur = typeof native.durationMs === "function" ? Number(native.durationMs()) || 0 : 0;
+      extra = mtvDur - karaokeDur;
+      target = t + (extra >= 1500 && extra <= 30000 ? extra : 0);
+      pos = Number(native.positionMs()) || 0;
+      if (Math.abs(pos - target) > 120 && Date.now() - lastNativeSeek > 400) {
+        lastNativeSeek = Date.now();
+        native.seekMtv(target);
+      }
+    } catch (err) {}
+  }
+
   function paintLyrics() {
-    if (window.LovKtvRemote && window.LovKtvRemote.__module) return;
+    if (moduleOwnsPlayback()) return;
     var karaoke = $("karaoke");
     var cues = (lyrics && lyrics.cues) || [];
-    if (!karaoke || !cues.length) return;
-    syncLyricSkin();
-    var t = Math.floor((karaoke.currentTime || 0) * 1000);
+    var t;
     var i;
     var idx = -1;
+    var upcoming = -1;
+    var cue;
+    var held;
+    if (!karaoke) return;
+    syncLyricSkin();
+    t = Math.floor((karaoke.currentTime || 0) * 1000);
     for (i = 0; i < cues.length; i++) {
       if (t >= cues[i].start_ms && t < cues[i].end_ms) {
         idx = i;
         break;
       }
+      if (upcoming < 0 && t < cues[i].start_ms) upcoming = i;
     }
-    var cue = idx >= 0 ? cues[idx] : null;
-    setLine($("prev"), idx > 0 ? cues[idx - 1] : null);
-    setLine($("cur"), cue);
-    setLine($("next"), idx >= 0 && idx + 1 < cues.length ? cues[idx + 1] : null);
-    fillLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12);
-    fillLine($("cur"), cue, t);
-    fillLine($("next"), idx >= 0 && idx + 1 < cues.length ? cues[idx + 1] : null, -1);
+    if (idx >= 0) {
+      cue = cues[idx];
+      setLine($("prev"), idx > 0 ? cues[idx - 1] : null);
+      setLine($("cur"), cue);
+      setLine($("next"), idx + 1 < cues.length ? cues[idx + 1] : null);
+      fillLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12);
+      fillLine($("cur"), cue, t);
+      fillLine($("next"), idx + 1 < cues.length ? cues[idx + 1] : null, -1);
+      hideNativeLyrics();
+    } else if (upcoming >= 0) {
+      held = upcoming > 0 ? cues[upcoming - 1] : cues[upcoming];
+      setLine($("prev"), upcoming > 1 ? cues[upcoming - 2] : null);
+      setLine($("cur"), held);
+      setLine($("next"), held === cues[upcoming] ? (cues[upcoming + 1] || null) : cues[upcoming]);
+      fillLine($("prev"), upcoming > 1 ? cues[upcoming - 2] : null, 1e12);
+      fillLine($("cur"), held, held === cues[upcoming] ? -1 : 1e12);
+      fillLine($("next"), held === cues[upcoming] ? (cues[upcoming + 1] || null) : cues[upcoming], -1);
+      hideNativeLyrics();
+    } else if (cues.length) {
+      setLine($("prev"), cues[cues.length - 1]);
+      setLine($("cur"), null);
+      setLine($("next"), null);
+      fillLine($("prev"), cues[cues.length - 1], 1e12);
+      hideNativeLyrics();
+    }
+    syncNativeVideo(karaoke);
     var mtv = $("mtv");
-    if (mtv && karaoke && !karaoke.paused && mtv.src && mtv.paused) playEl(mtv);
+    if (hasNativePlayer()) {
+      if (mtv) {
+        mtv.pause();
+        if (mtv.getAttribute("src")) mtv.removeAttribute("src");
+      }
+      return;
+    }
+    if (mtv && karaoke && !karaoke.paused && mtv.src && mtv.paused) {
+      mtv.muted = true;
+      mtv.volume = 0;
+      playEl(mtv);
+    }
   }
 
   function tick() {
+    if (moduleOwnsPlayback()) return;
     var c = roomCode();
     if (!c) return;
     jsonFetch("/api/rooms/" + c).then(function (hit) {
@@ -261,7 +390,6 @@
       var title = $("title");
       var meta = $("meta");
       if (!now) {
-        document.body.classList.add("is-waiting");
         if (title) title.textContent = "等待点歌";
         if (meta) meta.textContent = "";
         if (lastItem) {
@@ -270,18 +398,22 @@
         }
         return;
       }
-      document.body.classList.toggle("is-waiting", now.status !== "ready");
       if (title) title.textContent = now.title || "";
       if (meta) meta.textContent = (now.artist || "") + " · " + (now.status || "");
       if (now.status !== "ready") return;
       var key = now.id || now.song_id;
       if (lastItem !== key) {
         lastItem = key;
+        stopSong();
         startSong(now);
       } else {
         applyMix();
         var karaoke = $("karaoke");
-        if (karaoke && karaoke.paused && karaoke.getAttribute("src")) playEl(karaoke);
+        if (karaoke && (karaoke.ended || (karaoke.duration > 2 && karaoke.currentTime >= karaoke.duration - 1.5))) {
+          skip();
+        } else if (karaoke && karaoke.paused && karaoke.getAttribute("src") && !karaoke.ended) {
+          playEl(karaoke);
+        }
       }
     }).catch(function () {});
   }
@@ -329,8 +461,12 @@
     return !!(k && k.getAttribute("src"));
   }
 
+  function moduleOwnsPlayback() {
+    return !!(window.LovKtvRemote && (window.LovKtvRemote.__ready || window.LovKtvRemote.__module));
+  }
+
   function startClassic(force) {
-    if (window.LovKtvRemote && window.LovKtvRemote.__module) return;
+    if (moduleOwnsPlayback()) return;
     if (window.__lovktvPlayBooted) {
       if (force) tick();
       return;
@@ -362,10 +498,11 @@
   }
 
   function boot() {
+    if (hasNativePlayer()) return;
     setTimeout(function () {
-      if (window.LovKtvRemote && window.LovKtvRemote.__module) return;
+      if (moduleOwnsPlayback()) return;
       startClassic(true);
-    }, 2500);
+    }, 8000);
   }
 
   if (document.readyState === "loading") {

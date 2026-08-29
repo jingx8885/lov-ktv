@@ -102,9 +102,12 @@ function paintSong() {
   });
 }
 
+let appCatalog = null;
+
 onLangChange(() => {
   applyDom();
   paintSong();
+  paintAppDownloads(appCatalog);
 });
 
 if (songEl && curEl) {
@@ -116,3 +119,36 @@ if (songEl && curEl) {
     }, 4200);
   }
 }
+
+function formatSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)} MB`;
+  if (n >= 1000) return `${Math.round(n / 1000)} KB`;
+  return `${n} B`;
+}
+
+function paintAppDownloads(catalog) {
+  const data = catalog && typeof catalog === "object" ? catalog : {};
+  const ready = ["tv", "phone"].filter((name) => data[name] && data[name].url);
+  document.querySelectorAll(".cta-apps").forEach((row) => {
+    row.hidden = ready.length === 0;
+  });
+  document.querySelectorAll("[data-app]").forEach((el) => {
+    const name = el.getAttribute("data-app") || "";
+    const item = data[name];
+    el.hidden = !item;
+    if (!item) return;
+    if (item.url) el.setAttribute("href", item.url);
+    const ver = el.querySelector(".ver");
+    if (ver) ver.textContent = t("landing.apps.ver", { version: item.version || "", size: formatSize(item.size) });
+  });
+}
+
+fetch("/api/apps")
+  .then((resp) => (resp.ok ? resp.json() : null))
+  .then((catalog) => {
+    appCatalog = catalog;
+    paintAppDownloads(appCatalog);
+  })
+  .catch(() => paintAppDownloads(null));
+

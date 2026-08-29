@@ -25,6 +25,7 @@ class LocalRoomTest {
         snap = room.skip("OFF1")
         assertEquals(listOf("s2"), snap.queue.map { it.songId })
         assertEquals("s2", snap.nowPlaying?.songId)
+        assertEquals(0, snap.nowIndex)
 
         snap = room.enqueue("OFF1", "s1")
         val item = snap.queue.first { it.songId == "s1" }

@@ -13,6 +13,10 @@ def test_landing_has_hooks_and_product_exits():
     assert "搜歌名" in HTML
     assert 'href="/tv.html"' in HTML
     assert 'href="/m.html"' in HTML
+    assert 'href="/apps/tv.apk"' in HTML
+    assert 'href="/apps/phone.apk"' in HTML
+    assert 'data-app="tv"' in HTML
+    assert 'data-app="phone"' in HTML
     assert 'id="opening"' in HTML
     assert 'id="ritual"' in HTML
     assert 'id="features"' in HTML

@@ -1,10 +1,60 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { lanOrigin, roomUrl, tvBound } from "../../origin.js?v=scan1";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
-import { closeOverlay } from "../../ui/js/overlays.js";
+import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
+
+export function hasNativeScan() {
+  try {
+    return typeof window.LovKtvPhone !== "undefined" && typeof window.LovKtvPhone.scanTv === "function";
+  } catch (err) {
+    return false;
+  }
+}
+
+export function scanTv() {
+  if (!hasNativeScan()) return false;
+  window.LovKtvPhone.scanTv();
+  return true;
+}
+
+/** @returns {boolean} true if a TV bind was requested and the caller should stop. */
+export function requestTvBind() {
+  if (tvBound()) return false;
+  return scanTv();
+}
+
+export function paintBindBtns() {
+  const native = hasNativeScan();
+  const bound = tvBound();
+  const scanBtn = $("scanTv");
+  if (scanBtn) {
+    scanBtn.hidden = !native;
+    scanBtn.textContent = bound ? t("phone.room.rebind") : t("phone.room.scan");
+  }
+  const rebind = $("rebindTv");
+  if (rebind) {
+    rebind.hidden = !native;
+    rebind.textContent = bound ? t("phone.room.rebind") : t("phone.room.bind");
+  }
+}
+
+export function needTvOrRoom() {
+  if (requestTvBind()) {
+    showToast(t("phone.desk.needTv"));
+    return true;
+  }
+  const code = $("room") ? $("room").value.trim() : "";
+  if (!code) {
+    openOverlay("roomSheet");
+    showToast(t("phone.desk.needRoom"));
+    return true;
+  }
+  return false;
+}
 
 export function tvUrl(code) {
   return "/tv.html?room=" + encodeURIComponent(code);
@@ -21,14 +71,14 @@ export async function joinRoom(openScreen, quiet) {
   $("join").disabled = true;
   try {
     if (!code) {
-      const created = await fetchJson("/api/rooms", { method: "POST" });
+      const created = await fetchJson(roomUrl("/api/rooms"), { method: "POST" });
       if (!created.ok || !created.data.code) throw new Error(created.data.detail || t("phone.room.openFail"));
       code = created.data.code;
     }
     $("room").value = code;
     localStorage.setItem("room", code);
     /** @type {{ ok: boolean, data: Room }} */
-    const { ok, data: room } = await fetchJson("/api/rooms/" + code);
+    const { ok, data: room } = await fetchJson(roomUrl("/api/rooms/" + code));
     if (!ok || !room.code) throw new Error(room.detail || t("phone.room.fail"));
     $("roomState").textContent = t("phone.room.joined", { code: room.code, n: room.queue.length });
     $("openTv").href = tvUrl(room.code);
@@ -43,25 +93,32 @@ export async function joinRoom(openScreen, quiet) {
     await api.loadRoom();
   } catch (err) {
     $("roomState").textContent = t("phone.room.fail");
-    if (!quiet) showToast(t("phone.room.fail"));
+    if (!quiet) showToast(lanOrigin() ? t("phone.room.lanFail") : t("phone.room.fail"));
   }
   $("join").disabled = false;
 }
 
 export function bindJoin() {
-  $("join").onclick = () => joinRoom(false);
+  paintBindBtns();
+  if ($("scanTv")) $("scanTv").onclick = () => scanTv();
+  if ($("rebindTv")) $("rebindTv").onclick = () => scanTv();
+  $("join").onclick = () => {
+    if (requestTvBind()) return;
+    joinRoom(false);
+  };
   $("openTv").onclick = (event) => {
     const code = $("room").value.trim().toUpperCase();
     if (!code) return;
     event.preventDefault();
     openTv(code);
   };
+  if (hasNativeScan() && !tvBound()) return;
   if ($("room").value) {
     $("openTv").href = tvUrl($("room").value);
     joinRoom(false, true);
     return;
   }
-  fetchJson("/api/rooms").then(({ ok, data }) => {
+  fetchJson(roomUrl("/api/rooms")).then(({ ok, data }) => {
     if (!ok || !data.code || $("room").value) return;
     $("room").value = String(data.code).toUpperCase();
     localStorage.setItem("room", $("room").value);

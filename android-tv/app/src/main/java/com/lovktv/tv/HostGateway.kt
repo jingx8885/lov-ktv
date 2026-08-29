@@ -29,13 +29,15 @@ data class HostInfo(
 )
 
 object HostGateway {
-    fun phoneUrl(origin: String, room: String, lanOrigin: String = ""): String {
-        val base = origin.trim().trimEnd('/')
+    fun phoneUrl(origin: String, room: String, processOrigin: String = ""): String {
+        val page = origin.trim().trimEnd('/')
         val code = room.trim().uppercase()
-        val url = "$base/m.html?room=$code&v=queue3"
-        val lan = lanOrigin.trim().trimEnd('/')
-        if (lan.isBlank() || lan.equals(base, ignoreCase = true)) return url
-        return "$url&lan=${java.net.URLEncoder.encode(lan, "UTF-8")}"
+        var url = "$page/m.html?room=$code&v=queue4"
+        val process = processOrigin.trim().trimEnd('/')
+        if (process.isNotBlank() && !process.equals(page, ignoreCase = true)) {
+            url += "&process=" + java.net.URLEncoder.encode(process, "UTF-8")
+        }
+        return url
     }
 
     fun isLocalPath(path: String): Boolean {
@@ -79,18 +81,18 @@ object HostGateway {
     ): HostInfo {
         val origin = lanOrigin.trim().trimEnd('/')
         val process = processOrigin.trim().trimEnd('/')
-        val phoneBase = process.ifBlank { origin }
+        val page = origin.ifBlank { process }
         val code = room.trim().uppercase()
         val phonePath = if (code.isEmpty()) "/m.html?room=" else "/m.html?room=$code"
         val phone = if (code.isEmpty()) {
-            val suffix = if (origin.isNotBlank() && !origin.equals(phoneBase, ignoreCase = true)) {
-                "?lan=${java.net.URLEncoder.encode(origin, "UTF-8")}"
+            val suffix = if (process.isNotBlank() && !process.equals(page, ignoreCase = true)) {
+                "?process=${java.net.URLEncoder.encode(process, "UTF-8")}"
             } else {
                 ""
             }
-            "$phoneBase/m.html$suffix"
+            "$page/m.html$suffix"
         } else {
-            phoneUrl(phoneBase, code, origin)
+            phoneUrl(page, code, process)
         }
         return HostInfo(
             origin = origin,
@@ -129,6 +131,7 @@ object HostGateway {
         if (clean == "/api/songs") return if (verb == "GET") ApiKind.SongsList else ApiKind.Proxy
         val song = Regex("^/api/songs/([^/]+)$").matchEntire(clean)
         if (song != null && verb == "GET") return ApiKind.Song(song.groupValues[1])
+        if (clean == "/api/rooms" && verb == "GET") return ApiKind.RoomGet("")
         if (clean == "/api/rooms" && verb == "POST") return ApiKind.RoomCreate
         val room = Regex("^/api/rooms/([A-Za-z0-9]+)$").matchEntire(clean)
         if (room != null && verb == "GET") return ApiKind.RoomGet(room.groupValues[1].uppercase())

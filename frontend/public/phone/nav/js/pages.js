@@ -42,7 +42,10 @@ export function showPage(name, songId, push) {
 
 export function bindNav() {
   document.querySelectorAll("[data-nav]").forEach((btn) => {
-    btn.onclick = () => showPage(btn.dataset.nav);
+    btn.onclick = () => {
+      if (btn.dataset.nav === "desk" && api.requestTvBind && api.requestTvBind()) return;
+      showPage(btn.dataset.nav);
+    };
   });
   document.addEventListener("click", (event) => {
     const goLib = event.target.closest("[data-go-lib]");

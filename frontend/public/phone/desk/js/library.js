@@ -1,12 +1,18 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { lanOrigin, roomUrl } from "../../origin.js?v=scan1";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
-import { openOverlay, showActionSheet } from "../../ui/js/overlays.js";
+import { showActionSheet } from "../../ui/js/overlays.js";
+
+function nearBottom(el) {
+  if (!el) return false;
+  return el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+}
 
 export function showDeskPane(name) {
   const pane = name === "lib" ? "lib" : "queue";
@@ -30,71 +36,19 @@ export function renderLibIndex(letters) {
     btn.onclick = () => {
       state.libState.letter = btn.dataset.libLetter || "";
       state.libState.page = 1;
-      loadSongs();
+      loadSongs(false);
     };
   });
 }
 
-export function renderLibPager(data) {
-  const pages = Math.max(1, data.pages || 1);
-  const page = data.page || 1;
-  const total = data.total || 0;
-  if (!total) {
-    $("libPager").innerHTML = "";
-    return;
-  }
-  $("libPager").innerHTML = page < pages
-    ? `<button type="button" class="list-more" data-lib-page="${page + 1}">${t("phone.desk.morePages", { page, pages })}</button>`
-    : `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
-  $("libPager").querySelectorAll("[data-lib-page]").forEach((btn) => {
-    btn.onclick = () => {
-      state.libState.page = Number(btn.dataset.libPage);
-      loadSongs();
-      $("songs").scrollIntoView({ block: "start" });
-    };
-  });
-}
-
-export async function loadSongs() {
-  const params = new URLSearchParams({
-    q: state.libState.q,
-    by: state.libState.by,
-    letter: state.libState.letter,
-    page: String(state.libState.page),
-    count: "8",
-  });
-  /** @type {{ data: SongListPage }} */
-  const loaded = await fetchJson("/api/songs?" + params.toString()).catch(() => null);
-  if (!loaded) return;
-  const data = loaded.data;
-  const songs = data.songs || [];
-  state.libState.page = data.page || state.libState.page;
-  if ($("libCount")) $("libCount").textContent = (data.lib_total || data.total) ? String(data.lib_total || data.total) : "";
-  const stamp = JSON.stringify({
-    q: state.libState.q,
-    by: state.libState.by,
-    letter: state.libState.letter,
-    page: data.page,
-    pages: data.pages,
-    total: data.total,
-    letters: data.letters,
-    rows: songs.map((song) => [song.id, song.status, song.error, song.title]),
-  });
-  if (stamp === state.libStamp && $("songs").children.length) return;
-  state.libStamp = stamp;
-  renderLibIndex(data.letters || []);
-  renderLibPager(data);
-  const emptyHint = state.libState.q || state.libState.letter
-    ? `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.noMatch")}</p><button class="btn" type="button" data-lib-clear>${t("phone.desk.clearFilter")}</button></div>`
-    : `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyLib")}</p><button class="btn primary" type="button" data-go-search>${t("phone.desk.goSearch")}</button></div>`;
-  $("songs").innerHTML = songs.map((song) => {
-    const canPlay = song.status === "ready";
-    const canRetry = song.status === "failed";
-    const canDelete = song.status !== "fetching" && song.status !== "separating";
-    const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
-    const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
-    return `
-        <div class="desk-row ${canPlay ? "" : "busy"}">
+function songRow(song) {
+  const canPlay = song.status === "ready";
+  const canRetry = song.status === "failed";
+  const canDelete = song.status !== "fetching" && song.status !== "separating";
+  const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
+  const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
+  return `
+        <div class="desk-row ${canPlay ? "" : "busy"}" data-song="${escapeHtml(song.id)}">
           <div class="desk-copy">
             <b>${escapeHtml(song.title)}</b>
             <span class="tiny">${escapeHtml(song.artist || t("common.unknownArtist"))} ${mv}${pill}</span>
@@ -106,25 +60,44 @@ export async function loadSongs() {
             ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
           </div>
         </div>`;
-  }).join("") || emptyHint;
+}
+
+function emptyLibHint() {
+  return state.libState.q || state.libState.letter
+    ? `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.noMatch")}</p><button class="btn" type="button" data-lib-clear>${t("phone.desk.clearFilter")}</button></div>`
+    : `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyLib")}</p><button class="btn primary" type="button" data-go-search>${t("phone.desk.goSearch")}</button></div>`;
+}
+
+function renderLibTail(page, pages, total) {
+  if (!total) {
+    $("libPager").innerHTML = "";
+    return;
+  }
+  if (page < pages) {
+    $("libPager").innerHTML = `<span class="lib-page-num">${t("common.loading")}</span>`;
+  } else {
+    $("libPager").innerHTML = `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
+  }
+}
+
+function bindSongActions() {
   $("songs").querySelectorAll("[data-queue]").forEach((btn) => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
     btn.onclick = async (event) => {
       event.stopPropagation();
       const code = $("room").value.trim();
-      if (!code) {
-        openOverlay("roomSheet");
-        return showToast(t("phone.desk.needRoom"));
-      }
+      if (api.needTvOrRoom && api.needTvOrRoom()) return;
       btn.disabled = true;
-      const { ok, data } = await fetchJson(`/api/rooms/${code}/queue`, {
+      const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/queue`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ song_id: btn.dataset.queue }),
       });
       btn.disabled = false;
       if (!ok) {
-        showToast(data.detail || t("phone.desk.cantQueue"));
-        loadSongs();
+        showToast(lanOrigin() ? t("phone.room.lanFail") : (data.detail || t("phone.desk.cantQueue")));
+        loadSongs(false);
         return;
       }
       btn.classList.add("on");
@@ -132,21 +105,25 @@ export async function loadSongs() {
     };
   });
   $("songs").querySelectorAll("[data-retry]").forEach((btn) => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
     btn.onclick = async (event) => {
       event.stopPropagation();
       btn.disabled = true;
       await fetch(`/api/songs/${btn.dataset.retry}/retry`, { method: "POST" });
-      loadSongs();
+      loadSongs(false);
     };
   });
   $("songs").querySelectorAll("[data-del]").forEach((btn) => {
+    if (btn.dataset.bound === "1") return;
+    btn.dataset.bound = "1";
     btn.onclick = async (event) => {
       event.stopPropagation();
       const go = await showActionSheet({ title: t("phone.desk.deleteTitle"), message: t("phone.desk.deleteMsg"), confirm: t("phone.desk.delete"), danger: true });
       if (!go) return;
       btn.disabled = true;
       await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
-      loadSongs();
+      loadSongs(false);
     };
   });
   const goSearch = $("songs").querySelector("[data-go-search]");
@@ -158,9 +135,75 @@ export async function loadSongs() {
       state.libState.letter = "";
       state.libState.page = 1;
       $("libQ").value = "";
-      loadSongs();
+      loadSongs(false);
     };
   }
+}
+
+function knownLibIds() {
+  const fromState = (state.libSongs || []).map((song) => song.id);
+  const fromDom = [...document.querySelectorAll("#songs [data-song]")].map((el) => el.getAttribute("data-song") || "");
+  return new Set([...fromState, ...fromDom].filter(Boolean));
+}
+
+export async function loadSongs(append = false) {
+  if (state.libLoading) return;
+  if (append && state.libState.page >= (state.libPages || 1)) return;
+  const nextPage = append ? state.libState.page + 1 : 1;
+  state.libLoading = true;
+  const params = new URLSearchParams({
+    q: state.libState.q,
+    by: state.libState.by,
+    letter: state.libState.letter,
+    page: String(nextPage),
+    count: "8",
+  });
+  /** @type {{ data: SongListPage } | null} */
+  const loaded = await fetchJson("/api/songs?" + params.toString()).catch(() => null);
+  state.libLoading = false;
+  if (!loaded) return;
+  const data = loaded.data;
+  const songs = data.songs || [];
+  state.libPages = Math.max(1, data.pages || 1);
+  if ($("libCount")) $("libCount").textContent = (data.lib_total || data.total) ? String(data.lib_total || data.total) : "";
+  const filterKey = JSON.stringify({
+    q: state.libState.q,
+    by: state.libState.by,
+    letter: state.libState.letter,
+  });
+  if (!append) {
+    const stamp = filterKey + ":" + JSON.stringify({
+      pages: data.pages,
+      total: data.total,
+      letters: data.letters,
+      rows: songs.map((song) => [song.id, song.status, song.error, song.title]),
+    });
+    if (stamp === state.libStamp && $("songs").querySelector(".desk-row")) return;
+    state.libStamp = stamp;
+    state.libState.page = data.page || 1;
+    state.libSongs = songs;
+    renderLibIndex(data.letters || []);
+    $("songs").innerHTML = songs.map(songRow).join("") || emptyLibHint();
+    $("songs").scrollTop = 0;
+  } else {
+    const gotPage = data.page || nextPage;
+    if (gotPage !== nextPage) {
+      state.libState.page = state.libPages;
+      renderLibTail(state.libState.page, state.libPages, data.total || 0);
+      return;
+    }
+    const seen = knownLibIds();
+    const extra = songs.filter((song) => song.id && !seen.has(song.id));
+    state.libSongs = (state.libSongs || []).concat(extra);
+    if (!extra.length) {
+      state.libState.page = state.libPages;
+    } else {
+      state.libState.page = nextPage;
+      $("songs").insertAdjacentHTML("beforeend", extra.map(songRow).join(""));
+    }
+  }
+  renderLibTail(state.libState.page, state.libPages, data.total || 0);
+  bindSongActions();
 }
 
 export function bindLibrary() {
@@ -172,7 +215,7 @@ export function bindLibrary() {
     state.libTimer = setTimeout(() => {
       state.libState.q = $("libQ").value.trim();
       state.libState.page = 1;
-      loadSongs();
+      loadSongs(false);
     }, 200);
   });
   $("libQ").addEventListener("keydown", (event) => {
@@ -181,19 +224,21 @@ export function bindLibrary() {
       clearTimeout(state.libTimer);
       state.libState.q = $("libQ").value.trim();
       state.libState.page = 1;
-      loadSongs();
+      loadSongs(false);
     }
   });
   document.querySelectorAll("[data-lib-by]").forEach((btn) => {
     btn.onclick = () => {
       state.libState.by = btn.dataset.libBy || "all";
-      state.libState.page = 1;
       document.querySelectorAll("[data-lib-by]").forEach((item) => {
         item.classList.toggle("on", item === btn);
       });
       $("libQ").placeholder = state.libState.by === "artist" ? t("phone.desk.libPhArtist") : state.libState.by === "title" ? t("phone.desk.libPhTitle") : t("phone.desk.libPh");
-      loadSongs();
+      state.libState.page = 1;
+      loadSongs(false);
     };
   });
+  $("songs").addEventListener("scroll", () => {
+    if (nearBottom($("songs"))) loadSongs(true);
+  });
 }
-

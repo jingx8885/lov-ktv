@@ -1,7 +1,7 @@
 package com.lovktv.tv
 
 object HostRuntime {
-    const val DEFAULT_PORT = 8787
+    const val DEFAULT_PORT = 8788
 
     @Volatile
     var port: Int = DEFAULT_PORT

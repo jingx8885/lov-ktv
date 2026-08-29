@@ -23,8 +23,15 @@ def test_tv_does_not_restart_on_network_stall():
     assert "restoreResume(karaoke)" in app
     assert "item.song_id !== nowId" in mix
     assert 'if (now && now.status === "ready") add(now.song_id)' not in mix
-    assert 'src="/tv/app.js?v=split17"' in html
-    assert "tick.js?v=paint5" in app
+    assert 'src="/tv/app.js?v=native1"' in html
+    assert "tick.js?v=native1" in app
     assert "export function setWaiting" in tick
     assert "setWaiting(true)" in tick
     assert 'setWaiting(now.status !== "ready")' in tick
+    mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
+    clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(encoding="utf-8")
+    lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")
+    assert "LovKtvNative.playMtv" in mtv
+    assert "export function shouldSeekNative" in clock
+    assert "syncNativeVideo" in lyrics
+    assert "window.LovKtvNative.stopMtv" in tick

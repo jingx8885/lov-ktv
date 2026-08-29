@@ -43,53 +43,6 @@
         android:textSize="18sp" />
 
     <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:gravity="center"
-        android:text="@string/join_or_type"
-        android:textColor="#9AA3B5"
-        android:textSize="13sp" />
-
-    <EditText
-        android:id="@+id/room"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="12dp"
-        android:background="#151B2E"
-        android:hint="@string/room_hint"
-        android:imeOptions="actionNext"
-        android:inputType="textCapCharacters"
-        android:paddingHorizontal="16dp"
-        android:textColor="#F4F1EA"
-        android:textColorHint="#9AA3B5"
-        android:textSize="18sp" />
-
-    <EditText
-        android:id="@+id/server"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="12dp"
-        android:background="#151B2E"
-        android:hint="@string/server_hint"
-        android:imeOptions="actionGo"
-        android:inputType="textUri"
-        android:paddingHorizontal="16dp"
-        android:textColor="#F4F1EA"
-        android:textColorHint="#9AA3B5"
-        android:textSize="16sp" />
-
-    <Button
-        android:id="@+id/enter"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginTop="20dp"
-        android:backgroundTint="#151B2E"
-        android:text="@string/enter_room"
-        android:textColor="#F4F1EA"
-        android:textSize="18sp" />
-
-    <TextView
         android:id="@+id/error"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

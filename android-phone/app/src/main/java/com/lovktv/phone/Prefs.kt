@@ -8,6 +8,9 @@ object Prefs {
     private const val KEY_SERVER = "server_url"
     private const val KEY_ROOM = "room_code"
     private const val KEY_LAN = "lan_url"
+    private const val KEY_MIC_HOST = "mic_host"
+    private const val KEY_MIC_PORT = "mic_port"
+    private const val KEY_MIC_RATE = "mic_rate"
 
     fun serverUrl(context: Context): String {
         return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -27,12 +30,40 @@ object Prefs {
             .orEmpty()
     }
 
-    fun save(context: Context, server: String, room: String, lan: String = "") {
+    fun micHost(context: Context): String {
+        return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_MIC_HOST, "")
+            .orEmpty()
+    }
+
+    fun micPort(context: Context): Int {
+        return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getInt(KEY_MIC_PORT, 0)
+    }
+
+    fun micRate(context: Context): Int {
+        val rate = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getInt(KEY_MIC_RATE, LanMic.SAMPLE_RATE)
+        return if (rate in 8000..96000) rate else LanMic.SAMPLE_RATE
+    }
+
+    fun save(
+        context: Context,
+        server: String,
+        room: String,
+        lan: String = "",
+        micHost: String = "",
+        micPort: Int = 0,
+        micRate: Int = LanMic.SAMPLE_RATE,
+    ) {
         context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .edit()
             .putString(KEY_SERVER, normalize(server))
             .putString(KEY_ROOM, room.trim().uppercase())
             .putString(KEY_LAN, if (lan.isBlank()) "" else normalize(lan))
+            .putString(KEY_MIC_HOST, micHost.trim())
+            .putInt(KEY_MIC_PORT, micPort)
+            .putInt(KEY_MIC_RATE, if (micRate in 8000..96000) micRate else LanMic.SAMPLE_RATE)
             .apply()
     }
 

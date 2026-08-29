@@ -1,16 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tvRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0B1020">
 
     <ImageView
-        android:id="@+id/waitArt"
+        android:id="@+id/mtvCover"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:contentDescription="@string/splash_desc"
+        android:contentDescription="@null"
         android:scaleType="centerCrop"
-        android:src="@drawable/wait_art" />
+        android:visibility="gone" />
+
+    <SurfaceView
+        android:id="@+id/mtvNative"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="false"
+        android:focusableInTouchMode="false"
+        android:visibility="gone" />
 
     <WebView
         android:id="@+id/webview"
@@ -19,4 +28,28 @@
         android:background="@android:color/transparent"
         android:focusable="true"
         android:focusableInTouchMode="true" />
+
+    <TextView
+        android:id="@+id/nativeLyrics"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginLeft="48dp"
+        android:layout_marginRight="48dp"
+        android:layout_marginBottom="36dp"
+        android:background="#99000000"
+        android:gravity="center"
+        android:lineSpacingExtra="6dp"
+        android:paddingLeft="22dp"
+        android:paddingTop="10dp"
+        android:paddingRight="22dp"
+        android:paddingBottom="12dp"
+        android:shadowColor="#FF000000"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="8"
+        android:textColor="#FFFFFFF4"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
 </FrameLayout>

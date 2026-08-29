@@ -1,11 +1,14 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { lanOrigin, roomUrl } from "../../origin.js?v=scan1";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { ICO, songInitial, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
+
+let lastLanFailAt = 0;
 
 export async function loadRoom() {
   const code = $("room").value.trim();
@@ -16,8 +19,14 @@ export async function loadRoom() {
     return;
   }
   /** @type {{ ok: boolean, data: Room }} */
-  const { ok, data: room } = await fetchJson(`/api/rooms/${code}`);
-  if (!ok || !room.code) return;
+  const { ok, data: room } = await fetchJson(roomUrl(`/api/rooms/${code}`)).catch(() => ({ ok: false, data: {} }));
+  if (!ok || !room.code) {
+    if (lanOrigin() && Date.now() - lastLanFailAt > 8000) {
+      lastLanFailAt = Date.now();
+      showToast(t("phone.room.lanFail"));
+    }
+    return;
+  }
   $("roomState").textContent = t("phone.room.stat", { code: room.code, n: room.queue.length });
   paintTopRoom(room.code);
   const now = room.now_playing;
@@ -59,7 +68,7 @@ export async function loadRoom() {
   }).join("") || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.desk.emptyQueue")}</p><button class="btn primary" type="button" data-go-lib>${t("phone.desk.goLib")}</button></div>`;
   $("queue").querySelectorAll("[data-play]").forEach((btn) => {
     btn.onclick = async () => {
-      const { ok, data } = await fetchJson(`/api/rooms/${code}/play`, {
+      const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/play`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: btn.dataset.play }),

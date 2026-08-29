@@ -1,4 +1,4 @@
-import "./install.js?v=paint3";
+import "./install.js?v=scan2";
 import { $must } from "../shared/ui/js/dom.js";
 import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js?v=i18n3";
 import { PAGES, state, pageTitle, searchEmpty } from "./state.js";
@@ -6,13 +6,14 @@ import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho, loadWho } from "./ui/js/who.js";
 import { bindOverlays } from "./ui/js/overlays.js";
 import { bindNav, showPage } from "./nav/js/pages.js";
-import { bindSearch, paintSearchHits } from "./search/js/hits.js";
-import { bindLibrary, loadSongs } from "./desk/js/library.js";
+import { bindSearch, paintSearchHits } from "./search/js/hits.js?v=queue6";
+import { bindLibrary, loadSongs } from "./desk/js/library.js?v=scan1";
 import { loadRoom } from "./desk/js/queue.js";
-import { bindJoin } from "./room/js/join.js";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=mix5";
-import { bindRoomRtc } from "./room/js/rtc.js?v=mix6";
-import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js?v=paint3";
+import { bindJoin, hasNativeScan, paintBindBtns } from "./room/js/join.js";
+import { tvBound } from "./origin.js?v=scan1";
+import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/mix.js?v=scan2";
+import { bindRoomRtc } from "./room/js/rtc.js?v=scan2";
+import { bindPlayback, updatePlayOrderBtns } from "./player/js/playback.js?v=scan2";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/sheet.js";
 import { bindAlign, updateAlignNow } from "./player/js/align.js?v=paint3";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/mic.js?v=mic2";
@@ -53,6 +54,7 @@ onLangChange(() => {
   }
   $must("tlChain").textContent = state.chainRest ? t("phone.align.chainRest") : t("phone.align.chain");
   updateAlignNow();
+  paintBindBtns();
 });
 
 bindWho();
@@ -74,13 +76,15 @@ setInterval(() => {
   const desk = document.getElementById("page-desk");
   if (!desk || desk.hidden) return;
   loadRoom();
-  loadSongs();
+  if (state.libState.page <= 1) loadSongs(false);
 }, 2000);
 
 const bootHash = (location.hash || "").replace("#", "");
-const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
+const bootPage = PAGES.includes(bootHash)
+  ? bootHash
+  : (hasNativeScan() && !tvBound() ? "player" : "desk");
 showPage(bootPage, null, false);
-if (bootHash === "room" || !$must("room").value) openOverlay("roomSheet");
+if (bootHash === "room") openOverlay("roomSheet");
 
 const syncKeyboard = () => {
   const vv = window.visualViewport;

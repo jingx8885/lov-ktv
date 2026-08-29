@@ -58,6 +58,11 @@ interface PhoneState {
   libState: PhoneLibState;
   libTimer: number;
   libStamp: string;
+  libSongs: Song[];
+  libLoading: boolean;
+  libPages: number;
+  searchLoading: boolean;
+  searchHasMore: boolean;
   playerSong: Song | null;
   playerLyrics: LyricsDoc;
   selectedCue: number;
@@ -90,4 +95,6 @@ interface PhoneState {
   phoneCtx: AudioContext | null;
   phoneMicLevel: number;
   phoneIem: boolean;
+  phoneNativeLive: boolean;
+  phoneStartedTv: boolean;
 }

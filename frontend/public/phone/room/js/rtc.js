@@ -4,7 +4,7 @@ import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { openOverlay } from "../../ui/js/overlays.js";
-import { paintMix } from "./mix.js?v=mix5";
+import { paintMix } from "./mix.js?v=scan2";
 
 function nativeMic() {
   return window.LovKtvNative;
@@ -124,6 +124,7 @@ export function bindRoomRtc() {
   micToggle.onclick = async () => {
     const roomEl = $("room");
     const code = roomEl ? roomEl.value.trim().toUpperCase() : "";
+    if (api.needTvOrRoom && api.needTvOrRoom()) return;
     if (!code) {
       openOverlay("roomSheet");
       return showToast(t("phone.mic.needRoom"));

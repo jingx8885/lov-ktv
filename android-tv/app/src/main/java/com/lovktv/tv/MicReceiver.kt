@@ -70,9 +70,9 @@ class MicReceiver(private val port: Int = LanMic.DEFAULT_PORT) {
             AudioFormat.ENCODING_PCM_16BIT,
         )
         if (min <= 0) return null
-        val size = max(min, LanMic.frameBytes(sampleRate) * 6)
+        val size = max(min, LanMic.frameBytes(sampleRate) * 2)
         val created = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            AudioTrack.Builder()
+            val builder = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -88,7 +88,10 @@ class MicReceiver(private val port: Int = LanMic.DEFAULT_PORT) {
                 )
                 .setBufferSizeInBytes(size)
                 .setTransferMode(AudioTrack.MODE_STREAM)
-                .build()
+            if (Build.VERSION.SDK_INT >= 26) {
+                builder.setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+            }
+            builder.build()
         } else {
             @Suppress("DEPRECATION")
             AudioTrack(

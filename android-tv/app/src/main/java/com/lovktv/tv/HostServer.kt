@@ -169,7 +169,10 @@ class HostServer(
                 val remoteQueue = remote.optJSONArray("queue")
                 val remoteHas = remoteQueue != null && remoteQueue.length() > 0
                 val local = localRoom.snapshot(code)
-                if (!remoteHas && local.queue.isNotEmpty()) return
+                if (!RoomSync.shouldImportCloud(local.queue.size, if (remoteHas) remoteQueue!!.length() else 0)) {
+                    rememberCode(code)
+                    return
+                }
                 localRoom.importSnapshot(text)
                 rememberCode(code)
             }
@@ -209,7 +212,44 @@ class HostServer(
             return
         }
         puller.hint()
+        if (shouldCacheMedia(name)) {
+            val bytes = withContext(Dispatchers.IO) { fetchMediaBytes(songId, name) }
+            if (bytes != null && bytes.isNotEmpty()) {
+                cache.putFile(songId, name, bytes)
+                call.response.headers.append(HttpHeaders.CacheControl, "no-cache, must-revalidate")
+                call.response.headers.append("Access-Control-Allow-Origin", "*")
+                call.respondBytes(bytes, mime(name))
+                return
+            }
+        }
         proxyHttp(call, ByteArray(0))
+    }
+
+    private fun shouldCacheMedia(name: String): Boolean {
+        return name.endsWith(".json") || name == "cover.jpg"
+    }
+
+    private fun fetchMediaBytes(songId: String, name: String): ByteArray? {
+        return try {
+            val remote = HostGateway.remoteUrl(processOrigin, "/media/$songId/$name", null)
+            val request = Request.Builder()
+                .url(remote)
+                .header("Accept", "*/*")
+                .header("User-Agent", "LovKtv-TV/1.0")
+                .build()
+            apiHttp.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    android.util.Log.w("HostServer", "fetchMedia $songId/$name -> ${response.code}")
+                    return null
+                }
+                val bytes = response.body?.bytes() ?: return null
+                if (bytes.size > 2_000_000) return null
+                bytes
+            }
+        } catch (exc: Exception) {
+            android.util.Log.w("HostServer", "fetchMedia $songId/$name failed: ${exc.message}")
+            null
+        }
     }
 
     private suspend fun proxyOrFallback(call: ApplicationCall, kind: ApiKind) {
@@ -226,6 +266,8 @@ class HostServer(
             try {
                 val json = fallbackJson(kind, incoming)
                 runCatching { rememberCode(JSONObject(json).optString("code")) }
+                call.response.headers.append(HttpHeaders.CacheControl, "no-store")
+                call.response.headers.append("Access-Control-Allow-Origin", "*")
                 call.respondText(json, ContentType.Application.Json)
                 if (kind is ApiKind.RoomQueue || kind is ApiKind.RoomPlay) puller.hint()
             } catch (exc: IllegalArgumentException) {

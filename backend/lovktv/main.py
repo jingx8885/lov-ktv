@@ -29,6 +29,7 @@ from lovktv.auth import (
 from lovktv.catalog.fetch import is_preview_id, open_preview_stream, resolve_audio_source, search_songs
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.index import prefer_native_library, query_library, song_letter
+from lovktv.apps import catalog as apps_catalog, download_apk, require_upload_token, save_apk
 from lovktv.config import MEDIA_DIR, PUBLIC_URL, ROOT, SESSION_DAYS
 from lovktv.db import dialect as db_dialect
 from lovktv.oss import ensure_bucket_cors, oss_ready, oss_status, public_url
@@ -221,6 +222,28 @@ def api_host(request: Request) -> dict:
         "agent": agent_status(),
         "database": db_dialect(store.DB_PATH),
     }
+
+
+@app.get("/api/apps")
+def api_apps() -> dict:
+    return apps_catalog()
+
+
+@app.get("/api/apps/{channel}")
+@app.get("/apps/{channel}.apk")
+def api_app_download(channel: str):
+    return download_apk(channel)
+
+
+@app.post("/api/apps/{channel}")
+async def api_app_upload(
+    channel: str,
+    request: Request,
+    file: UploadFile = File(...),
+    version: str = Form(""),
+) -> dict:
+    require_upload_token(request)
+    return save_apk(channel, file.file, version)
 
 
 @app.get("/api/auth/status")

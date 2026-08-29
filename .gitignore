@@ -22,5 +22,6 @@ android-tv/local.properties
 android-phone/.gradle/
 android-phone/app/build/
 android-phone/local.properties
+*.apk
 *.iml
 .idea/

@@ -45,9 +45,6 @@ export function bindSearchHits(q) {
       api.loadSongs();
     };
   });
-  $("hits").querySelectorAll("[data-page]").forEach((btn) => {
-    btn.onclick = () => runSearch(Number(btn.dataset.page), true);
-  });
 }
 
 export function searchCard(hit) {
@@ -63,7 +60,7 @@ export function searchCard(hit) {
     isMv ? "MV" : t("phone.search.song"),
   ].filter(Boolean);
   return `
-        <article class="list-row">
+        <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
           <div class="list-copy">
             <b>${escapeHtml(hit.title)}</b>
             <span class="tiny">${bits.join(" · ")}</span>
@@ -74,10 +71,13 @@ export function searchCard(hit) {
 }
 
 export function paintSearchHits(q, hasMore) {
+  state.searchHasMore = !!hasMore;
   const cards = state.searchHits.map(searchCard).join("")
     || `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.none")}</p><span class="tiny">${t("phone.search.noneHint")}</span></div>`;
-  const more = hasMore ? `<button type="button" class="list-more" data-page="${state.searchPage + 1}">${t("common.loadMore")}</button>` : "";
-  $("hits").innerHTML = cards + more;
+  const tail = hasMore
+    ? `<div class="list-more list-sentinel" data-page="${state.searchPage + 1}">${t("common.loading")}</div>`
+    : "";
+  $("hits").innerHTML = cards + tail;
   bindSearchHits(q);
   if (state.previewId) {
     const live = $("hits").querySelector(`[data-preview="${state.previewId}"]`);
@@ -92,21 +92,23 @@ export function paintSearchHits(q, hasMore) {
 export async function runSearch(page, append = false) {
   const q = $("q").value.trim();
   if (!q) return;
+  if (state.searchLoading) return;
   state.searchPage = Math.max(1, page);
+  state.searchLoading = true;
   const moreBtn = $("hits").querySelector(".list-more");
   if (!append) {
     stopPreview();
     state.searchHits = [];
+    state.searchHasMore = false;
     $("hits").innerHTML = `<div class="empty-state"><p>${t("common.searching")}</p></div>`;
   } else if (moreBtn) {
-    moreBtn.disabled = true;
     moreBtn.textContent = t("common.loading");
   }
   /** @type {{ ok: boolean, data: SearchPage }} */
   const { ok, data } = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
+  state.searchLoading = false;
   if (!ok) {
     if (append && moreBtn) {
-      moreBtn.disabled = false;
       moreBtn.textContent = t("common.loadMore");
       showToast(data.detail || t("common.loadFailed"));
       return;
@@ -115,12 +117,15 @@ export async function runSearch(page, append = false) {
     return;
   }
   const hits = data.hits || [];
+  if (data.page && data.page !== state.searchPage) return;
   if (append) {
-    const seen = new Set(state.searchHits.map((hit) => hit.id));
-    state.searchHits = state.searchHits.concat(hits.filter((hit) => hit.id && !seen.has(hit.id)));
-  } else {
-    state.searchHits = hits;
+    const seen = new Set(state.searchHits.map((hit) => hit.id).filter(Boolean));
+    const extra = hits.filter((hit) => hit.id && !seen.has(hit.id));
+    state.searchHits = state.searchHits.concat(extra);
+    paintSearchHits(q, !!data.has_more && extra.length > 0);
+    return;
   }
+  state.searchHits = hits;
   paintSearchHits(q, !!data.has_more && hits.length > 0);
 }
 
@@ -157,6 +162,13 @@ export function bindSearch() {
     $("hits").innerHTML = searchEmpty();
     syncSearchChrome();
   };
+  $("page-search").addEventListener("scroll", () => {
+    const page = $("page-search");
+    if (!page || page.hidden) return;
+    if (page.scrollHeight - page.scrollTop - page.clientHeight > 160) return;
+    if (!state.searchHasMore || state.searchLoading) return;
+    runSearch(state.searchPage + 1, true);
+  });
   $("openUpload").onclick = () => $("file").click();
   $("file").onchange = async () => {
     const file = $("file").files[0];

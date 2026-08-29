@@ -24,9 +24,9 @@ def test_lyric_mode_buttons_do_not_select_body():
     html = (ROOT / "m.html").read_text(encoding="utf-8")
     assert 'getElementById("page-desk")' in app
     assert '$must("page-desk")' not in app
-    assert "mix.js?v=mix5" in app
+    assert "mix.js?v=scan2" in app
     assert "paint.js?v=paint3" in mix
-    assert 'src="/phone/app.js?v=split25"' in html
+    assert 'src="/phone/app.js?v=scan2"' in html
     assert 'href="/phone/desk/css/desk.css?v=split9"' in html
     assert 'from "./player/js/mic.js?v=mic2"' in app
     css = (ROOT / "phone" / "player" / "css" / "player.css").read_text(encoding="utf-8")

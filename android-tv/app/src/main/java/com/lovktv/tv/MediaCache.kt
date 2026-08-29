@@ -127,7 +127,15 @@ class MediaCache(private val root: File) {
 
     companion object {
         const val META = "song.json"
-        val WANTED = listOf("karaoke.m4a", "guide.m4a", "lyrics.json", "mtv.mp4", "original.mp3")
+        val WANTED = listOf(
+            "karaoke.m4a",
+            "guide.m4a",
+            "lyrics.json",
+            "mtv.mp4",
+            "original.mp3",
+            "skeleton.json",
+            "cover.jpg",
+        )
 
         fun parsePath(path: String): Pair<String, String>? {
             val clean = path.substringBefore('?')

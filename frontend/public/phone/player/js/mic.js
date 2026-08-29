@@ -4,6 +4,7 @@ import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { hookPlayerAudio, applyPlayerVocalMix } from "./playback.js";
+import { hasNativeMic, nativeCaps, nativeCall, nativeMicState, setNativeGain } from "../../room/js/native-mic.js?v=micudp1";
 
 const MIC_WAIT_MS = 12000;
 
@@ -114,7 +115,7 @@ export function applyPhoneMonitor() {
 export function paintPhoneMic() {
   const btn = $("playerMic");
   if (!btn) return;
-  const on = !!(state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live"));
+  const on = !!(state.phoneNativeLive || (state.phoneMic && state.phoneMic.getTracks().some((track) => track.readyState === "live")));
   btn.classList.toggle("on", on);
   btn.classList.toggle("live", on);
   btn.setAttribute("aria-label", on ? t("common.micOff") : t("phone.player.micSing"));
@@ -135,6 +136,7 @@ export function setPhoneMicGain(value) {
   localStorage.setItem("phoneMicGain", String(state.phoneMicLevel));
   $("playerMicGain").value = String(state.phoneMicLevel);
   $("playerMicVal").textContent = String(state.phoneMicLevel);
+  setNativeGain(state.phoneMicLevel);
   if (state.phoneMicGain) state.phoneMicGain.gain.value = state.phoneMicLevel / 100;
   const el = $("phoneIemVoice");
   if (el) el.volume = Math.max(0, Math.min(1, state.phoneMicLevel / 100));
@@ -146,6 +148,14 @@ export function stopPhoneMic() {
     state.phoneMic.getTracks().forEach((track) => track.stop());
     state.phoneMic = null;
   }
+  if (hasNativeMic() && (state.phoneNativeLive || nativeMicState().iem)) {
+    nativeCall("stopIem").catch(() => {});
+    if (state.phoneStartedTv) {
+      nativeCall("stopTvMic").catch(() => {});
+      state.phoneStartedTv = false;
+    }
+  }
+  state.phoneNativeLive = false;
   paintPhoneMic();
 }
 
@@ -178,6 +188,29 @@ export async function routePhoneSink(sink) {
   }
 }
 
+async function startNativePhoneMic() {
+  const caps = nativeCaps();
+  if (state.phoneIem) {
+    await nativeCall("startIem");
+  } else if (nativeMicState().iem) {
+    await nativeCall("stopIem");
+  }
+  if (caps.tv && !nativeMicState().tv) {
+    await nativeCall("startTvMic");
+    state.phoneStartedTv = true;
+  }
+  setNativeGain(state.phoneMicLevel);
+  state.phoneNativeLive = true;
+  paintPhoneMic();
+  if (state.phoneIem) {
+    $("playerMicHint").textContent = t("phone.mic.hintNativeIem");
+  } else if (caps.tv) {
+    $("playerMicHint").textContent = t("phone.mic.hintNativeTv");
+  } else {
+    $("playerMicHint").textContent = t("phone.mic.hintSpeaker");
+  }
+}
+
 export async function startPhoneMic(opts) {
   const restart = !!(opts && opts.restart);
   if (!restart && state.roomRtc && state.roomRtc.isLive()) {
@@ -194,6 +227,10 @@ export async function startPhoneMic(opts) {
       confirm: t("phone.mic.headphoneGo"),
     });
     if (!go) throw new Error(t("phone.mic.headphoneNeed"));
+  }
+  if (hasNativeMic()) {
+    await startNativePhoneMic();
+    return;
   }
   hookPlayerAudio();
   state.phoneCtx = ensurePhoneCtx();
@@ -230,7 +267,7 @@ export function bindPhoneMic() {
     state.phoneIem = !state.phoneIem;
     localStorage.setItem("phoneIem", state.phoneIem ? "1" : "0");
     paintPhoneMic();
-    if (!state.phoneMic) return;
+    if (!state.phoneMic && !state.phoneNativeLive) return;
     holdMicHint(true, t("phone.mic.allowIem"));
     try {
       await startPhoneMic({ restart: true });

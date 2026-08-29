@@ -4,13 +4,13 @@ import { showToast } from "./ui/js/toast.js";
 import { closeOverlay, openOverlay, showActionSheet } from "./ui/js/overlays.js";
 import { loadWho } from "./ui/js/who.js";
 import { showPage } from "./nav/js/pages.js";
-import { showDeskPane, loadSongs } from "./desk/js/library.js";
+import { showDeskPane, loadSongs } from "./desk/js/library.js?v=scan1";
 import { loadRoom } from "./desk/js/queue.js";
-import { runSearch } from "./search/js/hits.js";
+import { runSearch } from "./search/js/hits.js?v=queue6";
 import { stopPreview, togglePreview } from "./search/js/preview.js";
-import { joinRoom, openTv } from "./room/js/join.js";
-import { paintVocalMix, paintMix } from "./room/js/mix.js?v=mix5";
-import { connectRoomRtc } from "./room/js/rtc.js?v=mix6";
+import { joinRoom, openTv, requestTvBind, needTvOrRoom, paintBindBtns } from "./room/js/join.js";
+import { paintVocalMix, paintMix } from "./room/js/mix.js?v=scan2";
+import { connectRoomRtc } from "./room/js/rtc.js?v=scan2";
 import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/mic.js";
 import {
   exitEdit,
@@ -38,7 +38,7 @@ import {
   bootPlayer,
   playNextSong,
   cueIndexAt,
-} from "./player/js/playback.js?v=paint3";
+} from "./player/js/playback.js?v=scan2";
 import { setPlayerSheet } from "./player/js/sheet.js";
 import { enterLearn, exitLearn } from "./player/js/learn.js";
 
@@ -60,6 +60,9 @@ installApi({
   togglePreview,
   joinRoom,
   openTv,
+  requestTvBind,
+  needTvOrRoom,
+  paintBindBtns,
   paintVocalMix,
   paintMix,
   connectRoomRtc,

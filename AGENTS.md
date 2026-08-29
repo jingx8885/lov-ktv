@@ -40,6 +40,20 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 - 成品媒体上阿里云 OSS（`lovktv/` 前缀），没配 OSS 就回退读本地 `data/media`。不要把曲库打进镜像或提交进 git。
 - 43 的 `~/lov-ktv/.env` 复用 `/etc/lovbrowser/production.env` 里的 `ALIYUN_OSS_*`，并设 `LOVKTV_OSS_PREFIX=lovktv`，不要用 lovbrowser 的 `installPackage`。
 
+## App 发版
+
+- APK 不进 git、不进镜像。文件落在生产机 `data/apps/`（compose 数据卷），落地页读 `GET /api/apps`。
+- 下载：`https://ktv.lovbrowser.com/apps/tv.apk`、`/apps/phone.apk`。
+- 43 的 `~/lov-ktv/.env` 设 `LOVKTV_APP_UPLOAD_TOKEN`（不要打印）。改 env 后 recreate 容器。
+- 代码上线后再传包：
+
+```bash
+export LOVKTV_APP_UPLOAD_TOKEN=...
+python scripts/publish-apps.py --tv path/to/tv.apk --phone path/to/phone.apk --version 2026.8.29
+```
+
+- 接口：`POST /api/apps/{tv|phone}`，`Authorization: Bearer`，multipart 字段 `file`，可选 `version`。
+
 ## 产品边界
 
 - 主路是搜歌名入库，不是先上传文件。

@@ -1,11 +1,13 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
+import { lanOrigin, roomUrl } from "../../origin.js?v=scan1";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { applyLyricMode, lyricModeForScript, lyricScript } from "../../../shared/lyrics/js/paint.js?v=paint3";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
-import { closeOverlay, openOverlay } from "../../ui/js/overlays.js";
+import { closeOverlay } from "../../ui/js/overlays.js";
+import { nativeMicState, setNativeGain } from "./native-mic.js?v=micudp1";
 
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
@@ -63,7 +65,7 @@ export function paintMix(room) {
   hostVolLabel.textContent = room.host_volume_kind === "mac" ? "Mac" : t("common.volume");
   micGain.value = String(gain);
   micGainVal.textContent = String(gain);
-  const live = !!(state.roomRtc && state.roomRtc.isLive());
+  const live = !!(nativeMicState().tv || (state.roomRtc && state.roomRtc.isLive()));
   const micToggle = $("micToggle");
   if (micToggle) {
     micToggle.classList.toggle("live", live);
@@ -77,7 +79,7 @@ export function paintMix(room) {
   if (!live && !room.mic_on) {
     if (!micHint.dataset.hold) micHint.textContent = "";
   } else if (live) {
-    micHint.textContent = room.mic_on ? t("phone.mic.liveTv") : t("phone.mic.linking");
+    micHint.textContent = nativeMicState().tv || room.mic_on ? t("phone.mic.liveTv") : t("phone.mic.linking");
   }
 }
 
@@ -85,7 +87,7 @@ export function postMix(body) {
   const roomEl = $("room");
   const code = roomEl ? roomEl.value.trim().toUpperCase() : "";
   if (!code) return;
-  return fetchJson(`/api/rooms/${code}/mix`, {
+  return fetchJson(roomUrl(`/api/rooms/${code}/mix`), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -100,6 +102,7 @@ export function bindMixSlider(id, key) {
   if (!el) return;
   const slide = () => {
     $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
+    if (id === "micGain") setNativeGain(el.value);
     clearTimeout(state.mixTimer);
     state.mixTimer = setTimeout(() => postMix({ [key]: Number(el.value) }), 80);
   };
@@ -119,7 +122,7 @@ export function bindMix() {
   if ($("vocalMix")) $("vocalMix").onclick = () => {
     const next = $("vocalMix").classList.contains("on") ? 0 : 1;
     paintVocalMix(next);
-    fetch(`/api/rooms/${$("room").value}/mix`, {
+    fetch(roomUrl(`/api/rooms/${$("room").value}/mix`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vocal_mix: next }),
@@ -128,14 +131,16 @@ export function bindMix() {
   if ($("skip")) $("skip").onclick = async () => {
     const code = $("room").value.trim().toUpperCase();
     $("room").value = code;
-    if (!code) {
-      openOverlay("roomSheet");
-      return showToast(t("phone.desk.needRoom"));
-    }
+    if (api.needTvOrRoom && api.needTvOrRoom()) return;
     $("skip").disabled = true;
     try {
       /** @type {{ data: Room }} */
-      const { data: room } = await fetchJson(`/api/rooms/${code}/skip`, { method: "POST" });
+      const skipHit = await fetchJson(roomUrl(`/api/rooms/${code}/skip`), { method: "POST" });
+      if (!skipHit.ok || !skipHit.data || !skipHit.data.code) {
+        showToast(lanOrigin() ? t("phone.room.lanFail") : (skipHit.data.detail || t("phone.desk.cantQueue")));
+        return;
+      }
+      const room = skipHit.data;
       const now = room.now_playing;
       $("roomState").textContent = now
         ? t("phone.room.statNow", { code: room.code, title: now.title })

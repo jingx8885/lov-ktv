@@ -4,7 +4,7 @@ import { state } from "../../state.js";
 import { roomCode } from "../../auth/js/login.js";
 import { unlockAudio } from "../../audio/js/unlock.js";
 import { applyMix } from "./mix.js?v=stall1";
-import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js?v=paint4";
+import { startPlayback, stopPlayback, tick, wantsResume } from "./tick.js?v=native1";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";
@@ -40,6 +40,8 @@ export async function skipSong() {
     const { ok, data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
     if (!ok || !data.code) return;
     state.room = /** @type {Room} */ (data);
+    try { if (window.LovKtvNative && window.LovKtvNative.stopMtv) window.LovKtvNative.stopMtv(); } catch (err) {}
+    state.boundMtvSong = "";
     if (!state.room.now_playing) stopPlayback();
     else state.lastItem = "";
     if (state.room.now_playing && $("title")) $("title").textContent = state.room.now_playing.title;

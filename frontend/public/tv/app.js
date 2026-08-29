@@ -1,14 +1,14 @@
-import "./install.js?v=paint3";
+import "./install.js?v=native1";
 import { bootI18n, onLangChange, applyDom } from "../shared/i18n/js/i18n.js";
 import { $must } from "../shared/ui/js/dom.js";
 import { state } from "./state.js";
 import { bootAuth, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
-import { bindRoomRtc } from "./audio/js/mic.js?v=paint3";
+import { bindRoomRtc } from "./audio/js/mic.js?v=native1";
 import { applyMix } from "./playback/js/mix.js?v=stall1";
-import { tick, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js?v=paint5";
-import { paint } from "./playback/js/lyrics.js?v=paint4";
-import { bindRemote, skipSong, toggleVocal } from "./playback/js/remote.js?v=paint3";
+import { tick, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js?v=native1";
+import { paint } from "./playback/js/lyrics.js?v=native1";
+import { bindRemote, skipSong, toggleVocal } from "./playback/js/remote.js?v=native1";
 
 bootI18n();
 onLangChange(() => {

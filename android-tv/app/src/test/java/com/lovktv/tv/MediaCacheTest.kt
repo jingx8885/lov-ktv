@@ -23,9 +23,19 @@ class MediaCacheTest {
 
     @Test
     fun wantedPlaybackFiles() {
-        val remote = listOf("original.mp3", "karaoke.m4a", "guide.m4a", "lyrics.json", "mtv.mp4", "vocals.wav", "asr.json")
+        val remote = listOf(
+            "original.mp3",
+            "karaoke.m4a",
+            "guide.m4a",
+            "lyrics.json",
+            "mtv.mp4",
+            "skeleton.json",
+            "cover.jpg",
+            "vocals.wav",
+            "asr.json",
+        )
         assertEquals(
-            listOf("karaoke.m4a", "guide.m4a", "lyrics.json", "mtv.mp4", "original.mp3"),
+            listOf("karaoke.m4a", "guide.m4a", "lyrics.json", "mtv.mp4", "original.mp3", "skeleton.json", "cover.jpg"),
             MediaCache.wantedFiles(remote),
         )
         assertTrue(MediaCache.isSingable(setOf("karaoke.m4a", "lyrics.json")))

@@ -327,6 +327,28 @@ select.lang-picker:focus {
   line-height: 1.55;
 }
 .cta { margin-top: 40px; }
+.cta-apps {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-top: 16px;
+}
+.cta-apps[hidden] { display: none; }
+.app-dl {
+  flex-direction: column;
+  height: auto;
+  min-width: 10.5rem;
+  padding: 10px 16px;
+  gap: 2px;
+}
+.app-dl .ver {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--dim);
+  letter-spacing: 0.02em;
+}
+.lp-closer .cta-apps { margin-top: 16px; }
 .fine {
   margin: 32px 0 0;
   color: var(--dim);

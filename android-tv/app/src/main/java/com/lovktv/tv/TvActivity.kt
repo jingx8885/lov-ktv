@@ -2,9 +2,11 @@ package com.lovktv.tv
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
 import android.view.KeyEvent
+import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -13,16 +15,32 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.app.Activity
+import android.view.SurfaceView
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
+import java.net.URL
+import java.util.concurrent.Executors
 
-class TvActivity : Activity() {
+class TvActivity : Activity(), TvHost {
     private lateinit var webView: WebView
+    private lateinit var coverView: ImageView
+    private lateinit var lyricsView: TextView
+    private lateinit var silentMtv: SilentMtv
+
+    private val io = Executors.newSingleThreadExecutor { runnable ->
+        Thread(runnable, "lovktv-cover").apply { isDaemon = true }
+    }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tv)
         webView = findViewById(R.id.webview)
+        coverView = findViewById(R.id.mtvCover)
+        lyricsView = findViewById(R.id.nativeLyrics)
+        silentMtv = SilentMtv(findViewById<SurfaceView>(R.id.mtvNative))
+
         runCatching {
             val cookies = CookieManager.getInstance()
             cookies.setAcceptCookie(true)
@@ -30,8 +48,10 @@ class TvActivity : Activity() {
         }
 
         webView.setBackgroundColor(Color.TRANSPARENT)
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
         webView.isFocusable = true
         webView.isFocusableInTouchMode = true
+        webView.addJavascriptInterface(TvBridge(this), "LovKtvNative")
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -41,7 +61,6 @@ class TvActivity : Activity() {
             cacheMode = WebSettings.LOAD_NO_CACHE
             userAgentString = "$userAgentString LovKtvAndroidTV/1.0"
         }
-        webView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
                 val msg = consoleMessage ?: return true
@@ -56,7 +75,9 @@ class TvActivity : Activity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 view?.evaluateJavascript(
-                    "(function(){var s=document.getElementById('start');if(s)s.click();})()",
+                    "(function(){document.documentElement.style.background='transparent';" +
+                        "document.body.style.background='transparent';" +
+                        "var s=document.getElementById('start');if(s)s.click();})()",
                     null,
                 )
             }
@@ -74,6 +95,63 @@ class TvActivity : Activity() {
         HostService.ensureStarted(this)
         loadWhenReady()
         webView.requestFocus()
+    }
+
+    override fun runOnUi(block: () -> Unit) {
+        runOnUiThread(block)
+    }
+
+    override fun playMtv(url: String) {
+        silentMtv.play(url)
+        if (silentMtv.url.isNotBlank()) coverView.visibility = View.GONE
+    }
+
+    override fun stopMtv() {
+        silentMtv.stop()
+        coverView.visibility = View.GONE
+        coverView.setImageDrawable(null)
+    }
+
+    override fun pauseMtv() {
+        silentMtv.pause()
+    }
+
+    override fun resumeMtv() {
+        silentMtv.resume()
+    }
+
+    override fun seekMtv(ms: Int) {
+        silentMtv.seek(ms)
+    }
+
+    override fun mtvPositionMs(): Int = silentMtv.positionMs()
+
+    override fun mtvDurationMs(): Int = silentMtv.durationMs()
+
+    override fun mtvPlaying(): Boolean = silentMtv.isPlaying()
+
+    override fun showCover(url: String) {
+        val next = url.trim()
+        if (next.isBlank()) {
+            coverView.visibility = View.GONE
+            coverView.setImageDrawable(null)
+            return
+        }
+        io.execute {
+            val bmp = runCatching {
+                URL(next).openStream().use { BitmapFactory.decodeStream(it) }
+            }.getOrNull()
+            runOnUiThread {
+                if (bmp == null) return@runOnUiThread
+                coverView.setImageBitmap(bmp)
+                if (!silentMtv.isPlaying()) coverView.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    override fun showLyrics(cur: String, zh: String, next: String) {
+        lyricsView.text = ""
+        lyricsView.visibility = View.GONE
     }
 
     private fun loadWhenReady() {
@@ -125,6 +203,7 @@ class TvActivity : Activity() {
     }
 
     override fun onPause() {
+        pauseMtv()
         webView.onPause()
         super.onPause()
     }
@@ -133,10 +212,14 @@ class TvActivity : Activity() {
         super.onResume()
         webView.onResume()
         webView.requestFocus()
+        resumeMtv()
     }
 
     override fun onDestroy() {
+        stopMtv()
+        webView.removeJavascriptInterface("LovKtvNative")
         webView.destroy()
+        io.shutdownNow()
         super.onDestroy()
     }
 }
