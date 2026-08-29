@@ -154,6 +154,19 @@ interface LovKtvRemoteApi {
   start(): boolean;
 }
 
+interface LovKtvPhoneBridge {
+  scanTv?: () => void;
+  http?: (id: string, url: string, method: string, body: string) => void;
+  useLan?: (lan: string, room: string) => void;
+  capabilities?: () => string;
+  state?: () => string;
+  startTvMic?: () => string;
+  stopTvMic?: () => string;
+  startIem?: () => string;
+  stopIem?: () => string;
+  setGain?: (value: number) => void;
+}
+
 interface Window {
   webkitAudioContext?: typeof AudioContext;
   webkitOfflineAudioContext?: typeof OfflineAudioContext;
@@ -163,6 +176,7 @@ interface Window {
   LovTimeline?: LovTimelineApi;
   LovStageFx?: LovStageFxApi;
   LovKtvRemote?: LovKtvRemoteApi;
+  LovKtvPhone?: LovKtvPhoneBridge;
   confetti?: { create?: (canvas: HTMLElement, opts?: object) => unknown };
 }
 

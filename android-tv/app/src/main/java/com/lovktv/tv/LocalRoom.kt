@@ -76,7 +76,12 @@ class LocalRoom(
     }
 
     @Synchronized
-    fun snapshot(code: String): RoomSnap = ensure(code)
+    fun snapshot(code: String): RoomSnap {
+        val room = ensure(code)
+        val next = room.copy(queue = room.queue.map(::refreshItem))
+        rooms[room.code] = next
+        return next
+    }
 
     @Synchronized
     fun activeCode(): String = rooms.keys.lastOrNull().orEmpty()
@@ -87,17 +92,14 @@ class LocalRoom(
         val id = songId.trim()
         if (id.isBlank()) throw IllegalArgumentException("缺歌曲")
         val song = songLookup(id)
-        if (song != null && !song.singable) {
-            throw IllegalArgumentException("这首还没就绪，不能点")
-        }
-        if (room.queue.any { it.songId == id }) return room
+        if (room.queue.any { it.songId == id }) return snapshot(room.code)
         val item = QueueItem(
             id = newId(),
             songId = song?.id ?: id,
             position = (room.queue.maxOfOrNull { it.position } ?: 0) + 1,
             title = song?.title?.ifBlank { id } ?: id,
             artist = song?.artist.orEmpty(),
-            status = "ready",
+            status = itemStatus(song),
             language = song?.language ?: "zh",
             mediaRev = song?.mediaRev.orEmpty(),
         )
@@ -105,7 +107,18 @@ class LocalRoom(
         val playing = room.nowPlaying != null
         val next = room.copy(queue = queue, nowIndex = if (playing) room.nowIndex else queue.lastIndex)
         rooms[room.code] = next
-        return next
+        return snapshot(room.code)
+    }
+
+    @Synchronized
+    fun refreshSong(songId: String) {
+        val id = songId.trim()
+        if (id.isBlank()) return
+        rooms.keys.toList().forEach { code ->
+            val room = rooms[code] ?: return@forEach
+            if (room.queue.none { it.songId == id }) return@forEach
+            rooms[code] = room.copy(queue = room.queue.map { if (it.songId == id) refreshItem(it) else it })
+        }
     }
 
     @Synchronized
@@ -189,6 +202,25 @@ class LocalRoom(
         )
         rooms[code] = snap
         return snap
+    }
+
+    private fun itemStatus(song: CachedSong?): String {
+        return when {
+            song == null -> "fetching"
+            song.singable -> "ready"
+            else -> song.status.ifBlank { "fetching" }
+        }
+    }
+
+    private fun refreshItem(item: QueueItem): QueueItem {
+        val song = songLookup(item.songId)
+        return item.copy(
+            title = song?.title?.ifBlank { item.title } ?: item.title,
+            artist = song?.artist?.ifBlank { item.artist } ?: item.artist,
+            language = song?.language?.ifBlank { item.language } ?: item.language,
+            status = itemStatus(song),
+            mediaRev = song?.mediaRev?.ifBlank { item.mediaRev } ?: item.mediaRev,
+        )
     }
 
     private fun jsonFlag(obj: JSONObject, key: String): Boolean? {

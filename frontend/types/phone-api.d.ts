@@ -10,12 +10,15 @@ interface PhoneApi {
   showPage(name: string, songId?: string | null, push?: boolean): void;
   showDeskPane(name: string): void;
   loadSongs(append?: boolean): Promise<void>;
-  loadRoom(): Promise<void>;
+  loadRoom(opts?: { quiet?: boolean; room?: Room }): Promise<void>;
   runSearch(page: number, append?: boolean): Promise<void>;
   stopPreview(): void;
   togglePreview(hit: SearchHit, btn: HTMLElement): Promise<void>;
   joinRoom(openScreen?: boolean, quiet?: boolean): Promise<void>;
   openTv(code: string): void;
+  requestTvBind(): boolean;
+  needTvOrRoom(): boolean;
+  paintBindBtns(): void;
   paintVocalMix(mix: number): void;
   paintMix(room: Room): void;
   connectRoomRtc(code: string): void;

@@ -42,3 +42,21 @@ class RoomCommandPayload(BaseModel):
             return dump(exclude_none=True)
         return self.dict(exclude_none=True)
 
+
+class RoomLanPayload(BaseModel):
+    lan_origin: str | None = None
+    origin: str | None = None
+    local_url: str | None = None
+    mic_port: int | None = None
+    mic_sample_rate: int | None = None
+
+    if ConfigDict is not None and hasattr(BaseModel, "model_validate"):
+        model_config = ConfigDict(extra="ignore")
+    else:
+
+        class Config:
+            extra = "ignore"
+
+    def origin_url(self) -> str:
+        return str(self.lan_origin or self.origin or self.local_url or "").strip()
+

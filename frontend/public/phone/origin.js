@@ -67,3 +67,18 @@ export function catalogUrl(path) {
   if (!process || sameOrigin(process)) return path;
   return process + (path.charAt(0) === "/" ? path : "/" + path);
 }
+
+/** Ask the Android phone app to bind the TV LAN URL discovered from the room. */
+export function adoptLan(room) {
+  const lan = String((room && (room.lan_origin || room.lanOrigin)) || "").replace(/\/$/, "");
+  const code = String((room && room.code) || "").toUpperCase();
+  if (!lan || !code) return false;
+  if (lanOrigin() === lan) return false;
+  try {
+    if (window.LovKtvPhone && typeof window.LovKtvPhone.useLan === "function") {
+      window.LovKtvPhone.useLan(lan, code);
+      return true;
+    }
+  } catch (err) {}
+  return false;
+}

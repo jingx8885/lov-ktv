@@ -35,4 +35,9 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun http(id: String, url: String, method: String, body: String) {
         activity.lanHttp(id, url, method, body)
     }
+
+    @JavascriptInterface
+    fun useLan(lan: String, room: String) {
+        activity.useLan(lan, room)
+    }
 }

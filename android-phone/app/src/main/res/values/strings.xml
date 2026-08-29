@@ -3,7 +3,7 @@
     <string name="app_name">lov-ktv 点歌</string>
     <string name="brand">lov-ktv</string>
     <string name="join_title">点歌台</string>
-    <string name="join_hint">对准电视上的二维码。每次扫描都用当前电视地址，不要手填房间号。</string>
+    <string name="join_hint">扫电视上的二维码，或只填房间号。电视会把局域网地址报到处理服务器。</string>
     <string name="scan_need_qr">请扫电视上的二维码进房</string>
     <string name="room_hint">房间码</string>
     <string name="server_hint">https://ktv.lovbrowser.com</string>
@@ -39,6 +39,8 @@
     <string name="now">在唱</string>
     <string name="idle">还没开始唱</string>
     <string name="splash_desc">lov-ktv 启动</string>
-    <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码。</string>
+    <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码或填房间号。</string>
     <string name="lan_desk_retry">先用手机</string>
+    <string name="tv_reconnecting">正在重连电视…</string>
+    <string name="tv_reconnected">已重新连上电视</string>
 </resources>

@@ -59,3 +59,12 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "const quiet = !!(opts && opts.quiet);" in queue
     assert "window.__lovktvNativeLan = true" in http
     assert "LovKtvPhone.http" in http
+    origin = (ROOT / "phone" / "origin.js").read_text(encoding="utf-8")
+    assert "export function adoptLan" in origin
+    assert "LovKtvPhone.useLan" in origin
+    assert "room.lan_origin" in origin
+    assert "adoptLan" in join
+    assert "if (adoptLan(room))" in join
+    queue_js = (ROOT / "phone" / "desk" / "js" / "queue.js").read_text(encoding="utf-8")
+    assert "adoptLan(cloud.data)" in queue_js
+    assert "api.loadRoom({ room: data })" in (ROOT / "phone" / "desk" / "js" / "library.js").read_text(encoding="utf-8")

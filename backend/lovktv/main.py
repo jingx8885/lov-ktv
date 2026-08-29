@@ -12,7 +12,7 @@ from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
-from lovktv.api_models import RoomCommandPayload
+from lovktv.api_models import RoomCommandPayload, RoomLanPayload
 from lovktv.assets import VersionedStaticFiles, versioned_response
 from lovktv.auth import (
     SESSION_COOKIE,
@@ -59,6 +59,7 @@ from lovktv.store import (
     get_song,
     init_db,
     list_songs,
+    set_room_lan,
     retry_query,
     update_song,
     with_media_flags,
@@ -645,6 +646,17 @@ def api_room(request: Request, code: str) -> JSONResponse:
     view = _room_view(code.upper(), lang=request_lang(request))
     token = _bind_host(request, view["code"])
     return _set_host_cookie(JSONResponse(view), request, token)
+
+
+@app.post("/api/rooms/{code}/lan")
+def api_room_lan(request: Request, code: str, payload: RoomLanPayload) -> JSONResponse:
+    code = code.upper()
+    try:
+        snap = set_room_lan(code, payload.origin_url(), payload.mic_port, payload.mic_sample_rate)
+    except ValueError as exc:
+        raise HTTPException(400, localize_exc(request, exc)) from exc
+    token = _bind_host(request, snap["code"])
+    return _set_host_cookie(JSONResponse(_room_view(code, snap, lang=request_lang(request))), request, token)
 
 
 @app.post("/api/rooms/{code}/queue")

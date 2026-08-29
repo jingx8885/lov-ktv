@@ -91,6 +91,20 @@
     });
   }
 
+  var lastUrl = "";
+
+  function phoneUrl(host, code) {
+    var url = host && host.phone_url ? String(host.phone_url) : "";
+    if (url) return url;
+    var process = host && host.process_origin ? String(host.process_origin).replace(/\/$/, "") : "";
+    var origin = host && host.origin ? String(host.origin).replace(/\/$/, "") : (location.origin || "").replace(/\/$/, "");
+    url = (origin || process) + "/m.html?room=" + code;
+    if (origin && process && origin !== process) {
+      url += "&process=" + encodeURIComponent(process);
+    }
+    return url;
+  }
+
   function boot() {
     if (/\bandroidtv=1\b/.test(location.search || "") || /LovKtvAndroidTV/i.test(navigator.userAgent || "")) {
       document.body.classList.add("androidtv");
@@ -101,16 +115,18 @@
         if (!code) throw new Error("开房失败");
         remember(code);
         var host = (hit && hit.host) || {};
-        var url = host.phone_url || "";
-        if (!url) {
-          var process = (host.process_origin || "").replace(/\/$/, "");
-          var origin = (host.origin || location.origin || "").replace(/\/$/, "");
-          url = (origin || process) + "/m.html?room=" + code;
-          if (origin && process && origin !== process) {
-            url += "&process=" + encodeURIComponent(process);
-          }
-        }
+        var url = phoneUrl(host, code);
+        lastUrl = url;
         paint(url, code);
+        setInterval(function () {
+          fetch("/api/host").then(json).then(function (nextHost) {
+            var nextCode = (nextHost && nextHost.room ? String(nextHost.room) : code).toUpperCase();
+            var nextUrl = phoneUrl(nextHost || {}, nextCode);
+            if (!nextUrl || nextUrl === lastUrl) return;
+            lastUrl = nextUrl;
+            paint(nextUrl, nextCode);
+          }).catch(function () {});
+        }, 4000);
       })
       .catch(function (err) {
         setText("code", "开房失败");

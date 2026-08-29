@@ -8,6 +8,8 @@ interface TvApi {
   pageVisible(): boolean;
   canPlay(): boolean;
   tick(): Promise<void>;
+  applyRoom(room: Room): Promise<void>;
+  watchRoom(code: string, onRoom: (room: Room) => void): void;
   startPlayback(): void;
   stopPlayback(): void;
   pauseAudio(): void;

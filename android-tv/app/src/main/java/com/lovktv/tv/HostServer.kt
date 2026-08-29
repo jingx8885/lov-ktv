@@ -37,7 +37,10 @@ import io.ktor.websocket.readBytes
 import io.ktor.websocket.readReason
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -53,6 +56,8 @@ import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -91,11 +96,24 @@ class HostServer(
         .followSslRedirects(true)
         .build()
 
-    val puller = SongPuller(cache, http) { this.processOrigin }
+    val puller = SongPuller(cache, http, { this.processOrigin }) { songId ->
+        localRoom.refreshSong(songId)
+        val code = HostRuntime.roomCode.ifBlank { localRoom.activeCode() }
+        if (code.isNotBlank()) broadcastBoxAsync(code, localRoom.snapshot(code).toJson())
+    }
 
     private val roomSync = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "lovktv-room").apply { isDaemon = true }
     }
+
+    private val boxSockets = ConcurrentHashMap<String, CopyOnWriteArraySet<DefaultWebSocketServerSession>>()
+    private val boxScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var lastPublishedLan = ""
+
+    @Volatile
+    private var lastPublishedAt = 0L
 
     private var engine: ApplicationEngine? = null
 
@@ -114,6 +132,9 @@ class HostServer(
                 install(WebSockets)
                 routing {
                     get("/") { serveAsset(call, "/") }
+                    webSocket("/ws/box/{code}") {
+                        serveBoxSocket(call.parameters["code"].orEmpty())
+                    }
                     webSocket("/ws/{path...}") {
                         proxyWebSocket(call.request.path(), call.request.queryString())
                     }
@@ -140,6 +161,8 @@ class HostServer(
         HostRuntime.ready = false
         puller.stop()
         roomSync.shutdownNow()
+        boxScope.cancel()
+        boxSockets.clear()
         engine?.stop(200, 800)
         engine = null
     }
@@ -159,6 +182,9 @@ class HostServer(
         }
         val origin = processOrigin.trim().trimEnd('/')
         if (code.isBlank() || origin.isBlank()) return
+        rememberCode(code)
+        refreshLanOrigin()
+        publishLan(origin, code)
         try {
             val request = Request.Builder()
                 .url(HostGateway.remoteUrl(origin, "/api/rooms/$code", null))
@@ -177,14 +203,45 @@ class HostServer(
                 val remoteHas = remoteQueue != null && remoteQueue.length() > 0
                 val local = localRoom.snapshot(code)
                 if (!RoomSync.shouldImportCloud(local.queue.size, if (remoteHas) remoteQueue!!.length() else 0)) {
-                    rememberCode(code)
                     return
                 }
                 localRoom.importSnapshot(text)
-                rememberCode(code)
             }
         } catch (exc: Exception) {
             android.util.Log.w("HostServer", "syncProcessRoom $code failed: ${exc.message}")
+        }
+    }
+
+    private fun refreshLanOrigin() {
+        val port = HostRuntime.port
+        if (port !in 1..65535) return
+        val next = LanAddress.origin(port)
+        if (next.isNotBlank()) HostRuntime.lanOrigin = next
+    }
+
+    private fun publishLan(process: String, code: String) {
+        val lan = HostRuntime.lanOrigin.ifBlank { LanAddress.origin(HostRuntime.port) }
+        val now = System.currentTimeMillis()
+        if (!LanDirectory.shouldPublish(lastPublishedLan, lan, lastPublishedAt, now)) return
+        try {
+            val body = LanDirectory.publishBody(lan, HostRuntime.micPort, LanMic.SAMPLE_RATE)
+                .toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+            val request = Request.Builder()
+                .url(HostGateway.remoteUrl(process, "/api/rooms/$code/lan", null))
+                .post(body)
+                .header("Accept", "application/json")
+                .header("User-Agent", "LovKtv-TV/1.0")
+                .build()
+            apiHttp.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    android.util.Log.w("HostServer", "publishLan $code -> ${response.code}")
+                    return
+                }
+                lastPublishedLan = lan
+                lastPublishedAt = now
+            }
+        } catch (exc: Exception) {
+            android.util.Log.w("HostServer", "publishLan $code failed: ${exc.message}")
         }
     }
 
@@ -301,6 +358,10 @@ class HostServer(
                 call.response.headers.append("Access-Control-Allow-Origin", "*")
                 call.respondText(json, ContentType.Application.Json)
                 if (kind is ApiKind.RoomQueue || kind is ApiKind.RoomPlay) puller.hint()
+                if (kind !is ApiKind.RoomGet) {
+                    val code = JSONObject(json).optString("code")
+                    if (code.isNotBlank()) broadcastBoxAsync(code, json)
+                }
             } catch (exc: IllegalArgumentException) {
                 val status = if (exc.message == "歌曲不存在") HttpStatusCode.NotFound else HttpStatusCode.BadRequest
                 call.respond(status, exc.message ?: "bad request")
@@ -537,6 +598,41 @@ class HostServer(
         if (lan.isNotBlank()) {
             builder.header("X-Forwarded-Host", lan)
             builder.header("X-Forwarded-Proto", "http")
+        }
+    }
+
+    private suspend fun DefaultWebSocketServerSession.serveBoxSocket(codeRaw: String) {
+        val code = Prefs.validRoom(codeRaw)
+        if (code.isBlank()) {
+            close(CloseReason(CloseReason.Codes.CANNOT_ACCEPT, "room"))
+            return
+        }
+        val peers = boxSockets.getOrPut(code) { CopyOnWriteArraySet() }
+        peers.add(this)
+        try {
+            val snap = JSONObject().put("type", "snapshot").put("room", JSONObject(localRoom.snapshot(code).toJson()))
+            outgoing.send(Frame.Text(snap.toString()))
+            for (frame in incoming) {
+                if (frame is Frame.Close) break
+            }
+        } catch (_: ClosedReceiveChannelException) {
+        } finally {
+            peers.remove(this)
+            if (peers.isEmpty()) boxSockets.remove(code, peers)
+        }
+    }
+
+    private fun broadcastBoxAsync(code: String, json: String) {
+        val room = code.trim().uppercase()
+        if (room.isBlank() || json.isBlank()) return
+        boxScope.launch { broadcastBox(room, json) }
+    }
+
+    private suspend fun broadcastBox(code: String, json: String) {
+        val peers = boxSockets[code.uppercase()] ?: return
+        val payload = JSONObject().put("type", "snapshot").put("room", JSONObject(json)).toString()
+        for (peer in peers) {
+            runCatching { peer.outgoing.send(Frame.Text(payload)) }
         }
     }
 

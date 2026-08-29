@@ -36,18 +36,22 @@ class LocalRoomTest {
     }
 
     @Test
-    fun rejectSongThatIsNotReady() {
-        val room = LocalRoom(songLookup = { id -> songs.firstOrNull { it.id == id } })
+    fun queuesUncachedSongsAndRefreshesWhenReady() {
+        val live = songs.associateBy { it.id }.toMutableMap()
+        val room = LocalRoom(songLookup = { id -> live[id] })
         room.ensure("OFF2")
-        try {
-            room.enqueue("OFF2", "busy")
-            throw AssertionError("should fail")
-        } catch (exc: IllegalArgumentException) {
-            assertTrue(exc.message!!.contains("还没就绪"))
-        }
-        val snap = room.enqueue("OFF2", "missing")
-        assertEquals("missing", snap.nowPlaying?.songId)
-        assertEquals("ready", snap.nowPlaying?.status)
+        var snap = room.enqueue("OFF2", "busy")
+        assertEquals("separating", snap.nowPlaying?.status)
+        snap = room.enqueue("OFF2", "missing")
+        assertEquals(listOf("busy", "missing"), snap.queue.map { it.songId })
+        assertEquals("fetching", snap.queue.first { it.songId == "missing" }.status)
+        live["missing"] = CachedSong("missing", "新歌", "x", "zh", "ready", listOf("karaoke.m4a"), true, "rev-m")
+        room.refreshSong("missing")
+        snap = room.snapshot("OFF2")
+        val missing = snap.queue.first { it.songId == "missing" }
+        assertEquals("ready", missing.status)
+        assertEquals("新歌", missing.title)
+        assertEquals("rev-m", missing.mediaRev)
     }
 
     @Test

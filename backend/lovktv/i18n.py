@@ -42,6 +42,7 @@ _EXC_KEYS = {
     "这首没有可学的句子": "api.no_learn_lines",
     "这首没有可玩的句子": "api.no_learn_lines",
     "这首还没就绪，不能点": "api.not_ready",
+    "局域网地址无效": "api.bad_lan",
     "未知命令": "api.unknown_command",
     "无效的设备": "api.bad_device",
     "微信未返回账号": "api.wechat_no_account",

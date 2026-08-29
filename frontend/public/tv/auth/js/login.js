@@ -124,6 +124,17 @@ export async function bootAuth() {
   }
   $("phoneLink").href = url;
   renderQr(url);
+  let lastPhoneUrl = url;
+  setInterval(async () => {
+    try {
+      const { data } = await fetchJson("/api/host");
+      const next = data && data.phone_url ? String(data.phone_url) : "";
+      if (!next || next === lastPhoneUrl) return;
+      lastPhoneUrl = next;
+      $("phoneLink").href = next;
+      renderQr(next);
+    } catch (err) {}
+  }, 4000);
   const user = await currentUser();
   renderUserChip(user);
   sessionStorage.setItem("tvSkipLogin", "1");

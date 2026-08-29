@@ -80,4 +80,8 @@ def test_tv_page_builds_phone_url_from_host_origin():
     assert "data.phone_url" in login
     assert "&process=" in login
     assert "host.phone_url" in boot
+    assert "setInterval" in boot
+    assert "phoneUrl" in boot
     assert 'qr.querySelector("canvas, img, svg")' in app
+    assert "data.phone_url" in login
+    assert "lastPhoneUrl" in login

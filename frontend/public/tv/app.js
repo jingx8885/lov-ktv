@@ -6,7 +6,7 @@ import { bootAuth, renderUserChip } from "./auth/js/login.js";
 import { unlockAudio } from "./audio/js/unlock.js";
 import { bindRoomRtc } from "./audio/js/mic.js";
 import { applyMix } from "./playback/js/mix.js";
-import { tick, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js";
+import { tick, applyRoom, watchRoom, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js";
 import { paint } from "./playback/js/lyrics.js";
 import { bindRemote, skipSong, toggleVocal, paintSettings } from "./playback/js/remote.js";
 
@@ -70,6 +70,7 @@ bindRemote();
 
 bootAuth().then(() => {
   bindRoomRtc(state.room.code);
+  watchRoom(state.room.code, applyRoom);
   tick();
   setInterval(tick, 1500);
   requestAnimationFrame(paint);

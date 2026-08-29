@@ -16,6 +16,7 @@ class ModelsTest {
         assertTrue(hits[0].isMv)
         val room = Models.room(
             """{"code":"eabab5","vocal_mix":0,"volume":70,"now_index":0,
+              "lan_origin":"http://192.168.1.8:8788","lan_mic_port":18787,"lan_mic_sample_rate":48000,
               "now_playing":{"id":"q1","song_id":"s1","title":"群青","artist":"YOASOBI","status":"ready"},
               "queue":[
                 {"id":"q1","song_id":"s1","title":"群青","artist":"YOASOBI","status":"ready"},
@@ -24,6 +25,8 @@ class ModelsTest {
               ]}""",
         )
         assertEquals("EABAB5", room.code)
+        assertEquals("http://192.168.1.8:8788", room.lanOrigin)
+        assertEquals(18787, room.lanMicPort)
         assertEquals("群青", room.nowTitle)
         assertEquals("q1", room.queue[0].id)
         assertEquals("s1", room.queue[0].songId)

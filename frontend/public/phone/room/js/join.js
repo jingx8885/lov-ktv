@@ -1,6 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { lanOrigin, roomUrl, tvBound } from "../../origin.js";
+import { adoptLan, lanOrigin, roomUrl, tvBound } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
@@ -102,8 +102,15 @@ export async function joinRoom(openScreen, quiet) {
     $("room").value = code;
     localStorage.setItem("room", code);
     /** @type {{ ok: boolean, data: Room }} */
-    const { ok, data: room } = await fetchJson(roomUrl("/api/rooms/" + code));
+    let { ok, data: room } = await fetchJson(roomUrl("/api/rooms/" + code));
+    if ((!ok || !room.code) && lanOrigin()) {
+      ({ ok, data: room } = await fetchJson("/api/rooms/" + code));
+    }
     if (!ok || !room.code) throw new Error(room.detail || t("phone.room.fail"));
+    if (adoptLan(room)) {
+      $("join").disabled = false;
+      return;
+    }
     $("roomState").textContent = t("phone.room.joined", { code: room.code, n: room.queue.length });
     $("openTv").href = tvUrl(room.code);
     paintTopRoom(room.code);

@@ -7,6 +7,7 @@ import threading
 import time
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 from lovktv.db import connect as db_connect
@@ -262,6 +263,76 @@ def ensure_room_for_host(keys: list[str], ua: str = "") -> dict[str, Any]:
     room = ensure_room(room_for_hosts(keys) or None)
     remember_host_room(keys, room["code"], ua)
     return room
+
+
+def _private_ipv4(host: str) -> bool:
+    name = str(host or "").strip().lower()
+    if name == "localhost" or name.endswith(".local"):
+        return True
+    parts = name.split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        nums = [int(part) for part in parts]
+    except ValueError:
+        return False
+    if any(n < 0 or n > 255 for n in nums):
+        return False
+    if nums[0] == 192 and nums[1] == 168:
+        return True
+    if nums[0] == 10:
+        return True
+    if nums[0] == 172 and 16 <= nums[1] <= 31:
+        return True
+    return False
+
+
+def normalize_lan_origin(raw: str) -> str:
+    text = str(raw or "").strip().rstrip("/")
+    if not text:
+        raise ValueError("局域网地址无效")
+    if "://" not in text:
+        text = "http://" + text
+    parsed = urlparse(text)
+    if parsed.scheme != "http":
+        raise ValueError("局域网地址无效")
+    host = (parsed.hostname or "").strip()
+    if not _private_ipv4(host):
+        raise ValueError("局域网地址无效")
+    if parsed.path not in {"", "/"} or parsed.params or parsed.query or parsed.fragment:
+        raise ValueError("局域网地址无效")
+    if parsed.username or parsed.password:
+        raise ValueError("局域网地址无效")
+    port = parsed.port or 80
+    if port < 1 or port > 65535:
+        raise ValueError("局域网地址无效")
+    return f"http://{host}:{port}"
+
+
+def set_room_lan(
+    code: str,
+    origin: str,
+    mic_port: int | None = None,
+    mic_sample_rate: int | None = None,
+) -> dict[str, Any]:
+    room = str(code or "").strip().upper()
+    if not room:
+        raise ValueError("局域网地址无效")
+    lan = normalize_lan_origin(origin)
+    port = int(mic_port or 0)
+    if port < 0 or port > 65535:
+        port = 0
+    rate = int(mic_sample_rate or 48000)
+    if rate < 8000 or rate > 96000:
+        rate = 48000
+    ensure_room(room)
+    with _LOCK, connect() as conn:
+        execute(
+            conn,
+            "UPDATE rooms SET lan_origin=?, lan_mic_port=?, lan_mic_sample_rate=?, lan_seen_at=? WHERE code=?",
+            (lan, port, rate, now_ms(), room),
+        )
+    return room_snapshot(room)
 
 
 def room_snapshot(code: str) -> dict[str, Any]:

@@ -9,6 +9,8 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.KeyEvent
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
@@ -34,6 +36,9 @@ class DeskActivity : Activity() {
     private var pendingIem: Boolean? = null
     private var scanning = false
     private var publicFallbackDone = false
+    private val watch = Handler(Looper.getMainLooper())
+    private var lanMisses = 0
+    private var watching = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,6 +53,7 @@ class DeskActivity : Activity() {
         webView = findViewById(R.id.webview)
         bindWebView()
         loadDesk()
+        startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
     }
 
     private fun bindWebView() {
@@ -308,10 +314,98 @@ class DeskActivity : Activity() {
         micPort = session.micPort
         micRate = session.micRate
         Prefs.save(this, server, roomCode, lanOrigin, micHost, micPort, micRate)
+        lanMisses = 0
         if (micMoved && MicService.running) {
             MicService.apply(this, micHost, micPort, micRate)
         }
         loadDesk("desk", fresh = true)
+        startWatch()
+    }
+
+    fun useLan(lan: String, room: String) {
+        val code = room.trim().uppercase().ifBlank { roomCode }
+        val next = lan.trim().trimEnd('/')
+        if (code.isBlank() || next.isBlank()) return
+        if (code == roomCode && next.equals(lanOrigin, ignoreCase = true)) return
+        Thread({
+            val session = runCatching {
+                RoomConnect.open(server.ifBlank { Prefs.DEFAULT_SERVER }, code, next)
+            }.getOrElse {
+                RoomConnect.fromQr(server.ifBlank { Prefs.DEFAULT_SERVER }, code, next)
+            }
+            runOnUiThread { applySession(session) }
+        }, "lovktv-use-lan").start()
+    }
+
+    private fun startWatch(immediate: Boolean = false) {
+        watching = true
+        watch.removeCallbacksAndMessages(null)
+        watch.postDelayed({ watchLan() }, if (immediate) 400 else 4000)
+    }
+
+    private fun watchLan() {
+        if (!watching || roomCode.isBlank()) return
+        Thread({
+            val current = lanOrigin
+            if (current.isNotBlank() && probeTv(current)) {
+                val recovered = lanMisses > 0
+                lanMisses = 0
+                runOnUiThread {
+                    if (!watching) return@runOnUiThread
+                    if (recovered) {
+                        android.widget.Toast.makeText(this, R.string.tv_reconnected, android.widget.Toast.LENGTH_SHORT).show()
+                        if (MicService.running) MicService.apply(this, micHost, micPort, micRate)
+                    }
+                    watch.removeCallbacksAndMessages(null)
+                    watch.postDelayed({ watchLan() }, 4000)
+                }
+                return@Thread
+            }
+            if (current.isNotBlank()) {
+                lanMisses += 1
+                if (lanMisses == 1) {
+                    runOnUiThread {
+                        if (watching) {
+                            android.widget.Toast.makeText(this, R.string.tv_reconnecting, android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                if (lanMisses < 3) {
+                    runOnUiThread {
+                        if (watching) {
+                            watch.removeCallbacksAndMessages(null)
+                            watch.postDelayed({ watchLan() }, 1500)
+                        }
+                    }
+                    return@Thread
+                }
+            }
+            val session = runCatching {
+                RoomConnect.open(server.ifBlank { Prefs.DEFAULT_SERVER }, roomCode, "")
+            }.getOrNull()
+            val nextLan = session?.lanOrigin.orEmpty()
+            val live = nextLan.isNotBlank() && probeTv(nextLan)
+            runOnUiThread {
+                if (!watching) return@runOnUiThread
+                if (live && session != null) {
+                    if (!nextLan.equals(lanOrigin, ignoreCase = true) || roomCode != session.room) {
+                        applySession(session)
+                        return@runOnUiThread
+                    }
+                    lanMisses = 0
+                    android.widget.Toast.makeText(this, R.string.tv_reconnected, android.widget.Toast.LENGTH_SHORT).show()
+                    if (MicService.running) MicService.apply(this, micHost, micPort, micRate)
+                }
+                watch.removeCallbacksAndMessages(null)
+                watch.postDelayed({ watchLan() }, if (live) 4000 else 2500)
+            }
+        }, "lovktv-watch").start()
+    }
+
+    private fun probeTv(origin: String): Boolean {
+        return runCatching {
+            ApiClient(origin, 2, 4).host().mode.equals("tv", ignoreCase = true)
+        }.getOrDefault(false)
     }
 
     fun micCapabilities(): String = NativeMic.capabilitiesJson(micHost, micPort, micRate)
@@ -439,6 +533,8 @@ class DeskActivity : Activity() {
     }
 
     override fun onDestroy() {
+        watching = false
+        watch.removeCallbacksAndMessages(null)
         pendingWebPerm?.deny()
         pendingWebPerm = null
         fileCallback?.onReceiveValue(null)

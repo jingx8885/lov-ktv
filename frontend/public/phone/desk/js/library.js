@@ -101,7 +101,7 @@ function bindSongActions() {
         return;
       }
       btn.classList.add("on");
-      api.loadRoom();
+      api.loadRoom({ room: data });
     };
   });
   $("songs").querySelectorAll("[data-retry]").forEach((btn) => {

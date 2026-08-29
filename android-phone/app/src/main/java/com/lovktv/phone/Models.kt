@@ -31,6 +31,9 @@ data class RoomView(
     val volume: Int,
     val nowIndex: Int,
     val queue: List<SongRow>,
+    val lanOrigin: String = "",
+    val lanMicPort: Int = 0,
+    val lanMicRate: Int = LanMic.SAMPLE_RATE,
 ) {
     val vocalOn: Boolean get() = vocalMix >= 0.5
 }
@@ -70,6 +73,10 @@ object Models {
             volume = root.optInt("volume", 80).coerceIn(0, 100),
             nowIndex = root.optInt("now_index", 0).coerceAtLeast(0),
             queue = (0 until list.length()).map { index -> song(list.getJSONObject(index)) },
+            lanOrigin = root.optString("lan_origin").ifBlank { root.optString("local_url") }.trim().trimEnd('/'),
+            lanMicPort = root.optInt("lan_mic_port", 0),
+            lanMicRate = root.optInt("lan_mic_sample_rate", LanMic.SAMPLE_RATE).takeIf { it in 8000..96000 }
+                ?: LanMic.SAMPLE_RATE,
         )
     }
 

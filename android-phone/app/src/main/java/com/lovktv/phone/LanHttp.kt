@@ -11,7 +11,7 @@ object LanHttp {
     data class Result(val ok: Boolean, val status: Int, val body: String)
 
     private val http = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 

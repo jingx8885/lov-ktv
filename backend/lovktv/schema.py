@@ -23,6 +23,10 @@ TABLES: dict[str, tuple[str, ...]] = {
         "lyric_mode",
         "now_index",
         "paused",
+        "lan_origin",
+        "lan_mic_port",
+        "lan_mic_sample_rate",
+        "lan_seen_at",
     ),
     "queue": ("id", "room", "song_id", "position", "created_at"),
     "users": (
@@ -63,7 +67,11 @@ CREATE TABLE IF NOT EXISTS rooms (
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
   now_index INTEGER NOT NULL DEFAULT 0,
-  paused INTEGER NOT NULL DEFAULT 0
+  paused INTEGER NOT NULL DEFAULT 0,
+  lan_origin TEXT NOT NULL DEFAULT '',
+  lan_mic_port INTEGER NOT NULL DEFAULT 0,
+  lan_mic_sample_rate INTEGER NOT NULL DEFAULT 48000,
+  lan_seen_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS queue (
   id TEXT PRIMARY KEY,
@@ -130,7 +138,11 @@ CREATE TABLE IF NOT EXISTS rooms (
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
   now_index INTEGER NOT NULL DEFAULT 0,
-  paused INTEGER NOT NULL DEFAULT 0
+  paused INTEGER NOT NULL DEFAULT 0,
+  lan_origin TEXT NOT NULL DEFAULT '',
+  lan_mic_port INTEGER NOT NULL DEFAULT 0,
+  lan_mic_sample_rate INTEGER NOT NULL DEFAULT 48000,
+  lan_seen_at BIGINT NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS queue (
   id TEXT PRIMARY KEY,
@@ -181,4 +193,8 @@ ROOM_MIGRATIONS = (
     ("mic_gain", "INTEGER NOT NULL DEFAULT 80"),
     ("lyric_mode", "TEXT NOT NULL DEFAULT 'all'"),
     ("paused", "INTEGER NOT NULL DEFAULT 0"),
+    ("lan_origin", "TEXT NOT NULL DEFAULT ''"),
+    ("lan_mic_port", "INTEGER NOT NULL DEFAULT 0"),
+    ("lan_mic_sample_rate", "INTEGER NOT NULL DEFAULT 48000"),
+    ("lan_seen_at", "BIGINT NOT NULL DEFAULT 0"),
 )

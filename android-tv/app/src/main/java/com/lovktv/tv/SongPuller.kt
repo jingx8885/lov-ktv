@@ -12,6 +12,7 @@ class SongPuller(
     private val cache: MediaCache,
     private val http: OkHttpClient,
     private val processOrigin: () -> String,
+    private val onSong: (String) -> Unit = {},
 ) {
     private val running = AtomicBoolean(false)
     private val executor = Executors.newSingleThreadScheduledExecutor { runnable ->
@@ -57,6 +58,7 @@ class SongPuller(
         }
         val remoteRev = detail.optString("media_rev")
         val cached = cache.getSong(songId)
+        val wasSingable = cached?.singable == true
         val stale = remoteRev.isNotBlank() && cached?.mediaRev != remoteRev
         val wanted = MediaCache.wantedFiles(remoteFiles).ifEmpty { MediaCache.WANTED }
         var complete = true
@@ -83,6 +85,7 @@ class SongPuller(
             ),
             wanted,
         )
+        if (complete && !wasSingable) onSong(songId)
     }
 
     private fun download(origin: String, songId: String, name: String, rev: String) {

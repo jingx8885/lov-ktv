@@ -6,7 +6,7 @@ import { hookAudio, unlockAudio, playEl, resumeCtxs, liveCtxs } from "./audio/js
 import { mediaUrl, prefetchQueue, applyMix, syncVocal, roomLine } from "./playback/js/mix.js";
 import { silenceMtv, nativeMv, syncNativeMv, bindMtv } from "./playback/js/mtv.js";
 import { ensureStageFx, lyricsFingerprint, paint } from "./playback/js/lyrics.js";
-import { pageVisible, canPlay, tick, startPlayback, stopPlayback, pauseAudio } from "./playback/js/tick.js";
+import { pageVisible, canPlay, tick, applyRoom, watchRoom, startPlayback, stopPlayback, pauseAudio } from "./playback/js/tick.js";
 
 installApi({
   roomCode,
@@ -18,6 +18,8 @@ installApi({
   pageVisible,
   canPlay,
   tick,
+  applyRoom,
+  watchRoom,
   startPlayback,
   stopPlayback,
   pauseAudio,

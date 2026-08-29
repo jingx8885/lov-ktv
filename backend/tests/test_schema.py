@@ -24,6 +24,10 @@ def test_schema_covers_current_tables():
         "lyric_mode",
         "now_index",
         "paused",
+        "lan_origin",
+        "lan_mic_port",
+        "lan_mic_sample_rate",
+        "lan_seen_at",
     )
     assert TABLES["queue"] == ("id", "room", "song_id", "position", "created_at")
     assert TABLES["users"] == (

@@ -9,6 +9,9 @@ def test_tv_does_not_restart_on_network_stall():
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
     mix = (ROOT / "tv" / "playback" / "js" / "mix.js").read_text(encoding="utf-8")
     html = (ROOT / "tv.html").read_text(encoding="utf-8")
+    assert "export function watchRoom" in tick
+    assert "/ws/box/" in tick
+    assert "export async function applyRoom" in tick
     assert "export function songReallyEnded" in tick
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
@@ -25,6 +28,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert 'if (now && now.status === "ready") add(now.song_id)' not in mix
     assert 'src="/tv/app.js"' in html
     assert 'from "./playback/js/tick.js"' in app
+    assert "watchRoom(state.room.code, applyRoom)" in app
     assert "export function setWaiting" in tick
     assert "setWaiting(true)" in tick
     assert 'setWaiting(now.status !== "ready")' in tick

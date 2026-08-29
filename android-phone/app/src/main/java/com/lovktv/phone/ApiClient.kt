@@ -9,11 +9,11 @@ import java.util.concurrent.TimeUnit
 
 class ApiException(message: String) : Exception(message)
 
-class ApiClient(base: String) {
+class ApiClient(base: String, connectSeconds: Long = 8, readSeconds: Long = 20) {
     private val root = base.trim().trimEnd('/')
     private val http = OkHttpClient.Builder()
-        .connectTimeout(8, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .connectTimeout(connectSeconds, TimeUnit.SECONDS)
+        .readTimeout(readSeconds, TimeUnit.SECONDS)
         .build()
 
     fun host(): HostInfo = HostParser.parse(get("/api/host"))

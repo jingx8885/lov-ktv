@@ -51,6 +51,11 @@ interface Room {
   mic_on?: boolean;
   host_volume_kind?: string;
   lyric_mode?: LyricMode | string;
+  paused?: boolean | number;
+  lan_origin?: string;
+  lan_mic_port?: number;
+  lan_mic_sample_rate?: number;
+  lan_seen_at?: number;
   detail?: string;
 }
 

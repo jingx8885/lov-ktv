@@ -32,6 +32,17 @@ object RoomConnect {
         return if (lan.isNotBlank()) lan else catalog
     }
 
+    fun lanFromRoom(room: RoomView?): String {
+        val lan = room?.lanOrigin.orEmpty().trim().trimEnd('/')
+        if (lan.isBlank()) return ""
+        return if (Prefs.looksLocal(HostParser.hostFromOrigin(lan))) Prefs.normalize(lan) else ""
+    }
+
+    fun catalogOf(scanned: String): String {
+        val picked = Prefs.normalize(scanned)
+        return if (Prefs.looksLocal(HostParser.hostFromOrigin(picked))) Prefs.DEFAULT_SERVER else picked
+    }
+
     fun pickMic(vararg hosts: HostInfo?): HostInfo? {
         return hosts.firstOrNull { it != null && HostParser.lanMicReady(it) }
     }
@@ -78,19 +89,38 @@ object RoomConnect {
         val lanHint = lanRaw.trim().let { if (it.isBlank()) "" else Prefs.normalize(it) }
         val code = roomRaw.trim().uppercase()
         if (code.isEmpty()) throw IllegalArgumentException("先填房间码")
+        val catalog = catalogOf(scanned)
+        val cloudRoom = if (Prefs.looksLocal(HostParser.hostFromOrigin(scanned))) {
+            null
+        } else {
+            runCatching { ApiClient(catalog, 4, 8).room(code) }.getOrNull()
+        }
+        val discovered = lanFromRoom(cloudRoom)
         val lanGuess = when {
             lanHint.isNotBlank() -> lanHint
             Prefs.looksLocal(HostParser.hostFromOrigin(scanned)) -> scanned
+            discovered.isNotBlank() -> discovered
             else -> ""
         }
         val boxUrl = lanGuess.ifBlank { scanned }
-        val boxHost = runCatching { ApiClient(boxUrl).host() }.getOrNull()
-        val lanUrl = if (boxHost != null) lanOrigin(scanned, lanHint, boxHost) else lanGuess
+        val boxHost = runCatching { ApiClient(boxUrl, 2, 4).host() }.getOrNull()
+        val resolvedHint = lanGuess.ifBlank { lanHint }
+        val lanUrl = if (boxHost != null) lanOrigin(scanned, resolvedHint, boxHost) else lanGuess
         val lanHost = when {
             lanUrl.isBlank() -> null
             boxHost != null && lanUrl == boxUrl -> boxHost
-            else -> runCatching { ApiClient(lanUrl).host() }.getOrNull()
+            else -> runCatching { ApiClient(lanUrl, 2, 4).host() }.getOrNull()
         }
-        return fromQr(scanned, code, lanHint, boxHost, lanHost)
+        val session = fromQr(scanned, code, resolvedHint, boxHost, lanHost)
+        val cloudLan = discovered.ifBlank { session.lanOrigin }
+        return session.copy(
+            lanOrigin = session.lanOrigin.ifBlank { cloudLan },
+            micHost = session.micHost.ifBlank {
+                val origin = session.lanOrigin.ifBlank { cloudLan }
+                if (origin.isNotBlank()) DeskPage.hostOf(origin) else ""
+            },
+            micPort = session.micPort.takeIf { it in 1..65535 } ?: (cloudRoom?.lanMicPort ?: 0),
+            micRate = if (session.micPort in 1..65535) session.micRate else (cloudRoom?.lanMicRate ?: LanMic.SAMPLE_RATE),
+        )
     }
 }

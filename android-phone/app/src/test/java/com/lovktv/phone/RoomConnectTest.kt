@@ -110,4 +110,15 @@ class RoomConnectTest {
         assertEquals(18787, next.micPort)
         assertEquals(48000, next.micRate)
     }
+
+    @Test
+    fun lanFromRoomUsesPrivateOrigin() {
+        val room = Models.room(
+            """{"code":"HOME01","lan_origin":"http://192.168.1.8:8788/","lan_mic_port":18787,"queue":[]}""",
+        )
+        assertEquals("http://192.168.1.8:8788", RoomConnect.lanFromRoom(room))
+        assertEquals("https://ktv.lovbrowser.com", RoomConnect.catalogOf("http://192.168.1.8:8788"))
+        val public = Models.room("""{"code":"HOME01","lan_origin":"https://ktv.lovbrowser.com","queue":[]}""")
+        assertEquals("", RoomConnect.lanFromRoom(public))
+    }
 }

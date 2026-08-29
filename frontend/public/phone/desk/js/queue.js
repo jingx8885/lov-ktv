@@ -1,6 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { lanOrigin, roomUrl } from "../../origin.js";
+import { adoptLan, lanOrigin, roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
@@ -9,6 +9,20 @@ import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
 
 let lastLanFailAt = 0;
+let lastRoomStamp = "";
+
+function roomStamp(room) {
+  return JSON.stringify({
+    code: room && room.code,
+    idx: room && room.now_index,
+    mix: room && room.vocal_mix,
+    vol: room && room.volume,
+    paused: room && room.paused,
+    now: room && room.now_playing && (room.now_playing.id || room.now_playing.song_id),
+    nowStatus: room && room.now_playing && room.now_playing.status,
+    q: (room && room.queue ? room.queue : []).map((item) => [item.id, item.song_id, item.status, item.title]),
+  });
+}
 
 async function fetchRoom(code) {
   return fetchJson(roomUrl(`/api/rooms/${code}`)).catch(() => ({ ok: false, data: {} }));
@@ -16,6 +30,7 @@ async function fetchRoom(code) {
 
 export async function loadRoom(opts) {
   const quiet = !!(opts && opts.quiet);
+  const injected = opts && opts.room;
   const code = $("room").value.trim();
   if (!code) {
     if ($("nowCard") && !$("nowCard").innerHTML.trim()) {
@@ -23,21 +38,35 @@ export async function loadRoom(opts) {
     }
     return;
   }
-  /** @type {{ ok: boolean, data: Room }} */
-  let { ok, data: room } = await fetchRoom(code);
-  if ((!ok || !room.code) && lanOrigin()) {
-    for (let i = 0; i < 3 && (!ok || !room.code); i++) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      ({ ok, data: room } = await fetchRoom(code));
+  let ok = true;
+  /** @type {Room | null} */
+  let room = injected && injected.code ? injected : null;
+  if (!room) {
+    ({ ok, data: room } = await fetchRoom(code));
+    if ((!ok || !room.code) && lanOrigin()) {
+      for (let i = 0; i < 3 && (!ok || !room.code); i++) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        ({ ok, data: room } = await fetchRoom(code));
+      }
     }
+  } else {
+    ok = true;
   }
-  if (!ok || !room.code) {
+  if (!ok || !room || !room.code) {
+    if (lanOrigin()) {
+      const cloud = await fetchJson("/api/rooms/" + code).catch(() => ({ ok: false, data: {} }));
+      if (cloud.ok && cloud.data && cloud.data.code && adoptLan(cloud.data)) return;
+    }
     if (!quiet && lanOrigin() && Date.now() - lastLanFailAt > 8000) {
       lastLanFailAt = Date.now();
       showToast(t("phone.room.lanFail"));
     }
     return;
   }
+  if (adoptLan(room)) return;
+  const stamp = roomStamp(room);
+  if (quiet && stamp === lastRoomStamp && $("queue").querySelector(".desk-row, .empty-state")) return;
+  lastRoomStamp = stamp;
   $("roomState").textContent = t("phone.room.stat", { code: room.code, n: room.queue.length });
   paintTopRoom(room.code);
   const now = room.now_playing;
@@ -85,7 +114,7 @@ export async function loadRoom(opts) {
         body: JSON.stringify({ id: btn.dataset.play }),
       });
       if (!ok) showToast(data.detail || t("phone.desk.cantQueue"));
-      loadRoom();
+      loadRoom({ room: data });
     };
   });
   const goLib = $("queue").querySelector("[data-go-lib]");
