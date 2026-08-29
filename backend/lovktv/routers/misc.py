@@ -10,7 +10,7 @@ from lovktv.assets import asset_rev
 from lovktv.db import dialect as db_dialect
 from lovktv.oss import oss_status
 from lovktv.pipeline.mdx_onnx import model_status
-from lovktv.runtime import web_root
+from lovktv.runtime import WEB_ROOT
 
 router = APIRouter()
 
@@ -32,7 +32,7 @@ def api_host(request: Request) -> dict:
         "oss": oss_status(),
         "agent": agent_status(),
         "database": db_dialect(store.DB_PATH),
-        "asset_rev": asset_rev(web_root()),
+        "asset_rev": asset_rev(WEB_ROOT),
     }
 
 

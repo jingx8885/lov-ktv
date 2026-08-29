@@ -1,17 +1,16 @@
 """Focused regression tests for the split alignment implementation."""
 
-from lovktv.pipeline import align, audio, bounds, energy, matching
+from lovktv.pipeline import audio, bounds, energy, matching, orchestrator
 
 
-def test_align_facade_only_owns_orchestration():
-    """The facade exposes the top-level orchestration entry point only."""
-    assert callable(align.align_lyrics)
-    assert not hasattr(align, "vocal_regions")
-    assert not hasattr(align, "asr_token_spans")
+def test_orchestrator_owns_pipeline_composition():
+    assert callable(orchestrator.align_lyrics)
+    assert not hasattr(orchestrator, "vocal_regions")
+    assert not hasattr(orchestrator, "asr_token_spans")
 
 
 def test_focused_modules_are_independently_importable():
-    """Each responsibility module can be imported without loading the facade first."""
+    """Each responsibility module can be imported independently."""
     assert audio.HOP_MS == 20
     assert matching.EN_ACCEPT == 0.72
     assert bounds.MIN_LINE_MS == 500

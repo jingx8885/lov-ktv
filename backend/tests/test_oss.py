@@ -13,7 +13,6 @@ def _boot(tmp_path, monkeypatch):
     store.init_db()
     config.DATA_DIR = tmp_path
     config.MEDIA_DIR = tmp_path / "media"
-    main.MEDIA_DIR = tmp_path / "media"
     config.ALIYUN_OSS_ENABLED = False
     return main
 

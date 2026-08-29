@@ -45,7 +45,9 @@ def test_different_ua_gets_new_room(tmp_path, monkeypatch):
 
 def test_joining_a_room_binds_this_machine(tmp_path, monkeypatch):
     app, store = _app(tmp_path, monkeypatch)
-    room = store.ensure_room("HOME01")
+    from lovktv.room_store import ensure_room
+
+    room = ensure_room("HOME01")
     headers = {"User-Agent": "iPhone", "X-LovKtv-Machine": "phone-alice-01"}
     with TestClient(app) as client:
         got = client.get("/api/rooms/" + room["code"], headers=headers)

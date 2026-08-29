@@ -1,4 +1,3 @@
-from lovktv.pipeline.align import align_lyrics
 from lovktv.pipeline.audio import energy_token_spans, snap_to_onset, vocal_regions
 from lovktv.pipeline.bounds import (
     align_lines_to_asr,
@@ -16,6 +15,7 @@ from lovktv.pipeline.matching import (
     match_threshold,
     vocal_phrases,
 )
+from lovktv.pipeline.orchestrator import align_lyrics
 
 
 def _pulse(

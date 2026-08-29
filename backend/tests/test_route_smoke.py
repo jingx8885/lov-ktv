@@ -24,10 +24,14 @@ def test_room_websocket_smoke(tmp_path, monkeypatch):
     store.DB_PATH = tmp_path / "smoke.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
     store.init_db()
-    store.ensure_room("SMOKE1")
-    main._rooms.clear()
-    main._peers.clear()
-    main._mics.clear()
+    from lovktv.room_store import ensure_room
+
+    ensure_room("SMOKE1")
+    from lovktv import runtime
+
+    runtime._rooms.clear()
+    runtime._peers.clear()
+    runtime._mics.clear()
     with (
         TestClient(main.app) as client,
         client.websocket_connect("/ws/rooms/SMOKE1") as ws,

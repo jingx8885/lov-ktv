@@ -1,7 +1,7 @@
 import base64
 import zlib
 
-from lovktv.catalog import fetch, kugou
+from lovktv.catalog import importer, kugou
 
 KRC_SAMPLE = """[ti:晴天]
 [ar:周杰伦]
@@ -86,18 +86,18 @@ def test_fetch_kugou_lyrics_builds_timeline(monkeypatch):
 
 def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        importer,
         "search_mugen",
         lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
     )
-    monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
+    monkeypatch.setattr(importer, "is_mugen_kid", lambda value: False)
     monkeypatch.setattr(
-        fetch,
+        importer,
         "search_tonzhon",
         lambda *args, **kwargs: [{"id": "1", "name": "晴天", "artist": ["周杰伦"]}],
     )
     monkeypatch.setattr(
-        fetch,
+        importer,
         "fetch_kugou_lyrics",
         lambda title, artist="", duration_ms=0, language=None: {
             "timeline": {
@@ -125,21 +125,21 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
         },
     )
     monkeypatch.setattr(
-        fetch,
+        importer,
         "fetch_lyric",
         lambda *args, **kwargs: (_ for _ in ()).throw(
             AssertionError("netease lyric should not run")
         ),
     )
-    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
     monkeypatch.setattr(
-        fetch,
+        importer,
         "try_netease_download",
         lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
     )
-    monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
-    skeleton = fetch.import_song(query="晴天", out_dir=tmp_path, song_id="1")
+    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    skeleton = importer.import_song(query="晴天", out_dir=tmp_path, song_id="1")
     assert skeleton["needs_align"] is False
     assert skeleton["source"]["lyrics"] == "kugou"
     assert skeleton["language"] == "zh"
@@ -149,33 +149,33 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
 
 def test_import_song_falls_back_to_netease_lyrics(tmp_path, monkeypatch):
     monkeypatch.setattr(
-        fetch,
+        importer,
         "search_mugen",
         lambda query, count=10, page=1: {"hits": [], "has_more": False, "total": 0},
     )
-    monkeypatch.setattr(fetch, "is_mugen_kid", lambda value: False)
-    monkeypatch.setattr(fetch, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "is_mugen_kid", lambda value: False)
+    monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        fetch,
+        importer,
         "search_tonzhon",
         lambda *args, **kwargs: [
             {"id": "22689669", "name": "Give a reason", "artist": ["林原めぐみ"]}
         ],
     )
     monkeypatch.setattr(
-        fetch,
+        importer,
         "fetch_lyric",
         lambda song_id, source="netease": "[00:01.00]Give a reason",
     )
-    monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
-    monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "pick_bilibili_mv", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
     monkeypatch.setattr(
-        fetch,
+        importer,
         "try_netease_download",
         lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
     )
-    monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
-    skeleton = fetch.import_song(
+    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    skeleton = importer.import_song(
         query="Give a reason", out_dir=tmp_path, song_id="22689669"
     )
     assert skeleton["needs_align"] is True

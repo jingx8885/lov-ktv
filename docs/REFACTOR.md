@@ -101,6 +101,12 @@
 - [x] CI/本地测试命令固定使用项目 `.venv` 和 `backend/uv.lock`（`uv sync --frozen`）。
 - [x] 增加公网验收脚本 `scripts/accept-production.py`，覆盖 `/`、`/api/host`、`/tv.html`、`/m.html`；本地生命周期 smoke test 同步覆盖。
 
+### R7 后端旧兼容入口清理 — 已完成
+
+- 删除 `catalog/fetch.py` 聚合门面和 `lovktv.catalog` 包级旧导出，调用方改用 `audio`、`search`、`lyrics`、`importer` 职责模块。
+- 将歌词编排实现归位到 `pipeline/orchestrator.py`，移除 `pipeline/align.py` 旧别名入口。
+- 删除 `main` 的动态路由再导出、`runtime` 对 `main` 的反向兼容 helper，以及 `store` 的房间函数兼容导出；公网 API 路径与房间 WebSocket 消息格式不变。
+
 ## 当前跟进
 
 当前批次（`R6-2026.08.29-lifespan-01`）在 R5A/B/C 基础上完成 FastAPI lifespan、后台 worker 启停、健康探针、锁定环境测试和公网验收脚本；R5 前置的房间/播放状态拆分、TV 原生桥集中和前端运行时类型补齐仍保持有效：

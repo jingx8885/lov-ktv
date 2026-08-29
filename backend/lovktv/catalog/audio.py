@@ -12,7 +12,7 @@ from lovktv.catalog import bilibili
 from lovktv.catalog.http import curl_proxy_args, urlopen, ytdlp_proxy_args
 from lovktv.catalog.netease import eapi_play_url, media_request
 
-from .search import BROWSER_UA, _list_ytdlp, is_clean_title
+from .search import BROWSER_UA, _list_ytdlp, clean_search_title, is_clean_title
 
 _AUDIO_CACHE: dict[str, dict[str, Any]] = {}
 
@@ -169,9 +169,7 @@ def try_ytdlp_search(query: str, out_path: Path, provider: str) -> tuple[bool, s
     ytdlp = shutil.which("yt-dlp")
     if not ytdlp:
         return False, ""
-    from lovktv.catalog import fetch as facade
-
-    best = _pick_best_match(facade._list_ytdlp(query, ytdlp, provider))
+    best = _pick_best_match(_list_ytdlp(query, ytdlp, provider))
     if best is None:
         return False, ""
     return _ytdlp_download(str(best["url"]), out_path), str(best.get("title") or "")
@@ -194,13 +192,11 @@ def open_bilibili_audio(bvid: str, timeout: float = 20):
 def _resolve_bilibili_source(
     song_id: str, title: str = "", artist: str = ""
 ) -> dict[str, Any]:
-    from lovktv.catalog import fetch as facade
-
-    hit = facade.pick_bilibili_mv(title, artist)
+    hit = pick_bilibili_mv(title, artist)
     if not hit:
-        cleaned = facade.clean_search_title(title)
+        cleaned = clean_search_title(title)
         if cleaned and cleaned != title:
-            hit = facade.pick_bilibili_mv(cleaned, "")
+            hit = pick_bilibili_mv(cleaned, "")
     if not hit:
         return {}
     urls = bilibili.play_urls(str(hit.get("bvid") or ""))

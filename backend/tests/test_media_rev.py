@@ -56,7 +56,6 @@ def test_song_and_media_urls_use_media_rev(tmp_path, monkeypatch):
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
     config.MEDIA_DIR = tmp_path / "media"
-    main.MEDIA_DIR = tmp_path / "media"
     store.init_db()
     song = store.create_song("夜曲", "周杰伦")
     folder = Path(store.MEDIA_DIR) / song["id"]

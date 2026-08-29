@@ -33,7 +33,7 @@ def test_normalize_lan_origin_rejects_public_and_https():
 
 def test_set_room_lan_persists_on_snapshot(tmp_path, monkeypatch):
     _app(tmp_path, monkeypatch)
-    from lovktv import store
+    from lovktv.room_store import room_snapshot
 
     snap = set_room_lan(
         "home01", "http://192.168.1.8:8788", mic_port=18787, mic_sample_rate=48000
@@ -43,7 +43,7 @@ def test_set_room_lan_persists_on_snapshot(tmp_path, monkeypatch):
     assert int(snap["lan_mic_port"]) == 18787
     assert int(snap["lan_mic_sample_rate"]) == 48000
     assert int(snap["lan_seen_at"]) > 0
-    again = store.room_snapshot("HOME01")
+    again = room_snapshot("HOME01")
     assert again["lan_origin"] == "http://192.168.1.8:8788"
 
 

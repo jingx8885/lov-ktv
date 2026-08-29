@@ -99,7 +99,9 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
     got = store.get_song(song["id"])
     assert got["title"] == "测试"
     assert got["audio_source"] == "netease"
-    room = store.ensure_room("AB12CD")
+    from lovktv.room_store import ensure_room
+
+    room = ensure_room("AB12CD")
     assert room["lyric_mode"] == "all"
     assert room["mic_gain"] == 80
     assert int(room["paused"] or 0) == 0

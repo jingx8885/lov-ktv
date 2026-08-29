@@ -1,8 +1,4 @@
-"""Public lyric alignment facade.
-
-Implementation is split into focused audio, matching, bounds, energy and clock modules;
-this module preserves the historical import/API surface.
-"""
+"""Orchestrate the lyric-alignment pipeline components."""
 
 from __future__ import annotations
 
@@ -133,6 +129,7 @@ def align_lyrics(
     if envelope:
         regions = _vocal_regions(envelope, hop_ms)
         phrases = _vocal_phrases(regions)
+        work: list[dict[str, Any]] = []
         if plain and not timed:
             duration = duration_ms or 60_000
             work = _assign_plain_lines(plain, phrases or regions, duration)
