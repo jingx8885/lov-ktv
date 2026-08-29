@@ -41,14 +41,15 @@ def _stamp(root: Path) -> tuple[int, int]:
 def _compute(root: Path) -> str:
     digest = hashlib.sha256()
     files = sorted(
-        path for path in root.rglob("*") if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}
+        (path for path in root.rglob("*") if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}),
+        key=lambda path: path.relative_to(root).as_posix(),
     )
     for path in files:
         digest.update(path.relative_to(root).as_posix().encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes())
         digest.update(b"\0")
-    return digest.hexdigest()[:12]
+    return digest.hexdigest()
 
 
 def asset_rev(root: Path) -> str:
@@ -68,7 +69,7 @@ def asset_rev(root: Path) -> str:
     hit = _cache.get(key)
     if hit and hit[0] == stamp:
         return hit[1]
-    rev = _compute(root)
+    rev = _compute(root)[:12]
     _cache[key] = (stamp, rev)
     return rev
 
