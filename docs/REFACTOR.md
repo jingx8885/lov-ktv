@@ -103,10 +103,10 @@
 
 - [x] 一次构建生成 `frontend-dist` 和 `manifest.json`，后端静态服务与 Android TV APK 复用同一份产物。
 - [x] asset revision 使用内容 SHA-256（并记录 git commit），后端和 Android `AssetRev` 均从 manifest 读取。
-- [ ] 增加真实公网文件与已构建 TV APK 内嵌文件的路径/hash/入口对比；当前只有源码产物和 manifest 的契约测试，尚未对 APK 解包结果做自动比对。
+- [x] 增加 `scripts/check-frontend-parity.py`，对 `frontend-dist/manifest.json`、TV APK `assets/web` 内嵌文件和公网 manifest/静态资源执行路径、hash、入口与 revision 对比；并加入合成 APK 回归测试。
 - [ ] 验收：同一发布 commit 下，公网 TV、TV APK TV 页、TV APK 提供的 Phone 页三者资源版本一致（需真实 APK 产物）。
 
-证据：`scripts/build-frontend-dist.py`、`backend/lovktv/assets.py`、`android-tv/app/src/main/java/com/lovktv/tv/platform/AssetRev.kt` 形成单一 manifest/revision 链；`backend/tests/test_assets.py` 覆盖 manifest、版本注入和 web 产物入口。Android Gradle 任务 `copyWebAssets` 已依赖该构建脚本，但本工作树未提供可复验的 APK/Gradle SDK，因此 APK parity 仍是明确留项。
+证据：`scripts/build-frontend-dist.py`、`scripts/check-frontend-parity.py`、`backend/lovktv/assets.py`、`android-tv/app/src/main/java/com/lovktv/tv/platform/AssetRev.kt` 形成单一 manifest/revision 链；`backend/tests/test_assets.py` 与 `backend/tests/test_frontend_parity.py` 覆盖 manifest、版本注入、路径/hash 对比和 web 产物入口。Android Gradle 任务 `copyWebAssets` 已依赖该构建脚本；真实 APK 与同 revision 公网产物仍需在发布机执行 parity 命令完成最终验收。
 
 ### R6 生命周期与部署 — 已完成
 
@@ -132,6 +132,6 @@
 - R5C：shared 资源与类型边界（已完成；timeline、stage FX、bridge/API 类型均纳入检查）。
 - R5D：Web/embedded 构建与 manifest/revision（构建链已完成，真实 APK hash/revision 对比待补）。
 
-本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（336 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
+本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（337 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`；资源 parity 工具已由 `backend/tests/test_frontend_parity.py` 覆盖。
 
-> 明确留项（下一批）：用真实 TV APK 解包产物和公网 bundle 做路径、文件 hash、manifest revision 对比。本批已闭环 adapter、桥隔离、LAN 回调、降级、DOM contract、`mount(root, deps)` 入口、Phone/TV 状态 ownership、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。
+> 明确留项（下一批）：在发布机取得真实 TV APK 与同 revision 公网产物后，运行 `python scripts/check-frontend-parity.py --manifest frontend/frontend-dist/manifest.json --apk <tv.apk> --web https://ktv.lovbrowser.com` 完成最终三端一致性验收。本批已闭环 parity 检查工具、adapter、桥隔离、LAN 回调、降级、DOM contract、`mount(root, deps)` 入口、Phone/TV 状态 ownership、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。
