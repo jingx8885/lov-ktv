@@ -194,10 +194,10 @@ def _ja_native_specs(text: str) -> list[tuple[str, str]]:
             specs.append((orig, ""))
             continue
         if _KANJI.search(orig):
-            label = "".join(char for char in orig if _KANJI.match(char))
-            surface = "".join(char for char in hira if not char.isspace())
+            surface = "".join(char for char in orig if not char.isspace())
+            reading = "".join(char for char in hira if not char.isspace())
             if surface:
-                specs.append((surface, label))
+                specs.append((surface, "" if reading == surface else reading))
             continue
         for char in orig:
             if not char.isspace():
@@ -206,9 +206,9 @@ def _ja_native_specs(text: str) -> list[tuple[str, str]]:
 
 
 def ja_token_specs(text: str) -> list[tuple[str, str]]:
-    """Offline fallback: kanji→hiragana via kakasi. Katakana stays unlabeled.
+    """Offline fallback: display kanji, hiragana reading above. Katakana unlabeled.
 
-    Latin words in a Japanese line stay whole. Foreign-word labels and
+    Latin words in a Japanese line stay whole. Loanword English labels and
     contextual readings come from the ja-lyrics agent.
     """
     specs: list[tuple[str, str]] = []

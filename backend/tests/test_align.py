@@ -221,7 +221,7 @@ def test_timeline_from_lrc_still_covers_fixtures():
     assert [tok["text"] for tok in ja["cues"][0]["tokens"]] == list("こんにちは")
     world = ja["cues"][1]["tokens"]
     assert "".join(tok["text"] for tok in world) == "".join(tokenize("世界", "ja"))
-    assert any(tok["reading"] == "世界" for tok in world)
+    assert any(tok["text"] == "世界" and tok["reading"] == "せかい" for tok in world)
     en = timeline_from_lrc([{"ms": 0, "text": "hello world"}, {"ms": 2000, "text": "again"}], "en")
     assert [tok["text"] for tok in en["cues"][0]["tokens"]] == ["hello", "world"]
 

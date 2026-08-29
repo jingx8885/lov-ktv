@@ -1,4 +1,4 @@
-"""Japanese lyric annotation agent: kanji→hiragana, katakana→source language.
+"""Japanese lyric annotation agent: display kanji + hiragana above, katakana + English above.
 
 This is not a word list. An LLM reads the whole lyric and returns units.
 Results are cached per song so import/realign can reuse them.
@@ -36,7 +36,7 @@ Rules:
 1. `source` must equal the input line exactly, even when the input is romaji.
 2. If the line is Hepburn romaji, restore Japanese in `sing` (ひらがな / カタカナ). Example: "itsumo no you ni" → いつもの / ように. Do not leave romaji in `sing`.
 3. Units cover the WHOLE sung line in order. Do not drop or invent words. If the source is romaji, every source word must become a unit (me magurushii jikan no mure ga → めまぐるしい / じかん / の / むれ / が).
-4. Kanji / kanji+okurigana: `sing` is the hiragana reading in THIS song; `label` is only the kanji (止, 君, 溢); `romaji` is Hepburn (kimi, tomatta). Context: 君 as you → きみ, not くん.
+4. Kanji / kanji+okurigana: `sing` is the original writing as in the lyric (止まった, 君, 溢れる); `label` is the hiragana reading in THIS song (とまった, きみ, あふれる); `romaji` is Hepburn (tomatta, kimi). Split at word boundaries: 走り続ける → 走り / 続ける. Context: 君 as you → きみ, not くん.
 5. Katakana loanwords (メモリー, コーヒー, ダンサー): `sing` is katakana; `label` is the original English/French word (memory, coffee, dancer); `romaji` is empty. Never write memorii or koohii.
 6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
 7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
@@ -264,12 +264,54 @@ def lyric_source_key(text: str) -> str:
 
 def _clean_label(label: str) -> str:
     raw = unicodedata.normalize("NFKC", str(label or "")).strip()
+    if not raw:
+        return ""
+    if re.search(r"[A-Za-zÀ-ÿ]", raw) and not _KANJI.search(raw) and not _HIRA.search(raw):
+        return raw
+    hira = "".join(char for char in raw if _HIRA.match(char) or char == "ー")
     kanji = "".join(char for char in raw if _KANJI.match(char))
+    if hira and not kanji:
+        return hira
     if kanji:
         return kanji
-    if re.search(r"[A-Za-zÀ-ÿ]", raw):
-        return raw
     return ""
+
+
+def _latin_label(label: str) -> str:
+    raw = unicodedata.normalize("NFKC", str(label or "")).strip()
+    return raw if re.search(r"[A-Za-zÀ-ÿ]", raw) and not _KANJI.search(raw) else ""
+
+
+def _sung_kana(specs: list[tuple[str, str]]) -> str:
+    bits: list[str] = []
+    for piece, reading in specs:
+        if reading and not _KANJI.search(reading):
+            bits.append(reading)
+        else:
+            bits.append(piece)
+    return _kana_key("".join(bits))
+
+
+def _flip_kanji_specs(snippet: str, sing: str) -> list[tuple[str, str]] | None:
+    from lovktv.pipeline.lyrics import ja_token_specs
+
+    if not snippet:
+        return None
+    leftover = _merge_plain_kana(ja_token_specs(snippet))
+    if leftover and _sung_kana(leftover) == _kana_key(sing):
+        return leftover
+    return None
+
+
+def _join_surfaces(parts: list[str]) -> str:
+    out: list[str] = []
+    for piece in parts:
+        if not piece:
+            continue
+        if out and re.match(r"[A-Za-z0-9']", piece) and re.search(r"[A-Za-z0-9']$", out[-1] or ""):
+            out.append(" ")
+        out.append(piece)
+    return "".join(out)
 
 
 def _source_span_for_kanji(source: str, kanji: str) -> str:
@@ -341,24 +383,34 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
             continue
         if re.search(r"[A-Za-z]", sing) and not _KANJI.search(sing) and not _KANA.search(sing):
             parts = [part for part in _LATIN_PART.findall(sing) if part.strip()]
+            english = _latin_label(label)
             for part in parts:
-                specs.append((part, label if len(parts) == 1 else ""))
+                specs.append((part, english if len(parts) == 1 else ""))
             continue
-        kanji_only = "".join(char for char in raw_label if _KANJI.match(char))
         surface = "".join(char for char in sing if not char.isspace())
-        if len(kanji_only) >= 2:
-            snippet = raw_label if _HIRA.search(raw_label) else _source_span_for_kanji(source, kanji_only)
-            leftover = _merge_plain_kana(ja_token_specs(snippet) if snippet else [])
-            if leftover and _kana_key("".join(piece for piece, _label in leftover)) == _kana_key(sing):
-                specs.extend(leftover)
-                continue
+        kanji_only = "".join(char for char in raw_label if _KANJI.match(char))
         if _KANJI.search(sing):
             leftover = _merge_plain_kana(ja_token_specs(sing))
-            for index, (piece, fallback) in enumerate(leftover):
-                specs.append((piece, fallback or (label if index == 0 else "")))
+            if leftover:
+                if label and _HIRA.search(label) and not _KANJI.search(label) and len(leftover) == 1:
+                    specs.append((leftover[0][0], label))
+                else:
+                    specs.extend(leftover)
+                continue
+        if kanji_only:
+            snippet = raw_label if _HIRA.search(raw_label) else _source_span_for_kanji(source, kanji_only)
+            flipped = _flip_kanji_specs(snippet, surface)
+            if flipped:
+                specs.extend(flipped)
+                continue
+            display = snippet or raw_label or kanji_only
+            specs.append((display if _KANJI.search(display) else kanji_only, surface))
             continue
-        if label or _is_katakana(surface) or str(unit.get("romaji") or "").strip():
-            specs.append((surface, label))
+        if _is_katakana(surface):
+            specs.append((surface, _latin_label(label)))
+            continue
+        if _latin_label(label) or str(unit.get("romaji") or "").strip():
+            specs.append((surface, _latin_label(label)))
             continue
         for char in surface:
             specs.append((char, ""))
@@ -392,6 +444,7 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
         if not specs:
             continue
         japanese = japanese_from_units(units)
+        displayed = _join_surfaces([piece for piece, _label, _roma, _gloss in specs])
         current = lyric_source_key(cue.get("text") or "")
         if line_is_romaji(original) and not _units_cover_romaji(units, original):
             if line_is_romaji(current):
@@ -399,9 +452,9 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
             if japanese and japanese == current:
                 cue["text"] = original
                 continue
-        if japanese and line_is_romaji(original):
+        if (displayed or japanese) and line_is_romaji(original):
             cue["source_text"] = original
-            cue["text"] = japanese
+            cue["text"] = displayed or japanese
         start_ms = int(cue["start_ms"])
         end_ms = int(cue.get("sing_end_ms") or cue["end_ms"])
         span = max(end_ms - start_ms, 200)

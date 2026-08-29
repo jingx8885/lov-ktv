@@ -132,8 +132,8 @@ def test_timeline_char_then_word():
     assert ja["cues"][0]["tokens"][-1]["end_ms"] == 1000
     world = ja["cues"][1]["tokens"]
     assert "".join(tok["text"] for tok in world) == "".join(tokenize("世界", "ja"))
-    assert world[0]["text"] == "せかい"
-    assert world[0]["reading"] == "世界"
+    assert world[0]["text"] == "世界"
+    assert world[0]["reading"] == "せかい"
 
     en = timeline_from_lrc(
         [{"ms": 0, "text": "hello world"}, {"ms": 2000, "text": "again"}],
@@ -167,21 +167,22 @@ def test_ja_compatibility_kanji_is_normalized():
     cue = build_cue("響めき", 0, 1000, "ja")
     sung = "".join(tok["text"] for tok in cue["tokens"])
     assert "響" not in sung
-    assert "響" not in sung
-    assert any("\u3040" <= char <= "\u309f" for char in sung)
+    assert "響" in sung
+    assert any("\u3040" <= char <= "\u309f" for tok in cue["tokens"] for char in tok["reading"])
 
 
-def test_ja_kanji_sings_hiragana_with_kanji_above():
+def test_ja_kanji_shows_kanji_with_hiragana_above():
     from lovktv.pipeline.lyrics import build_cue
 
     cue = build_cue("まだ止まった刻む針も", 0, 4000, "ja")
     sung = "".join(tok["text"] for tok in cue["tokens"])
-    assert "止" not in sung
-    assert "と" in sung
-    labels = [tok["reading"] for tok in cue["tokens"] if tok["reading"]]
-    assert "止" in "".join(labels)
-    assert "刻" in "".join(labels)
-    assert "針" in "".join(labels)
+    assert "止" in sung
+    assert "刻" in sung
+    assert "針" in sung
+    labels = "".join(tok["reading"] for tok in cue["tokens"] if tok["reading"])
+    assert "とま" in labels
+    assert "きざ" in labels
+    assert "はり" in labels
 
 
 def test_ja_katakana_fallback_is_unlabeled():

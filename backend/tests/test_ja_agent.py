@@ -1,3 +1,5 @@
+import json
+
 from lovktv.agents.ja_lyrics import (
     apply_ja_annotation,
     expand_units,
@@ -25,28 +27,30 @@ def test_expand_strips_okurigana_and_splits_leftover_kanji():
         ]
     )
     sung = "".join(piece for piece, _label in specs)
-    assert "夜" not in sung
-    assert ("よる", "夜") in specs
-    assert ("とまった", "止") in specs
+    assert "夜" in sung
+    assert ("夜", "よる") in specs
+    assert ("止ま", "とま") in specs or ("止まった", "とまった") in specs
 
 
 def test_expand_splits_multi_kanji_okurigana():
     specs = expand_units([{"sing": "はしりつづける", "label": "走り続ける"}])
-    assert specs == [("はしり", "走"), ("つづけ", "続"), ("る", "")]
+    assert specs == [("走り", "はしり"), ("続け", "つづけ"), ("る", "")]
 
 
 def test_expand_does_not_copy_kanji_label_onto_okurigana():
     specs = expand_units([{"sing": "見つめている", "label": "見"}])
-    assert ("みつめ", "見") in specs or specs[0][1] == "見"
-    assert all(label != "見" for piece, label in specs[1:])
+    assert "見" in specs[0][0]
+    assert "み" in specs[0][1]
+    assert all("見" not in label for _piece, label in specs)
     specs = expand_units([{"sing": "迷わず", "label": "迷"}])
-    assert specs[0][1] == "迷"
-    assert all(label != "迷" for piece, label in specs[1:])
+    assert "迷" in specs[0][0]
+    assert "まよ" in specs[0][1]
+    assert all(label != "迷" for _piece, label in specs)
 
 
 def test_expand_keeps_etymology_kanji_on_sung_kana():
     assert expand_units([{"sing": "もがいてる", "label": "藻掻", "romaji": "mogaiteru"}]) == [
-        ("もがいてる", "藻掻")
+        ("藻掻", "もがいてる")
     ]
 
 
@@ -55,7 +59,7 @@ def test_expand_merges_okurigana_leftover_after_compound():
         [{"sing": "だいじにしていた", "label": "大事にしていた", "romaji": "daiji ni shite ita"}],
         source="まだ忘れず 大事にしていた",
     )
-    assert specs[0] == ("だいじ", "大事")
+    assert specs[0] == ("大事", "だいじ")
     assert specs[1] == ("にしていた", "")
     assert "に" not in [piece for piece, _label in specs]
 
@@ -70,8 +74,19 @@ def test_expand_keeps_katakana_as_one_token():
     )
     assert ("メモリー", "memory") in specs
     assert ("ズレ", "") in specs
-    assert specs[0] == ("あふれる", "溢")
-    assert expand_units([{"sing": "ひびき", "label": "響"}]) == [("ひびき", "響")]
+    assert specs[0] == ("溢", "あふれる")
+    assert expand_units([{"sing": "ひびき", "label": "響"}]) == [("響", "ひびき")]
+
+
+def test_expand_new_agent_format_keeps_kanji_surface():
+    specs = expand_units(
+        [
+            {"sing": "溢れる", "label": "あふれる"},
+            {"sing": "メモリー", "label": "memory"},
+        ]
+    )
+    assert any(piece.startswith("溢") and "あふれ" in label for piece, label in specs)
+    assert ("メモリー", "memory") in specs
 
 
 def test_latin_words_stay_whole_in_japanese_line():
@@ -100,8 +115,8 @@ def test_expand_strips_numbered_sing_and_splits_compound_kanji():
         [{"sing": "しらずしらず", "label": "知知"}],
         source="知らず知らず隠してた",
     )
-    assert ("しらず", "知") in compound
-    assert [label for _piece, label in compound].count("知") == 2
+    assert ("知らず", "しらず") in compound
+    assert [label for _piece, label in compound].count("しらず") == 2
 
 
 def test_expand_keeps_english_words_and_skips_line_numbers():
@@ -115,8 +130,8 @@ def test_expand_keeps_english_words_and_skips_line_numbers():
     sung = [piece for piece, _label in specs]
     assert "14." not in sung
     assert sung[:3] == ["Here", "we", "go!"]
-    assert ("はしり", "走") in specs
-    assert ("つづけ", "続") in specs
+    assert ("走り", "はしり") in specs
+    assert ("続け", "つづけ") in specs
 
 
 def test_apply_matches_numbered_agent_source():
@@ -153,7 +168,7 @@ def test_apply_matches_numbered_agent_source():
     texts = [tok["text"] for tok in timeline["cues"][0]["tokens"]]
     assert texts[:4] == ["Here", "we", "go!", "go!"]
     assert "H" not in texts
-    assert ("はしり", "走") in [(tok["text"], tok["reading"]) for tok in timeline["cues"][0]["tokens"]]
+    assert ("走り", "はしり") in [(tok["text"], tok["reading"]) for tok in timeline["cues"][0]["tokens"]]
     assert lyric_source_key("14. Here we go! go! 走り続ける") == "Here we go! go! 走り続ける"
 
 
@@ -185,8 +200,9 @@ def test_apply_annotation_replaces_tokens_and_keeps_line_time():
         },
     )
     tokens = timeline["cues"][0]["tokens"]
-    assert "".join(tok["text"] for tok in tokens) == "あふれるメモリー"
+    assert "".join(tok["text"] for tok in tokens) == "溢れるメモリー"
     assert any(tok["reading"] == "memory" for tok in tokens)
+    assert any("あふれ" in str(tok["reading"]) for tok in tokens)
     assert tokens[0]["start_ms"] == 1000
     assert tokens[-1]["end_ms"] == 3000
     assert timeline["annotation"] == "ja-agent"
@@ -302,7 +318,7 @@ def test_apply_keeps_kanji_line_and_rematch_source_text():
     apply_ja_annotation(timeline, notes)
     assert timeline["cues"][0]["text"] == "溢れるメモリー"
     assert timeline["cues"][0]["tokens"][0]["romaji"] == "afureru"
-    assert timeline["cues"][0]["tokens"][1]["reading"] == "memory"
+    assert any(tok["reading"] == "memory" for tok in timeline["cues"][0]["tokens"])
 
     timeline["cues"][0]["source_text"] = "aa, itsumo no you ni"
     timeline["cues"][0]["text"] = "ああ、いつものように"
@@ -321,8 +337,8 @@ def test_apply_keeps_kanji_line_and_rematch_source_text():
             ],
         },
     )
-    assert timeline["cues"][0]["text"] == "ああ、きみ"
-    assert ("きみ", "君", "kimi") in [
+    assert timeline["cues"][0]["text"] == "ああ、君"
+    assert ("君", "きみ", "kimi") in [
         (tok["text"], tok["reading"], tok["romaji"]) for tok in timeline["cues"][0]["tokens"]
     ]
 
@@ -363,7 +379,7 @@ def test_apply_annotation_keeps_line_and_word_zh():
     )
     cue = timeline["cues"][0]
     assert cue["zh"] == "满溢的记忆"
-    assert [tok.get("zh") for tok in cue["tokens"]] == ["满溢", "记忆"]
+    assert [tok.get("zh") for tok in cue["tokens"] if tok.get("zh")] == ["满溢", "记忆"]
 
 
 def test_apply_skips_truncated_romaji_restore():
@@ -397,6 +413,35 @@ def test_apply_skips_truncated_romaji_restore():
     cue = timeline["cues"][0]
     assert cue["text"] == "me magurushii jikan no mure ga"
     assert cue["tokens"][0]["text"] == "me"
+
+
+def test_restore_reapply_flips_cached_kanji_tokens(tmp_path, monkeypatch):
+    from lovktv import restore_ja
+
+    song_dir = tmp_path / "s1"
+    song_dir.mkdir()
+    (song_dir / "lyrics.json").write_text(
+        '{"language":"ja","cues":[{"text":"溢れるメモリー","start_ms":0,"end_ms":1000,"tokens":'
+        '[{"text":"あふれる","start_ms":0,"end_ms":500,"reading":"溢"},'
+        '{"text":"メモリー","start_ms":500,"end_ms":1000,"reading":"memory"}]}]}',
+        encoding="utf-8",
+    )
+    (song_dir / "ja-annotate.json").write_text(
+        '{"lines":[{"source":"溢れるメモリー","units":['
+        '{"sing":"あふれる","label":"溢","romaji":"afureru"},'
+        '{"sing":"メモリー","label":"memory"}]}]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(restore_ja, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(restore_ja, "get_song", lambda sid: {"title": "x", "error": ""})
+    monkeypatch.setattr(restore_ja, "update_song", lambda *args, **kwargs: None)
+    result = restore_ja.restore_song("s1", publish=False, reapply=True)
+    assert result["ok"] is True
+    timeline = json.loads((song_dir / "lyrics.json").read_text(encoding="utf-8"))
+    tokens = timeline["cues"][0]["tokens"]
+    assert "".join(tok["text"] for tok in tokens) == "溢れるメモリー"
+    assert any(tok["reading"] == "memory" for tok in tokens)
+    assert any("あふれ" in str(tok["reading"]) for tok in tokens)
 
 
 def test_needs_romaji_restore():
