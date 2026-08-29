@@ -1,12 +1,10 @@
 (function (global) {
   "use strict";
 
-  const { EFFECTS } = global.LovStageFxPrimitives;
-  const { create, reduceMotion } = global.LovStageFxRuntime;
-
+  const { reduceMotion } = global.LovStageFxRuntime;
   let party = null;
 
-  function bindParty(canvas) {
+  function bind(canvas) {
     if (!global.confetti || !canvas) return null;
     party = global.confetti.create(canvas, {
       resize: true,
@@ -29,15 +27,5 @@
     fire({ particleCount: 90, spread: 78, startVelocity: 42, origin: { y: 0.62 }, colors });
   }
 
-  function hookTexts(cues) {
-    const counts = {};
-    for (const cue of cues || []) {
-      const text = String(cue.text || "").trim();
-      if (!text) continue;
-      counts[text] = (counts[text] || 0) + 1;
-    }
-    return new Set(Object.keys(counts).filter((text) => counts[text] >= 3));
-  }
-
-  global.LovStageFx = { EFFECTS, create, bindParty, celebrate, hookTexts, reduceMotion };
+  global.LovStageFxParty = { bind, celebrate };
 })(window);

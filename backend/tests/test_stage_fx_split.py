@@ -17,13 +17,13 @@ def test_stage_fx_is_split_into_ordered_modules():
         "/tv/fx/js/stage-fx/build.js",
         "/tv/fx/js/stage-fx/draw.js",
         "/tv/fx/js/stage-fx/runtime.js",
-        "/tv/fx/js/stage-fx.js",
+        "/tv/fx/js/stage-fx/party.js",
+        "/tv/fx/js/stage-fx/hooks.js",
     ]
     positions = [tv.index(f'src="{src}"') for src in scripts]
     assert positions == sorted(positions)
     assert all((ROOT / "frontend" / "public" / src.lstrip("/")).is_file() for src in scripts)
-    # The public entry is intentionally a small compatibility facade.
-    assert len((FX / "stage-fx.js").read_text(encoding="utf-8").splitlines()) < 60
+    assert not (FX / "stage-fx.js").exists()
 
 
 def test_stage_fx_browser_smoke():
@@ -35,7 +35,8 @@ def test_stage_fx_browser_smoke():
         FX / "stage-fx" / "build.js",
         FX / "stage-fx" / "draw.js",
         FX / "stage-fx" / "runtime.js",
-        FX / "stage-fx.js",
+        FX / "stage-fx" / "party.js",
+        FX / "stage-fx" / "hooks.js",
     ]
     script = r'''
 const fs = require("fs");
@@ -61,14 +62,14 @@ const canvas = {
   getContext: () => ctx,
 };
 for (const file of files) vm.runInNewContext(fs.readFileSync(file, "utf8"), context, { filename: file });
-if (!context.LovStageFx || context.LovStageFx.EFFECTS.length !== 12) throw new Error("facade missing");
-const fx = context.LovStageFx.create(canvas);
-for (const effect of context.LovStageFx.EFFECTS) {
+if (!context.LovStageFxRuntime || context.LovStageFxPrimitives.EFFECTS.length !== 12) throw new Error("runtime missing");
+const fx = context.LovStageFxRuntime.create(canvas);
+for (const effect of context.LovStageFxPrimitives.EFFECTS) {
   if (fx.spawn(effect) !== effect) throw new Error("spawn failed: " + effect);
   fx.draw({ now: 1.2, beat: 0.4 });
 }
 fx.clear();
-if (context.LovStageFx.hookTexts([{text:"x"},{text:"x"},{text:"x"}]).size !== 1) throw new Error("hookTexts failed");
+if (context.LovStageFxTextHooks.hookTexts([{text:"x"},{text:"x"},{text:"x"}]).size !== 1) throw new Error("hookTexts failed");
 '''
     result = subprocess.run(
         [node, "-e", script, json.dumps([str(path) for path in files])],

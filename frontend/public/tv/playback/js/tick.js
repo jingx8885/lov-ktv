@@ -216,7 +216,7 @@ export async function applyRoom(room) {
     state.lastVocalSync = 0;
     state.boundMtvSong = "";
     syncNativeMv();
-    state.hookLines = nativeMv() ? new Set() : (window.LovStageFx ? LovStageFx.hookTexts(state.lyrics.cues) : new Set());
+    state.hookLines = nativeMv() ? new Set() : (window.LovStageFxTextHooks ? LovStageFxTextHooks.hookTexts(state.lyrics.cues) : new Set());
     if (!nativeMv()) ensureStageFx();
     bindMtv(now.song_id);
     startPlayback();

@@ -212,10 +212,10 @@ function tapBeat() {
 }
 
 function ensureTapFx() {
-  if (tapFx || !window.LovStageFx) return tapFx;
+  if (tapFx || !window.LovStageFxRuntime) return tapFx;
   const canvas = $("learnTapFx");
   if (!canvas) return null;
-  tapFx = LovStageFx.create(canvas);
+  tapFx = LovStageFxRuntime.create(canvas);
   return tapFx;
 }
 

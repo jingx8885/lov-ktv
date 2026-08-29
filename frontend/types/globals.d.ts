@@ -133,17 +133,8 @@ interface StageFxHandle {
   setBeat?: (p: number) => void;
 }
 
-interface LovStageFxApi {
-  EFFECTS: readonly string[];
-  create(el: HTMLElement | null): StageFxHandle;
-  bindParty(el: HTMLElement | null): void;
-  celebrate(kind?: string): void;
-  hookTexts(cues?: LyricCue[] | null): Set<string>;
-  reduceMotion?: (() => boolean) | boolean;
-}
-
 /** Internal stage-effect module contracts. These globals are installed by the
- * ordered scripts in tv.html before the compatibility facade runs. */
+ * ordered scripts in tv.html. */
 interface LovStageFxPrimitivesApi {
   EFFECTS: readonly string[];
   C: { amber: string; gray: string; ink: string };
@@ -176,6 +167,15 @@ interface LovStageFxDrawApi {
 interface LovStageFxRuntimeApi {
   create(canvas: HTMLCanvasElement): StageFxHandle;
   reduceMotion(): boolean;
+}
+
+interface LovStageFxPartyApi {
+  bind(canvas: HTMLElement | null): unknown;
+  celebrate(kind?: string): void;
+}
+
+interface LovStageFxTextHooksApi {
+  hookTexts(cues?: LyricCue[] | null): Set<string>;
 }
 
 interface KeepAliveTone {
@@ -291,11 +291,12 @@ interface Window {
   LovMic?: LovMicApi;
   LovAec?: LovAecApi;
   LovTimeline?: LovTimelineApi;
-  LovStageFx?: LovStageFxApi;
   LovStageFxPrimitives?: LovStageFxPrimitivesApi;
   LovStageFxBuild?: LovStageFxBuildApi;
   LovStageFxDraw?: LovStageFxDrawApi;
   LovStageFxRuntime?: LovStageFxRuntimeApi;
+  LovStageFxParty?: LovStageFxPartyApi;
+  LovStageFxTextHooks?: LovStageFxTextHooksApi;
   LovKtvRemote?: LovKtvRemoteApi;
   LovKtvPhone?: LovKtvPhoneBridge;
   LovI18n?: LovI18nApi;
@@ -314,7 +315,9 @@ declare const LovBands: LovBandsApi;
 declare const LovMic: LovMicApi;
 declare const LovAec: LovAecApi;
 declare const LovTimeline: LovTimelineApi;
-declare const LovStageFx: LovStageFxApi;
+declare const LovStageFxRuntime: LovStageFxRuntimeApi;
+declare const LovStageFxParty: LovStageFxPartyApi;
+declare const LovStageFxTextHooks: LovStageFxTextHooksApi;
 
 declare function qrcode(typeNumber: number, errorCorrectionLevel: string): {
   addData(data: string): void;

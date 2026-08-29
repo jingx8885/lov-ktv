@@ -47,9 +47,9 @@ function syncNativeVideo(karaoke) {
 }
 
 export function ensureStageFx() {
-  if (state.stageFx || !window.LovStageFx) return state.stageFx;
-  state.stageFx = LovStageFx.create($("stageFx"));
-  LovStageFx.bindParty($("partyFx"));
+  if (state.stageFx || !window.LovStageFxRuntime) return state.stageFx;
+  state.stageFx = LovStageFxRuntime.create($("stageFx"));
+  LovStageFxParty.bind($("partyFx"));
   return state.stageFx;
 }
 
@@ -85,7 +85,7 @@ export function fireCueFx(cue, idx) {
   const now = Date.now();
   if (text && state.hookLines.has(text) && now - state.lastCelebrateAt > 8000) {
     state.lastCelebrateAt = now;
-    LovStageFx.celebrate(idx % 2 ? "side" : "center");
+    LovStageFxParty.celebrate(idx % 2 ? "side" : "center");
   }
 }
 
