@@ -30,9 +30,29 @@ def test_tv_does_not_restart_on_network_stall():
     assert 'setWaiting(now.status !== "ready")' in tick
     remote = (ROOT / "tv" / "playback" / "js" / "remote.js").read_text(encoding="utf-8")
     assert "togglePaused" in remote
+    assert "if (startIfNeeded()) return;" in remote
+    assert "if (startIfNeeded() && roomPaused()) return;" not in remote
+    assert "moveSettings" in remote
+    assert "settingsItems" in remote
+    assert "if (settingsOpen()) moveSettings(-1)" in remote
+    assert "if (settingsOpen()) moveSettings(1)" in remote
     assert 'id="tvSheet"' in html
     assert 'id="tvSkip"' in html
+    assert 'id="tvVocalValue"' in html
+    assert "tv-menu-item" in html
+    assert "data-tv-menu" in html
     assert "确认 暂停/播放" in html
+    arrow_up = remote.split('case "ArrowUp":', 1)[1].split("case ", 1)[0]
+    assert "moveSettings(-1)" in arrow_up
+    assert "nudgeVolume(5)" in arrow_up
+    arrow_down = remote.split('case "ArrowDown":', 1)[1].split("case ", 1)[0]
+    assert "moveSettings(1)" in arrow_down
+    assert "nudgeVolume(-5)" in arrow_down
+    silent = (ROOT.parent.parent / "android-tv" / "app" / "src" / "main" / "java" / "com" / "lovktv" / "tv" / "SilentMtv.kt").read_text(encoding="utf-8")
+    activity = (ROOT.parent.parent / "android-tv" / "app" / "src" / "main" / "java" / "com" / "lovktv" / "tv" / "TvActivity.kt").read_text(encoding="utf-8")
+    assert "setVideoScalingMode" not in silent
+    assert "PixelFormat.OPAQUE" not in silent
+    assert "resumeMtv()" in activity
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
     clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(encoding="utf-8")
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")

@@ -25,6 +25,37 @@ export function settingsOpen() {
   return !!(sheet && !sheet.hidden);
 }
 
+/** @type {number} */
+let settingsIndex = 0;
+
+function settingsItems() {
+  const sheet = settingsBox();
+  if (!sheet) return [];
+  return Array.from(sheet.querySelectorAll("[data-tv-menu]")).filter((el) => !el.hidden);
+}
+
+function focusSettingsItem(index) {
+  const items = settingsItems();
+  if (!items.length) return;
+  const n = items.length;
+  settingsIndex = ((index % n) + n) % n;
+  items.forEach((el, i) => {
+    const on = i === settingsIndex;
+    el.classList.toggle("is-focused", on);
+    if (on && typeof el.focus === "function") el.focus();
+  });
+}
+
+function moveSettings(delta) {
+  focusSettingsItem(settingsIndex + Number(delta || 0));
+}
+
+function activateSettings() {
+  const items = settingsItems();
+  const item = items[settingsIndex] || items[0];
+  if (item) item.click();
+}
+
 function roomPaused() {
   return !!(state.room && state.room.paused);
 }
@@ -131,11 +162,16 @@ export async function nudgeVolume(delta) {
 }
 
 export function paintSettings() {
-  const vocal = $("tvVocal");
-  if (vocal) {
-    const on = (state.room && state.room.vocal_mix || 0) > 0.5;
-    vocal.textContent = on ? t("common.vocal") : t("common.karaoke");
-    vocal.classList.toggle("on", on);
+  const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
+  const on = mix > 0.5;
+  const vocalValue = $("tvVocalValue");
+  if (vocalValue) vocalValue.textContent = on ? t("common.vocal") : t("common.karaoke");
+  const vocalItem = $("tvVocal");
+  if (vocalItem) vocalItem.classList.toggle("on", on);
+  const setup = $("tvSetup");
+  if (setup) {
+    const native = !!(window.LovKtvNative && typeof window.LovKtvNative.openSetup === "function");
+    setup.hidden = !native && !document.body.classList.contains("androidtv");
   }
 }
 
@@ -144,13 +180,22 @@ export function openSettings() {
   if (!sheet) return;
   paintSettings();
   sheet.hidden = false;
-  const skip = $("tvSkip");
-  if (skip) skip.focus();
+  const start = $("start");
+  if (start) start.tabIndex = -1;
+  const back = $("tvSheetBack");
+  if (back) back.tabIndex = -1;
+  focusSettingsItem(0);
 }
 
 export function closeSettings() {
   const sheet = settingsBox();
-  if (sheet) sheet.hidden = true;
+  if (!sheet) return;
+  const active = document.activeElement;
+  if (active && sheet.contains(active) && "blur" in active) active.blur();
+  settingsItems().forEach((el) => el.classList.remove("is-focused"));
+  sheet.hidden = true;
+  const start = $("start");
+  if (start) start.tabIndex = 0;
 }
 
 export function toggleSettings() {
@@ -161,8 +206,11 @@ export function toggleSettings() {
 
 export function confirm() {
   if (loginOpen()) return;
-  if (settingsOpen()) return;
-  if (startIfNeeded() && roomPaused()) return;
+  if (settingsOpen()) {
+    activateSettings();
+    return;
+  }
+  if (startIfNeeded()) return;
   togglePaused();
 }
 
@@ -188,25 +236,33 @@ function onRemoteKey(event) {
   const tag = el && "tagName" in el ? String(el.tagName) : "";
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   if (loginOpen()) return;
+  const inSettings = settingsOpen();
   switch (event.key) {
     case "ArrowUp":
       event.preventDefault();
-      nudgeVolume(5);
+      event.stopPropagation();
+      if (inSettings) moveSettings(-1);
+      else nudgeVolume(5);
       break;
     case "ArrowDown":
       event.preventDefault();
-      nudgeVolume(-5);
+      event.stopPropagation();
+      if (inSettings) moveSettings(1);
+      else nudgeVolume(-5);
       break;
     case "Enter":
     case " ":
+    case "NumpadEnter":
     case "MediaPlayPause":
       event.preventDefault();
+      event.stopPropagation();
       confirm();
       break;
     case "Escape":
     case "Backspace":
-      if (settingsOpen()) {
+      if (inSettings) {
         event.preventDefault();
+        event.stopPropagation();
         closeSettings();
       }
       break;
@@ -225,8 +281,8 @@ export function bindRemote() {
     skip: skipSong,
     toggleVocal,
     togglePaused,
-    volumeUp: () => nudgeVolume(10),
-    volumeDown: () => nudgeVolume(-10),
+    volumeUp: () => { if (settingsOpen()) moveSettings(-1); else nudgeVolume(10); },
+    volumeDown: () => { if (settingsOpen()) moveSettings(1); else nudgeVolume(-10); },
     confirm,
     start: startIfNeeded,
     settings: toggleSettings,
@@ -237,5 +293,5 @@ export function bindRemote() {
   if ($("tvVocal")) $("tvVocal").onclick = () => toggleVocal();
   if ($("tvSetup")) $("tvSetup").onclick = () => openProcessSetup();
   if ($("tvSheetBack")) $("tvSheetBack").onclick = () => closeSettings();
-  document.addEventListener("keydown", onRemoteKey);
+  document.addEventListener("keydown", onRemoteKey, true);
 }

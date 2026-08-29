@@ -27,12 +27,24 @@
       <p class="remote-hint" id="remoteHint" hidden>确认 暂停/播放 · 菜单 切歌、原唱伴唱</p>
   </div>
   <div class="tv-sheet" id="tvSheet" hidden>
-    <button type="button" class="overlay-backdrop" id="tvSheetBack" data-i18n-aria="common.close"></button>
-    <div class="tv-sheet-card" role="dialog">
-      <h2 data-i18n="tv.settings">设置</h2>
-      <button class="btn primary" id="tvSkip" type="button" data-i18n="common.skip">切歌</button>
-      <button class="btn" id="tvVocal" type="button" data-i18n="tv.toggle">原唱/伴唱</button>
-      <button class="btn" id="tvSetup" type="button" data-i18n="tv.processServer">处理服务器</button>
+    <button type="button" class="overlay-backdrop" id="tvSheetBack" tabindex="-1" data-i18n-aria="common.close"></button>
+    <div class="tv-sheet-card" role="dialog" aria-modal="true" aria-labelledby="tvSheetTitle">
+      <h2 id="tvSheetTitle" data-i18n="tv.settings">设置</h2>
+      <div class="tv-menu" role="menu">
+        <button class="tv-menu-item" id="tvSkip" type="button" data-tv-menu role="menuitem">
+          <span class="tv-menu-label" data-i18n="common.skip">切歌</span>
+          <span class="tv-menu-value" data-i18n="tv.skipMeta">下一首</span>
+        </button>
+        <button class="tv-menu-item" id="tvVocal" type="button" data-tv-menu role="menuitem">
+          <span class="tv-menu-label" data-i18n="tv.vocalLabel">人声</span>
+          <span class="tv-menu-value" id="tvVocalValue" data-i18n="tv.toggle">原唱/伴唱</span>
+        </button>
+        <button class="tv-menu-item" id="tvSetup" type="button" data-tv-menu role="menuitem">
+          <span class="tv-menu-label" data-i18n="tv.processServer">处理服务器</span>
+          <span class="tv-menu-value" data-i18n="tv.processMeta">改地址</span>
+        </button>
+      </div>
+      <p class="tv-sheet-hint" data-i18n="tv.settingsNav">上下选择 · 确认打开 · 返回关闭</p>
     </div>
   </div>
   <div class="login-gate" id="loginGate" hidden>

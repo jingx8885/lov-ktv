@@ -12,6 +12,7 @@ from starlette.requests import Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from lovktv.agents.ja_lyrics import agent_status, annotate_ja_lines
+from lovktv.api_models import RoomCommandPayload
 from lovktv.assets import VersionedStaticFiles, versioned_response
 from lovktv.auth import (
     SESSION_COOKIE,
@@ -40,9 +41,9 @@ from lovktv.jobs import process_import, process_realign, process_upload, resume_
 from lovktv.learn import build_learn_quiz
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.pipeline.mdx_onnx import model_status
+from lovktv.room_service import RoomCommand, room_service
 from lovktv import store
 from lovktv.store import (
-    bump,
     confirm_login_ticket,
     consume_confirmed_ticket,
     create_login_ticket,
@@ -50,7 +51,6 @@ from lovktv.store import (
     create_song,
     delete_session,
     delete_song,
-    enqueue,
     ensure_room_for_host,
     get_login_ticket,
     host_keys,
@@ -59,11 +59,7 @@ from lovktv.store import (
     get_song,
     init_db,
     list_songs,
-    play_now,
     retry_query,
-    room_snapshot,
-    set_mix,
-    skip,
     update_song,
     with_media_flags,
     upsert_device_user,
@@ -175,7 +171,7 @@ def _fail(request: Request, status: int, key: str, **vars) -> None:
 
 
 def _room_view(code: str, snap: dict | None = None, lang: str = "zh") -> dict:
-    room = dict(snap or room_snapshot(code))
+    room = dict(snap or room_service.snapshot(code))
     room["mic_on"] = bool(_mics.get(code))
     room["mic_peer"] = _mics.get(code) or ""
     room.update(host_volume_meta())
@@ -195,6 +191,20 @@ async def _broadcast(code: str, payload: dict, skip: WebSocket | None = None) ->
         except Exception:
             _rooms.get(code, set()).discard(peer)
             _peers.pop(peer, None)
+
+
+def _run_room_command(code: str, command: RoomCommand) -> dict:
+    """Execute a room command and apply host-only side effects.
+
+    The service owns room semantics; this adapter is deliberately kept in the
+    transport layer because changing the physical host volume is not a room
+    database concern.
+    """
+
+    snap = room_service.execute(code, command)
+    if command.volume is not None:
+        set_host_volume(int(command.volume or 0))
+    return snap
 
 
 @app.on_event("startup")
@@ -638,13 +648,13 @@ def api_room(request: Request, code: str) -> JSONResponse:
 
 
 @app.post("/api/rooms/{code}/queue")
-async def api_enqueue(request: Request, code: str, payload: dict) -> dict:
+async def api_enqueue(request: Request, code: str, payload: RoomCommandPayload) -> dict:
     code = code.upper()
-    song_id = str(payload.get("song_id") or "")
+    song_id = str(payload.song_id or "")
     if not get_song(song_id):
         _fail(request, 404, "api.song_not_found")
     try:
-        snap = enqueue(code, song_id)
+        snap = _run_room_command(code, RoomCommand.from_payload("enqueue", payload.as_dict()))
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
     view = _room_view(code, snap, lang=request_lang(request))
@@ -653,23 +663,23 @@ async def api_enqueue(request: Request, code: str, payload: dict) -> dict:
 
 
 @app.post("/api/rooms/{code}/bump")
-def api_bump(code: str, payload: dict) -> dict:
-    return bump(code.upper(), str(payload.get("id") or ""))
+def api_bump(code: str, payload: RoomCommandPayload) -> dict:
+    return _run_room_command(code, RoomCommand.from_payload("bump", payload.as_dict()))
 
 
 @app.post("/api/rooms/{code}/skip")
 async def api_skip(request: Request, code: str) -> dict:
     code = code.upper()
-    view = _room_view(code, skip(code), lang=request_lang(request))
+    view = _room_view(code, _run_room_command(code, RoomCommand.from_payload("skip")), lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
 
 
 @app.post("/api/rooms/{code}/play")
-async def api_play(request: Request, code: str, payload: dict) -> dict:
+async def api_play(request: Request, code: str, payload: RoomCommandPayload) -> dict:
     code = code.upper()
     try:
-        snap = play_now(code, str(payload.get("id") or ""), str(payload.get("song_id") or ""))
+        snap = _run_room_command(code, RoomCommand.from_payload("play", payload.as_dict()))
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
     view = _room_view(code, snap, lang=request_lang(request))
@@ -678,18 +688,9 @@ async def api_play(request: Request, code: str, payload: dict) -> dict:
 
 
 @app.post("/api/rooms/{code}/mix")
-async def api_mix(request: Request, code: str, payload: dict) -> dict:
+async def api_mix(request: Request, code: str, payload: RoomCommandPayload) -> dict:
     code = code.upper()
-    snap = set_mix(
-        code,
-        payload.get("vocal_mix"),
-        payload.get("volume"),
-        payload.get("mic_gain"),
-        payload.get("lyric_mode"),
-        None if "paused" not in payload else bool(payload.get("paused")),
-    )
-    if payload.get("volume") is not None:
-        set_host_volume(int(payload.get("volume") or 0))
+    snap = _run_room_command(code, RoomCommand.from_payload("mix", payload.as_dict()))
     view = _room_view(code, snap, lang=request_lang(request))
     await _broadcast(code, {"type": "snapshot", "room": view})
     return view
@@ -747,30 +748,30 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                 elif _mics.get(code) == peer or not peer:
                     _mics.pop(code, None)
                 if msg.get("mic_gain") is not None:
-                    set_mix(code, mic_gain=msg.get("mic_gain"))
+                    _run_room_command(
+                        code,
+                        RoomCommand.from_payload("mix", {"mic_gain": msg.get("mic_gain")}),
+                    )
                 await _broadcast(code, {"type": "snapshot", "room": _room_view(code, lang=lang)})
                 continue
             if action == "skip":
-                snap = skip(code)
+                snap = _run_room_command(code, RoomCommand.from_payload("skip"))
             elif action == "bump":
-                snap = bump(code, str(msg.get("id") or ""))
+                snap = _run_room_command(code, RoomCommand.from_payload("bump", msg))
             elif action == "enqueue":
                 try:
-                    snap = enqueue(code, str(msg.get("song_id") or ""))
+                    snap = _run_room_command(code, RoomCommand.from_payload("enqueue", msg))
+                except ValueError as exc:
+                    await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
+                    continue
+            elif action == "play":
+                try:
+                    snap = _run_room_command(code, RoomCommand.from_payload("play", msg))
                 except ValueError as exc:
                     await ws.send_json({"type": "error", "message": localize_error_text(lang, str(exc))})
                     continue
             elif action == "mix":
-                snap = set_mix(
-                    code,
-                    msg.get("vocal_mix"),
-                    msg.get("volume"),
-                    msg.get("mic_gain"),
-                    msg.get("lyric_mode"),
-                    None if "paused" not in msg else bool(msg.get("paused")),
-                )
-                if msg.get("volume") is not None:
-                    set_host_volume(int(msg.get("volume") or 0))
+                snap = _run_room_command(code, RoomCommand.from_payload("mix", msg))
             else:
                 await ws.send_json({"type": "error", "message": translate(lang, "api.unknown_command")})
                 continue

@@ -216,6 +216,7 @@ class TvActivity : Activity(), TvHost {
         super.onResume()
         webView.onResume()
         webView.requestFocus()
+        resumeMtv()
     }
 
     override fun onDestroy() {

@@ -24,7 +24,6 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
     private var pendingUrl: String = ""
 
     init {
-        surface.holder.setFormat(android.graphics.PixelFormat.OPAQUE)
         surface.holder.addCallback(this)
         surface.isFocusable = false
         surface.isFocusableInTouchMode = false
@@ -81,8 +80,6 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
             )
             nextPlayer.setVolume(0f, 0f)
             nextPlayer.isLooping = false
-            nextPlayer.setScreenOnWhilePlaying(true)
-            nextPlayer.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT)
             nextPlayer.setOnPreparedListener { ready ->
                 if (player !== ready) return@setOnPreparedListener
                 prepared = true

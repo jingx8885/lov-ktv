@@ -8,13 +8,14 @@ import { bindRoomRtc } from "./audio/js/mic.js";
 import { applyMix } from "./playback/js/mix.js";
 import { tick, startPlayback, pauseAudio, pageVisible, restoreResume, songReallyEnded, wantsResume } from "./playback/js/tick.js";
 import { paint } from "./playback/js/lyrics.js";
-import { bindRemote, skipSong, toggleVocal } from "./playback/js/remote.js";
+import { bindRemote, skipSong, toggleVocal, paintSettings } from "./playback/js/remote.js";
 
 bootI18n();
 onLangChange(() => {
   applyDom();
   renderUserChip();
   applyMix();
+  paintSettings();
 });
 
 if (state.audioBus) {

@@ -33,7 +33,7 @@ body.tv.is-waiting .party-fx { display: none !important; }
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 36px;
+  bottom: 28px;
   min-height: 0;
   height: auto;
   display: block;

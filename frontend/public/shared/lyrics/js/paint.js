@@ -104,7 +104,12 @@ function textInkWidth(node) {
   return range.getBoundingClientRect().width;
 }
 
+function tvStage() {
+  return typeof document !== "undefined" && !!(document.body && document.body.classList.contains("tv"));
+}
+
 function fitLyricExtras(el) {
+  if (tvStage()) return;
   el.querySelectorAll(".anno").forEach((anno) => {
     const rb = /** @type {HTMLElement | null} */ (anno.querySelector(".rb"));
     if (!rb) return;
@@ -126,6 +131,7 @@ function fitLyricExtras(el) {
 }
 
 function fitLyricLine(el) {
+  if (tvStage()) return;
   const run = () => {
     const box = /** @type {HTMLElement} */ (el);
     box.style.fontSize = "";
