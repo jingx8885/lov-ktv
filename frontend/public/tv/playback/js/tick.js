@@ -9,6 +9,7 @@ import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "./mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "./lyrics.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
 import { fetchRoomSnapshot, roomWsLive, watchRoom } from "./room-state.js";
+import { clearNativeLyrics, nativeMtvAvailable, stopNativeMtv } from "../../platform.js";
 
 export { roomWsLive, watchRoom };
 
@@ -148,12 +149,8 @@ export function stopPlayback() {
   $("mtv").hidden = true;
   state.boundMtvSong = "";
   document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player");
-  try {
-    if (window.LovKtvNative) {
-      if (window.LovKtvNative.stopMtv) window.LovKtvNative.stopMtv();
-      if (window.LovKtvNative.clearLyrics) window.LovKtvNative.clearLyrics();
-    }
-  } catch (err) {}
+  stopNativeMtv();
+  clearNativeLyrics();
   state.lastFxCue = -1;
   state.hookLines = new Set();
   if (state.stageFx) state.stageFx.clear();
@@ -225,7 +222,7 @@ export async function applyRoom(room) {
     startPlayback();
   } else {
     applyMix();
-    if (window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function") {
+    if (nativeMtvAvailable()) {
       bindMtv(now.song_id);
     } else if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
       bindMtv(now.song_id);

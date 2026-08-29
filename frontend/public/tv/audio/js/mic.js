@@ -2,6 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { wantsResume } from "../../playback/js/tick.js";
+import { hasNativeTv } from "../../platform.js";
 
 export function micGainValue() {
   const hostMac = state.room && state.room.host_volume_kind === "mac";
@@ -51,7 +52,7 @@ export function clearLiveMic() {
 }
 
 export function bindRoomRtc(code) {
-  if (window.LovKtvNative) return;
+  if (hasNativeTv()) return;
   if (!window.LovMic || !code) return;
   if (state.roomRtc) return;
   state.roomRtc = LovMic.create({ role: "tv" });

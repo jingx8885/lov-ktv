@@ -2,6 +2,7 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { state } from "../../state.js";
+import { nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../platform.js";
 import { roomCode } from "../../auth/js/login.js";
 import { unlockAudio } from "../../audio/js/unlock.js";
 import { applyMix } from "./mix.js";
@@ -96,7 +97,7 @@ export async function skipSong() {
     const { ok, data } = await fetchJson("/api/rooms/" + code + "/skip", { method: "POST" });
     if (!ok || !data.code) return;
     state.room = /** @type {Room} */ (data);
-    try { if (window.LovKtvNative && window.LovKtvNative.stopMtv) window.LovKtvNative.stopMtv(); } catch (err) {}
+    stopNativeMtv();
     state.boundMtvSong = "";
     if (!state.room.now_playing) stopPlayback();
     else state.lastItem = "";
@@ -170,7 +171,7 @@ export function paintSettings() {
   if (vocalItem) vocalItem.classList.toggle("on", on);
   const setup = $("tvSetup");
   if (setup) {
-    const native = !!(window.LovKtvNative && typeof window.LovKtvNative.openSetup === "function");
+    const native = nativeSetupAvailable();
     setup.hidden = !native && !document.body.classList.contains("androidtv");
   }
 }
@@ -223,11 +224,7 @@ export function back() {
 }
 
 function openProcessSetup() {
-  try {
-    if (window.LovKtvNative && typeof window.LovKtvNative.openSetup === "function") {
-      window.LovKtvNative.openSetup();
-    }
-  } catch (err) {}
+  openNativeSetup();
 }
 
 function onRemoteKey(event) {

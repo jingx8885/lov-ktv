@@ -2,9 +2,10 @@ import { $ } from "../../../shared/ui/js/dom.js";
 import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { mediaRevFor, mediaUrl } from "./mix.js";
+import { nativeMtvAvailable, playNativeMtv } from "../../platform.js";
 
 function nativePlayer() {
-  return window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function";
+  return nativeMtvAvailable();
 }
 
 function killHtmlMtv(mtv) {
@@ -84,7 +85,7 @@ export function bindMtv(songId) {
     const bindKey = songId + ":" + (mediaRevFor(songId) || "");
     if (state.boundMtvSong === bindKey) return;
     state.boundMtvSong = bindKey;
-    try { window.LovKtvNative.playMtv(abs); } catch (err) {}
+    playNativeMtv(abs);
     return;
   }
   const bindKey = songId + ":" + (mediaRevFor(songId) || "");

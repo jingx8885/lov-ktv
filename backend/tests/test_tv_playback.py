@@ -7,6 +7,7 @@ def test_tv_does_not_restart_on_network_stall():
     tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
     playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(encoding="utf-8")
     room_state = (ROOT / "tv" / "playback" / "js" / "room-state.js").read_text(encoding="utf-8")
+    platform = (ROOT / "tv" / "platform.js").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
     mix = (ROOT / "tv" / "playback" / "js" / "mix.js").read_text(encoding="utf-8")
@@ -69,7 +70,8 @@ def test_tv_does_not_restart_on_network_stall():
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
     clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(encoding="utf-8")
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")
-    assert "LovKtvNative.playMtv" in mtv
+    assert "nativeMtvAvailable" in mtv
+    assert "export function playNativeMtv" in platform
     assert "export function shouldSeekNative" in clock
     assert "syncNativeVideo" in lyrics
-    assert "window.LovKtvNative.stopMtv" in tick
+    assert "stopNativeMtv" in tick

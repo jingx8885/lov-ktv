@@ -4,37 +4,44 @@ import { state } from "../../state.js";
 import { nativeMv, silenceMtv } from "./mtv.js";
 import { syncVocal } from "./mix.js";
 import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./lyric-clock.js";
+import {
+  clearNativeLyrics,
+  nativeMtvAvailable,
+  nativeMtvDurationMs,
+  nativeMtvPlaying,
+  nativeMtvPositionMs,
+  pauseNativeMtv,
+  resumeNativeMtv,
+  seekNativeMtv,
+} from "../../platform.js";
 
 let nativeLyricsCleared = false;
 
 function hideNativeLyrics() {
   if (nativeLyricsCleared) return;
-  const native = window.LovKtvNative;
-  if (!native || typeof native.clearLyrics !== "function") return;
-  try { native.clearLyrics(); nativeLyricsCleared = true; } catch (err) {}
+  if (clearNativeLyrics()) nativeLyricsCleared = true;
 }
 
 function syncNativeVideo(karaoke) {
-  const native = window.LovKtvNative;
-  if (!native || !karaoke) return;
+  if (!nativeMtvAvailable() || !karaoke) return;
   const live = !karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.05;
   try {
     if (karaoke.paused && karaoke.readyState >= 2 && karaoke.currentTime > 0.3) {
-      if (native.pauseMtv) native.pauseMtv();
-    } else if (live && native.resumeMtv) {
-      native.resumeMtv();
+      pauseNativeMtv();
+    } else if (live) {
+      resumeNativeMtv();
     }
-    if (!live || typeof native.positionMs !== "function" || typeof native.seekMtv !== "function") return;
+    if (!live) return;
     const audioMs = Math.floor((karaoke.currentTime || 0) * 1000);
     const karaokeDur = Number.isFinite(karaoke.duration) ? Math.round(karaoke.duration * 1000) : 0;
-    const mtvDur = typeof native.durationMs === "function" ? Number(native.durationMs()) || 0 : 0;
+    const mtvDur = nativeMtvDurationMs();
     const target = videoSeekMs(audioMs, mtvDur, karaokeDur);
-    const pos = Number(native.positionMs()) || 0;
-    const playing = typeof native.playing === "function" ? !!native.playing() : true;
+    const pos = nativeMtvPositionMs();
+    const playing = nativeMtvPlaying();
     const now = Date.now();
     if (shouldSeekNative(pos, target, state.lastMtvSeek, now, playing)) {
       state.lastMtvSeek = now;
-      native.seekMtv(target);
+      seekNativeMtv(target);
     }
   } catch (err) {}
 }
@@ -102,7 +109,7 @@ export function paint() {
     const mtv = $("mtv");
     const t = lyricClockMs((karaoke.currentTime || 0) * 1000, state.lyrics);
     syncVocal();
-    if (window.LovKtvNative && typeof window.LovKtvNative.playMtv === "function") {
+    if (nativeMtvAvailable()) {
       if (mtv) {
         mtv.hidden = true;
         mtv.pause();
