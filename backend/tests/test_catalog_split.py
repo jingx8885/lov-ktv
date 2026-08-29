@@ -1,5 +1,4 @@
-from lovktv.catalog import fetch
-from lovktv.catalog import search, lyrics, audio, importer
+from lovktv.catalog import audio, fetch, importer, lyrics, search
 
 
 def test_fetch_facade_exports_split_implementations():

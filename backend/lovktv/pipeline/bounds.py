@@ -4,10 +4,17 @@ from __future__ import annotations
 
 from typing import Any
 
-from lovktv.pipeline.audio import energy_token_spans, snap_to_onset, vocal_regions
+from lovktv.pipeline.audio import energy_token_spans, vocal_regions
 from lovktv.pipeline.constants import *
 from lovktv.pipeline.lyrics import drop_credit_lines
-from lovktv.pipeline.matching import _best_asr_window, _usable_asr_words, accept_score, estimate_asr_offset, normalize_lyric
+from lovktv.pipeline.matching import (
+    _best_asr_window,
+    _usable_asr_words,
+    accept_score,
+    estimate_asr_offset,
+    normalize_lyric,
+)
+
 
 def _fallback_line_bounds(
     line: dict[str, Any],
@@ -25,12 +32,14 @@ def _fallback_line_bounds(
         end_ms = start_ms + max(MIN_LINE_MS, min(MAX_LINE_MS, 180 * known_n))
     return start_ms, max(start_ms + MIN_LINE_MS, end_ms)
 
+
 def _voice_covers(
     regions: list[tuple[int, int]],
     target_ms: int,
     slop_ms: int = 400,
 ) -> bool:
     return any(start - slop_ms <= target_ms <= end + slop_ms for start, end in regions)
+
 
 def _append_bound(
     bounds: list[dict[str, Any]],
@@ -49,7 +58,10 @@ def _append_bound(
                 start_ms = max(start_ms, prev["end_ms"])
     start_ms = max(0, start_ms)
     end_ms = max(start_ms + MIN_LINE_MS, end_ms)
-    bounds.append({"text": text, "start_ms": start_ms, "end_ms": end_ms, "from_asr": from_asr})
+    bounds.append(
+        {"text": text, "start_ms": start_ms, "end_ms": end_ms, "from_asr": from_asr}
+    )
+
 
 def align_lines_to_asr(
     lines: list[dict[str, Any]],
@@ -96,11 +108,15 @@ def align_lines_to_asr(
             accept,
         )
         # First sung line, or a 0:00 title copy, may start earlier than the stamp.
-        if not match and expected_ms is not None and (
-            not bounds
-            or (
-                bounds[-1]["text"] == raw_text
-                and int(bounds[-1]["start_ms"]) < 3000
+        if (
+            not match
+            and expected_ms is not None
+            and (
+                not bounds
+                or (
+                    bounds[-1]["text"] == raw_text
+                    and int(bounds[-1]["start_ms"]) < 3000
+                )
             )
         ):
             match = _best_asr_window(
@@ -129,7 +145,9 @@ def align_lines_to_asr(
                 texts,
                 language,
                 cursor,
-                None if earliest is None else min(earliest, expected_ms - ASR_WINDOW_BEFORE),
+                None
+                if earliest is None
+                else min(earliest, expected_ms - ASR_WINDOW_BEFORE),
                 expected_ms + ASR_RESCUE_AFTER,
                 accept,
             )
@@ -140,10 +158,7 @@ def align_lines_to_asr(
             and official_ms is not None
             and official_alive
             and asr_start is not None
-            and (
-                not bounds
-                or official_ms + 200 >= int(bounds[-1]["end_ms"]) - 600
-            )
+            and (not bounds or official_ms + 200 >= int(bounds[-1]["end_ms"]) - 600)
             and (
                 asr_start - official_ms > LATE_ASR_SLACK_MS
                 or (official_ms - asr_start > EARLY_ASR_SLACK_MS and asr_in_hole)
@@ -153,7 +168,9 @@ def align_lines_to_asr(
             start_ms = int(asr_words[match[1]]["start_ms"])
             end_ms = int(asr_words[match[2] - 1]["end_ms"])
             cursor = match[2]
-            local_shift = start_ms - official_ms if official_ms is not None else local_shift
+            local_shift = (
+                start_ms - official_ms if official_ms is not None else local_shift
+            )
         else:
             if match and prefer_official:
                 cursor = match[2]
@@ -171,9 +188,13 @@ def align_lines_to_asr(
     if bounds and asr_words:
         last_asr = int(asr_words[-1]["end_ms"])
         last = bounds[-1]
-        if last_asr > int(last["end_ms"]) and int(last["end_ms"]) - int(last["start_ms"]) < 2500:
+        if (
+            last_asr > int(last["end_ms"])
+            and int(last["end_ms"]) - int(last["start_ms"]) < 2500
+        ):
             last["end_ms"] = min(last_asr, int(last["start_ms"]) + MAX_LINE_MS)
     return hold_lines_until_next(bounds)
+
 
 def restore_short_official_gaps(
     bounds: list[dict[str, Any]],
@@ -185,7 +206,9 @@ def restore_short_official_gaps(
     for line in lines:
         if line.get("ms") is None:
             continue
-        official_times.setdefault(str(line.get("text") or ""), []).append(int(line["ms"]) + shift)
+        official_times.setdefault(str(line.get("text") or ""), []).append(
+            int(line["ms"]) + shift
+        )
     used: dict[str, int] = {}
     for index, row in enumerate(bounds[:-1]):
         text = str(row.get("text") or "")
@@ -211,6 +234,7 @@ def restore_short_official_gaps(
         nxt["end_ms"] = max(int(nxt["end_ms"]), nxt["start_ms"] + MIN_LINE_MS)
     return bounds
 
+
 def assign_plain_lines(
     texts: list[str],
     regions: list[tuple[int, int]],
@@ -221,7 +245,10 @@ def assign_plain_lines(
     slots = list(regions)
     if not slots:
         unit = max(duration_ms, len(texts) * 1000) / len(texts)
-        return [{"ms": int(index * unit), "text": text, "end_ms": int((index + 1) * unit)} for index, text in enumerate(texts)]
+        return [
+            {"ms": int(index * unit), "text": text, "end_ms": int((index + 1) * unit)}
+            for index, text in enumerate(texts)
+        ]
     while len(slots) < len(texts):
         idx = max(range(len(slots)), key=lambda i: slots[i][1] - slots[i][0])
         start_ms, end_ms = slots[idx]
@@ -236,13 +263,16 @@ def assign_plain_lines(
         for text, (start_ms, end_ms) in zip(texts, slots)
     ]
 
+
 def line_sing_end(
     start_ms: int,
     display_end: int,
     regions: list[tuple[int, int]],
 ) -> int:
     """When the singer finishes this line. Display may hold longer until the next cue."""
-    fallback = min(display_end, start_ms + max(800, min(MAX_LINE_MS, display_end - start_ms)))
+    fallback = min(
+        display_end, start_ms + max(800, min(MAX_LINE_MS, display_end - start_ms))
+    )
     if not regions:
         return fallback
     sing = None
@@ -266,6 +296,7 @@ def line_sing_end(
         return fallback
     return max(start_ms + 400, min(display_end, sing))
 
+
 def pack_tokens_to_singing(
     cues: list[dict[str, Any]],
     envelope: list[float] | None = None,
@@ -276,18 +307,23 @@ def pack_tokens_to_singing(
     for cue in cues:
         start_ms = int(cue["start_ms"])
         display_end = int(cue["end_ms"])
-        sing_end = int(cue.get("sing_end_ms") or line_sing_end(start_ms, display_end, regions))
+        sing_end = int(
+            cue.get("sing_end_ms") or line_sing_end(start_ms, display_end, regions)
+        )
         cue["sing_end_ms"] = sing_end
         tokens = list(cue.get("tokens") or [])
         if not tokens:
             continue
-        spans = energy_token_spans(start_ms, sing_end, len(tokens), envelope or [], hop_ms)
+        spans = energy_token_spans(
+            start_ms, sing_end, len(tokens), envelope or [], hop_ms
+        )
         for token, (left, right) in zip(tokens, spans):
             token["start_ms"] = left
             token["end_ms"] = right
         tokens[0]["start_ms"] = start_ms
         tokens[-1]["end_ms"] = sing_end
     return cues
+
 
 def hold_lines_until_next(
     bounds: list[dict[str, Any]],
@@ -300,6 +336,7 @@ def hold_lines_until_next(
         if 0 < nxt - end <= max_gap_ms:
             row["end_ms"] = nxt
     return bounds
+
 
 def snap_unmatched_to_voice(
     bounds: list[dict[str, Any]],
@@ -319,7 +356,8 @@ def snap_unmatched_to_voice(
         onsets = [
             region_start
             for region_start, region_end in regions
-            if start_ms < region_start < next_start - 250 and region_end - region_start >= 280
+            if start_ms < region_start < next_start - 250
+            and region_end - region_start >= 280
         ]
         if not onsets:
             continue
@@ -327,5 +365,8 @@ def snap_unmatched_to_voice(
         if onset - start_ms < 400 or onset - start_ms > 8000:
             continue
         row["start_ms"] = onset
-        row["end_ms"] = max(onset + MIN_LINE_MS, min(int(row["end_ms"]) + (onset - start_ms), next_start))
+        row["end_ms"] = max(
+            onset + MIN_LINE_MS,
+            min(int(row["end_ms"]) + (onset - start_ms), next_start),
+        )
     return bounds

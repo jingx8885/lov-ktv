@@ -28,7 +28,10 @@ def test_room_websocket_smoke(tmp_path, monkeypatch):
     main._rooms.clear()
     main._peers.clear()
     main._mics.clear()
-    with TestClient(main.app) as client, client.websocket_connect("/ws/rooms/SMOKE1") as ws:
+    with (
+        TestClient(main.app) as client,
+        client.websocket_connect("/ws/rooms/SMOKE1") as ws,
+    ):
         msg = ws.receive_json()
         assert msg["type"] == "snapshot"
         assert msg["room"]["code"] == "SMOKE1"

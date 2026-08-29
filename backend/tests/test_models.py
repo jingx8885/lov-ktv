@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from lovktv.pipeline.mdx_onnx import MODEL_NAME, ensure_separator_model, model_path, model_status
+from lovktv.pipeline.mdx_onnx import (
+    MODEL_NAME,
+    ensure_separator_model,
+    model_path,
+    model_status,
+)
 
 
 def test_model_path_prefers_lovktv_models(tmp_path, monkeypatch):
@@ -11,7 +16,9 @@ def test_model_path_prefers_lovktv_models(tmp_path, monkeypatch):
     data.mkdir()
     monkeypatch.setenv("LOVKTV_MODELS", str(baked.parent))
     monkeypatch.setenv("LOVKTV_DATA", str(data))
-    monkeypatch.setattr("lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing")
+    monkeypatch.setattr(
+        "lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing"
+    )
     monkeypatch.setattr("lovktv.pipeline.mdx_onnx.DATA_DIR", data)
     assert model_path() == baked.resolve()
 
@@ -20,7 +27,9 @@ def test_ensure_separator_model_downloads_when_missing(tmp_path, monkeypatch):
     dest_dir = tmp_path / "models"
     monkeypatch.setenv("LOVKTV_MODELS", str(dest_dir))
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path / "data"))
-    monkeypatch.setattr("lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing")
+    monkeypatch.setattr(
+        "lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing"
+    )
     monkeypatch.setattr("lovktv.pipeline.mdx_onnx.DATA_DIR", tmp_path / "data")
 
     def fake_download(url: str, dest: Path) -> None:
@@ -40,7 +49,9 @@ def test_model_status_reports_separator_and_whisper(tmp_path, monkeypatch):
     dest.write_bytes(b"onnx")
     monkeypatch.setenv("LOVKTV_MODELS", str(dest.parent))
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path / "data"))
-    monkeypatch.setattr("lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing")
+    monkeypatch.setattr(
+        "lovktv.pipeline.mdx_onnx.IMAGE_MODELS_DIR", tmp_path / "opt-missing"
+    )
     monkeypatch.setattr("lovktv.pipeline.mdx_onnx.whisper_ready", lambda: True)
     status = model_status()
     assert status["separator"] is True

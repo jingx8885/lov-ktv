@@ -107,11 +107,15 @@ def translate_lines(
     }
     if cache_path:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        cache_path.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     return result
 
 
-def apply_zh_translation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict[str, Any]:
+def apply_zh_translation(
+    timeline: dict[str, Any], notes: dict[str, Any]
+) -> dict[str, Any]:
     by_source: dict[str, dict[str, Any]] = {}
     for item in notes.get("lines") or []:
         source = lyric_source_key(item.get("source") or "")

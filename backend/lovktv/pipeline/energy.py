@@ -5,11 +5,14 @@ from __future__ import annotations
 from typing import Any
 
 from lovktv.pipeline.audio import snap_to_onset, vocal_regions
-from lovktv.pipeline.constants import *
 from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
+from lovktv.pipeline.constants import *
 from lovktv.pipeline.matching import vocal_phrases
 
-def _vocal_end_near(start_ms: int, regions: list[tuple[int, int]], limit_ms: int = MAX_LINE_MS) -> int:
+
+def _vocal_end_near(
+    start_ms: int, regions: list[tuple[int, int]], limit_ms: int = MAX_LINE_MS
+) -> int:
     """End the line at the vocal burst covering this LRC start, not the next verse."""
     end_ms = start_ms + 4000
     for region_start, region_end in regions:
@@ -19,6 +22,7 @@ def _vocal_end_near(start_ms: int, regions: list[tuple[int, int]], limit_ms: int
             break
         end_ms = max(end_ms, min(region_end + 160, start_ms + limit_ms))
     return min(end_ms, start_ms + limit_ms)
+
 
 def energy_line_bounds(
     text_bounds: list[dict[str, Any]],
@@ -33,7 +37,11 @@ def energy_line_bounds(
     if not regions:
         return []
     work = [
-        {"text": str(row.get("text") or ""), "ms": int(row["start_ms"]), "end_ms": int(row["end_ms"])}
+        {
+            "text": str(row.get("text") or ""),
+            "ms": int(row["start_ms"]),
+            "end_ms": int(row["end_ms"]),
+        }
         for row in text_bounds
     ]
     suggested = _finalize_line_bounds(work, phrases, 0)
@@ -43,7 +51,11 @@ def energy_line_bounds(
         start_ms = int(row["start_ms"])
         if _voice_covers(regions, start_ms):
             continue
-        nxt = int(suggested[index + 1]["start_ms"]) if index + 1 < len(suggested) else start_ms + 20_000
+        nxt = (
+            int(suggested[index + 1]["start_ms"])
+            if index + 1 < len(suggested)
+            else start_ms + 20_000
+        )
         onsets = [
             region_start
             for region_start, region_end in regions
@@ -57,8 +69,11 @@ def energy_line_bounds(
         if nxt - onset < ENERGY_NEXT_GUARD_MS and nxt - onset <= onset - start_ms:
             continue
         row["start_ms"] = onset
-        row["end_ms"] = max(onset + MIN_LINE_MS, min(int(row["end_ms"]) + (onset - start_ms), nxt))
+        row["end_ms"] = max(
+            onset + MIN_LINE_MS, min(int(row["end_ms"]) + (onset - start_ms), nxt)
+        )
     return suggested
+
 
 def merge_with_energy(
     text_bounds: list[dict[str, Any]],
@@ -76,7 +91,11 @@ def merge_with_energy(
     for index, text in enumerate(text_bounds):
         row = dict(text)
         energy = energy_bounds[index] if index < len(energy_bounds) else None
-        nxt = int(text_bounds[index + 1]["start_ms"]) if index + 1 < len(text_bounds) else None
+        nxt = (
+            int(text_bounds[index + 1]["start_ms"])
+            if index + 1 < len(text_bounds)
+            else None
+        )
         if text.get("from_asr"):
             if regions:
                 snapped = snap_to_onset(
@@ -102,7 +121,9 @@ def merge_with_energy(
         near_next = nxt is not None and nxt - energy_start < ENERGY_NEXT_GUARD_MS
         adopt = delta <= ENERGY_AGREE_MS or (
             in_hole
-            and ENERGY_HOLE_MIN_MS <= energy_start - int(row["start_ms"]) <= ENERGY_HOLE_MAX_MS
+            and ENERGY_HOLE_MIN_MS
+            <= energy_start - int(row["start_ms"])
+            <= ENERGY_HOLE_MAX_MS
             and not near_next
         )
         if adopt:
@@ -119,6 +140,7 @@ def merge_with_energy(
             row["start_ms"] = int(prev["end_ms"])
         row["end_ms"] = max(row["start_ms"] + MIN_LINE_MS, int(row["end_ms"]))
     return hold_lines_until_next(merged)
+
 
 def guard_early_next_starts(
     bounds: list[dict[str, Any]],
@@ -137,7 +159,9 @@ def guard_early_next_starts(
     if not regions:
         return [dict(row) for row in bounds]
     if len(lines) == len(bounds):
-        official = [int(item["ms"]) if item.get("ms") is not None else None for item in lines]
+        official = [
+            int(item["ms"]) if item.get("ms") is not None else None for item in lines
+        ]
     else:
         official = []
         cursor = 0
@@ -177,6 +201,7 @@ def guard_early_next_starts(
         row["end_ms"] = max(row["start_ms"] + MIN_LINE_MS, int(row["end_ms"]))
     return hold_lines_until_next(out)
 
+
 def _finalize_line_bounds(
     lines: list[dict[str, Any]],
     regions: list[tuple[int, int]],
@@ -186,7 +211,11 @@ def _finalize_line_bounds(
     starts: list[int] = []
     for line in lines:
         raw = line.get("ms")
-        starts.append(int(raw) if raw is not None else max(0, int(line.get("end_ms") or 1000) - 1000))
+        starts.append(
+            int(raw)
+            if raw is not None
+            else max(0, int(line.get("end_ms") or 1000) - 1000)
+        )
     for index in range(1, len(starts)):
         starts[index] = max(starts[index], starts[index - 1] + 80)
     bounds: list[dict[str, Any]] = []
@@ -210,6 +239,7 @@ def _finalize_line_bounds(
         bounds.append({"text": line["text"], "start_ms": start_ms, "end_ms": end_ms})
     return hold_lines_until_next(bounds)
 
+
 def nearest_onset(
     target_ms: int,
     regions: list[tuple[int, int]],
@@ -229,6 +259,7 @@ def nearest_onset(
                 best_delta = delta
     return best
 
+
 def first_onset_between(
     lo_ms: int,
     hi_ms: int,
@@ -241,6 +272,7 @@ def first_onset_between(
         if lo_ms < start_ms < hi_ms:
             return start_ms
     return None
+
 
 def consensus_line_start(
     official_ms: int,
@@ -255,13 +287,22 @@ def consensus_line_start(
     hi = (next_ms - 250) if next_ms is not None else official_ms + 12_000
     onset_near = nearest_onset(official_ms, regions) if regions else None
     onset_after = (
-        first_onset_between(max(official_ms + 400, prev_end), hi, regions) if regions else None
+        first_onset_between(max(official_ms + 400, prev_end), hi, regions)
+        if regions
+        else None
     )
     if asr_start is not None and regions:
         asr_onset = nearest_onset(asr_start, regions, 500, 400)
-        if asr_onset is not None and abs(asr_start - asr_onset) <= 800 and abs(asr_start - official_ms) > 400:
+        if (
+            asr_onset is not None
+            and abs(asr_start - asr_onset) <= 800
+            and abs(asr_start - official_ms) > 400
+        ):
             if asr_start >= prev_end and (next_ms is None or asr_start < next_ms):
-                return asr_onset if 0 <= asr_start - asr_onset <= 400 else asr_start, True
+                return (
+                    asr_onset if 0 <= asr_start - asr_onset <= 400 else asr_start,
+                    True,
+                )
     if asr_start is not None and onset_near is None and asr_start - official_ms > 400:
         if asr_start >= prev_end and (next_ms is None or asr_start < next_ms):
             return asr_start, True
@@ -274,9 +315,14 @@ def consensus_line_start(
         if asr_start is not None and abs(asr_start - onset_after) <= 800:
             return onset_after, True
         if ENERGY_HOLE_MIN_MS <= onset_after - official_ms <= ENERGY_HOLE_MAX_MS:
-            if next_ms is None or next_ms - onset_after >= ENERGY_NEXT_GUARD_MS or next_ms - onset_after > onset_after - official_ms:
+            if (
+                next_ms is None
+                or next_ms - onset_after >= ENERGY_NEXT_GUARD_MS
+                or next_ms - onset_after > onset_after - official_ms
+            ):
                 return onset_after, False
     return start_ms, from_asr
+
 
 def snap_holes_to_voice(
     bounds: list[dict[str, Any]],
@@ -291,7 +337,11 @@ def snap_holes_to_voice(
         start_ms = int(row["start_ms"])
         if _voice_covers(regions, start_ms):
             continue
-        nxt = int(bounds[index + 1]["start_ms"]) if index + 1 < len(bounds) else start_ms + 20_000
+        nxt = (
+            int(bounds[index + 1]["start_ms"])
+            if index + 1 < len(bounds)
+            else start_ms + 20_000
+        )
         onsets = [
             region_start
             for region_start, region_end in regions
@@ -305,5 +355,7 @@ def snap_holes_to_voice(
         if nxt - onset < ENERGY_NEXT_GUARD_MS and nxt - onset <= onset - start_ms:
             continue
         row["start_ms"] = onset
-        row["end_ms"] = max(onset + MIN_LINE_MS, min(int(row["end_ms"]) + (onset - start_ms), nxt))
+        row["end_ms"] = max(
+            onset + MIN_LINE_MS, min(int(row["end_ms"]) + (onset - start_ms), nxt)
+        )
     return bounds

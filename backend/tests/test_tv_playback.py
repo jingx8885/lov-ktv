@@ -5,8 +5,12 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 def test_tv_does_not_restart_on_network_stall():
     tick = (ROOT / "tv" / "playback" / "js" / "tick.js").read_text(encoding="utf-8")
-    playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(encoding="utf-8")
-    room_state = (ROOT / "tv" / "playback" / "js" / "room" / "state.js").read_text(encoding="utf-8")
+    playback_state = (ROOT / "tv" / "playback" / "js" / "state.js").read_text(
+        encoding="utf-8"
+    )
+    room_state = (ROOT / "tv" / "playback" / "js" / "room-state.js").read_text(
+        encoding="utf-8"
+    )
     platform = (ROOT / "tv" / "platform.js").read_text(encoding="utf-8")
     app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
     keep = (ROOT / "tv" / "audio" / "js" / "keepalive.js").read_text(encoding="utf-8")
@@ -22,7 +26,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function shouldReloadRoomItem" in playback_state
     assert "export function watchRoom" in room_state
     assert "export function fetchRoomSnapshot" in room_state
-    assert 'from "./room/state.js"' in tick
+    assert 'from "./room-state.js"' in tick
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
@@ -65,13 +69,37 @@ def test_tv_does_not_restart_on_network_stall():
     arrow_down = remote.split('case "ArrowDown":', 1)[1].split("case ", 1)[0]
     assert "moveSettings(1)" in arrow_down
     assert "nudgeVolume(-5)" in arrow_down
-    silent = (ROOT.parent.parent / "android-tv" / "app" / "src" / "main" / "java" / "com" / "lovktv" / "tv" / "SilentMtv.kt").read_text(encoding="utf-8")
-    activity = (ROOT.parent.parent / "android-tv" / "app" / "src" / "main" / "java" / "com" / "lovktv" / "tv" / "TvActivity.kt").read_text(encoding="utf-8")
+    silent = (
+        ROOT.parent.parent
+        / "android-tv"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "tv"
+        / "SilentMtv.kt"
+    ).read_text(encoding="utf-8")
+    activity = (
+        ROOT.parent.parent
+        / "android-tv"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "tv"
+        / "TvActivity.kt"
+    ).read_text(encoding="utf-8")
     assert "setVideoScalingMode" not in silent
     assert "PixelFormat.OPAQUE" not in silent
     assert "resumeMtv()" in activity
     mtv = (ROOT / "tv" / "playback" / "js" / "mtv.js").read_text(encoding="utf-8")
-    clock = (ROOT / "tv" / "playback" / "js" / "lyric" / "clock.js").read_text(encoding="utf-8")
+    clock = (ROOT / "tv" / "playback" / "js" / "lyric-clock.js").read_text(
+        encoding="utf-8"
+    )
     lyrics = (ROOT / "tv" / "playback" / "js" / "lyrics.js").read_text(encoding="utf-8")
     assert "nativeMtvAvailable" in mtv
     assert "export function playNativeMtv" in platform
@@ -128,7 +156,7 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "if (isMediaStalled(el)) return false;" in tick
     assert "state.resumeAt = t;" in tick
     # Browser MTV failure degrades to a cover; native MTV remains the same bind path.
-    assert 'mtv.onerror = () =>' in mtv
+    assert "mtv.onerror = () =>" in mtv
     assert 'classList.add("has-mtv-cover")' in mtv
-    assert 'mtv.hidden = true' in mtv
+    assert "mtv.hidden = true" in mtv
     assert "playNativeMtv" in mtv

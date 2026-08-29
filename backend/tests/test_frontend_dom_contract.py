@@ -5,10 +5,9 @@ no browser or bundler is required.  They catch accidental removal/renaming of
 the mount roots that feature modules use during the R5A refactor.
 """
 
+import re
 from html.parser import HTMLParser
 from pathlib import Path
-import re
-
 
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 ANDROID_PHONE = Path(__file__).resolve().parents[2] / "android-phone"
@@ -37,7 +36,11 @@ def _must_ids(folder: str) -> set[str]:
     """Collect literal $must('id') references used during module startup."""
     found: set[str] = set()
     for path in (ROOT / folder).rglob("*.js"):
-        found.update(re.findall(r"\$must\(\s*[\"']([^\"']+)[\"']\s*\)", path.read_text(encoding="utf-8")))
+        found.update(
+            re.findall(
+                r"\$must\(\s*[\"']([^\"']+)[\"']\s*\)", path.read_text(encoding="utf-8")
+            )
+        )
     return found
 
 
@@ -45,23 +48,53 @@ def test_phone_entry_has_stable_mount_points_and_boot_module():
     elements = _parse("m.html")
     mounts = {item["data-mount"] for item in elements if "data-mount" in item}
     assert {
-        "phone-root", "phone-app", "phone-topbar", "phone-search", "phone-desk",
-        "phone-player", "phone-tabbar", "phone-room", "phone-room-sheet",
-        "phone-who", "phone-who-sheet", "phone-language", "phone-mix", "phone-mix-sheet",
+        "phone-root",
+        "phone-app",
+        "phone-topbar",
+        "phone-search",
+        "phone-desk",
+        "phone-player",
+        "phone-tabbar",
+        "phone-room",
+        "phone-room-sheet",
+        "phone-who",
+        "phone-who-sheet",
+        "phone-language",
+        "phone-mix",
+        "phone-mix-sheet",
     } <= mounts
     body = next(item for item in elements if item.get("tag") == "body")
     assert body.get("data-app") == "phone"
-    assert any(item.get("tag") == "script" and item.get("type") == "module" and item.get("src", "").endswith("/phone/app.js") for item in elements)
+    assert any(
+        item.get("tag") == "script"
+        and item.get("type") == "module"
+        and item.get("src", "").endswith("/phone/app.js")
+        for item in elements
+    )
     assert _must_ids("phone") <= _ids(elements)
 
 
 def test_tv_entry_has_stable_mount_points_and_boot_module():
     elements = _parse("tv.html")
     mounts = {item["data-mount"] for item in elements if "data-mount" in item}
-    assert {"tv-root", "tv-qr", "tv-settings", "tv-login", "tv-start", "tv-ui", "tv-lyrics", "tv-footer"} <= mounts
+    assert {
+        "tv-root",
+        "tv-qr",
+        "tv-settings",
+        "tv-login",
+        "tv-start",
+        "tv-ui",
+        "tv-lyrics",
+        "tv-footer",
+    } <= mounts
     body = next(item for item in elements if item.get("tag") == "body")
     assert body.get("data-app") == "tv"
-    assert any(item.get("tag") == "script" and item.get("type") == "module" and item.get("src", "").endswith("/tv/app.js") for item in elements)
+    assert any(
+        item.get("tag") == "script"
+        and item.get("type") == "module"
+        and item.get("src", "").endswith("/tv/app.js")
+        for item in elements
+    )
     assert _must_ids("tv") <= _ids(elements)
 
 

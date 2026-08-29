@@ -1,4 +1,5 @@
 """Runtime guards for persisted lyric timelines."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -21,7 +22,9 @@ def normalize_timeline(payload: Any) -> dict[str, Any]:
                 continue
             token_data = dict(token)
             token_data["start_ms"] = max(start, int(token.get("start_ms") or start))
-            token_data["end_ms"] = max(token_data["start_ms"], min(end, int(token.get("end_ms") or end)))
+            token_data["end_ms"] = max(
+                token_data["start_ms"], min(end, int(token.get("end_ms") or end))
+            )
             tokens.append(token_data)
         cue["tokens"] = tokens
         cues.append(cue)

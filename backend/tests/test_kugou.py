@@ -3,7 +3,6 @@ import zlib
 
 from lovktv.catalog import fetch, kugou
 
-
 KRC_SAMPLE = """[ti:晴天]
 [ar:周杰伦]
 [offset:0]
@@ -16,7 +15,9 @@ KRC_SAMPLE = """[ti:晴天]
 
 def _encode_krc(text: str) -> str:
     payload = zlib.compress(b"\xef\xbb\xbf" + text.encode("utf-8"))
-    encrypted = bytes(byte ^ kugou.KRC_KEY[index % 16] for index, byte in enumerate(payload))
+    encrypted = bytes(
+        byte ^ kugou.KRC_KEY[index % 16] for index, byte in enumerate(payload)
+    )
     return base64.b64encode(b"krc1" + encrypted).decode("ascii")
 
 
@@ -33,8 +34,24 @@ def test_decode_and_parse_krc_skips_credits():
 def test_pick_candidate_prefers_official():
     chosen = kugou.pick_candidate(
         [
-            {"id": "1", "accesskey": "a", "score": 60, "product_from": "第三方歌词", "song": "晴天", "singer": "周杰伦", "duration": 269000},
-            {"id": "2", "accesskey": "b", "score": 50, "product_from": "官方推荐歌词", "song": "晴天", "singer": "周杰伦", "duration": 265000},
+            {
+                "id": "1",
+                "accesskey": "a",
+                "score": 60,
+                "product_from": "第三方歌词",
+                "song": "晴天",
+                "singer": "周杰伦",
+                "duration": 269000,
+            },
+            {
+                "id": "2",
+                "accesskey": "b",
+                "score": 50,
+                "product_from": "官方推荐歌词",
+                "song": "晴天",
+                "singer": "周杰伦",
+                "duration": 265000,
+            },
         ],
         title="晴天",
         artist="周杰伦",
@@ -48,7 +65,14 @@ def test_fetch_kugou_lyrics_builds_timeline(monkeypatch):
         kugou,
         "search_kugou_lyrics",
         lambda keyword, duration_ms=0: [
-            {"id": "2", "accesskey": "b", "score": 50, "product_from": "官方推荐歌词", "song": "晴天", "singer": "周杰伦"}
+            {
+                "id": "2",
+                "accesskey": "b",
+                "score": 50,
+                "product_from": "官方推荐歌词",
+                "song": "晴天",
+                "singer": "周杰伦",
+            }
         ],
     )
     monkeypatch.setattr(kugou, "download_kugou_krc", lambda candidate: KRC_SAMPLE)
@@ -85,7 +109,14 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
                         "text": "故事的小黄花",
                         "start_ms": 29269,
                         "end_ms": 32153,
-                        "tokens": [{"text": "故", "start_ms": 29269, "end_ms": 29623, "reading": ""}],
+                        "tokens": [
+                            {
+                                "text": "故",
+                                "start_ms": 29269,
+                                "end_ms": 29623,
+                                "reading": "",
+                            }
+                        ],
                     }
                 ],
             },
@@ -93,10 +124,20 @@ def test_import_song_uses_kugou_lyrics(tmp_path, monkeypatch):
             "candidate": {"id": "kg1", "song": "晴天", "singer": "周杰伦"},
         },
     )
-    monkeypatch.setattr(fetch, "fetch_lyric", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease lyric should not run")))
+    monkeypatch.setattr(
+        fetch,
+        "fetch_lyric",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("netease lyric should not run")
+        ),
+    )
     monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
-    monkeypatch.setattr(fetch, "try_netease_download", lambda song_id, path: path.write_bytes(b"x" * 60_000) or True)
+    monkeypatch.setattr(
+        fetch,
+        "try_netease_download",
+        lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
+    )
     monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
     skeleton = fetch.import_song(query="晴天", out_dir=tmp_path, song_id="1")
     assert skeleton["needs_align"] is False
@@ -117,14 +158,28 @@ def test_import_song_falls_back_to_netease_lyrics(tmp_path, monkeypatch):
     monkeypatch.setattr(
         fetch,
         "search_tonzhon",
-        lambda *args, **kwargs: [{"id": "22689669", "name": "Give a reason", "artist": ["林原めぐみ"]}],
+        lambda *args, **kwargs: [
+            {"id": "22689669", "name": "Give a reason", "artist": ["林原めぐみ"]}
+        ],
     )
-    monkeypatch.setattr(fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]Give a reason")
+    monkeypatch.setattr(
+        fetch,
+        "fetch_lyric",
+        lambda song_id, source="netease": "[00:01.00]Give a reason",
+    )
     monkeypatch.setattr(fetch, "pick_bilibili_mv", lambda *args, **kwargs: None)
     monkeypatch.setattr(fetch, "try_bilibili_download", lambda *args, **kwargs: False)
-    monkeypatch.setattr(fetch, "try_netease_download", lambda song_id, path: path.write_bytes(b"x" * 60_000) or True)
+    monkeypatch.setattr(
+        fetch,
+        "try_netease_download",
+        lambda song_id, path: path.write_bytes(b"x" * 60_000) or True,
+    )
     monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
-    skeleton = fetch.import_song(query="Give a reason", out_dir=tmp_path, song_id="22689669")
+    skeleton = fetch.import_song(
+        query="Give a reason", out_dir=tmp_path, song_id="22689669"
+    )
     assert skeleton["needs_align"] is True
     assert skeleton["source"]["lyrics"] == "netease"
-    assert (tmp_path / "lyrics.lrc").read_text(encoding="utf-8").startswith("[00:01.00]")
+    assert (
+        (tmp_path / "lyrics.lrc").read_text(encoding="utf-8").startswith("[00:01.00]")
+    )

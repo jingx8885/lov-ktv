@@ -48,7 +48,18 @@ def test_transcribe_waits_for_existing_whisper(monkeypatch, tmp_path):
     def fake_wait(audio_path, sibling, cache_path, timeout=900):
         sibling.parent.mkdir(parents=True, exist_ok=True)
         sibling.write_text(
-            json.dumps({"segments": [{"start": 1.0, "end": 2.0, "text": "hello", "words": [{"word": "hello", "start": 1.0, "end": 2.0}]}]}),
+            json.dumps(
+                {
+                    "segments": [
+                        {
+                            "start": 1.0,
+                            "end": 2.0,
+                            "text": "hello",
+                            "words": [{"word": "hello", "start": 1.0, "end": 2.0}],
+                        }
+                    ]
+                }
+            ),
             encoding="utf-8",
         )
         return _parse_whisper_json(sibling)
@@ -83,8 +94,10 @@ def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path):
 
     def fake_run(*_args, **_kwargs):
         started["run"] += 1
+
         class Result:
             returncode = 1
+
         return Result()
 
     monkeypatch.setattr(transcribe, "whisper_pids_for", fake_pids_for)

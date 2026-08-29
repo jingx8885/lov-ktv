@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import subprocess
 import time
 from pathlib import Path
 from typing import Any
-
-import os
 
 from lovktv.config import WHISPER_DIR
 from lovktv.pipeline.language import whisper_language
@@ -98,12 +97,18 @@ def transcribe_words(
         cached = _parse_whisper_json(cache_path)
         if cached:
             return cached
-    sibling = (cache_path.parent if cache_path else audio_path.parent) / "_asr" / f"{audio_path.stem}.json"
+    sibling = (
+        (cache_path.parent if cache_path else audio_path.parent)
+        / "_asr"
+        / f"{audio_path.stem}.json"
+    )
     if sibling.exists():
         cached = _parse_whisper_json(sibling)
         if cached:
             if cache_path:
-                cache_path.write_text(sibling.read_text(encoding="utf-8"), encoding="utf-8")
+                cache_path.write_text(
+                    sibling.read_text(encoding="utf-8"), encoding="utf-8"
+                )
             return cached
     if whisper_pids_for(audio_path):
         waited = _wait_for_whisper_result(audio_path, sibling, cache_path)
@@ -115,7 +120,9 @@ def transcribe_words(
             cached = _parse_whisper_json(sibling)
             if cached:
                 if cache_path:
-                    cache_path.write_text(sibling.read_text(encoding="utf-8"), encoding="utf-8")
+                    cache_path.write_text(
+                        sibling.read_text(encoding="utf-8"), encoding="utf-8"
+                    )
                 return cached
         if whisper_pids_for(audio_path):
             waited = _wait_for_whisper_result(audio_path, sibling, cache_path)
@@ -159,7 +166,9 @@ def transcribe_words(
     if prompt.strip():
         cmd.extend(["--initial_prompt", prompt.strip()[:400]])
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=900, check=False)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=900, check=False
+        )
     except OSError:
         return []
     produced = out_dir / f"{audio_path.stem}.json"
@@ -196,7 +205,9 @@ def _parse_whisper_json(path: Path) -> list[dict[str, Any]]:
                 }
             )
         usable_text = "".join(
-            item["text"] for item in parsed if int(item["end_ms"]) - int(item["start_ms"]) >= 40
+            item["text"]
+            for item in parsed
+            if int(item["end_ms"]) - int(item["start_ms"]) >= 40
         )
         compact = seg_text.replace(" ", "")
         if parsed and len(usable_text) >= max(4, len(compact) // 2):

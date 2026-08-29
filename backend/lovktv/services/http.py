@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
+
 from lovktv.auth import SESSION_COOKIE, public_base
 from lovktv.config import PUBLIC_URL, SESSION_DAYS
 from lovktv.i18n import t as i18n_t
@@ -12,7 +13,11 @@ def request_base(request) -> str:
     if PUBLIC_URL:
         return PUBLIC_URL
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or request.url.netloc
+    host = (
+        request.headers.get("x-forwarded-host")
+        or request.headers.get("host")
+        or request.url.netloc
+    )
     return f"{proto}://{host}"
 
 
@@ -22,8 +27,15 @@ def current_user(request):
 
 def set_session(response, token: str, request) -> None:
     secure = request.url.scheme == "https" or public_base().startswith("https")
-    response.set_cookie(SESSION_COOKIE, token, max_age=SESSION_DAYS * 86400,
-                        httponly=True, samesite="lax", path="/", secure=secure)
+    response.set_cookie(
+        SESSION_COOKIE,
+        token,
+        max_age=SESSION_DAYS * 86400,
+        httponly=True,
+        samesite="lax",
+        path="/",
+        secure=secure,
+    )
 
 
 def clear_session(response) -> None:
@@ -37,6 +49,13 @@ def fail(request, status: int, key: str, **vars) -> None:
 def set_host_cookie(response: JSONResponse, request, token: str) -> JSONResponse:
     if token:
         secure = request.url.scheme == "https" or public_base().startswith("https")
-        response.set_cookie("lovktv_host", token, max_age=400 * 86400,
-                            httponly=True, samesite="lax", path="/", secure=secure)
+        response.set_cookie(
+            "lovktv_host",
+            token,
+            max_age=400 * 86400,
+            httponly=True,
+            samesite="lax",
+            path="/",
+            secure=secure,
+        )
     return response

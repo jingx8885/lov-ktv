@@ -15,12 +15,22 @@ def test_pick_profile_from_lyrics():
     assert pick_profile("信号", "霓虹赛博") == "glitch"
     assert pick_profile("晴天", "我爱你") == "poster"
     assert pick_profile("Untitled", "x") == "minimal"
-    assert pick_profile("群青", "過ぎる日々にあくびが出る 本当の自分に出会えた 群青の世界へ") == "cinematic"
+    assert (
+        pick_profile(
+            "群青", "過ぎる日々にあくびが出る 本当の自分に出会えた 群青の世界へ"
+        )
+        == "cinematic"
+    )
 
 
 def test_group_scenes_respects_bounds_and_cap():
-    cues = [{"text": f"line{i}", "start_ms": i * 1000, "end_ms": (i + 1) * 1000} for i in range(20)]
-    scenes = group_scenes(cues, duration_ms=20_000, min_ms=3500, max_ms=8000, max_scenes=6)
+    cues = [
+        {"text": f"line{i}", "start_ms": i * 1000, "end_ms": (i + 1) * 1000}
+        for i in range(20)
+    ]
+    scenes = group_scenes(
+        cues, duration_ms=20_000, min_ms=3500, max_ms=8000, max_scenes=6
+    )
     assert 1 <= len(scenes) <= 6
     for scene in scenes:
         assert scene["end_ms"] > scene["start_ms"]
@@ -34,7 +44,9 @@ def test_group_scenes_breaks_on_instrumental_gap():
         {"text": "intro b", "start_ms": 4710, "end_ms": 9180},
         {"text": "verse", "start_ms": 25060, "end_ms": 29000},
     ]
-    scenes = group_scenes(cues, duration_ms=30_000, min_ms=3500, max_ms=8000, max_scenes=8)
+    scenes = group_scenes(
+        cues, duration_ms=30_000, min_ms=3500, max_ms=8000, max_scenes=8
+    )
     assert scenes[0]["kind"] == "title"
     singing = [scene for scene in scenes if scene.get("kind") != "title"]
     assert singing[0]["end_ms"] <= 10000
@@ -42,7 +54,9 @@ def test_group_scenes_breaks_on_instrumental_gap():
 
 
 def test_visual_config_does_not_burn_subtitles(tmp_path):
-    scenes = [{"index": 1, "start_ms": 0, "end_ms": 4000, "text": "hello", "lines": ["hello"]}]
+    scenes = [
+        {"index": 1, "start_ms": 0, "end_ms": 4000, "text": "hello", "lines": ["hello"]}
+    ]
     visual = write_project_files(
         tmp_path,
         title="Salt On Glass",

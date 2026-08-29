@@ -18,11 +18,11 @@ if _VENDOR.is_dir() and str(_VENDOR) not in sys.path:
 from lyric_align.model import Segment, Word  # noqa: E402
 from lyric_align.normalize import default_threshold, normalize, similarity  # noqa: E402
 
-from lovktv.pipeline.constants import HOLD_GAP_MS, MAX_LINE_MS, MIN_LINE_MS
-from lovktv.pipeline.matching import _usable_asr_words
-from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
 from lovktv.pipeline.audio import snap_to_onset, vocal_regions
+from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
+from lovktv.pipeline.constants import HOLD_GAP_MS, MAX_LINE_MS, MIN_LINE_MS
 from lovktv.pipeline.lyrics import drop_credit_lines
+from lovktv.pipeline.matching import _usable_asr_words
 
 ANCHOR_AGREE_MS = 800
 ANCHOR_RESCUE_MS = 2400
@@ -36,7 +36,9 @@ EXTEND_GAP_S = 2.0
 MAX_EXTEND = 4
 
 
-def asr_words_to_segments(asr_words: list[dict[str, Any]], gap_ms: int = 600) -> list[Segment]:
+def asr_words_to_segments(
+    asr_words: list[dict[str, Any]], gap_ms: int = 600
+) -> list[Segment]:
     """Rebuild phrase-sized segments from Whisper words.
 
     Prefer Whisper's own segment ids. CJK models emit character words with
@@ -87,8 +89,16 @@ def _in_official_window(
     if official_ms is None:
         return True
     if official_alive:
-        return official_ms - OFFICIAL_ALIVE_BEFORE_MS <= start_ms <= official_ms + OFFICIAL_ALIVE_AFTER_MS
-    return official_ms - OFFICIAL_HOLE_BEFORE_MS <= start_ms <= official_ms + OFFICIAL_HOLE_AFTER_MS
+        return (
+            official_ms - OFFICIAL_ALIVE_BEFORE_MS
+            <= start_ms
+            <= official_ms + OFFICIAL_ALIVE_AFTER_MS
+        )
+    return (
+        official_ms - OFFICIAL_HOLE_BEFORE_MS
+        <= start_ms
+        <= official_ms + OFFICIAL_HOLE_AFTER_MS
+    )
 
 
 def _segment_from_words(words: list[Word]) -> Segment:
@@ -151,7 +161,11 @@ def _pick_span(
     threshold: float,
     next_text: str = "",
 ) -> tuple[float, int | None, int | None]:
-    need = threshold if (official_alive or official is None) else threshold + HOLE_THRESHOLD_BUMP
+    need = (
+        threshold
+        if (official_alive or official is None)
+        else threshold + HOLE_THRESHOLD_BUMP
+    )
     best_score, best_i, best_j = 0.0, None, None
     upper = min(cursor + 8, len(segments))
     for index in range(cursor, upper):
@@ -160,11 +174,17 @@ def _pick_span(
             continue
         acc: list[Word] = []
         for extra in range(index, min(index + MAX_EXTEND, len(segments))):
-            if extra > index and segments[extra].start - segments[extra - 1].end > EXTEND_GAP_S:
+            if (
+                extra > index
+                and segments[extra].start - segments[extra - 1].end > EXTEND_GAP_S
+            ):
                 break
             extra_text = segments[extra].text
             if extra > index and next_text:
-                if similarity(next_text, extra_text) > similarity(joined, extra_text) + 0.08:
+                if (
+                    similarity(next_text, extra_text)
+                    > similarity(joined, extra_text) + 0.08
+                ):
                     break
             acc.extend(segments[extra].words)
             text = "".join(item.word for item in acc)
@@ -257,7 +277,9 @@ def _prev_limit(bounds: list[dict[str, Any]], index: int) -> int:
 def _snap_matched_start(start_ms: int, regions: list[tuple[int, int]]) -> int:
     if not regions:
         return start_ms
-    snapped = snap_to_onset(start_ms, regions, search_before=ONSET_BEFORE_MS, search_after=120)
+    snapped = snap_to_onset(
+        start_ms, regions, search_before=ONSET_BEFORE_MS, search_after=120
+    )
     if 0 <= start_ms - snapped <= ONSET_BEFORE_MS:
         return snapped
     return start_ms
@@ -271,8 +293,13 @@ def _fill_unmatched(
     for index, row in enumerate(bounds):
         if row.get("from_asr"):
             continue
-        official = int(lines[index]["ms"]) if lines[index].get("ms") is not None else None
-        nxt = next((item["start_ms"] for item in bounds[index + 1:] if item.get("from_asr")), None)
+        official = (
+            int(lines[index]["ms"]) if lines[index].get("ms") is not None else None
+        )
+        nxt = next(
+            (item["start_ms"] for item in bounds[index + 1 :] if item.get("from_asr")),
+            None,
+        )
         prev_limit = _prev_limit(bounds, index)
         if official is not None and _voice_covers(regions, official):
             start_ms = max(prev_limit, official)
@@ -293,7 +320,11 @@ def _fill_unmatched(
         else:
             start_ms = prev_limit
         end_ms = nxt if nxt is not None else start_ms + MIN_LINE_MS * 2
-        if nxt is None and official is not None and lines[index].get("end_ms") is not None:
+        if (
+            nxt is None
+            and official is not None
+            and lines[index].get("end_ms") is not None
+        ):
             end_ms = max(start_ms + MIN_LINE_MS, int(lines[index]["end_ms"]))
         next_official = (
             int(lines[index + 1]["ms"])
@@ -342,7 +373,11 @@ def merge_whisper_and_anchor(
         if not adopt:
             merged.append(row)
             continue
-        nxt = int(whisper_bounds[index + 1]["start_ms"]) if index + 1 < len(whisper_bounds) else None
+        nxt = (
+            int(whisper_bounds[index + 1]["start_ms"])
+            if index + 1 < len(whisper_bounds)
+            else None
+        )
         start_ms = int(anchor["start_ms"])
         if nxt is not None and start_ms >= nxt and whisper.get("from_asr"):
             merged.append(row)
@@ -384,7 +419,9 @@ def align_lines_with_anchor(
             {
                 "text": text,
                 "start_ms": int(item["ms"]) if item.get("ms") is not None else 0,
-                "end_ms": int(item["end_ms"]) if item.get("end_ms") is not None else int(item.get("ms") or 0) + MIN_LINE_MS,
+                "end_ms": int(item["end_ms"])
+                if item.get("end_ms") is not None
+                else int(item.get("ms") or 0) + MIN_LINE_MS,
                 "from_asr": False,
             }
             for item, text in zip(kept, texts)
@@ -396,7 +433,11 @@ def align_lines_with_anchor(
     cursor = 0
     for line_index, line in enumerate(kept):
         text = str(line.get("text") or "")
-        next_text = str(kept[line_index + 1].get("text") or "") if line_index + 1 < len(kept) else ""
+        next_text = (
+            str(kept[line_index + 1].get("text") or "")
+            if line_index + 1 < len(kept)
+            else ""
+        )
         official = int(line["ms"]) if line.get("ms") is not None else None
         official_alive = official is not None and _voice_covers(regions, official)
         best_score, best_i, best_j = _pick_span(
@@ -438,7 +479,10 @@ def align_lines_with_anchor(
                 {
                     "text": str(line.get("text") or text),
                     "start_ms": int(line["ms"]) if line.get("ms") is not None else 0,
-                    "end_ms": int(line["end_ms"]) if line.get("end_ms") is not None else (int(line["ms"]) if line.get("ms") is not None else 0) + MIN_LINE_MS,
+                    "end_ms": int(line["end_ms"])
+                    if line.get("end_ms") is not None
+                    else (int(line["ms"]) if line.get("ms") is not None else 0)
+                    + MIN_LINE_MS,
                     "from_asr": False,
                     "score": best_score,
                 }

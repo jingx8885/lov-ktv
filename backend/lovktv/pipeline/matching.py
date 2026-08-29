@@ -7,14 +7,16 @@ import unicodedata
 from difflib import SequenceMatcher
 from typing import Any
 
-from lovktv.pipeline.lyrics import fold_ja_netease_kanji
 from lovktv.pipeline.constants import *
+from lovktv.pipeline.lyrics import fold_ja_netease_kanji
 
 _WORD = re.compile(r"[A-Za-z0-9']+")
 _JA_LEAD_FILLER = re.compile(r"^[あぁアァー]+")
 
+
 def _norm_word(text: str) -> str:
     return "".join(_WORD.findall((text or "").lower()))
+
 
 def _edit_distance(left: str, right: str) -> int:
     if left == right:
@@ -29,6 +31,7 @@ def _edit_distance(left: str, right: str) -> int:
         prev = cur
     return prev[-1]
 
+
 def _en_word_eq(left: str, right: str) -> bool:
     if left == right:
         return True
@@ -36,18 +39,22 @@ def _en_word_eq(left: str, right: str) -> bool:
         return True
     if min(len(left), len(right)) >= 4:
         longer, shorter = (left, right) if len(left) >= len(right) else (right, left)
-        extra = longer[len(shorter):]
+        extra = longer[len(shorter) :]
         if longer.startswith(shorter) and extra in {"d", "ed", "ing", "s"}:
             return True
     return False
 
-def _asr_window(asr_words: list[dict[str, Any]], start_ms: int, end_ms: int) -> list[dict[str, Any]]:
+
+def _asr_window(
+    asr_words: list[dict[str, Any]], start_ms: int, end_ms: int
+) -> list[dict[str, Any]]:
     return [
         word
         for word in asr_words
         if int(word.get("end_ms") or 0) > start_ms - 120
         and int(word.get("start_ms") or 0) < end_ms + 120
     ]
+
 
 def _finish_token_hits(
     hits: list[tuple[int, int] | None],
@@ -80,13 +87,18 @@ def _finish_token_hits(
     fixed[-1] = (fixed[-1][0], end_ms)
     return fixed
 
+
 def _en_asr_token_spans(
     pieces: list[str],
     start_ms: int,
     end_ms: int,
     asr_words: list[dict[str, Any]],
 ) -> list[tuple[int, int]] | None:
-    window = [word for word in _asr_window(asr_words, start_ms, end_ms) if _norm_word(str(word.get("text") or ""))]
+    window = [
+        word
+        for word in _asr_window(asr_words, start_ms, end_ms)
+        if _norm_word(str(word.get("text") or ""))
+    ]
     if not window:
         return None
     used = 0
@@ -112,6 +124,7 @@ def _en_asr_token_spans(
         return None
     return _finish_token_hits(hits, start_ms, end_ms)
 
+
 def _cjk_asr_token_spans(
     pieces: list[str],
     start_ms: int,
@@ -127,7 +140,9 @@ def _cjk_asr_token_spans(
         right = max(left + 40, int(word.get("end_ms") or left))
         unit = (right - left) / len(text)
         for index, char in enumerate(text):
-            chars.append((char, int(left + index * unit), int(left + (index + 1) * unit)))
+            chars.append(
+                (char, int(left + index * unit), int(left + (index + 1) * unit))
+            )
     if not chars:
         return None
     used = 0
@@ -155,6 +170,7 @@ def _cjk_asr_token_spans(
         return None
     return _finish_token_hits(hits, start_ms, end_ms)
 
+
 def asr_token_spans(
     pieces: list[str],
     start_ms: int,
@@ -171,18 +187,24 @@ def asr_token_spans(
         return _cjk_asr_token_spans(pieces, start_ms, end_ms, asr_words)
     return None
 
+
 def normalize_lyric(text: str, language: str) -> str:
     folded = unicodedata.normalize("NFKC", text or "")
     if language == "en":
         return " ".join(_WORD.findall(folded.lower()))
     if language == "ja":
         folded = fold_ja_netease_kanji(folded)
-    compact = "".join(char for char in folded if not char.isspace() and char not in ".,!?;:·・。、\"'()[]")
+    compact = "".join(
+        char
+        for char in folded
+        if not char.isspace() and char not in ".,!?;:·・。、\"'()[]"
+    )
     if language == "ja":
         stripped = _JA_LEAD_FILLER.sub("", compact)
         if stripped:
             compact = stripped
     return compact
+
 
 def vocal_phrases(
     regions: list[tuple[int, int]],
@@ -197,7 +219,10 @@ def vocal_phrases(
             merged.append((start_ms, end_ms))
     return [item for item in merged if item[1] - item[0] >= min_ms]
 
-def estimate_lrc_offset(lines: list[dict[str, Any]], phrases: list[tuple[int, int]]) -> int:
+
+def estimate_lrc_offset(
+    lines: list[dict[str, Any]], phrases: list[tuple[int, int]]
+) -> int:
     """Shift official LRC only when the first vocal is clearly elsewhere."""
     timed = [item for item in lines if item.get("ms") is not None]
     if not timed or not phrases:
@@ -206,6 +231,7 @@ def estimate_lrc_offset(lines: list[dict[str, Any]], phrases: list[tuple[int, in
     if abs(raw) < 1500:
         return 0
     return max(-2000, min(20000, raw))
+
 
 def line_match_score(known: str, heard: str, language: str) -> float:
     """Order-aware score so a short chorus does not swallow a longer verse."""
@@ -249,11 +275,14 @@ def line_match_score(known: str, heard: str, language: str) -> float:
     length = min(len(left), len(right)) / max(len(left), len(right))
     return ratio * (0.65 + 0.35 * length)
 
+
 def _join_asr(texts: list[str], language: str) -> str:
     return " ".join(texts) if language == "en" else "".join(texts)
 
+
 def accept_score(language: str) -> float:
     return EN_ACCEPT if language == "en" else JA_ACCEPT
+
 
 def _usable_asr_words(asr_words: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Drop collapsed Whisper tags so they cannot open a line window."""
@@ -265,6 +294,7 @@ def _usable_asr_words(asr_words: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         usable.append(word)
     return usable
+
 
 def _best_asr_window(
     known: str,
@@ -281,7 +311,9 @@ def _best_asr_window(
         return None
     known_n = len(known.split()) if language == "en" else max(1, len(known))
     max_width = max(3, min(36, known_n + 8))
-    time_limit = latest if latest is not None else int(asr_words[cursor]["start_ms"]) + 30000
+    time_limit = (
+        latest if latest is not None else int(asr_words[cursor]["start_ms"]) + 30000
+    )
     best: tuple[float, int, int] | None = None
     for start in range(cursor, n):
         start_ms = int(asr_words[start]["start_ms"])
@@ -315,6 +347,7 @@ def _best_asr_window(
     if best and best[0] >= min_score:
         return best
     return None
+
 
 def estimate_asr_offset(
     lines: list[dict[str, Any]],
@@ -364,6 +397,7 @@ def estimate_asr_offset(
         return 0
     return max(-2000, min(20000, int(asr_words[wide[1]]["start_ms"]) - expected))
 
+
 def match_score(known: str, heard: str, language: str) -> float:
     """Similarity for optional ASR anchoring. English is word-level and stricter."""
     if language == "en":
@@ -378,8 +412,10 @@ def match_score(known: str, heard: str, language: str) -> float:
         return 0.0
     return len(set(left) & set(right)) / max(len(set(left) | set(right)), 1)
 
+
 def match_threshold(language: str) -> float:
     return EN_MATCH_THRESHOLD if language == "en" else CJK_MATCH_THRESHOLD
+
 
 def best_asr_span(
     line: str,
@@ -393,7 +429,11 @@ def best_asr_span(
     best: tuple[float, int, int] | None = None
     for start in range(len(asr_words)):
         for end in range(start + 1, min(len(asr_words), start + 12) + 1):
-            heard = " ".join(texts[start:end]) if language == "en" else "".join(texts[start:end])
+            heard = (
+                " ".join(texts[start:end])
+                if language == "en"
+                else "".join(texts[start:end])
+            )
             score = match_score(line, heard, language)
             if best is None or score > best[0]:
                 best = (score, start, end)

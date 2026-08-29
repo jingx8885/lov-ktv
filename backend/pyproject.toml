@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "httpx2>=2.12.0"]
+dev = ["pytest>=8.0", "httpx2>=2.12.0", "ruff>=0.16.5", "pyright>=1.1.403"]
 sep = ["audio-separator>=0.30"]
 
 [build-system]
@@ -33,3 +33,39 @@ include = ["lovktv*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E9", "F", "I"]
+ignore = ["F403", "F405"]
+
+[tool.ruff.lint.per-file-ignores]
+"lovktv/pipeline/lyric_anchor.py" = ["E402"]
+"scripts/manual_align.py" = ["E402"]
+"lovktv/catalog/fetch.py" = ["F401"]
+
+[tool.pyright]
+# Keep the gate focused on the typed contracts and alignment pipeline.  The
+# catalog/HTTP compatibility facades intentionally use dynamic re-exports and
+# are covered by the runtime test suite instead.
+include = [
+  "lovktv/contracts.py",
+  "lovktv/room_contract.py",
+  "lovktv/timeline_contract.py",
+  "lovktv/pipeline/audio.py",
+  "lovktv/pipeline/align.py",
+  "lovktv/pipeline/bounds.py",
+  "lovktv/pipeline/clock.py",
+  "lovktv/pipeline/constants.py",
+  "lovktv/pipeline/energy.py",
+  "lovktv/pipeline/lyrics.py",
+  "lovktv/pipeline/matching.py",
+  "scripts",
+]
+exclude = ["tests"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+reportMissingImports = "none"
+reportMissingTypeStubs = "none"

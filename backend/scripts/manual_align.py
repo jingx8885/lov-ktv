@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from lovktv.jobs import apply_locked_manual, load_lyric_lines
-from lovktv.pipeline.audio import extract_envelope, vocal_regions
-from lovktv.pipeline.lyrics import is_credit_lyric, write_manual_lrc
+from lovktv.jobs import apply_locked_manual, load_lyric_lines  # noqa: E402
+from lovktv.pipeline.audio import extract_envelope, vocal_regions  # noqa: E402
+from lovktv.pipeline.lyrics import is_credit_lyric, write_manual_lrc  # noqa: E402
 
 HOP = 20
 SONGS = [
@@ -56,7 +56,10 @@ def is_title_line(text: str, ms: int) -> bool:
     if ms >= 800:
         return False
     lowered = body.lower()
-    return any(mark in lowered for mark in ("version", "selftag", "作词", "作曲", "编曲", "制作人"))
+    return any(
+        mark in lowered
+        for mark in ("version", "selftag", "作词", "作曲", "编曲", "制作人")
+    )
 
 
 def phrase_onsets(env: list[float], lo: int, hi: int) -> list[int]:
@@ -134,7 +137,7 @@ def decide_song(song_id: str) -> list[dict]:
         text = str(line.get("text") or "").strip()
         official = int(line["ms"])
         if is_title_line(text, official):
-            print(f"{index:02d} DROP  {official/1000:7.2f}  {text}")
+            print(f"{index:02d} DROP  {official / 1000:7.2f}  {text}")
             continue
         nxt = None
         for later in lines[index + 1 :]:
@@ -149,7 +152,9 @@ def decide_song(song_id: str) -> list[dict]:
             start = max(start, int(chosen[-1]["start_ms"]) + 200)
         delta = start - official
         flag = "MOVE" if abs(delta) > 80 else "keep"
-        print(f"{index:02d} {flag:4} off={official/1000:7.2f} now={start/1000:7.2f} d={delta:+5d}  {text}")
+        print(
+            f"{index:02d} {flag:4} off={official / 1000:7.2f} now={start / 1000:7.2f} d={delta:+5d}  {text}"
+        )
         chosen.append({"text": text, "start_ms": start})
     return chosen
 

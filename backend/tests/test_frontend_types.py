@@ -1,7 +1,7 @@
-import shutil
-import subprocess
 import json
 import os
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -19,8 +19,12 @@ def test_frontend_type_contracts_exist():
     assert "@type {PhoneApi}" in phone_api
     assert "function installApi" in phone_api
     assert "@type {TvApi}" in tv_api
-    assert "function installApi" in (FRONTEND / "public" / "tv" / "api.js").read_text(encoding="utf-8")
-    assert "installApi({" in (FRONTEND / "public" / "phone" / "install.js").read_text(encoding="utf-8")
+    assert "function installApi" in (FRONTEND / "public" / "tv" / "api.js").read_text(
+        encoding="utf-8"
+    )
+    assert "installApi({" in (FRONTEND / "public" / "phone" / "install.js").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_shared_visual_assets_are_inside_type_boundary():
@@ -35,11 +39,10 @@ def test_shared_visual_assets_are_inside_type_boundary():
     # Phone modules must consume the shared bridge contracts, never TV modules.
     phone_root = FRONTEND / "public" / "phone"
     phone_sources = "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in phone_root.rglob("*.js")
+        path.read_text(encoding="utf-8") for path in phone_root.rglob("*.js")
     )
     assert "/tv/" not in phone_sources
-    assert '/tv/' not in (FRONTEND / "public" / "m.html").read_text(encoding="utf-8")
+    assert "/tv/" not in (FRONTEND / "public" / "m.html").read_text(encoding="utf-8")
     globals_text = (FRONTEND / "types" / "globals.d.ts").read_text(encoding="utf-8")
     for symbol in ("LovI18n", "LovKtvNative", "LovKtvOnHttp", "LovKtvOnMic"):
         assert symbol in globals_text
@@ -59,8 +62,19 @@ def test_frontend_tsc_no_emit():
         # launched by subprocess without a shell.  Prefer the native .cmd
         # launcher so this contract test is portable across developer hosts.
         launcher = "npx.cmd" if os.name == "nt" and shutil.which("npx.cmd") else "npx"
-        cmd = [launcher, "--yes", "--package", "typescript@5.9.2", "tsc", "-p", str(FRONTEND), "--noEmit"]
+        cmd = [
+            launcher,
+            "--yes",
+            "--package",
+            "typescript@5.9.2",
+            "tsc",
+            "-p",
+            str(FRONTEND),
+            "--noEmit",
+        ]
     else:
         pytest.skip("需要 Node，才能跑 frontend 的 tsc 检查")
-    result = subprocess.run(cmd, cwd=FRONTEND, capture_output=True, text=True, check=False)
+    result = subprocess.run(
+        cmd, cwd=FRONTEND, capture_output=True, text=True, check=False
+    )
     assert result.returncode == 0, result.stdout + result.stderr

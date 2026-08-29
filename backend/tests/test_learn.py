@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 
 from lovktv.learn import QUESTIONS_PER_LINE, build_learn_quiz, is_singable_cue
 
-
 JA_TIMELINE = {
     "language": "ja",
     "cues": [
@@ -15,8 +14,20 @@ JA_TIMELINE = {
             "start_ms": 1000,
             "end_ms": 3200,
             "tokens": [
-                {"text": "走る", "zh": "奔跑", "romaji": "hashiru", "start_ms": 1000, "end_ms": 2000},
-                {"text": "記憶", "zh": "记忆", "romaji": "kioku", "start_ms": 2000, "end_ms": 3200},
+                {
+                    "text": "走る",
+                    "zh": "奔跑",
+                    "romaji": "hashiru",
+                    "start_ms": 1000,
+                    "end_ms": 2000,
+                },
+                {
+                    "text": "記憶",
+                    "zh": "记忆",
+                    "romaji": "kioku",
+                    "start_ms": 2000,
+                    "end_ms": 3200,
+                },
             ],
         },
         {
@@ -25,8 +36,20 @@ JA_TIMELINE = {
             "start_ms": 4000,
             "end_ms": 6200,
             "tokens": [
-                {"text": "青い", "zh": "蓝色", "romaji": "aoi", "start_ms": 4000, "end_ms": 5000},
-                {"text": "空", "zh": "天空", "romaji": "sora", "start_ms": 5000, "end_ms": 6200},
+                {
+                    "text": "青い",
+                    "zh": "蓝色",
+                    "romaji": "aoi",
+                    "start_ms": 4000,
+                    "end_ms": 5000,
+                },
+                {
+                    "text": "空",
+                    "zh": "天空",
+                    "romaji": "sora",
+                    "start_ms": 5000,
+                    "end_ms": 6200,
+                },
             ],
         },
         {
@@ -41,9 +64,27 @@ JA_TIMELINE = {
             "start_ms": 10000,
             "end_ms": 12800,
             "tokens": [
-                {"text": "夜", "zh": "夜晚", "romaji": "yoru", "start_ms": 10000, "end_ms": 10800},
-                {"text": "の", "zh": "的", "romaji": "no", "start_ms": 10800, "end_ms": 11000},
-                {"text": "風", "zh": "风", "romaji": "kaze", "start_ms": 11000, "end_ms": 12800},
+                {
+                    "text": "夜",
+                    "zh": "夜晚",
+                    "romaji": "yoru",
+                    "start_ms": 10000,
+                    "end_ms": 10800,
+                },
+                {
+                    "text": "の",
+                    "zh": "的",
+                    "romaji": "no",
+                    "start_ms": 10800,
+                    "end_ms": 11000,
+                },
+                {
+                    "text": "風",
+                    "zh": "风",
+                    "romaji": "kaze",
+                    "start_ms": 11000,
+                    "end_ms": 12800,
+                },
             ],
         },
     ],
@@ -51,7 +92,10 @@ JA_TIMELINE = {
 
 
 def test_skips_instrumental_and_mixes_meaning_with_words():
-    quiz = build_learn_quiz(JA_TIMELINE, {"id": "s1", "title": "群青", "artist": "YOASOBI", "language": "ja"})
+    quiz = build_learn_quiz(
+        JA_TIMELINE,
+        {"id": "s1", "title": "群青", "artist": "YOASOBI", "language": "ja"},
+    )
     assert quiz["schema"] == "lovktv-learn-v1"
     assert [line["text"] for line in quiz["lines"]] == ["走る記憶", "青い空", "夜の風"]
     first = quiz["lines"][0]
@@ -109,8 +153,20 @@ def test_chinese_line_falls_back_to_listen():
         {
             "language": "zh",
             "cues": [
-                {"text": "我从草原来", "zh": "我从草原来", "start_ms": 0, "end_ms": 2000, "tokens": []},
-                {"text": "千里之外", "zh": "千里之外", "start_ms": 2000, "end_ms": 4000, "tokens": []},
+                {
+                    "text": "我从草原来",
+                    "zh": "我从草原来",
+                    "start_ms": 0,
+                    "end_ms": 2000,
+                    "tokens": [],
+                },
+                {
+                    "text": "千里之外",
+                    "zh": "千里之外",
+                    "start_ms": 2000,
+                    "end_ms": 4000,
+                    "tokens": [],
+                },
             ],
         },
         {"id": "c1", "language": "zh"},
@@ -155,10 +211,16 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnFx"' in html
     shell = (root / "phone" / "player" / "js" / "learn.js").read_text(encoding="utf-8")
     css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
-    quiz = (root / "phone" / "player" / "js" / "learn" / "quiz.js").read_text(encoding="utf-8")
-    tap = (root / "phone" / "player" / "js" / "learn" / "tap.js").read_text(encoding="utf-8")
-    echo = (root / "phone" / "player" / "js" / "learn" / "echo.js").read_text(encoding="utf-8")
-    fx = (root / "phone" / "player" / "js" / "learn" / "fx.js").read_text(encoding="utf-8")
+    quiz = (root / "phone" / "player" / "js" / "learn-quiz.js").read_text(
+        encoding="utf-8"
+    )
+    tap = (root / "phone" / "player" / "js" / "learn-tap.js").read_text(
+        encoding="utf-8"
+    )
+    echo = (root / "phone" / "player" / "js" / "learn-echo.js").read_text(
+        encoding="utf-8"
+    )
+    fx = (root / "phone" / "player" / "js" / "learn-fx.js").read_text(encoding="utf-8")
     assert ".learn-body[hidden]" in css
     assert "learnTapGo" not in shell
     assert "learnTapGo" not in html
@@ -185,11 +247,15 @@ def test_phone_learn_shell_is_wired():
     assert "fitLyricLine" in paint
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
-    assert 'fitKey = `${id}:${Math.round(el.clientWidth)}`' in paint
+    assert "fitKey = `${id}:${Math.round(el.clientWidth)}`" in paint
     assert "el.clientHeight" not in paint
     assert "line-words" in paint
-    assert "kickPlayerPaint" in (root / "phone" / "player" / "js" / "lyrics.js").read_text(encoding="utf-8")
-    play = (root / "phone" / "player" / "js" / "learn" / "play.js").read_text(encoding="utf-8")
+    assert "kickPlayerPaint" in (
+        root / "phone" / "player" / "js" / "lyrics.js"
+    ).read_text(encoding="utf-8")
+    play = (root / "phone" / "player" / "js" / "learn-play.js").read_text(
+        encoding="utf-8"
+    )
     assert "setLearnDiff" in play
     assert "playbackRate" in play
     assert "export function paintLearnLine" in play
@@ -255,7 +321,9 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     store.update_song(song["id"], status="ready")
     folder = store.MEDIA_DIR / song["id"]
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "lyrics.json").write_text(json.dumps(JA_TIMELINE, ensure_ascii=False), encoding="utf-8")
+    (folder / "lyrics.json").write_text(
+        json.dumps(JA_TIMELINE, ensure_ascii=False), encoding="utf-8"
+    )
     with TestClient(main.app) as client:
         missing = client.get("/api/songs/nope/learn")
         assert missing.status_code == 404

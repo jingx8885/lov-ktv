@@ -28,7 +28,9 @@ def test_media_rev_falls_back_to_oss_marker(tmp_path, monkeypatch):
     monkeypatch.setattr("lovktv.store.MEDIA_DIR", tmp_path)
     folder = tmp_path / "s2"
     folder.mkdir()
-    (folder / "oss.json").write_text('{"files":["karaoke.m4a"],"media_rev":"fromoss12"}', encoding="utf-8")
+    (folder / "oss.json").write_text(
+        '{"files":["karaoke.m4a"],"media_rev":"fromoss12"}', encoding="utf-8"
+    )
     assert media_rev("s2") == "fromoss12"
 
 

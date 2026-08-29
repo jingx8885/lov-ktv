@@ -11,7 +11,7 @@ from typing import Any
 from lovktv.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 from lovktv.db import connect as db_connect
 from lovktv.db import execute, init_schema
-from lovktv.schema import ROOM_FIELDS, SONG_FIELDS
+from lovktv.schema import SONG_FIELDS
 
 READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
@@ -21,6 +21,7 @@ LYRIC_MODES = ("ja", "zh", "roma", "all")
 def normalize_lyric_mode(value: Any) -> str:
     mode = str(value or "").strip().lower()
     return mode if mode in LYRIC_MODES else "all"
+
 
 _LOCK = threading.Lock()
 
@@ -48,7 +49,9 @@ def _row(row: Any) -> dict[str, Any] | None:
     return dict(row)
 
 
-def create_song(title: str, artist: str = "", language: str = "zh", netease_id: str = "") -> dict[str, Any]:
+def create_song(
+    title: str, artist: str = "", language: str = "zh", netease_id: str = ""
+) -> dict[str, Any]:
     song_id = new_id()
     with _LOCK, connect() as conn:
         execute(
@@ -66,7 +69,11 @@ def update_song(song_id: str, **fields: Any) -> None:
         return
     assignments = ", ".join(f"{key}=?" for key in allowed)
     with _LOCK, connect() as conn:
-        execute(conn, f"UPDATE songs SET {assignments} WHERE id=?", (*allowed.values(), song_id))
+        execute(
+            conn,
+            f"UPDATE songs SET {assignments} WHERE id=?",
+            (*allowed.values(), song_id),
+        )
 
 
 def get_song(song_id: str) -> dict[str, Any] | None:
@@ -112,7 +119,9 @@ def media_rev(song_id: str) -> str:
     marker = folder / "oss.json"
     if marker.is_file():
         try:
-            return str(json.loads(marker.read_text(encoding="utf-8")).get("media_rev") or "")
+            return str(
+                json.loads(marker.read_text(encoding="utf-8")).get("media_rev") or ""
+            )
         except (OSError, json.JSONDecodeError, TypeError):
             return ""
     return ""
@@ -156,7 +165,9 @@ def with_media_flags(song: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def list_songs() -> list[dict[str, Any]]:
     with connect() as conn:
-        rows = execute(conn, "SELECT * FROM songs ORDER BY created_at DESC, id DESC").fetchall()
+        rows = execute(
+            conn, "SELECT * FROM songs ORDER BY created_at DESC, id DESC"
+        ).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -171,13 +182,21 @@ def _count_value(row: Any) -> int:
 def _clamp_room_indexes(conn: Any) -> None:
     rooms = execute(conn, "SELECT code, now_index FROM rooms").fetchall()
     for room in rooms:
-        count = _count_value(execute(conn, "SELECT COUNT(*) FROM queue WHERE room=?", (room["code"],)).fetchone())
+        count = _count_value(
+            execute(
+                conn, "SELECT COUNT(*) FROM queue WHERE room=?", (room["code"],)
+            ).fetchone()
+        )
         if count <= 0:
             execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
         elif int(room["now_index"]) < 0:
             execute(conn, "UPDATE rooms SET now_index=0 WHERE code=?", (room["code"],))
         elif int(room["now_index"]) >= count:
-            execute(conn, "UPDATE rooms SET now_index=? WHERE code=?", (count - 1, room["code"]))
+            execute(
+                conn,
+                "UPDATE rooms SET now_index=? WHERE code=?",
+                (count - 1, room["code"]),
+            )
 
 
 def delete_song(song_id: str) -> bool:
@@ -239,26 +258,42 @@ def get_user(user_id: str) -> dict[str, Any] | None:
     return _user_row(row)
 
 
-def upsert_wechat_user(openid: str, unionid: str = "", nickname: str = "", avatar: str = "") -> dict[str, Any]:
+def upsert_wechat_user(
+    openid: str, unionid: str = "", nickname: str = "", avatar: str = ""
+) -> dict[str, Any]:
     openid = (openid or "").strip()
     if not openid:
         raise ValueError("微信未返回账号")
     now = now_ms()
     with _LOCK, connect() as conn:
-        row = execute(conn, "SELECT * FROM users WHERE wechat_openid=?", (openid,)).fetchone()
+        row = execute(
+            conn, "SELECT * FROM users WHERE wechat_openid=?", (openid,)
+        ).fetchone()
         if row:
             user_id = row["id"]
             execute(
                 conn,
                 "UPDATE users SET wechat_unionid=?, nickname=?, avatar=? WHERE id=?",
-                (unionid or row["wechat_unionid"], nickname or row["nickname"], avatar or row["avatar"], user_id),
+                (
+                    unionid or row["wechat_unionid"],
+                    nickname or row["nickname"],
+                    avatar or row["avatar"],
+                    user_id,
+                ),
             )
         else:
             user_id = new_id()
             execute(
                 conn,
                 "INSERT INTO users (id, wechat_openid, wechat_unionid, nickname, avatar, created_at) VALUES (?,?,?,?,?,?)",
-                (user_id, openid, unionid, nickname or f"ID {user_id[:6].upper()}", avatar, now),
+                (
+                    user_id,
+                    openid,
+                    unionid,
+                    nickname or f"ID {user_id[:6].upper()}",
+                    avatar,
+                    now,
+                ),
             )
     user = get_user(user_id)
     if not user:
@@ -272,11 +307,15 @@ def upsert_device_user(device_id: str, nickname: str = "") -> dict[str, Any]:
         raise ValueError("无效的设备")
     now = now_ms()
     with _LOCK, connect() as conn:
-        row = execute(conn, "SELECT * FROM users WHERE device_id=?", (device_id,)).fetchone()
+        row = execute(
+            conn, "SELECT * FROM users WHERE device_id=?", (device_id,)
+        ).fetchone()
         if row:
             user_id = row["id"]
             if nickname and nickname != row["nickname"]:
-                execute(conn, "UPDATE users SET nickname=? WHERE id=?", (nickname, user_id))
+                execute(
+                    conn, "UPDATE users SET nickname=? WHERE id=?", (nickname, user_id)
+                )
         else:
             user_id = new_id()
             execute(
@@ -338,13 +377,19 @@ def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:
 
 def get_login_ticket(ticket: str) -> dict[str, Any] | None:
     with connect() as conn:
-        row = execute(conn, "SELECT * FROM login_tickets WHERE id=?", (ticket,)).fetchone()
+        row = execute(
+            conn, "SELECT * FROM login_tickets WHERE id=?", (ticket,)
+        ).fetchone()
     if not row:
         return None
     data = dict(row)
     if data["status"] == "pending" and int(data["expires_at"]) <= now_ms():
         with _LOCK, connect() as conn:
-            execute(conn, "UPDATE login_tickets SET status='expired' WHERE id=? AND status='pending'", (ticket,))
+            execute(
+                conn,
+                "UPDATE login_tickets SET status='expired' WHERE id=? AND status='pending'",
+                (ticket,),
+            )
         data["status"] = "expired"
     return data
 

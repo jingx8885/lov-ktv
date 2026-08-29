@@ -1,4 +1,10 @@
-from lovktv.catalog.index import first_letter, prefer_native_library, query_library, song_letter, song_matches
+from lovktv.catalog.index import (
+    first_letter,
+    prefer_native_library,
+    query_library,
+    song_letter,
+    song_matches,
+)
 
 
 def test_first_letter_latin_han_kana():
@@ -26,9 +32,25 @@ def test_song_matches_title_and_artist():
 
 def test_prefer_native_library_hides_composed_duplicates():
     songs = [
-        {"id": "old", "title": "群青 · YOASOBI", "artist": "YOASOBI", "audio_source": "soundcloud"},
-        {"id": "mv", "title": "群青 · YOASOBI", "artist": "YOASOBI", "audio_source": "mugen", "native_video": True},
-        {"id": "keep", "title": "So Sick · Ne-Yo", "artist": "Ne-Yo", "audio_source": "netease"},
+        {
+            "id": "old",
+            "title": "群青 · YOASOBI",
+            "artist": "YOASOBI",
+            "audio_source": "soundcloud",
+        },
+        {
+            "id": "mv",
+            "title": "群青 · YOASOBI",
+            "artist": "YOASOBI",
+            "audio_source": "mugen",
+            "native_video": True,
+        },
+        {
+            "id": "keep",
+            "title": "So Sick · Ne-Yo",
+            "artist": "Ne-Yo",
+            "audio_source": "netease",
+        },
     ]
     kept = prefer_native_library(songs)
     assert [song["id"] for song in kept] == ["mv", "keep"]
@@ -58,7 +80,9 @@ def test_query_library_pages_do_not_overlap():
     page1 = query_library(songs, count=8, page=1)
     page2 = query_library(songs, count=8, page=2)
     assert page1["songs"][-1]["id"] != page2["songs"][0]["id"]
-    assert not {row["id"] for row in page1["songs"]} & {row["id"] for row in page2["songs"]}
+    assert not {row["id"] for row in page1["songs"]} & {
+        row["id"] for row in page2["songs"]
+    }
 
 
 def test_query_library_filters_letter_and_pages():

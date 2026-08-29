@@ -87,7 +87,10 @@ def test_drop_chinese_gloss_from_japanese_lrc():
         "Beautiful world",
     ]
     leftover = drop_translation_lines(
-        [{"ms": 167190, "text": "就 当做积攒一些经验"}, {"ms": 169100, "text": "新聞なんかいらない"}],
+        [
+            {"ms": 167190, "text": "就 当做积攒一些经验"},
+            {"ms": 169100, "text": "新聞なんかいらない"},
+        ],
         "ja",
     )
     assert [item["text"] for item in leftover] == ["新聞なんかいらない"]
@@ -143,7 +146,10 @@ def test_timeline_char_then_word():
 
 
 def test_netease_ja_credits_and_simplified_kanji():
-    assert fold_ja_netease_kanji("目まぐるしい 时间の群れが") == "目まぐるしい 時間の群れが"
+    assert (
+        fold_ja_netease_kanji("目まぐるしい 时间の群れが")
+        == "目まぐるしい 時間の群れが"
+    )
     assert fold_ja_netease_kanji("谁にも止められはしない") == "誰にも止められはしない"
     assert is_credit_lyric("「Give a reason」")
     assert is_credit_lyric("「スレイヤーズNEXT」OP")
@@ -168,7 +174,9 @@ def test_ja_compatibility_kanji_is_normalized():
     sung = "".join(tok["text"] for tok in cue["tokens"])
     assert "響" not in sung
     assert "響" in sung
-    assert any("\u3040" <= char <= "\u309f" for tok in cue["tokens"] for char in tok["reading"])
+    assert any(
+        "\u3040" <= char <= "\u309f" for tok in cue["tokens"] for char in tok["reading"]
+    )
 
 
 def test_ja_kanji_shows_kanji_with_hiragana_above():

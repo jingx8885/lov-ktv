@@ -47,7 +47,9 @@ Rules:
 
 
 def agent_base_url() -> str:
-    raw = (os.environ.get("LOVKTV_AGENT_URL") or os.environ.get("OPENAI_BASE_URL") or "").rstrip("/")
+    raw = (
+        os.environ.get("LOVKTV_AGENT_URL") or os.environ.get("OPENAI_BASE_URL") or ""
+    ).rstrip("/")
     if not raw:
         return ""
     return raw if raw.endswith("/v1") else raw + "/v1"
@@ -92,7 +94,11 @@ def japanese_from_units(units: list[dict[str, str]]) -> str:
         sing = lyric_source_key(unit.get("sing") or "")
         if not sing:
             continue
-        if parts and re.match(r"[A-Za-z0-9']", sing) and re.search(r"[A-Za-z0-9']$", parts[-1] or ""):
+        if (
+            parts
+            and re.match(r"[A-Za-z0-9']", sing)
+            and re.search(r"[A-Za-z0-9']$", parts[-1] or "")
+        ):
             parts.append(" ")
         parts.append(sing)
     return "".join(parts)
@@ -100,7 +106,9 @@ def japanese_from_units(units: list[dict[str, str]]) -> str:
 
 def _is_katakana(text: str) -> bool:
     body = [char for char in text if not char.isspace()]
-    return bool(body) and all(_KATAKANA.match(char) or char in _KATA_MARK for char in body)
+    return bool(body) and all(
+        _KATAKANA.match(char) or char in _KATA_MARK for char in body
+    )
 
 
 def _source_hash(lines: list[str], title: str, artist: str) -> str:
@@ -158,7 +166,9 @@ def _parse_payload(raw: str) -> dict[str, Any]:
     return {"lines": cleaned}
 
 
-def complete_json(messages: list[dict[str, str]], model: str | None = None) -> dict[str, Any]:
+def complete_json(
+    messages: list[dict[str, str]], model: str | None = None
+) -> dict[str, Any]:
     base = agent_base_url()
     key = agent_api_key()
     if not base or not key:
@@ -180,15 +190,20 @@ def complete_json(messages: list[dict[str, str]], model: str | None = None) -> d
             response = client.post(url, headers=headers, json=body)
     response.raise_for_status()
     data = response.json()
-    if isinstance(data, dict) and data.get("choices") is None and isinstance(data.get("data"), dict):
+    if (
+        isinstance(data, dict)
+        and data.get("choices") is None
+        and isinstance(data.get("data"), dict)
+    ):
         if data.get("code") not in (None, 0, 200):
             raise RuntimeError(str(data.get("msg") or "agent 请求失败"))
         data = data["data"]
-    message = ((data.get("choices") or [{}])[0].get("message") or {})
+    message = (data.get("choices") or [{}])[0].get("message") or {}
     content = message.get("content") or ""
     if isinstance(content, list):
         content = "".join(
-            part.get("text") or "" if isinstance(part, dict) else str(part) for part in content
+            part.get("text") or "" if isinstance(part, dict) else str(part)
+            for part in content
         )
     if not content:
         raise RuntimeError(str(data.get("msg") or "agent 没有返回内容"))
@@ -242,7 +257,9 @@ def annotate_ja_lines(
             unique.append(line)
             seen.add(line)
     for start in range(0, len(unique), chunk_size):
-        collected.extend(_request_chunk(unique[start : start + chunk_size], title, artist))
+        collected.extend(
+            _request_chunk(unique[start : start + chunk_size], title, artist)
+        )
     result = {
         "schema": ANNOTATION_SCHEMA,
         "source_hash": digest,
@@ -253,20 +270,28 @@ def annotate_ja_lines(
     }
     if cache_path:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
+        cache_path.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
     return result
 
 
 def lyric_source_key(text: str) -> str:
     """Agent often echoes '1. 原文'; match the lyric line without that prefix."""
-    return _LINE_NO.sub("", unicodedata.normalize("NFKC", str(text or "")), count=1).strip()
+    return _LINE_NO.sub(
+        "", unicodedata.normalize("NFKC", str(text or "")), count=1
+    ).strip()
 
 
 def _clean_label(label: str) -> str:
     raw = unicodedata.normalize("NFKC", str(label or "")).strip()
     if not raw:
         return ""
-    if re.search(r"[A-Za-zÀ-ÿ]", raw) and not _KANJI.search(raw) and not _HIRA.search(raw):
+    if (
+        re.search(r"[A-Za-zÀ-ÿ]", raw)
+        and not _KANJI.search(raw)
+        and not _HIRA.search(raw)
+    ):
         return raw
     hira = "".join(char for char in raw if _HIRA.match(char) or char == "ー")
     kanji = "".join(char for char in raw if _KANJI.match(char))
@@ -308,7 +333,11 @@ def _join_surfaces(parts: list[str]) -> str:
     for piece in parts:
         if not piece:
             continue
-        if out and re.match(r"[A-Za-z0-9']", piece) and re.search(r"[A-Za-z0-9']$", out[-1] or ""):
+        if (
+            out
+            and re.match(r"[A-Za-z0-9']", piece)
+            and re.search(r"[A-Za-z0-9']$", out[-1] or "")
+        ):
             out.append(" ")
         out.append(piece)
     return "".join(out)
@@ -334,7 +363,9 @@ def _source_span_for_kanji(source: str, kanji: str) -> str:
 
 
 def _kana_key(text: str) -> str:
-    return "".join(char for char in unicodedata.normalize("NFKC", text or "") if not char.isspace())
+    return "".join(
+        char for char in unicodedata.normalize("NFKC", text or "") if not char.isspace()
+    )
 
 
 def _merge_plain_kana(specs: list[tuple[str, str]]) -> list[tuple[str, str]]:
@@ -365,12 +396,18 @@ def _units_cover_romaji(units: list[dict[str, str]], source: str) -> bool:
         sing = lyric_source_key(unit.get("sing") or "")
         if roma:
             covered.extend(_LATIN_WORD.findall(roma))
-        elif _LATIN_WORD.search(sing) and not _KANA.search(sing) and not _KANJI.search(sing):
+        elif (
+            _LATIN_WORD.search(sing)
+            and not _KANA.search(sing)
+            and not _KANJI.search(sing)
+        ):
             covered.extend(_LATIN_WORD.findall(sing))
     return len(covered) >= max(2, int(len(words) * 0.7))
 
 
-def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[str, str]]:
+def expand_units(
+    units: list[dict[str, str]], source: str = ""
+) -> list[tuple[str, str]]:
     from lovktv.pipeline.lyrics import ja_token_specs
 
     specs: list[tuple[str, str]] = []
@@ -381,7 +418,11 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
         label = _clean_label(raw_label)
         if not sing.strip() or _INDEX_UNIT.fullmatch(sing.strip()):
             continue
-        if re.search(r"[A-Za-z]", sing) and not _KANJI.search(sing) and not _KANA.search(sing):
+        if (
+            re.search(r"[A-Za-z]", sing)
+            and not _KANJI.search(sing)
+            and not _KANA.search(sing)
+        ):
             parts = [part for part in _LATIN_PART.findall(sing) if part.strip()]
             english = _latin_label(label)
             for part in parts:
@@ -392,13 +433,22 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
         if _KANJI.search(sing):
             leftover = _merge_plain_kana(ja_token_specs(sing))
             if leftover:
-                if label and _HIRA.search(label) and not _KANJI.search(label) and len(leftover) == 1:
+                if (
+                    label
+                    and _HIRA.search(label)
+                    and not _KANJI.search(label)
+                    and len(leftover) == 1
+                ):
                     specs.append((leftover[0][0], label))
                 else:
                     specs.extend(leftover)
                 continue
         if kanji_only:
-            snippet = raw_label if _HIRA.search(raw_label) else _source_span_for_kanji(source, kanji_only)
+            snippet = (
+                raw_label
+                if _HIRA.search(raw_label)
+                else _source_span_for_kanji(source, kanji_only)
+            )
             flipped = _flip_kanji_specs(snippet, surface)
             if flipped:
                 specs.extend(flipped)
@@ -417,7 +467,9 @@ def expand_units(units: list[dict[str, str]], source: str = "") -> list[tuple[st
     return specs
 
 
-def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict[str, Any]:
+def apply_ja_annotation(
+    timeline: dict[str, Any], notes: dict[str, Any]
+) -> dict[str, Any]:
     by_source: dict[str, dict[str, Any]] = {}
     for item in notes.get("lines") or []:
         source = lyric_source_key(item.get("source") or "")
@@ -440,7 +492,14 @@ def apply_ja_annotation(timeline: dict[str, Any], notes: dict[str, Any]) -> dict
             gloss = str(unit.get("zh") or "").strip()
             pieces = expand_units([unit], source=original)
             for index, (piece, label) in enumerate(pieces):
-                specs.append((piece, label, roma if index == 0 else "", gloss if index == 0 else ""))
+                specs.append(
+                    (
+                        piece,
+                        label,
+                        roma if index == 0 else "",
+                        gloss if index == 0 else "",
+                    )
+                )
         if not specs:
             continue
         japanese = japanese_from_units(units)

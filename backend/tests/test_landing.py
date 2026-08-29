@@ -2,9 +2,17 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-
-HTML = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "index.html").read_text(encoding="utf-8")
-CSS = (Path(__file__).resolve().parents[2] / "frontend" / "public" / "landing" / "css" / "landing.css").read_text(encoding="utf-8")
+HTML = (
+    Path(__file__).resolve().parents[2] / "frontend" / "public" / "index.html"
+).read_text(encoding="utf-8")
+CSS = (
+    Path(__file__).resolve().parents[2]
+    / "frontend"
+    / "public"
+    / "landing"
+    / "css"
+    / "landing.css"
+).read_text(encoding="utf-8")
 
 
 def test_landing_has_hooks_and_product_exits():

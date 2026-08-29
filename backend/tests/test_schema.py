@@ -3,7 +3,15 @@ from lovktv.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
 
 
 def test_schema_covers_current_tables():
-    assert set(TABLES) == {"songs", "rooms", "queue", "users", "sessions", "login_tickets", "hosts"}
+    assert set(TABLES) == {
+        "songs",
+        "rooms",
+        "queue",
+        "users",
+        "sessions",
+        "login_tickets",
+        "hosts",
+    }
     assert TABLES["songs"] == (
         "id",
         "title",
@@ -40,7 +48,13 @@ def test_schema_covers_current_tables():
         "created_at",
     )
     assert TABLES["sessions"] == ("token", "user_id", "created_at", "expires_at")
-    assert TABLES["login_tickets"] == ("id", "status", "user_id", "created_at", "expires_at")
+    assert TABLES["login_tickets"] == (
+        "id",
+        "status",
+        "user_id",
+        "created_at",
+        "expires_at",
+    )
     assert TABLES["hosts"] == ("key", "room", "ua", "created_at", "last_seen")
 
 
@@ -60,7 +74,9 @@ def test_adapt_sql_switches_placeholders():
 
 def test_postgres_url_detection():
     assert is_postgres_url("postgresql://postgres:x@host:5432/postgres")
-    assert is_postgres_url("postgres://postgres.abc:x@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres")
+    assert is_postgres_url(
+        "postgres://postgres.abc:x@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres"
+    )
     assert not is_postgres_url("")
     assert not is_postgres_url("sqlite:///tmp/t.sqlite")
 
@@ -91,7 +107,9 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
 
 def test_overridden_sqlite_path_wins_over_postgres_url(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    monkeypatch.setenv("LOVKTV_DATABASE_URL", "postgresql://postgres:x@localhost:5432/postgres")
+    monkeypatch.setenv(
+        "LOVKTV_DATABASE_URL", "postgresql://postgres:x@localhost:5432/postgres"
+    )
     from lovktv.db import dialect
 
     assert dialect(tmp_path / "t.sqlite") == "sqlite"

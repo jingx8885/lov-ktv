@@ -19,7 +19,12 @@ def test_resume_stuck_jobs_includes_queued_and_aligning(monkeypatch, tmp_path):
                 "netease_id": "22689487",
                 "language": "ja",
             },
-            {"id": "a1", "status": "aligning", "title": "Give a reason", "language": "ja"},
+            {
+                "id": "a1",
+                "status": "aligning",
+                "title": "Give a reason",
+                "language": "ja",
+            },
             {
                 "id": "f1",
                 "status": "fetching",
@@ -32,7 +37,9 @@ def test_resume_stuck_jobs_includes_queued_and_aligning(monkeypatch, tmp_path):
         ],
     )
     monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
-    monkeypatch.setattr(jobs, "spawn", lambda fn, *args, **kwargs: spawned.append((fn.__name__, args)))
+    monkeypatch.setattr(
+        jobs, "spawn", lambda fn, *args, **kwargs: spawned.append((fn.__name__, args))
+    )
     assert jobs.resume_stuck_jobs() == 3
     assert spawned[0][0] == "process_realign"
     assert spawned[0][1][0] == "a1"
@@ -118,14 +125,20 @@ def test_finish_ready_lyrics_forces_romaji_restore(tmp_path, monkeypatch):
 
     monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
     monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
-    monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "Beautiful World", "artist": "Utada", "language": "ja"})
+    monkeypatch.setattr(
+        jobs,
+        "get_song",
+        lambda sid: {"title": "Beautiful World", "artist": "Utada", "language": "ja"},
+    )
     monkeypatch.setattr(jobs, "annotate_ja_lines", fake_ann)
     monkeypatch.setattr(jobs, "apply_ja_annotation", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "translate_lines", lambda *args, **kwargs: {"lines": []})
     monkeypatch.setattr(jobs, "apply_zh_translation", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "write_subtitles", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: None)
-    jobs._finish_ready_lyrics("s1", out_dir, out_dir / "lyrics.json", "ja", rebuild_mtv=True)
+    jobs._finish_ready_lyrics(
+        "s1", out_dir, out_dir / "lyrics.json", "ja", rebuild_mtv=True
+    )
     assert seen.get("force") is True
     assert seen.get("lines") == ["moshimo negai hitotsu dake"]
 
@@ -145,11 +158,15 @@ def test_finish_ready_lyrics_translates_english(tmp_path, monkeypatch):
 
     monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
     monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
-    monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "In The End", "artist": "LP"})
+    monkeypatch.setattr(
+        jobs, "get_song", lambda sid: {"title": "In The End", "artist": "LP"}
+    )
     monkeypatch.setattr(jobs, "translate_lines", fake_tr)
     monkeypatch.setattr(jobs, "write_subtitles", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: None)
-    jobs._finish_ready_lyrics("s2", out_dir, out_dir / "lyrics.json", "en", rebuild_mtv=True)
+    jobs._finish_ready_lyrics(
+        "s2", out_dir, out_dir / "lyrics.json", "en", rebuild_mtv=True
+    )
     assert called.get("lines") == ["in the end"]
 
 
@@ -167,9 +184,15 @@ def test_resume_stuck_align_keeps_bilibili_mv(monkeypatch, tmp_path):
     (out / "mtv.mp4").write_bytes(b"v")
     (out / "skeleton.json").write_text('{"has_video": true}', encoding="utf-8")
     spawned: list[tuple] = []
-    monkeypatch.setattr(jobs, "list_songs", lambda: [{"id": "b1", "status": "aligning", "language": "zh"}])
+    monkeypatch.setattr(
+        jobs,
+        "list_songs",
+        lambda: [{"id": "b1", "status": "aligning", "language": "zh"}],
+    )
     monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
-    monkeypatch.setattr(jobs, "spawn", lambda fn, *args, **kwargs: spawned.append((fn.__name__, args)))
+    monkeypatch.setattr(
+        jobs, "spawn", lambda fn, *args, **kwargs: spawned.append((fn.__name__, args))
+    )
     assert jobs.resume_stuck_jobs() == 1
     assert spawned[0] == ("process_realign", ("b1", "zh", False))
 
@@ -190,6 +213,10 @@ def test_finish_ready_lyrics_keeps_bilibili_mv_even_when_rebuild(tmp_path, monke
         "compose_mtv",
         lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("keep bili mv")),
     )
-    jobs._finish_ready_lyrics("s1", out_dir, out_dir / "mtv.mp4", "zh", rebuild_mtv=True)
-    timeline = __import__("json").loads((out_dir / "lyrics.json").read_text(encoding="utf-8"))
+    jobs._finish_ready_lyrics(
+        "s1", out_dir, out_dir / "mtv.mp4", "zh", rebuild_mtv=True
+    )
+    timeline = __import__("json").loads(
+        (out_dir / "lyrics.json").read_text(encoding="utf-8")
+    )
     assert timeline["native_video"] is True

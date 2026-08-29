@@ -4,7 +4,9 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 
 def test_tv_lyrics_use_this_morning_small_type():
-    shared = (ROOT / "shared" / "lyrics" / "css" / "lyrics.css").read_text(encoding="utf-8")
+    shared = (ROOT / "shared" / "lyrics" / "css" / "lyrics.css").read_text(
+        encoding="utf-8"
+    )
     tv = (ROOT / "tv" / "lyrics" / "css" / "lyrics.css").read_text(encoding="utf-8")
     stage = (ROOT / "tv" / "stage" / "css" / "stage.css").read_text(encoding="utf-8")
     html = (ROOT / "tv.html").read_text(encoding="utf-8")

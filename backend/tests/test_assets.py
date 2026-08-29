@@ -1,11 +1,16 @@
-import re
 import json
+import re
 import runpy
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from lovktv.assets import _compute, asset_rev, reset_asset_rev_cache, rewrite_frontend_assets
+from lovktv.assets import (
+    _compute,
+    asset_rev,
+    reset_asset_rev_cache,
+    rewrite_frontend_assets,
+)
 
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 BUILD = Path(__file__).resolve().parents[2] / "scripts" / "build-frontend-dist.py"
@@ -58,7 +63,9 @@ def test_asset_rev_follows_file_bytes(tmp_path, monkeypatch):
     assert len(first) == 12
 
 
-def test_frontend_dist_manifest_is_single_source_for_web_and_embedded(tmp_path, monkeypatch):
+def test_frontend_dist_manifest_is_single_source_for_web_and_embedded(
+    tmp_path, monkeypatch
+):
     source = ROOT
     output = tmp_path / "frontend-dist"
     monkeypatch.delenv("LOVKTV_ASSET_REV", raising=False)

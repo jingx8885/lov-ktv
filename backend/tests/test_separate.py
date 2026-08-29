@@ -47,7 +47,9 @@ def test_mdx_onnx_missing_model_returns_false(tmp_path: Path, monkeypatch):
 
 def test_promote_separator_stems_saves_canonical_vocals(tmp_path: Path):
     (tmp_path / "original_(Vocals)_UVR_MDXNET_KARA_2.wav").write_bytes(b"VOCAL-STEM")
-    (tmp_path / "original_(Instrumental)_UVR_MDXNET_KARA_2.wav").write_bytes(b"INST-STEM")
+    (tmp_path / "original_(Instrumental)_UVR_MDXNET_KARA_2.wav").write_bytes(
+        b"INST-STEM"
+    )
     vocals = tmp_path / "vocals.wav"
     instrumental = tmp_path / "instrumental.wav"
 
@@ -82,7 +84,9 @@ def test_separate_vocals_keeps_named_stem_not_original(tmp_path: Path, monkeypat
     assert (tmp_path / "vocals.wav").read_bytes().startswith(b"JUST-VOICE")
     assert (tmp_path / "guide.m4a").read_bytes().startswith(b"JUST-VOICE")
     assert ("vocals.wav", "guide.m4a") in encoded
-    assert not any(name == "original.mp3" and dest == "vocals.wav" for name, dest in encoded)
+    assert not any(
+        name == "original.mp3" and dest == "vocals.wav" for name, dest in encoded
+    )
 
 
 def test_separate_vocals_does_not_copy_original_as_vocals(tmp_path: Path, monkeypatch):
@@ -90,7 +94,9 @@ def test_separate_vocals_does_not_copy_original_as_vocals(tmp_path: Path, monkey
     src.write_bytes(b"FULL-MIX")
     calls: list[str] = []
 
-    monkeypatch.setattr(separate.shutil, "which", lambda cmd: "/bin/ffmpeg" if cmd == "ffmpeg" else None)
+    monkeypatch.setattr(
+        separate.shutil, "which", lambda cmd: "/bin/ffmpeg" if cmd == "ffmpeg" else None
+    )
 
     def fake_extract(src_path: Path, dest: Path) -> None:
         calls.append("mid")

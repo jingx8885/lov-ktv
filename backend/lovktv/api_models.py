@@ -59,4 +59,3 @@ class RoomLanPayload(BaseModel):
 
     def origin_url(self) -> str:
         return str(self.lan_origin or self.origin or self.local_url or "").strip()
-

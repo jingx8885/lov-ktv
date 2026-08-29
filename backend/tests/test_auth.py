@@ -91,7 +91,9 @@ def test_qr_login_http_roundtrip(tmp_path, monkeypatch):
         ticket = created["ticket"]
         assert "/api/auth/scan" in created["url"]
         assert "ticket=" in created["url"]
-        scan = phone.get(f"/api/auth/scan?ticket={ticket}&room=EABAB5", follow_redirects=False)
+        scan = phone.get(
+            f"/api/auth/scan?ticket={ticket}&room=EABAB5", follow_redirects=False
+        )
         assert scan.status_code == 302
         assert "/login.html" in scan.headers["location"]
         assert phone.get("/api/auth/me").json()["user"] is None
@@ -109,7 +111,9 @@ def test_qr_login_http_roundtrip(tmp_path, monkeypatch):
         assert device.json()["user"]["nickname"] == "小明"
         assert device.json()["user"]["sid"]
         assert phone.get("/api/auth/me").json()["user"]["nickname"] == "小明"
-        auto = phone.get(f"/api/auth/scan?ticket={ticket}&room=EABAB5", follow_redirects=False)
+        auto = phone.get(
+            f"/api/auth/scan?ticket={ticket}&room=EABAB5", follow_redirects=False
+        )
         assert auto.status_code == 302
         assert phone.get(f"/api/auth/qr/{ticket}").json()["status"] == "confirmed"
 

@@ -37,10 +37,16 @@ def looks_like_zh_translation(text: str) -> bool:
     return bool(_ZH_GLOSS.search(body))
 
 
-def drop_translation_lines(lines: list[dict[str, Any]], language: str | None) -> list[dict[str, Any]]:
+def drop_translation_lines(
+    lines: list[dict[str, Any]], language: str | None
+) -> list[dict[str, Any]]:
     if language not in {"ja", "en"}:
         return lines
-    return [item for item in lines if not looks_like_zh_translation(str(item.get("text") or ""))]
+    return [
+        item
+        for item in lines
+        if not looks_like_zh_translation(str(item.get("text") or ""))
+    ]
 
 
 def drop_leading_title_echo(lines: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -140,7 +146,9 @@ def is_credit_lyric(text: str) -> bool:
     return False
 
 
-def drop_credit_lines(lines: list[dict[str, Any]], language: str | None = None) -> list[dict[str, Any]]:
+def drop_credit_lines(
+    lines: list[dict[str, Any]], language: str | None = None
+) -> list[dict[str, Any]]:
     cleaned: list[dict[str, Any]] = []
     for item in lines:
         text = str(item.get("text") or "")
@@ -154,8 +162,12 @@ def drop_credit_lines(lines: list[dict[str, Any]], language: str | None = None) 
     return cleaned
 
 
-def prepare_lyric_lines(lines: list[dict[str, Any]], language: str | None) -> list[dict[str, Any]]:
-    return drop_credit_lines(drop_leading_title_echo(drop_translation_lines(lines, language)), language)
+def prepare_lyric_lines(
+    lines: list[dict[str, Any]], language: str | None
+) -> list[dict[str, Any]]:
+    return drop_credit_lines(
+        drop_leading_title_echo(drop_translation_lines(lines, language)), language
+    )
 
 
 def _kakasi():
@@ -172,12 +184,18 @@ def _ja_units(text: str) -> list[dict[str, str]]:
     try:
         return [dict(part) for part in _kakasi().convert(source)]
     except Exception:
-        return [{"orig": char, "hira": char, "hepburn": ""} for char in source if not char.isspace()]
+        return [
+            {"orig": char, "hira": char, "hepburn": ""}
+            for char in source
+            if not char.isspace()
+        ]
 
 
 def _is_katakana(text: str) -> bool:
     body = [char for char in text if not char.isspace()]
-    return bool(body) and all(_KATAKANA.match(char) or char in _KATA_MARK for char in body)
+    return bool(body) and all(
+        _KATAKANA.match(char) or char in _KATA_MARK for char in body
+    )
 
 
 def _ja_native_specs(text: str) -> list[tuple[str, str]]:
@@ -223,13 +241,19 @@ def ja_token_specs(text: str) -> list[tuple[str, str]]:
 
 
 def _latin_words(text: str) -> list[str]:
-    return [part for part in re.findall(r"[A-Za-z0-9']+|[^\sA-Za-z0-9']+", text) if part.strip()]
+    return [
+        part
+        for part in re.findall(r"[A-Za-z0-9']+|[^\sA-Za-z0-9']+", text)
+        if part.strip()
+    ]
 
 
 def tokenize(text: str, language: str) -> list[str]:
     if language == "ja":
         return [piece for piece, _label in ja_token_specs(text)]
-    if language == "en" or (_LATIN_LETTER.search(text) and not _HAN.search(text) and not _KANA.search(text)):
+    if language == "en" or (
+        _LATIN_LETTER.search(text) and not _HAN.search(text) and not _KANA.search(text)
+    ):
         return _latin_words(text)
     return [char for char in text if not char.isspace()]
 
@@ -320,7 +344,12 @@ def timeline_from_lrc(
         cue = build_cue(str(line.get("text") or ""), start_ms, end_ms, lang)
         if cue:
             cues.append(cue)
-    return {"language": lang, "alignment": "lrc-interp", "alignment_source": "", "cues": cues}
+    return {
+        "language": lang,
+        "alignment": "lrc-interp",
+        "alignment_source": "",
+        "cues": cues,
+    }
 
 
 def _shift_one(cue: dict[str, Any], delta_ms: int) -> None:
@@ -395,7 +424,9 @@ def write_manual_lrc(out_dir: Path, cues: list[dict[str, Any]]) -> None:
         lines.append(f"[{_lrc_time(int(cue['start_ms']))}]{text}")
     if not lines:
         return
-    (out_dir / "lyrics.manual.lrc").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (out_dir / "lyrics.manual.lrc").write_text(
+        "\n".join(lines) + "\n", encoding="utf-8"
+    )
 
 
 def rebuild_manual_timeline(
@@ -407,17 +438,24 @@ def rebuild_manual_timeline(
     old = list((existing or {}).get("cues") or [])
     used: set[int] = set()
     cues: list[dict[str, Any]] = []
-    language = str((existing or {}).get("language") or detect_language(
-        "".join(str(row.get("text") or "") for row in rows)
-    ))
+    language = str(
+        (existing or {}).get("language")
+        or detect_language("".join(str(row.get("text") or "") for row in rows))
+    )
     for index, row in enumerate(rows):
         text = str(row.get("text") or "").strip()
         if not text:
             continue
-        start_ms = int(row["ms"] if row.get("ms") is not None else row.get("start_ms") or 0)
+        start_ms = int(
+            row["ms"] if row.get("ms") is not None else row.get("start_ms") or 0
+        )
         if index + 1 < len(rows):
             nxt = rows[index + 1]
-            end_ms = int(nxt["ms"] if nxt.get("ms") is not None else nxt.get("start_ms") or start_ms + 4000)
+            end_ms = int(
+                nxt["ms"]
+                if nxt.get("ms") is not None
+                else nxt.get("start_ms") or start_ms + 4000
+            )
         elif duration_ms:
             end_ms = max(start_ms + 1200, min(int(duration_ms), start_ms + 8000))
         else:
@@ -513,7 +551,9 @@ def write_subtitles(timeline: dict[str, Any], out_dir: Path) -> None:
             k_parts.append(rf"{{\k{cs}}}{token['text']}")
             word_bits.append(f"<{token['start_ms']}> {token['text']}")
         elrc_lines.append(f"[{_lrc_time(cue['start_ms'])}]{''.join(word_bits)}")
-        ass_events.append(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{''.join(k_parts)}")
+        ass_events.append(
+            f"Dialogue: 0,{start},{end},Default,,0,0,0,,{''.join(k_parts)}"
+        )
     (out_dir / "lyrics.elrc").write_text("\n".join(elrc_lines) + "\n", encoding="utf-8")
     header = (
         "[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\n\n"
@@ -525,7 +565,9 @@ def write_subtitles(timeline: dict[str, Any], out_dir: Path) -> None:
         "0,0,0,0,100,100,0,0,1,3,0,2,40,40,80,1\n\n"
         "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
-    (out_dir / "lyrics.ass").write_text(header + "\n".join(ass_events) + "\n", encoding="utf-8")
+    (out_dir / "lyrics.ass").write_text(
+        header + "\n".join(ass_events) + "\n", encoding="utf-8"
+    )
 
 
 def _lrc_time(ms: int) -> str:

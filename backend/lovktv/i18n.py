@@ -56,7 +56,11 @@ def parse_lang(raw: str | None) -> str:
     first = text.split(",", 1)[0].split(";", 1)[0].strip()
     if first in LOCALES:
         return first
-    if first.startswith("yue") or first.startswith("zh-hk") or first.startswith("zh-mo"):
+    if (
+        first.startswith("yue")
+        or first.startswith("zh-hk")
+        or first.startswith("zh-mo")
+    ):
         return "yue"
     if first.startswith("ja"):
         return "ja"
@@ -86,7 +90,10 @@ def request_lang(request: Request | None) -> str:
 
 
 def ws_lang(ws: WebSocket) -> str:
-    return parse_lang(ws.query_params.get("lang") or ws.headers.get("accept-language")) or "zh"
+    return (
+        parse_lang(ws.query_params.get("lang") or ws.headers.get("accept-language"))
+        or "zh"
+    )
 
 
 @lru_cache(maxsize=8)
@@ -125,7 +132,7 @@ def localize_error_text(lang: str, message: str) -> str:
         return translate(lang, key)
     for prefix, prefix_key in _ERROR_PREFIXES:
         if raw.startswith(prefix):
-            return translate(lang, prefix_key) + raw[len(prefix):]
+            return translate(lang, prefix_key) + raw[len(prefix) :]
     if raw.startswith("搜索失败："):
         return translate(lang, "api.search_failed", exc=raw.split("：", 1)[1])
     if raw.startswith("日语注音失败："):

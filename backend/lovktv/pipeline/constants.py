@@ -1,4 +1,5 @@
 """Shared timing and matching constants for lyric alignment."""
+
 HOP_MS = 20
 MAX_LINE_MS = 7000
 HOLD_GAP_MS = 3000

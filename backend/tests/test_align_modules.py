@@ -1,6 +1,6 @@
 """Focused regression tests for the split alignment implementation."""
 
-from lovktv.pipeline import align, audio, bounds, clock, energy, matching
+from lovktv.pipeline import align, audio, bounds, energy, matching
 
 
 def test_align_facade_only_owns_orchestration():

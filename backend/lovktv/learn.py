@@ -16,15 +16,74 @@ _SKIP_LINE = re.compile(
     re.I,
 )
 _FUNCTION = {
-    "の", "に", "を", "は", "が", "と", "も", "で", "て", "た", "だ", "よ", "ね", "な", "ん", "か",
-    "へ", "や", "ば", "ず", "ぬ",
-    "a", "an", "the", "to", "of", "in", "on", "at", "is", "are", "was", "and", "or",
-    "i", "you", "we", "my", "me", "it",
-    "的", "了", "着", "在", "是", "和", "吗", "呢", "吧", "啊",
+    "の",
+    "に",
+    "を",
+    "は",
+    "が",
+    "と",
+    "も",
+    "で",
+    "て",
+    "た",
+    "だ",
+    "よ",
+    "ね",
+    "な",
+    "ん",
+    "か",
+    "へ",
+    "や",
+    "ば",
+    "ず",
+    "ぬ",
+    "a",
+    "an",
+    "the",
+    "to",
+    "of",
+    "in",
+    "on",
+    "at",
+    "is",
+    "are",
+    "was",
+    "and",
+    "or",
+    "i",
+    "you",
+    "we",
+    "my",
+    "me",
+    "it",
+    "的",
+    "了",
+    "着",
+    "在",
+    "是",
+    "和",
+    "吗",
+    "呢",
+    "吧",
+    "啊",
 }
 _FALLBACK_ZH = (
-    "昨天", "明天", "一个人", "回家", "下雨", "微笑", "夜晚", "记忆", "旅程",
-    "心跳", "远方", "春天", "秘密", "眼泪", "阳光", "风",
+    "昨天",
+    "明天",
+    "一个人",
+    "回家",
+    "下雨",
+    "微笑",
+    "夜晚",
+    "记忆",
+    "旅程",
+    "心跳",
+    "远方",
+    "春天",
+    "秘密",
+    "眼泪",
+    "阳光",
+    "风",
 )
 _PUNCT = re.compile(r"^[\s.,!?;:…。、！？・～~'\"“”‘’（）()「」『』【】\[\]/\\-]+$")
 _LATIN_SPLIT = re.compile(r"[A-Za-z]")
@@ -56,7 +115,11 @@ def cue_zh(cue: dict[str, Any]) -> str:
 
 
 def cue_romaji(cue: dict[str, Any]) -> str:
-    bits = [_norm(tok.get("romaji")) for tok in cue.get("tokens") or [] if isinstance(tok, dict)]
+    bits = [
+        _norm(tok.get("romaji"))
+        for tok in cue.get("tokens") or []
+        if isinstance(tok, dict)
+    ]
     joined = " ".join(bit for bit in bits if bit)
     return joined or _norm(cue.get("romaji"))
 
@@ -99,7 +162,9 @@ def tap_words(cue: dict[str, Any]) -> list[dict[str, str]]:
     return []
 
 
-def content_tokens(cue: dict[str, Any], *, include_function: bool = False) -> list[dict[str, str]]:
+def content_tokens(
+    cue: dict[str, Any], *, include_function: bool = False
+) -> list[dict[str, str]]:
     found: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
     for token in cue.get("tokens") or []:
@@ -131,7 +196,9 @@ def _unique(values: list[str]) -> list[str]:
     return out
 
 
-def _choices(correct: str, pool: list[str], rng: random.Random, extra: tuple[str, ...] = ()) -> list[dict[str, Any]]:
+def _choices(
+    correct: str, pool: list[str], rng: random.Random, extra: tuple[str, ...] = ()
+) -> list[dict[str, Any]]:
     answer = _norm(correct)
     distractors: list[str] = []
     seen = {answer}
@@ -151,10 +218,14 @@ def _choices(correct: str, pool: list[str], rng: random.Random, extra: tuple[str
             picked.append(filler)
         else:
             from lovktv.i18n import translate
+
             picked.append(translate("zh", "api.learn_option", n=len(picked) + 1))
     options = [answer, *picked]
     rng.shuffle(options)
-    return [{"id": index, "text": text, "ok": text == answer} for index, text in enumerate(options)]
+    return [
+        {"id": index, "text": text, "ok": text == answer}
+        for index, text in enumerate(options)
+    ]
 
 
 def _question(
@@ -236,9 +307,15 @@ def build_line_questions(
     return [rng.choice(bank)]
 
 
-def build_learn_quiz(timeline: dict[str, Any], song: dict[str, Any] | None = None, lang: str = "zh") -> dict[str, Any]:
+def build_learn_quiz(
+    timeline: dict[str, Any], song: dict[str, Any] | None = None, lang: str = "zh"
+) -> dict[str, Any]:
     song = song or {}
-    cues = [cue for cue in (timeline.get("cues") or []) if isinstance(cue, dict) and is_singable_cue(cue)]
+    cues = [
+        cue
+        for cue in (timeline.get("cues") or [])
+        if isinstance(cue, dict) and is_singable_cue(cue)
+    ]
     pools = _line_pools(cues)
     song_id = _norm(song.get("id") or timeline.get("song_id"))
     lines: list[dict[str, Any]] = []

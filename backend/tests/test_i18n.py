@@ -5,7 +5,14 @@ from fastapi.testclient import TestClient
 
 from lovktv.i18n import LOCALES, locale_keys, parse_lang, translate
 
-FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "public" / "shared" / "i18n" / "locales"
+FRONTEND = (
+    Path(__file__).resolve().parents[2]
+    / "frontend"
+    / "public"
+    / "shared"
+    / "i18n"
+    / "locales"
+)
 _KEY = re.compile(r'"([^"]+)":\s*"')
 
 

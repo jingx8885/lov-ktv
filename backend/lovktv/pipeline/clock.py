@@ -5,11 +5,23 @@ from __future__ import annotations
 from typing import Any
 
 from lovktv.pipeline.audio import vocal_regions
-from lovktv.pipeline.constants import *
 from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
-from lovktv.pipeline.energy import _vocal_end_near, consensus_line_start, snap_holes_to_voice
+from lovktv.pipeline.constants import *
+from lovktv.pipeline.energy import (
+    _vocal_end_near,
+    consensus_line_start,
+    snap_holes_to_voice,
+)
 from lovktv.pipeline.lyrics import drop_credit_lines
-from lovktv.pipeline.matching import _best_asr_window, _usable_asr_words, accept_score, estimate_lrc_offset, normalize_lyric, vocal_phrases
+from lovktv.pipeline.matching import (
+    _best_asr_window,
+    _usable_asr_words,
+    accept_score,
+    estimate_lrc_offset,
+    normalize_lyric,
+    vocal_phrases,
+)
+
 
 def align_lines_official_clock(
     lines: list[dict[str, Any]],
@@ -19,7 +31,11 @@ def align_lines_official_clock(
     hop_ms: int = HOP_MS,
 ) -> list[dict[str, Any]]:
     """Place lines on official LRC, then vote with Whisper and vocal onsets."""
-    lines = [item for item in drop_credit_lines(lines, language) if str(item.get("text") or "").strip()]
+    lines = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
     if not lines:
         return []
     asr_words = _usable_asr_words(asr_words or [])
@@ -36,7 +52,9 @@ def align_lines_official_clock(
             for item in timed[1:]
             if item.get("ms") is not None
         )
-        if (first_ms < 1000 or not _voice_covers(regions, first_ms)) and not later_alive:
+        if (
+            first_ms < 1000 or not _voice_covers(regions, first_ms)
+        ) and not later_alive:
             shift = estimate_lrc_offset(timed, phrases)
 
     cursor = 0
@@ -50,7 +68,11 @@ def align_lines_official_clock(
             if index + 1 < len(lines) and lines[index + 1].get("ms") is not None
             else None
         )
-        start_ms = official if official is not None else (int(bounds[-1]["end_ms"]) if bounds else 0)
+        start_ms = (
+            official
+            if official is not None
+            else (int(bounds[-1]["end_ms"]) if bounds else 0)
+        )
         from_asr = False
         asr_start = None
         match = None
@@ -88,7 +110,9 @@ def align_lines_official_clock(
             if next_official is not None:
                 end_ms = min(end_ms, next_official)
         else:
-            known_n = len(known.split()) if language == "en" else max(1, len(known or "x"))
+            known_n = (
+                len(known.split()) if language == "en" else max(1, len(known or "x"))
+            )
             end_ms = start_ms + max(MIN_LINE_MS, min(MAX_LINE_MS, 180 * known_n))
         if match and next_official is None:
             end_ms = max(end_ms, int(asr_words[match[2] - 1]["end_ms"]))

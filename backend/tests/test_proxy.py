@@ -26,8 +26,20 @@ def test_resolve_prefers_playable_soundcloud(monkeypatch):
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
-            return [{"url": "https://youtube.com/watch?v=dead", "title": "Give a reason", "duration": 100}]
-        return [{"url": "https://soundcloud.com/right-track", "title": "Give a reason", "duration": 100}]
+            return [
+                {
+                    "url": "https://youtube.com/watch?v=dead",
+                    "title": "Give a reason",
+                    "duration": 100,
+                }
+            ]
+        return [
+            {
+                "url": "https://soundcloud.com/right-track",
+                "title": "Give a reason",
+                "duration": 100,
+            }
+        ]
 
     monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)
     monkeypatch.setattr(
@@ -49,7 +61,11 @@ def test_resolve_skips_unplayable_ytdlp(monkeypatch):
         fetch,
         "_list_ytdlp",
         lambda query, ytdlp, provider, count=15: [
-            {"url": f"https://{provider}.example/x", "title": "Give a reason", "duration": 100}
+            {
+                "url": f"https://{provider}.example/x",
+                "title": "Give a reason",
+                "duration": 100,
+            }
         ],
     )
     monkeypatch.setattr(fetch, "_ytdlp_direct_url", lambda page: "")
@@ -65,7 +81,13 @@ def test_resolve_uses_netease_before_youtube(monkeypatch):
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
-            return [{"url": "https://youtube.com/watch?v=x", "title": "晴天", "duration": 200}]
+            return [
+                {
+                    "url": "https://youtube.com/watch?v=x",
+                    "title": "晴天",
+                    "duration": 200,
+                }
+            ]
         return []
 
     monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)
@@ -82,7 +104,13 @@ def test_resolve_uses_youtube_last(monkeypatch):
 
     def fake_list(query, ytdlp, provider, count=15):
         if provider == "youtube":
-            return [{"url": "https://youtube.com/watch?v=x", "title": "Give a reason", "duration": 100}]
+            return [
+                {
+                    "url": "https://youtube.com/watch?v=x",
+                    "title": "Give a reason",
+                    "duration": 100,
+                }
+            ]
         return []
 
     monkeypatch.setattr(fetch, "_list_ytdlp", fake_list)

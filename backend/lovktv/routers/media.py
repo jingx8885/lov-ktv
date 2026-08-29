@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from urllib.parse import quote
+
 from fastapi import APIRouter, HTTPException
-from starlette.requests import Request
 from fastapi.responses import FileResponse, RedirectResponse
-from lovktv.assets import VersionedStaticFiles, versioned_response
+from starlette.requests import Request
+
+from lovktv.assets import versioned_response
 from lovktv.oss import oss_ready, public_url
 from lovktv.runtime import media_dir, web_root
 
@@ -18,12 +20,17 @@ def media(song_id: str, name: str, request: Request):
     if root not in path.parents:
         raise HTTPException(404)
     rev = (request.query_params.get("v") or "").strip()
-    cache = "public, max-age=31536000, immutable" if rev else "no-cache, must-revalidate"
+    cache = (
+        "public, max-age=31536000, immutable" if rev else "no-cache, must-revalidate"
+    )
     if path.exists():
-        return FileResponse(path, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache})
+        return FileResponse(
+            path, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache}
+        )
     if oss_ready():
         url = public_url(song_id, name)
-        if rev: url = f"{url}?v={quote(rev, safe='')}"
+        if rev:
+            url = f"{url}?v={quote(rev, safe='')}"
         return RedirectResponse(url, status_code=302)
     raise HTTPException(404)
 
@@ -31,12 +38,14 @@ def media(song_id: str, name: str, request: Request):
 @router.get("/m.html")
 def mobile_page():
     path = web_root() / "m.html"
-    if not path.exists(): raise HTTPException(404)
+    if not path.exists():
+        raise HTTPException(404)
     return versioned_response(path, web_root())
 
 
 @router.get("/login.html")
 def login_page():
     path = web_root() / "login.html"
-    if not path.exists(): raise HTTPException(404)
+    if not path.exists():
+        raise HTTPException(404)
     return versioned_response(path, web_root())

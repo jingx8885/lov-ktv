@@ -29,10 +29,25 @@ def test_apps_empty_catalog(tmp_path, monkeypatch):
 def test_upload_requires_token(tmp_path, monkeypatch):
     main = _boot(tmp_path, monkeypatch, token="secret-token")
     with TestClient(main.app) as client:
-        missing = client.post("/api/apps/tv", files={"file": ("tv.apk", _apk_bytes(), "application/vnd.android.package-archive")})
+        missing = client.post(
+            "/api/apps/tv",
+            files={
+                "file": (
+                    "tv.apk",
+                    _apk_bytes(),
+                    "application/vnd.android.package-archive",
+                )
+            },
+        )
         wrong = client.post(
             "/api/apps/tv",
-            files={"file": ("tv.apk", _apk_bytes(), "application/vnd.android.package-archive")},
+            files={
+                "file": (
+                    "tv.apk",
+                    _apk_bytes(),
+                    "application/vnd.android.package-archive",
+                )
+            },
             headers={"Authorization": "Bearer other"},
         )
     assert missing.status_code == 401
@@ -46,7 +61,13 @@ def test_upload_disabled_without_env(tmp_path, monkeypatch):
     with TestClient(main.app) as client:
         resp = client.post(
             "/api/apps/phone",
-            files={"file": ("phone.apk", _apk_bytes(), "application/vnd.android.package-archive")},
+            files={
+                "file": (
+                    "phone.apk",
+                    _apk_bytes(),
+                    "application/vnd.android.package-archive",
+                )
+            },
             headers={"Authorization": "Bearer anything"},
         )
         catalog = client.get("/api/apps").json()
@@ -60,7 +81,13 @@ def test_upload_and_download(tmp_path, monkeypatch):
     with TestClient(main.app) as client:
         uploaded = client.post(
             "/api/apps/tv",
-            files={"file": ("app-debug.apk", payload, "application/vnd.android.package-archive")},
+            files={
+                "file": (
+                    "app-debug.apk",
+                    payload,
+                    "application/vnd.android.package-archive",
+                )
+            },
             data={"version": "2026.8.29"},
             headers={"Authorization": "Bearer secret-token"},
         )
@@ -90,7 +117,13 @@ def test_reject_unknown_channel_and_garbage(tmp_path, monkeypatch):
     with TestClient(main.app) as client:
         unknown = client.post(
             "/api/apps/watch",
-            files={"file": ("x.apk", _apk_bytes(), "application/vnd.android.package-archive")},
+            files={
+                "file": (
+                    "x.apk",
+                    _apk_bytes(),
+                    "application/vnd.android.package-archive",
+                )
+            },
             headers={"Authorization": "Bearer secret-token"},
         )
         garbage = client.post(

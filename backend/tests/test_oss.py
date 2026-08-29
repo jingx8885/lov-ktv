@@ -37,9 +37,12 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("ALIYUN_OSS_ENDPOINT", "oss-cn-shenzhen.aliyuncs.com")
     monkeypatch.setenv("ALIYUN_OSS_BUCKET_NAME", "lovbrowser")
     monkeypatch.setenv("LOVKTV_OSS_PREFIX", "lovktv")
-    monkeypatch.setenv("ALIYUN_OSS_DOWNLOAD_DOMAIN", "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com")
+    monkeypatch.setenv(
+        "ALIYUN_OSS_DOWNLOAD_DOMAIN", "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com"
+    )
     from importlib import reload
-    from lovktv import config, oss, main, store
+
+    from lovktv import config, main, oss, store
 
     reload(config)
     reload(oss)
@@ -50,16 +53,25 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     (tmp_path / "media").mkdir(parents=True, exist_ok=True)
     with TestClient(main.app) as client:
         res = client.get("/media/abc123/mtv.mp4", follow_redirects=False)
-        versioned = client.get("/media/abc123/mtv.mp4?v=deadbeef12", follow_redirects=False)
+        versioned = client.get(
+            "/media/abc123/mtv.mp4?v=deadbeef12", follow_redirects=False
+        )
     assert res.status_code == 302
-    assert res.headers["location"] == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4"
+    assert (
+        res.headers["location"]
+        == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4"
+    )
     assert versioned.status_code == 302
-    assert versioned.headers["location"] == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4?v=deadbeef12"
+    assert (
+        versioned.headers["location"]
+        == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/mtv.mp4?v=deadbeef12"
+    )
 
 
 def test_publish_files_includes_every_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from importlib import reload
+
     from lovktv import config, oss
 
     reload(config)
@@ -105,6 +117,7 @@ def test_publish_noop_without_oss(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     monkeypatch.delenv("ALIYUN_OSS_ENABLED", raising=False)
     from importlib import reload
+
     from lovktv import config, oss
 
     reload(config)

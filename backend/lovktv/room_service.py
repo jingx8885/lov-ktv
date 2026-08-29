@@ -30,7 +30,9 @@ class RoomCommand:
     paused: bool | None = None
 
     @classmethod
-    def from_payload(cls, action: str, payload: Mapping[str, Any] | None = None) -> "RoomCommand":
+    def from_payload(
+        cls, action: str, payload: Mapping[str, Any] | None = None
+    ) -> "RoomCommand":
         """Build a command from either REST or WebSocket JSON.
 
         Unknown actions are rejected before touching the store.  The payload
@@ -49,7 +51,9 @@ class RoomCommand:
             vocal_mix=data.get("vocal_mix"),
             volume=data.get("volume"),
             mic_gain=data.get("mic_gain"),
-            lyric_mode=str(data["lyric_mode"]) if data.get("lyric_mode") is not None else None,
+            lyric_mode=str(data["lyric_mode"])
+            if data.get("lyric_mode") is not None
+            else None,
             paused=data.get("paused"),
         )
 

@@ -35,7 +35,9 @@ def test_set_room_lan_persists_on_snapshot(tmp_path, monkeypatch):
     _app(tmp_path, monkeypatch)
     from lovktv import store
 
-    snap = set_room_lan("home01", "http://192.168.1.8:8788", mic_port=18787, mic_sample_rate=48000)
+    snap = set_room_lan(
+        "home01", "http://192.168.1.8:8788", mic_port=18787, mic_sample_rate=48000
+    )
     assert snap["code"] == "HOME01"
     assert snap["lan_origin"] == "http://192.168.1.8:8788"
     assert int(snap["lan_mic_port"]) == 18787
@@ -50,7 +52,11 @@ def test_phone_can_read_lan_from_room_code(tmp_path, monkeypatch):
     with TestClient(app) as tv:
         posted = tv.post(
             "/api/rooms/EABAB5/lan",
-            json={"local_url": "http://192.168.5.6:8788", "mic_port": 18787, "mic_sample_rate": 48000},
+            json={
+                "local_url": "http://192.168.5.6:8788",
+                "mic_port": 18787,
+                "mic_sample_rate": 48000,
+            },
         )
     assert posted.status_code == 200
     body = posted.json()
@@ -67,5 +73,7 @@ def test_phone_can_read_lan_from_room_code(tmp_path, monkeypatch):
 def test_room_lan_rejects_public_origin(tmp_path, monkeypatch):
     app, _store = _app(tmp_path, monkeypatch)
     with TestClient(app) as client:
-        bad = client.post("/api/rooms/EABAB5/lan", json={"lan_origin": "https://example.com"})
+        bad = client.post(
+            "/api/rooms/EABAB5/lan", json={"lan_origin": "https://example.com"}
+        )
     assert bad.status_code == 400

@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 
 
@@ -16,4 +15,4 @@ def test_library_append_dedupes_and_poll_does_not_rewind_page():
     assert "if (state.libState.page <= 1) loadSongs(false)" in app
     assert "extra.length > 0" in hits
     assert "data.page !== state.searchPage" in hits
-    assert 'btn.onclick = () => runSearch(Number(btn.dataset.page), true)' not in hits
+    assert "btn.onclick = () => runSearch(Number(btn.dataset.page), true)" not in hits

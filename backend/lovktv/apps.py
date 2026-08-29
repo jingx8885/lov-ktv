@@ -21,7 +21,9 @@ APK_MIME = "application/vnd.android.package-archive"
 
 
 def apps_dir() -> Path:
-    root = Path(os.environ.get("LOVKTV_DATA") or Path(__file__).resolve().parents[2] / "data")
+    root = Path(
+        os.environ.get("LOVKTV_DATA") or Path(__file__).resolve().parents[2] / "data"
+    )
     return root.resolve() / "apps"
 
 
@@ -54,14 +56,19 @@ def load_manifest() -> dict:
         return {name: None for name in CHANNELS}
     if not isinstance(raw, dict):
         return {name: None for name in CHANNELS}
-    return {name: raw.get(name) if isinstance(raw.get(name), dict) else None for name in CHANNELS}
+    return {
+        name: raw.get(name) if isinstance(raw.get(name), dict) else None
+        for name in CHANNELS
+    }
 
 
 def _write_manifest(data: dict) -> None:
     folder = apps_dir()
     folder.mkdir(parents=True, exist_ok=True)
     tmp = folder / ".manifest.json.tmp"
-    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    tmp.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     os.replace(tmp, _manifest_path())
 
 

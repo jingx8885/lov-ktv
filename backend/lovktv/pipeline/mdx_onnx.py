@@ -1,4 +1,5 @@
 """Run UVR MDX-Net ONNX models with onnxruntime. No torch."""
+
 from __future__ import annotations
 
 import hashlib
@@ -203,7 +204,9 @@ def _corr(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.dot(a, b) / denom) if denom > 1e-12 else 0.0
 
 
-def assign_stems(mix: np.ndarray, primary: np.ndarray, compensate: float, hint: str = "instrumental") -> tuple[np.ndarray, np.ndarray]:
+def assign_stems(
+    mix: np.ndarray, primary: np.ndarray, compensate: float, hint: str = "instrumental"
+) -> tuple[np.ndarray, np.ndarray]:
     """Return (vocals, instrumental). Karaoke models emit the backing track as primary."""
     residual = mix - primary * compensate
     if hint == "instrumental":
@@ -228,7 +231,9 @@ def separate_mdx(src: Path, out_dir: Path, onnx_path: Path | None = None) -> boo
     onnx_path = Path(onnx_path or model_path())
     if not onnx_path.exists():
         return False
-    params = MODEL_PARAMS.get(_md5(onnx_path), MODEL_PARAMS["2f5501189a2f6db6349916fabe8c90de"])
+    params = MODEL_PARAMS.get(
+        _md5(onnx_path), MODEL_PARAMS["2f5501189a2f6db6349916fabe8c90de"]
+    )
     n_fft = int(params["n_fft"])
     dim_f = int(params["dim_f"])
     dim_t = int(params["dim_t"])

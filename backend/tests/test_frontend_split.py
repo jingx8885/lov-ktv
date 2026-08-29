@@ -22,7 +22,14 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert "LovKtvPlatform.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
-    for module in ("media.js", "controls.js", "queue.js", "lyrics.js", "song.js", "ui.js"):
+    for module in (
+        "media.js",
+        "controls.js",
+        "queue.js",
+        "lyrics.js",
+        "song.js",
+        "ui.js",
+    ):
         assert (ROOT / "phone" / "player" / "js" / module).is_file()
     assert (ROOT / "phone" / "player" / "js" / "learn.js").is_file()
     assert (ROOT / "phone" / "player" / "css" / "learn.css").is_file()
@@ -35,8 +42,8 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     vocal = phone.split('id="playerVocal"', 1)[1].split("</button>", 1)[0]
     iem = phone.split('id="playerIem"', 1)[1].split("</button>", 1)[0]
     assert "<svg" in mic and "<svg" in vocal and "<svg" in iem
-    assert mic[mic.index("<svg"):] != vocal[vocal.index("<svg"):]
-    assert vocal[vocal.index("<svg"):] != iem[iem.index("<svg"):]
+    assert mic[mic.index("<svg") :] != vocal[vocal.index("<svg") :]
+    assert vocal[vocal.index("<svg") :] != iem[iem.index("<svg") :]
 
 
 def test_split_assets_are_served(tmp_path, monkeypatch):

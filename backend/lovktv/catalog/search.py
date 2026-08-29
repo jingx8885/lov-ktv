@@ -1,4 +1,5 @@
 """Search providers and result normalization for the catalog."""
+
 from __future__ import annotations
 
 import hashlib
@@ -12,8 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from lovktv.catalog import bilibili
-from lovktv.catalog.mugen import search_mugen
 from lovktv.catalog.http import urlopen, ytdlp_proxy_args
+from lovktv.catalog.mugen import search_mugen
 
 TONZHON_API = "https://tonzhon.com/api.php"
 BROWSER_UA = (
@@ -21,38 +22,83 @@ BROWSER_UA = (
     "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
 )
 BAD_TITLE_TOKENS = (
-    "remix", "cover", "flip", "nightcore", "slowed", "reverb", "sped up", "8d",
-    "karaoke", "カラオケ", "instrumental", "off vocal", "オフボーカル", "伴奏",
-    "inst.", "inst ", "piano ver", "acoustic ver", "live at", "first take",
-    "ザ・ファースト", "歌ってみた", "原曲歌手", "歌っちゃ王", "+1key", "+2key",
-    "+3key", "-1key", "-2key", "-3key",
+    "remix",
+    "cover",
+    "flip",
+    "nightcore",
+    "slowed",
+    "reverb",
+    "sped up",
+    "8d",
+    "karaoke",
+    "カラオケ",
+    "instrumental",
+    "off vocal",
+    "オフボーカル",
+    "伴奏",
+    "inst.",
+    "inst ",
+    "piano ver",
+    "acoustic ver",
+    "live at",
+    "first take",
+    "ザ・ファースト",
+    "歌ってみた",
+    "原曲歌手",
+    "歌っちゃ王",
+    "+1key",
+    "+2key",
+    "+3key",
+    "-1key",
+    "-2key",
+    "-3key",
 )
 TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
 SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
 
+
 def is_clean_title(title: str) -> bool:
     low = (title or "").lower()
     return not any(tok in low for tok in BAD_TITLE_TOKENS)
+
 
 def clean_search_title(title: str) -> str:
     text = TITLE_VERSION.sub("", title or "")
     text = re.sub(r"\s+", " ", text).strip(" -_·|/")
     return text or str(title or "").strip()
 
+
 def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
     body = urllib.parse.urlencode(fields).encode("utf-8")
-    req = urllib.request.Request(url, data=body, headers={
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": BROWSER_UA,
-        "Referer": "https://tonzhon.com/",
-    })
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": BROWSER_UA,
+            "Referer": "https://tonzhon.com/",
+        },
+    )
     with urlopen(req, timeout=timeout) as resp:
         return resp.read()
 
-def search_tonzhon(query: str, count: int = 12, source: str = "netease", page: int = 1) -> list[dict[str, Any]]:
-    raw = post_form(TONZHON_API, {"types": "search", "count": count, "source": source, "name": query, "pages": max(1, int(page))})
+
+def search_tonzhon(
+    query: str, count: int = 12, source: str = "netease", page: int = 1
+) -> list[dict[str, Any]]:
+    raw = post_form(
+        TONZHON_API,
+        {
+            "types": "search",
+            "count": count,
+            "source": source,
+            "name": query,
+            "pages": max(1, int(page)),
+        },
+    )
     data = json.loads(raw.decode("utf-8"))
     return data if isinstance(data, list) else []
+
 
 def flatten_artists(song: dict[str, Any]) -> str:
     artists = song.get("artist") or []
@@ -64,7 +110,10 @@ def flatten_artists(song: dict[str, Any]) -> str:
             names.append(str(item))
     return " / ".join(names)
 
-def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict[str, Any]]:
+
+def search_bilibili_hits(
+    query: str, count: int = 8, page: int = 1
+) -> list[dict[str, Any]]:
     try:
         videos = bilibili.search_videos(query, count=max(count, 12), page=page)
     except Exception:
@@ -72,23 +121,67 @@ def search_bilibili_hits(query: str, count: int = 8, page: int = 1) -> list[dict
     hits: list[dict[str, Any]] = []
     for item in videos:
         title, bvid = str(item.get("title") or ""), str(item.get("bvid") or "")
-        if not bvid or not title or any(tok in title.lower() for tok in bilibili.SKIP_TITLE):
+        if (
+            not bvid
+            or not title
+            or any(tok in title.lower() for tok in bilibili.SKIP_TITLE)
+        ):
             continue
         duration = item.get("duration")
-        if isinstance(duration, int) and not (bilibili.MIN_SEC <= duration <= bilibili.MAX_SEC):
+        if isinstance(duration, int) and not (
+            bilibili.MIN_SEC <= duration <= bilibili.MAX_SEC
+        ):
             continue
         from .audio import remember_audio_source
-        remember_audio_source(bvid, {"kind": "bilibili", "bvid": bvid, "title": title, "cover": str(item.get("pic") or "")})
-        hits.append({"id": bvid, "title": title, "artist": str(item.get("author") or ""), "album": "", "pic": str(item.get("pic") or ""), "source": "bilibili", "is_mv": True, "clean": is_clean_title(title), "preview_url": f"/api/preview/{bvid}"})
+
+        remember_audio_source(
+            bvid,
+            {
+                "kind": "bilibili",
+                "bvid": bvid,
+                "title": title,
+                "cover": str(item.get("pic") or ""),
+            },
+        )
+        hits.append(
+            {
+                "id": bvid,
+                "title": title,
+                "artist": str(item.get("author") or ""),
+                "album": "",
+                "pic": str(item.get("pic") or ""),
+                "source": "bilibili",
+                "is_mv": True,
+                "clean": is_clean_title(title),
+                "preview_url": f"/api/preview/{bvid}",
+            }
+        )
         if len(hits) >= count:
             break
     return hits
 
-def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15, timeout: float = 60) -> list[dict[str, Any]]:
-    prefix = {"soundcloud": f"scsearch{count}:", "youtube": f"ytsearch{count}:"}[provider]
-    cmd = [ytdlp, f"{prefix}{query}", "--no-playlist", "--flat-playlist", "--print", "%(webpage_url)s\t%(duration)s\t%(title)s", "--quiet", "--no-warnings", *ytdlp_proxy_args()]
+
+def _list_ytdlp(
+    query: str, ytdlp: str, provider: str, count: int = 15, timeout: float = 60
+) -> list[dict[str, Any]]:
+    prefix = {"soundcloud": f"scsearch{count}:", "youtube": f"ytsearch{count}:"}[
+        provider
+    ]
+    cmd = [
+        ytdlp,
+        f"{prefix}{query}",
+        "--no-playlist",
+        "--flat-playlist",
+        "--print",
+        "%(webpage_url)s\t%(duration)s\t%(title)s",
+        "--quiet",
+        "--no-warnings",
+        *ytdlp_proxy_args(),
+    ]
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout, check=False
+        )
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return []
     out: list[dict[str, Any]] = []
@@ -104,7 +197,10 @@ def _list_ytdlp(query: str, ytdlp: str, provider: str, count: int = 15, timeout:
         out.append({"url": url, "duration": duration, "title": title})
     return out
 
-def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) -> list[dict[str, Any]]:
+
+def search_ytdlp_hits(
+    query: str, provider: str, count: int = 5, page: int = 1
+) -> list[dict[str, Any]]:
     if page > 1 or provider != "soundcloud":
         return []
     ytdlp = shutil.which("yt-dlp")
@@ -121,13 +217,32 @@ def search_ytdlp_hits(query: str, provider: str, count: int = 5, page: int = 1) 
             continue
         hid = f"{provider}_{hashlib.sha1(page_url.encode('utf-8')).hexdigest()[:12]}"
         from .audio import remember_audio_source
-        remember_audio_source(hid, {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider})
-        hits.append({"id": hid, "title": title, "artist": "", "album": "", "pic": "", "source": provider, "is_mv": provider == "youtube", "clean": is_clean_title(title), "preview_url": f"/api/preview/{hid}"})
+
+        remember_audio_source(
+            hid,
+            {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider},
+        )
+        hits.append(
+            {
+                "id": hid,
+                "title": title,
+                "artist": "",
+                "album": "",
+                "pic": "",
+                "source": provider,
+                "is_mv": provider == "youtube",
+                "clean": is_clean_title(title),
+                "preview_url": f"/api/preview/{hid}",
+            }
+        )
         if len(hits) >= count:
             break
     return hits
 
-def merge_channel_hits(groups: dict[str, list[dict[str, Any]]], count: int) -> list[dict[str, Any]]:
+
+def merge_channel_hits(
+    groups: dict[str, list[dict[str, Any]]], count: int
+) -> list[dict[str, Any]]:
     queues = {key: list(groups.get(key) or []) for key in SEARCH_CHANNELS}
     out: list[dict[str, Any]] = []
     seen: set[str] = set()
@@ -140,12 +255,16 @@ def merge_channel_hits(groups: dict[str, list[dict[str, Any]]], count: int) -> l
                 hid = str(hit.get("id") or "")
                 if not hid or hid in seen:
                     continue
-                seen.add(hid); out.append(hit); added = True; break
+                seen.add(hid)
+                out.append(hit)
+                added = True
+                break
             if len(out) >= count:
                 break
         if not added:
             break
     return out
+
 
 def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
     page, count = max(1, int(page)), max(1, min(int(count), 30))
@@ -156,16 +275,32 @@ def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
             pool.submit(search_bilibili_hits, query, count, page),
             pool.submit(search_ytdlp_hits, query, "soundcloud", extra, page),
         ]
-        try: mugen = jobs[0].result()
-        except Exception: mugen = {"hits": [], "has_more": False}
-        try: bili = jobs[1].result()
-        except Exception: bili = []
-        try: soundcloud = jobs[2].result()
-        except Exception: soundcloud = []
-    groups = {"mugen": list(mugen.get("hits") or []), "bilibili": bili, "soundcloud": soundcloud}
+        try:
+            mugen = jobs[0].result()
+        except Exception:
+            mugen = {"hits": [], "has_more": False}
+        try:
+            bili = jobs[1].result()
+        except Exception:
+            bili = []
+        try:
+            soundcloud = jobs[2].result()
+        except Exception:
+            soundcloud = []
+    groups = {
+        "mugen": list(mugen.get("hits") or []),
+        "bilibili": bili,
+        "soundcloud": soundcloud,
+    }
     hits = merge_channel_hits(groups, count)
     available = sum(len(bucket) for bucket in groups.values())
-    return {"query": query, "page": page, "count": count,
-            "has_more": bool(mugen.get("has_more")) or available > len(hits)
-            or any(len(groups[key]) >= count for key in SEARCH_CHANNELS),
-            "hits": hits, "sources": list(SEARCH_CHANNELS)}
+    return {
+        "query": query,
+        "page": page,
+        "count": count,
+        "has_more": bool(mugen.get("has_more"))
+        or available > len(hits)
+        or any(len(groups[key]) >= count for key in SEARCH_CHANNELS),
+        "hits": hits,
+        "sources": list(SEARCH_CHANNELS),
+    }

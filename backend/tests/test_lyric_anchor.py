@@ -6,7 +6,9 @@ from lovktv.pipeline.lyric_anchor import (
 )
 
 
-def _pulse(seconds: float, hop_ms: int = 20, bursts: list[tuple[float, float]] | None = None) -> list[float]:
+def _pulse(
+    seconds: float, hop_ms: int = 20, bursts: list[tuple[float, float]] | None = None
+) -> list[float]:
     n = int(seconds * 1000 / hop_ms)
     env = [8.0] * n
     for start, end in bursts or []:
@@ -145,8 +147,18 @@ def test_chorus_does_not_eat_next_hook():
         ],
         [
             {"text": "とってもいい", "start_ms": 78720, "end_ms": 80300, "segment": 0},
-            {"text": "いいような夜だけど", "start_ms": 80300, "end_ms": 82460, "segment": 1},
-            {"text": "どひょうめききらめきときみも", "start_ms": 82460, "end_ms": 86540, "segment": 2},
+            {
+                "text": "いいような夜だけど",
+                "start_ms": 80300,
+                "end_ms": 82460,
+                "segment": 1,
+            },
+            {
+                "text": "どひょうめききらめきときみも",
+                "start_ms": 82460,
+                "end_ms": 86540,
+                "segment": 2,
+            },
         ],
         "ja",
     )
@@ -161,7 +173,12 @@ def test_whisper_segment_ids_prevent_cjk_merge():
         [
             {"text": "ど", "start_ms": 28580, "end_ms": 29980, "segment": 0},
             {"text": "いりびたった", "start_ms": 29980, "end_ms": 32220, "segment": 1},
-            {"text": "散らかる部屋も", "start_ms": 32820, "end_ms": 34900, "segment": 1},
+            {
+                "text": "散らかる部屋も",
+                "start_ms": 32820,
+                "end_ms": 34900,
+                "segment": 1,
+            },
         ]
     )
     assert len(segs) == 2
@@ -171,12 +188,27 @@ def test_whisper_segment_ids_prevent_cjk_merge():
 
 def test_merge_keeps_whisper_clock_when_anchor_drifts():
     whisper = [
-        {"text": "I close my eyes", "start_ms": 14248, "end_ms": 17494, "from_asr": False},
-        {"text": "The world that's waiting", "start_ms": 17494, "end_ms": 21195, "from_asr": False},
+        {
+            "text": "I close my eyes",
+            "start_ms": 14248,
+            "end_ms": 17494,
+            "from_asr": False,
+        },
+        {
+            "text": "The world that's waiting",
+            "start_ms": 17494,
+            "end_ms": 21195,
+            "from_asr": False,
+        },
     ]
     anchor = [
         {"text": "I close my eyes", "start_ms": 0, "end_ms": 500, "from_asr": False},
-        {"text": "The world that's waiting", "start_ms": 500, "end_ms": 1000, "from_asr": False},
+        {
+            "text": "The world that's waiting",
+            "start_ms": 500,
+            "end_ms": 1000,
+            "from_asr": False,
+        },
     ]
     merged = merge_whisper_and_anchor(whisper, anchor)
     assert [row["start_ms"] for row in merged] == [14248, 17494]
@@ -184,11 +216,21 @@ def test_merge_keeps_whisper_clock_when_anchor_drifts():
 
 def test_merge_takes_nearby_anchor_span():
     whisper = [
-        {"text": "よそに揃い始めてた", "start_ms": 74580, "end_ms": 78720, "from_asr": True},
+        {
+            "text": "よそに揃い始めてた",
+            "start_ms": 74580,
+            "end_ms": 78720,
+            "from_asr": True,
+        },
         {"text": "息が", "start_ms": 78720, "end_ms": 79220, "from_asr": False},
     ]
     anchor = [
-        {"text": "よそに揃い始めてた", "start_ms": 74580, "end_ms": 77800, "from_asr": True},
+        {
+            "text": "よそに揃い始めてた",
+            "start_ms": 74580,
+            "end_ms": 77800,
+            "from_asr": True,
+        },
         {"text": "息が", "start_ms": 77800, "end_ms": 78720, "from_asr": True},
     ]
     merged = merge_whisper_and_anchor(whisper, anchor)
@@ -200,14 +242,44 @@ def test_merge_takes_nearby_anchor_span():
 def test_merge_does_not_chop_rescued_line():
     """Get along: Whisper misses 美貌が许さないわ and starts the next line on が."""
     whisper = [
-        {"text": "誰もがうらやむこのパワーと", "start_ms": 28720, "end_ms": 32340, "from_asr": True},
-        {"text": "美貌が许さないわ", "start_ms": 32340, "end_ms": 33560, "from_asr": False},
-        {"text": "どんな相手でも怯まないで", "start_ms": 33560, "end_ms": 39320, "from_asr": True},
+        {
+            "text": "誰もがうらやむこのパワーと",
+            "start_ms": 28720,
+            "end_ms": 32340,
+            "from_asr": True,
+        },
+        {
+            "text": "美貌が许さないわ",
+            "start_ms": 32340,
+            "end_ms": 33560,
+            "from_asr": False,
+        },
+        {
+            "text": "どんな相手でも怯まないで",
+            "start_ms": 33560,
+            "end_ms": 39320,
+            "from_asr": True,
+        },
     ]
     anchor = [
-        {"text": "誰もがうらやむこのパワーと", "start_ms": 28720, "end_ms": 32620, "from_asr": True},
-        {"text": "美貌が许さないわ", "start_ms": 32620, "end_ms": 34940, "from_asr": True},
-        {"text": "どんな相手でも怯まないで", "start_ms": 34940, "end_ms": 38740, "from_asr": True},
+        {
+            "text": "誰もがうらやむこのパワーと",
+            "start_ms": 28720,
+            "end_ms": 32620,
+            "from_asr": True,
+        },
+        {
+            "text": "美貌が许さないわ",
+            "start_ms": 32620,
+            "end_ms": 34940,
+            "from_asr": True,
+        },
+        {
+            "text": "どんな相手でも怯まないで",
+            "start_ms": 34940,
+            "end_ms": 38740,
+            "from_asr": True,
+        },
     ]
     merged = merge_whisper_and_anchor(whisper, anchor)
     assert merged[1]["from_asr"]
@@ -253,5 +325,11 @@ def test_align_lyrics_uses_anchor_for_asr_words():
     )
     assert timeline["alignment"] in {"asr", "lrc"}
     tokens = timeline["cues"][0]["tokens"]
-    assert [tok["text"] for tok in tokens] == ["Gotta", "change", "my", "answering", "machine"]
+    assert [tok["text"] for tok in tokens] == [
+        "Gotta",
+        "change",
+        "my",
+        "answering",
+        "machine",
+    ]
     assert tokens[1]["end_ms"] == 20020

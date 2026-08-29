@@ -13,7 +13,9 @@ from lovktv.store import init_db, upsert_songs
 def main() -> int:
     parser = argparse.ArgumentParser(description="Publish lov-ktv media to OSS")
     parser.add_argument("--songs-json", help="Upsert catalog rows from a JSON dump")
-    parser.add_argument("song_ids", nargs="*", help="Song ids; default is every folder in media/")
+    parser.add_argument(
+        "song_ids", nargs="*", help="Song ids; default is every folder in media/"
+    )
     args = parser.parse_args()
     init_db()
     if args.songs_json:
@@ -26,7 +28,10 @@ def main() -> int:
     result = publish_all(ids)
     for song_id, names in result.items():
         print(f"{song_id} {len(names)} {','.join(names)}", flush=True)
-    print(f"published {sum(1 for names in result.values() if names)}/{len(result)}", flush=True)
+    print(
+        f"published {sum(1 for names in result.values() if names)}/{len(result)}",
+        flush=True,
+    )
     return 0
 
 

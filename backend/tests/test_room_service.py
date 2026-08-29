@@ -1,16 +1,16 @@
 import pytest
 
-from lovktv.room_service import RoomCommand, room_service
-from lovktv.room_service import RoomService
-from lovktv.room_store import SqliteRoomStore
 from lovktv.contracts import RoomAction, RoomSnapshot
 from lovktv.room_contract import normalize_playback_event, normalize_room_code
+from lovktv.room_service import RoomCommand, RoomService, room_service
+from lovktv.room_store import SqliteRoomStore
 from lovktv.timeline_contract import normalize_timeline
 
 
 def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
     # The adapter now owns the implementation instead of forwarding to store.
     from lovktv import store
+
     store.DB_PATH = tmp_path / "room.sqlite"
     store.init_db()
     snap = SqliteRoomStore().set_room_lan("r1", "http://192.168.1.2:8790", 9000, 48000)
@@ -20,7 +20,12 @@ def test_sqlite_adapter_persists_optional_lan_metadata(monkeypatch, tmp_path):
 
 def test_room_contracts_keep_transport_action_and_snapshot_shape():
     action: RoomAction = "mix"
-    snapshot: RoomSnapshot = {"code": "R1", "queue": [], "now_playing": None, "now_index": 0}
+    snapshot: RoomSnapshot = {
+        "code": "R1",
+        "queue": [],
+        "now_playing": None,
+        "now_index": 0,
+    }
     assert action == "mix"
     assert snapshot["code"] == "R1"
 
@@ -32,13 +37,19 @@ def test_runtime_contract_normalizes_code_and_rejects_bad_code():
 
 
 def test_timeline_contract_clamps_and_orders_cues_and_tokens():
-    doc = normalize_timeline({
-        "cues": [
-            {"text": " second ", "start_ms": -4, "end_ms": 10,
-             "tokens": [{"text": "x", "start_ms": -2, "end_ms": 99}]},
-            {"text": "first", "start_ms": 20, "end_ms": 10, "tokens": []},
-        ]
-    })
+    doc = normalize_timeline(
+        {
+            "cues": [
+                {
+                    "text": " second ",
+                    "start_ms": -4,
+                    "end_ms": 10,
+                    "tokens": [{"text": "x", "start_ms": -2, "end_ms": 99}],
+                },
+                {"text": "first", "start_ms": 20, "end_ms": 10, "tokens": []},
+            ]
+        }
+    )
     assert [cue["text"] for cue in doc["cues"]] == ["second", "first"]
     assert doc["cues"][0]["start_ms"] == 0
     assert doc["cues"][0]["tokens"][0]["end_ms"] == 10

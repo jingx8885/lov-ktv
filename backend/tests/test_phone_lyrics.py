@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
 def test_lyric_mode_buttons_do_not_select_body():
     mix = (ROOT / "phone" / "room" / "js" / "mix.js").read_text(encoding="utf-8")
     paint = (ROOT / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
-    assert 'el.dataset.lyricMode = mode' in paint
+    assert "el.dataset.lyricMode = mode" in paint
     assert "function tokenRoma" in paint
     assert "export function lyricScript" in paint
     assert "export function lyricModeForScript" in paint
@@ -15,7 +15,7 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert mix.count('querySelectorAll("button[data-lyric-mode]")') >= 2
     assert "export { lyricModeForScript, lyricScript }" in mix
     assert 'btn.hidden = key === "roma"' in mix
-    assert 'if (!room || !hostVol' in mix
+    assert "if (!room || !hostVol" in mix
     assert "keepRoma" in paint
     assert "keepGloss" in paint
     assert "keepZh" in paint
@@ -33,10 +33,12 @@ def test_lyric_mode_buttons_do_not_select_body():
     mic = (ROOT / "phone" / "player" / "js" / "mic.js").read_text(encoding="utf-8")
     assert ".player-dock.is-hint .player-hint" in css
     assert ".player-hint[data-hold] { display: block; }" in css
-    assert "btn.classList.add(\"busy\")" in mic
+    assert 'btn.classList.add("busy")' in mic
     assert "btn.disabled = true" not in mic
     for name in ("zh", "yue", "en", "ja"):
-        loc = (ROOT / "shared" / "i18n" / "locales" / f"{name}.js").read_text(encoding="utf-8")
+        loc = (ROOT / "shared" / "i18n" / "locales" / f"{name}.js").read_text(
+            encoding="utf-8"
+        )
         assert '"phone.mic.opened"' in loc
 
 

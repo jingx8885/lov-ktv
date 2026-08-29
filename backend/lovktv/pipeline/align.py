@@ -7,31 +7,45 @@ this module preserves the historical import/API surface.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
+from lovktv.pipeline.audio import (
+    energy_token_spans as _energy_token_spans,
+)
+from lovktv.pipeline.audio import (
+    extract_envelope as _extract_envelope,
+)
+from lovktv.pipeline.audio import (
+    probe_duration_ms as _probe_duration_ms,
+)
+from lovktv.pipeline.audio import (
+    vocal_regions as _vocal_regions,
+)
+from lovktv.pipeline.bounds import align_lines_to_asr as _align_lines_to_asr
+from lovktv.pipeline.bounds import assign_plain_lines as _assign_plain_lines
+from lovktv.pipeline.clock import (
+    align_lines_official_clock as _align_lines_official_clock,
+)
+from lovktv.pipeline.constants import HOP_MS
+from lovktv.pipeline.energy import _finalize_line_bounds
+from lovktv.pipeline.energy import merge_with_energy as _merge_with_energy
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
     build_cue,
-    drop_credit_lines,
-    fold_ja_netease_kanji,
     prepare_lyric_lines,
     timeline_from_lrc,
     tokenize,
 )
-from lovktv.pipeline.constants import HOP_MS
-from lovktv.pipeline.audio import (
-    energy_token_spans as _energy_token_spans,
-    extract_envelope as _extract_envelope,
-    probe_duration_ms as _probe_duration_ms,
-    vocal_regions as _vocal_regions,
-)
 from lovktv.pipeline.matching import (
     asr_token_spans as _asr_token_spans,
+)
+from lovktv.pipeline.matching import (
     estimate_lrc_offset as _estimate_lrc_offset,
+)
+from lovktv.pipeline.matching import (
     vocal_phrases as _vocal_phrases,
 )
-from lovktv.pipeline.bounds import align_lines_to_asr as _align_lines_to_asr, assign_plain_lines as _assign_plain_lines
-from lovktv.pipeline.energy import _finalize_line_bounds, merge_with_energy as _merge_with_energy
-from lovktv.pipeline.clock import align_lines_official_clock as _align_lines_official_clock
+
 
 def align_lyrics(
     lines: list[dict[str, Any]],
@@ -68,16 +82,23 @@ def align_lyrics(
                 lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
             )
         else:
-            from lovktv.pipeline.lyric_anchor import align_lines_with_anchor, merge_whisper_and_anchor
+            from lovktv.pipeline.lyric_anchor import (
+                align_lines_with_anchor,
+                merge_whisper_and_anchor,
+            )
 
-            whisper_bounds = _align_lines_to_asr(lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms)
+            whisper_bounds = _align_lines_to_asr(
+                lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
+            )
             if not whisper_bounds:
                 bounds = []
             else:
                 bounds = _merge_with_energy(
                     merge_whisper_and_anchor(
                         whisper_bounds,
-                        align_lines_with_anchor(lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms),
+                        align_lines_with_anchor(
+                            lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
+                        ),
                     ),
                     envelope,
                     hop_ms,
@@ -86,10 +107,20 @@ def align_lyrics(
             cues = []
             for row in bounds:
                 pieces = tokenize(str(row["text"]), lang)
-                spans = _asr_token_spans(pieces, row["start_ms"], row["end_ms"], asr_words, lang)
+                spans = _asr_token_spans(
+                    pieces, row["start_ms"], row["end_ms"], asr_words, lang
+                )
                 if not spans:
-                    spans = _energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope or [], hop_ms)
-                cue = build_cue(str(row["text"]), row["start_ms"], row["end_ms"], lang, spans)
+                    spans = _energy_token_spans(
+                        row["start_ms"],
+                        row["end_ms"],
+                        len(pieces),
+                        envelope or [],
+                        hop_ms,
+                    )
+                cue = build_cue(
+                    str(row["text"]), row["start_ms"], row["end_ms"], lang, spans
+                )
                 if cue:
                     cues.append(cue)
             return {
@@ -120,8 +151,12 @@ def align_lyrics(
         cues = []
         for row in bounds:
             pieces = tokenize(str(row["text"]), lang)
-            spans = _energy_token_spans(row["start_ms"], row["end_ms"], len(pieces), envelope, hop_ms)
-            cue = build_cue(str(row["text"]), row["start_ms"], row["end_ms"], lang, spans)
+            spans = _energy_token_spans(
+                row["start_ms"], row["end_ms"], len(pieces), envelope, hop_ms
+            )
+            cue = build_cue(
+                str(row["text"]), row["start_ms"], row["end_ms"], lang, spans
+            )
             if cue:
                 cues.append(cue)
         source = str(audio_path.name) if audio_path else "envelope"

@@ -1,4 +1,5 @@
 import pytest
+
 from lovktv.room_store import enqueue, ensure_room, play_now, room_snapshot, skip
 
 
@@ -122,8 +123,9 @@ def test_enqueue_after_empty_queue_starts_song(tmp_path, monkeypatch):
 
 def test_stuck_negative_index_heals_when_queue_has_songs(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
-    from lovktv import store
     import sqlite3
+
+    from lovktv import store
 
     store.DB_PATH = tmp_path / "t.sqlite"
     store.MEDIA_DIR = tmp_path / "media"
@@ -142,4 +144,7 @@ def test_stuck_negative_index_heals_when_queue_has_songs(tmp_path, monkeypatch):
 def test_retry_query_uses_title_and_artist():
     from lovktv.store import retry_query
 
-    assert retry_query({"title": "Give a reason · 林原めぐみ", "artist": "林原めぐみ"}) == "Give a reason 林原めぐみ"
+    assert (
+        retry_query({"title": "Give a reason · 林原めぐみ", "artist": "林原めぐみ"})
+        == "Give a reason 林原めぐみ"
+    )

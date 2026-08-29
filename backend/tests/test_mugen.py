@@ -1,8 +1,7 @@
 from pathlib import Path
 
-from lovktv.catalog import fetch, mugen
 from lovktv import jobs
-
+from lovktv.catalog import fetch, mugen
 
 ASS = """\ufeff[Script Info]
 Title: NIGHT DANCER
@@ -17,11 +16,16 @@ Dialogue: 0,0:03:15.76,0:03:20.26,groupe,,0,0,0,fx,{\\k90\\fad(300,200)}{\\k29}f
 
 
 def test_pick_title_prefers_japanese_over_romaji():
-    assert mugen.pick_title({
-        "titles": {"eng": "Gunjou", "qro": "Gunjô", "jpn": "群青"},
-        "titles_default_language": "eng",
-        "songname": "Gunjou",
-    }) == "群青"
+    assert (
+        mugen.pick_title(
+            {
+                "titles": {"eng": "Gunjou", "qro": "Gunjô", "jpn": "群青"},
+                "titles_default_language": "eng",
+                "songname": "Gunjou",
+            }
+        )
+        == "群青"
+    )
 
 
 def test_install_video_encodes_av1(tmp_path, monkeypatch):
@@ -45,7 +49,11 @@ def test_install_video_copies_h264_mp4(tmp_path, monkeypatch):
     dest = tmp_path / "mtv.mp4"
     src.write_bytes(b"v" * 2000)
     monkeypatch.setattr(mugen, "video_codec", lambda path: "h264")
-    monkeypatch.setattr(mugen, "_ffmpeg", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("copy h264")))
+    monkeypatch.setattr(
+        mugen,
+        "_ffmpeg",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("copy h264")),
+    )
     assert mugen.install_video(src, dest)
     assert dest.read_bytes() == src.read_bytes()
 
@@ -61,9 +69,17 @@ def test_finish_ready_lyrics_marks_native_video(tmp_path, monkeypatch):
     )
     monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "x", "artist": "y"})
-    monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("keep mv")))
-    jobs._finish_ready_lyrics("s1", out_dir, out_dir / "mtv.mp4", "en", rebuild_mtv=False)
-    timeline = __import__("json").loads((out_dir / "lyrics.json").read_text(encoding="utf-8"))
+    monkeypatch.setattr(
+        jobs,
+        "compose_mtv",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("keep mv")),
+    )
+    jobs._finish_ready_lyrics(
+        "s1", out_dir, out_dir / "mtv.mp4", "en", rebuild_mtv=False
+    )
+    timeline = __import__("json").loads(
+        (out_dir / "lyrics.json").read_text(encoding="utf-8")
+    )
     assert timeline["native_video"] is True
 
 
@@ -78,8 +94,12 @@ def test_finish_ready_lyrics_keeps_composed_mtv_off_native(tmp_path, monkeypatch
     monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "x", "artist": "y"})
     monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: None)
-    jobs._finish_ready_lyrics("s2", out_dir, out_dir / "mtv.mp4", "en", rebuild_mtv=False)
-    timeline = __import__("json").loads((out_dir / "lyrics.json").read_text(encoding="utf-8"))
+    jobs._finish_ready_lyrics(
+        "s2", out_dir, out_dir / "mtv.mp4", "en", rebuild_mtv=False
+    )
+    timeline = __import__("json").loads(
+        (out_dir / "lyrics.json").read_text(encoding="utf-8")
+    )
     assert timeline.get("native_video") is not True
 
 
@@ -137,15 +157,17 @@ def test_pick_vocal_hit_skips_off_vocal():
 
 
 def test_map_hit_marks_off_vocal():
-    hit = mugen.map_hit({
-        "kid": "2e626891-5435-4333-b9bc-90e270f74e8f",
-        "titles": {"jpn": "群青"},
-        "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers",
-        "singers": [{"name": "YOASOBI"}],
-        "lyrics_infos": [{"filename": "x.ass"}],
-        "mediafile": "x.mp4",
-        "duration": 262,
-    })
+    hit = mugen.map_hit(
+        {
+            "kid": "2e626891-5435-4333-b9bc-90e270f74e8f",
+            "titles": {"jpn": "群青"},
+            "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers",
+            "singers": [{"name": "YOASOBI"}],
+            "lyrics_infos": [{"filename": "x.ass"}],
+            "mediafile": "x.mp4",
+            "duration": 262,
+        }
+    )
     assert hit["off_vocal"] is True
     assert hit["clean"] is False
     assert hit["title"] == "群青"
@@ -172,14 +194,20 @@ def test_open_mugen_preview_uses_mediafile(monkeypatch):
         return FakeResp()
 
     monkeypatch.setattr(mugen.urllib.request, "urlopen", fake_urlopen)
-    resp = mugen.open_mugen_preview("2e626891-5435-4333-b9bc-90e270f74e8f", media_name="song.mp4")
+    resp = mugen.open_mugen_preview(
+        "2e626891-5435-4333-b9bc-90e270f74e8f", media_name="song.mp4"
+    )
     assert resp is not None
-    assert any(url.startswith("https://kara.moe/downloads/medias/") and "song.mp4" in url for url in opened)
+    assert any(
+        url.startswith("https://kara.moe/downloads/medias/") and "song.mp4" in url
+        for url in opened
+    )
 
 
 def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from fastapi.testclient import TestClient
+
     from lovktv import host_volume, main, store
 
     store.DB_PATH = tmp_path / "t.sqlite"
@@ -209,7 +237,9 @@ def test_preview_api_accepts_mugen_kid(tmp_path, monkeypatch):
         info = client.get("/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f/resolve")
         assert info.status_code == 200
         assert info.json()["kind"] == "mugen"
-        stream = client.get("/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f?media=song.mp4")
+        stream = client.get(
+            "/api/preview/2e626891-5435-4333-b9bc-90e270f74e8f?media=song.mp4"
+        )
         assert stream.status_code == 200
         assert stream.content == b"abc"
 
@@ -238,7 +268,13 @@ def test_search_songs_puts_mugen_first(monkeypatch):
         fetch,
         "search_bilibili_hits",
         lambda query, count=8, page=1: [
-            {"id": "BV1xx", "title": "B站兜底", "artist": "UP", "source": "bilibili", "is_mv": True}
+            {
+                "id": "BV1xx",
+                "title": "B站兜底",
+                "artist": "UP",
+                "source": "bilibili",
+                "is_mv": True,
+            }
         ],
     )
     monkeypatch.setattr(fetch, "search_ytdlp_hits", lambda *args, **kwargs: [])
@@ -272,7 +308,15 @@ def test_search_songs_queries_channels_together(monkeypatch):
 
     def fake_bili(query, count=8, page=1):
         called.append("bilibili")
-        return [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}]
+        return [
+            {
+                "id": "BV1xx",
+                "title": "B站",
+                "artist": "UP",
+                "source": "bilibili",
+                "is_mv": True,
+            }
+        ]
 
     monkeypatch.setattr(fetch, "search_mugen", fake_mugen)
     monkeypatch.setattr(fetch, "search_bilibili_hits", fake_bili)
@@ -318,17 +362,35 @@ def test_search_songs_shows_remaining_channels(monkeypatch):
     monkeypatch.setattr(
         fetch,
         "search_bilibili_hits",
-        lambda query, count=8, page=1: [{"id": "BV1xx", "title": "B站", "artist": "UP", "source": "bilibili", "is_mv": True}],
+        lambda query, count=8, page=1: [
+            {
+                "id": "BV1xx",
+                "title": "B站",
+                "artist": "UP",
+                "source": "bilibili",
+                "is_mv": True,
+            }
+        ],
     )
     monkeypatch.setattr(
         fetch,
         "search_ytdlp_hits",
         lambda query, provider, count=5, page=1: [
-            {"id": "soundcloud_abc", "title": "sc", "artist": "", "source": "soundcloud", "is_mv": False}
+            {
+                "id": "soundcloud_abc",
+                "title": "sc",
+                "artist": "",
+                "source": "soundcloud",
+                "is_mv": False,
+            }
         ],
     )
     result = fetch.search_songs("晴天", count=10, page=1)
-    assert [hit["source"] for hit in result["hits"]] == ["mugen", "bilibili", "soundcloud"]
+    assert [hit["source"] for hit in result["hits"]] == [
+        "mugen",
+        "bilibili",
+        "soundcloud",
+    ]
     assert result["sources"] == ["mugen", "bilibili", "soundcloud"]
 
 
@@ -339,7 +401,11 @@ def test_import_song_prefers_vocal_mugen_hit(tmp_path, monkeypatch):
         return {
             "hits": [
                 {"id": "off-kid", "title": "群青", "off_vocal": True},
-                {"id": "88bbec95-58e2-4407-adf2-74d7c6e4ac1d", "title": "群青", "off_vocal": False},
+                {
+                    "id": "88bbec95-58e2-4407-adf2-74d7c6e4ac1d",
+                    "title": "群青",
+                    "off_vocal": False,
+                },
             ]
         }
 
@@ -361,7 +427,10 @@ def test_import_song_uses_mugen_kid(tmp_path, monkeypatch):
         called["kid"] = kid
         called["query"] = query
         (out_dir / "original.mp3").write_bytes(b"x" * 1000)
-        return {"title": "NIGHT DANCER", "source": {"provider": "karaoke-mugen", "kid": kid}}
+        return {
+            "title": "NIGHT DANCER",
+            "source": {"provider": "karaoke-mugen", "kid": kid},
+        }
 
     monkeypatch.setattr(fetch, "import_mugen_song", fake_import)
     skeleton = fetch.import_song(
@@ -369,7 +438,10 @@ def test_import_song_uses_mugen_kid(tmp_path, monkeypatch):
         out_dir=tmp_path,
         song_id="13393b41-9204-42ca-b014-e548bd60ca9f",
     )
-    assert called == {"kid": "13393b41-9204-42ca-b014-e548bd60ca9f", "query": "NIGHT DANCER"}
+    assert called == {
+        "kid": "13393b41-9204-42ca-b014-e548bd60ca9f",
+        "query": "NIGHT DANCER",
+    }
     assert skeleton["source"]["provider"] == "karaoke-mugen"
 
 
@@ -453,14 +525,34 @@ def test_process_import_keeps_mugen_lyrics(tmp_path, monkeypatch):
     separated = []
     aligned = []
     annotated = []
-    monkeypatch.setattr(jobs, "separate_vocals", lambda *args, **kwargs: separated.append(True))
-    monkeypatch.setattr(jobs, "_align_and_mtv", lambda *args, **kwargs: aligned.append(True))
-    monkeypatch.setattr(jobs, "annotate_ja_lines", lambda *args, **kwargs: annotated.append(True) or {"lines": []})
+    monkeypatch.setattr(
+        jobs, "separate_vocals", lambda *args, **kwargs: separated.append(True)
+    )
+    monkeypatch.setattr(
+        jobs, "_align_and_mtv", lambda *args, **kwargs: aligned.append(True)
+    )
+    monkeypatch.setattr(
+        jobs,
+        "annotate_ja_lines",
+        lambda *args, **kwargs: annotated.append(True) or {"lines": []},
+    )
     monkeypatch.setattr(jobs, "apply_ja_annotation", lambda *args, **kwargs: None)
     monkeypatch.setattr(jobs, "write_subtitles", lambda *args, **kwargs: None)
-    monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "NIGHT DANCER", "artist": "ReGLOSS", "error": ""})
-    monkeypatch.setattr(jobs, "compose_mtv", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("should keep official MV")))
-    jobs.process_import(song_id, "NIGHT DANCER", "13393b41-9204-42ca-b014-e548bd60ca9f", "ja")
+    monkeypatch.setattr(
+        jobs,
+        "get_song",
+        lambda sid: {"title": "NIGHT DANCER", "artist": "ReGLOSS", "error": ""},
+    )
+    monkeypatch.setattr(
+        jobs,
+        "compose_mtv",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("should keep official MV")
+        ),
+    )
+    jobs.process_import(
+        song_id, "NIGHT DANCER", "13393b41-9204-42ca-b014-e548bd60ca9f", "ja"
+    )
     assert separated == []
     assert aligned == []
     assert annotated == [True]
@@ -496,21 +588,34 @@ def test_process_import_separates_mugen_mp4(tmp_path, monkeypatch):
         },
     )
     separated = []
-    monkeypatch.setattr(jobs, "separate_vocals", lambda *args, **kwargs: separated.append(True))
+    monkeypatch.setattr(
+        jobs, "separate_vocals", lambda *args, **kwargs: separated.append(True)
+    )
     monkeypatch.setattr(jobs, "_finish_ready_lyrics", lambda *args, **kwargs: None)
-    monkeypatch.setattr(jobs, "get_song", lambda sid: {"title": "Give a reason", "error": ""})
-    jobs.process_import(song_id, "Give a reason", "53dc255f-65fc-48cb-a2bb-ce58c2d08a3d", "ja")
+    monkeypatch.setattr(
+        jobs, "get_song", lambda sid: {"title": "Give a reason", "error": ""}
+    )
+    jobs.process_import(
+        song_id, "Give a reason", "53dc255f-65fc-48cb-a2bb-ce58c2d08a3d", "ja"
+    )
     assert separated == [True]
 
 
 def test_ensure_karaoke_stems_keeps_dual(tmp_path, monkeypatch):
     (tmp_path / "karaoke.m4a").write_bytes(b"k" * 100)
     (tmp_path / "original.mp3").write_bytes(b"o" * 100)
-    monkeypatch.setattr(jobs, "separate_vocals", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("dual")))
+    monkeypatch.setattr(
+        jobs,
+        "separate_vocals",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("dual")),
+    )
     mode = jobs.ensure_karaoke_stems(
         tmp_path,
         tmp_path / "original.mp3",
-        {"audio": {"source": "mugen-dual", "dual_audio": True}, "source": {"provider": "karaoke-mugen"}},
+        {
+            "audio": {"source": "mugen-dual", "dual_audio": True},
+            "source": {"provider": "karaoke-mugen"},
+        },
     )
     assert mode == "dual"
 
@@ -526,14 +631,27 @@ def test_ensure_karaoke_stems_attaches_vocal_for_off_vocal(tmp_path, monkeypatch
         return True
 
     monkeypatch.setattr(jobs, "attach_vocal_audio", fake_attach)
-    monkeypatch.setattr(jobs, "_fallback_media", lambda src_path, out_dir: (out_dir / "karaoke.m4a").write_bytes(b"k" * 100))
-    monkeypatch.setattr(jobs, "separate_vocals", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("off-vocal+vocal")))
+    monkeypatch.setattr(
+        jobs,
+        "_fallback_media",
+        lambda src_path, out_dir: (out_dir / "karaoke.m4a").write_bytes(b"k" * 100),
+    )
+    monkeypatch.setattr(
+        jobs,
+        "separate_vocals",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("off-vocal+vocal")
+        ),
+    )
     mode = jobs.ensure_karaoke_stems(
         tmp_path,
         src,
         {
             "title": "群青 · YOASOBI",
-            "source": {"provider": "karaoke-mugen", "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers"},
+            "source": {
+                "provider": "karaoke-mugen",
+                "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers",
+            },
             "audio": {"source": "mugen"},
         },
     )
@@ -562,8 +680,16 @@ def test_attach_vocal_audio_downloads_sibling(tmp_path, monkeypatch):
             ]
         },
     )
-    monkeypatch.setattr(mugen, "fetch_kara", lambda kid: {"kid": kid, "mediafile": f"{kid}.mp4"})
-    monkeypatch.setattr(mugen, "download_file", lambda url, dest, timeout=600, min_size=200: Path(dest).write_bytes(b"m" * 30000))
+    monkeypatch.setattr(
+        mugen, "fetch_kara", lambda kid: {"kid": kid, "mediafile": f"{kid}.mp4"}
+    )
+    monkeypatch.setattr(
+        mugen,
+        "download_file",
+        lambda url, dest, timeout=600, min_size=200: Path(dest).write_bytes(
+            b"m" * 30000
+        ),
+    )
     extracted = []
 
     def fake_extract(src, dest, stream_index=None):
@@ -595,7 +721,11 @@ def test_prepare_media_extracts_dual_tracks(tmp_path, monkeypatch):
         ],
     )
     monkeypatch.setattr(mugen, "extract_audio", fake_extract)
-    monkeypatch.setattr(mugen, "install_video", lambda src_path, dest: dest.write_bytes(b"v" * 2000) or True)
+    monkeypatch.setattr(
+        mugen,
+        "install_video",
+        lambda src_path, dest: dest.write_bytes(b"v" * 2000) or True,
+    )
     info = mugen.prepare_media(src, tmp_path)
     assert info["dual_audio"] is True
     assert info["needs_separate"] is False
@@ -623,7 +753,11 @@ def test_prepare_media_single_mix_still_needs_separation(tmp_path, monkeypatch):
         ],
     )
     monkeypatch.setattr(mugen, "extract_audio", fake_extract)
-    monkeypatch.setattr(mugen, "install_video", lambda src_path, dest: dest.write_bytes(b"v" * 2000) or True)
+    monkeypatch.setattr(
+        mugen,
+        "install_video",
+        lambda src_path, dest: dest.write_bytes(b"v" * 2000) or True,
+    )
     info = mugen.prepare_media(src, tmp_path)
     assert info["dual_audio"] is False
     assert info["needs_separate"] is True
@@ -703,7 +837,9 @@ def test_search_mugen_uses_local_index(monkeypatch):
         monkeypatch.setattr(
             mugen,
             "_search_mugen_api",
-            lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("kara.moe must stay unused")),
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("kara.moe must stay unused")
+            ),
         )
         result = mugen.search_mugen("群青", count=10, page=1)
     finally:
@@ -723,7 +859,9 @@ def test_fetch_kara_uses_index_before_live_api(monkeypatch):
         monkeypatch.setattr(
             mugen,
             "get_json",
-            lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("live kara.moe")),
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("live kara.moe")
+            ),
         )
         kara = mugen.fetch_kara("2e626891-5435-4333-b9bc-90e270f74e8f")
     finally:

@@ -7,8 +7,17 @@ import threading
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv.agents.ja_lyrics import annotate_ja_lines, apply_ja_annotation, line_is_romaji
-from lovktv.agents.translate import apply_zh_translation, is_chinese_lang, translate_lines
+from lovktv import store as _store
+from lovktv.agents.ja_lyrics import (
+    annotate_ja_lines,
+    apply_ja_annotation,
+    line_is_romaji,
+)
+from lovktv.agents.translate import (
+    apply_zh_translation,
+    is_chinese_lang,
+    translate_lines,
+)
 from lovktv.catalog.fetch import import_song, parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
 from lovktv.config import MEDIA_DIR
@@ -24,9 +33,8 @@ from lovktv.pipeline.lyrics import (
     write_subtitles,
 )
 from lovktv.pipeline.mtv import compose_mtv
-from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
-from lovktv import store as _store
+from lovktv.pipeline.transcribe import transcribe_words
 
 
 class SongRepository(Protocol):
@@ -59,6 +67,7 @@ class StoreSongRepository:
 
 song_repository: SongRepository = StoreSongRepository()
 
+
 # Compatibility seams for existing callers/tests.  Worker code calls these
 # names, while the actual persistence dependency is now injected above.
 def get_song(song_id: str) -> dict | None:
@@ -85,6 +94,7 @@ def _publish_ready(song_id: str) -> None:
     except Exception as exc:  # noqa: BLE001
         print(f"[lovktv] oss publish {song_id} skipped: {exc}", flush=True)
 
+
 JobFn = Callable[..., Any]
 
 
@@ -96,12 +106,27 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
     guide = out_dir / "guide.m4a"
     if shutil.which("ffmpeg"):
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "192k", str(karaoke)],
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src),
+                "-c:a",
+                "aac",
+                "-b:a",
+                "192k",
+                str(karaoke),
+            ],
             check=True,
             timeout=120,
             capture_output=True,
         )
-        subprocess.run(["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)], check=True, timeout=120, capture_output=True)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)],
+            check=True,
+            timeout=120,
+            capture_output=True,
+        )
     else:
         shutil.copy2(src, out_dir / "karaoke.m4a")
         shutil.copy2(src, out_dir / "guide.m4a")
@@ -110,7 +135,9 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
 def _is_mugen_skeleton(skeleton: dict) -> bool:
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
     audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
-    return source.get("provider") == "karaoke-mugen" or str(audio.get("source") or "").startswith("mugen")
+    return source.get("provider") == "karaoke-mugen" or str(
+        audio.get("source") or ""
+    ).startswith("mugen")
 
 
 def _is_mugen_dual(skeleton: dict) -> bool:
@@ -132,17 +159,25 @@ def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
             return "dual"
         _fallback_media(src, out_dir)
         return "dual-fallback"
-    off = is_off_vocal(str(source.get("songname") or ""), str(skeleton.get("title") or ""))
+    off = is_off_vocal(
+        str(source.get("songname") or ""), str(skeleton.get("title") or "")
+    )
     if off:
         if src.exists() and not karaoke.exists():
             _fallback_media(src, out_dir)
-        if attach_vocal_audio(out_dir, skeleton) and karaoke.exists() and original.exists():
+        if (
+            attach_vocal_audio(out_dir, skeleton)
+            and karaoke.exists()
+            and original.exists()
+        ):
             return "off-vocal+vocal"
     separate_vocals(original if original.exists() else src, out_dir)
     return "onnx"
 
 
-def process_import(song_id: str, query: str, netease_id: str = "", language: str | None = None) -> None:
+def process_import(
+    song_id: str, query: str, netease_id: str = "", language: str | None = None
+) -> None:
     out_dir = MEDIA_DIR / song_id
     try:
         update_song(song_id, status="fetching")
@@ -257,7 +292,9 @@ def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
         return False
 
 
-def _translate_foreign_timeline(song_id: str, out_dir: Path, timeline: dict, language: str | None) -> bool:
+def _translate_foreign_timeline(
+    song_id: str, out_dir: Path, timeline: dict, language: str | None
+) -> bool:
     cues = timeline.get("cues") or []
     if not cues or is_chinese_lang(language or timeline.get("language")):
         return False
@@ -298,7 +335,9 @@ def _finish_ready_lyrics(
     timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
     song = get_song(song_id) or {}
     blob = "".join(_cue_source(cue) for cue in timeline.get("cues") or [])
-    lang = resolve_language(blob, language, timeline.get("language"), song.get("language"))
+    lang = resolve_language(
+        blob, language, timeline.get("language"), song.get("language")
+    )
     timeline["language"] = lang
     burned = bool(timeline.get("burned_lyrics"))
     official = _stamp_native_video(timeline, out_dir)
@@ -413,11 +452,17 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
     )
     rows = prepare_lyric_lines(rows, lang)
     src = out_dir / "original.mp3"
-    timeline = rebuild_manual_timeline(rows, existing, probe_duration_ms(src) if src.exists() else None)
+    timeline = rebuild_manual_timeline(
+        rows, existing, probe_duration_ms(src) if src.exists() else None
+    )
     notes_path = out_dir / "ja-annotate.json"
     if lang == "ja":
-        if notes_path.exists() and not any(line_is_romaji(_cue_source(cue)) for cue in timeline.get("cues") or []):
-            apply_ja_annotation(timeline, json.loads(notes_path.read_text(encoding="utf-8")))
+        if notes_path.exists() and not any(
+            line_is_romaji(_cue_source(cue)) for cue in timeline.get("cues") or []
+        ):
+            apply_ja_annotation(
+                timeline, json.loads(notes_path.read_text(encoding="utf-8"))
+            )
         else:
             _annotate_ja_timeline(song_id, out_dir, timeline)
     voice = out_dir / "vocals.wav"
@@ -448,7 +493,9 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
         _publish_ready(song_id)
 
 
-def process_realign(song_id: str, language: str | None = None, rebuild_mtv: bool = False) -> None:
+def process_realign(
+    song_id: str, language: str | None = None, rebuild_mtv: bool = False
+) -> None:
     """Re-run the same ASR + lyric pipeline used by import/upload."""
     out_dir = MEDIA_DIR / song_id
     src = out_dir / "original.mp3"
@@ -544,7 +591,9 @@ class JobQueue:
     """
 
     def __init__(self, worker_name: str = "lovktv-jobs") -> None:
-        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = queue.Queue()
+        self._jobs: queue.Queue[tuple[JobFn, tuple, dict[str, Any], str]] = (
+            queue.Queue()
+        )
         self._queued: set[str] = set()
         self._lock = threading.Lock()
         self._worker_started = False
@@ -575,7 +624,11 @@ class JobQueue:
     def start(self) -> bool:
         """Start the queue worker once and report whether it was started."""
         with self._lock:
-            if self._worker_started and self._worker_thread and self._worker_thread.is_alive():
+            if (
+                self._worker_started
+                and self._worker_thread
+                and self._worker_thread.is_alive()
+            ):
                 return False
             self._stop_event.clear()
             self._worker_started = True
@@ -690,8 +743,13 @@ class JobRecovery:
             status = str(song.get("status") or "")
             song_id = str(song["id"])
             out_dir = media_dir / song_id
-            has_audio = (out_dir / "original.mp3").exists() or (out_dir / "vocals.wav").exists()
-            if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
+            has_audio = (out_dir / "original.mp3").exists() or (
+                out_dir / "vocals.wav"
+            ).exists()
+            if (
+                status in {"aligning", "annotating", "composing", "separating"}
+                and has_audio
+            ):
                 if _has_ready_lyrics(out_dir):
                     pending_finish.append((song_id, out_dir, song.get("language")))
                 else:
@@ -699,7 +757,12 @@ class JobRecovery:
                 continue
             if status in {"queued", "fetching"}:
                 pending_import.append(
-                    (song_id, songs.retry_query(song), str(song.get("netease_id") or ""), song.get("language"))
+                    (
+                        song_id,
+                        songs.retry_query(song),
+                        str(song.get("netease_id") or ""),
+                        song.get("language"),
+                    )
                 )
         for song_id, out_dir, language in pending_finish:
             src = out_dir / "original.mp3"
@@ -713,7 +776,12 @@ class JobRecovery:
             submit(_finish_ready_lyrics, song_id, out_dir, src, language, False)
             resumed += 1
         for song_id, language in pending_align:
-            submit(process_realign, song_id, language, not _has_native_mtv(media_dir / song_id))
+            submit(
+                process_realign,
+                song_id,
+                language,
+                not _has_native_mtv(media_dir / song_id),
+            )
             resumed += 1
         for song_id, query, netease_id, language in pending_import:
             submit(process_import, song_id, query, netease_id, language)

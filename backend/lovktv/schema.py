@@ -44,7 +44,9 @@ TABLES: dict[str, tuple[str, ...]] = {
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
-ROOM_FIELDS = frozenset({"vocal_mix", "volume", "mic_gain", "lyric_mode", "now_index", "paused"})
+ROOM_FIELDS = frozenset(
+    {"vocal_mix", "volume", "mic_gain", "lyric_mode", "now_index", "paused"}
+)
 
 # Epoch milliseconds overflow 32-bit INTEGER on Postgres.
 SQLITE_DDL = """

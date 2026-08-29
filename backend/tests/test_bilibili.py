@@ -28,12 +28,18 @@ def test_wbi_sign_is_stable():
         ts=1700000000,
     )
     assert signed["wts"] == 1700000000
-    assert signed["w_rid"] == hashlib.md5(
-        (
-            "keyword=%E6%99%B4%E5%A4%A9&search_type=video&wts=1700000000"
-            + bilibili.mixin_key("7cd084941338484aae1ad9425b84077c", "4932caff0ff746eab6f01bf08b70ac45")
-        ).encode()
-    ).hexdigest()
+    assert (
+        signed["w_rid"]
+        == hashlib.md5(
+            (
+                "keyword=%E6%99%B4%E5%A4%A9&search_type=video&wts=1700000000"
+                + bilibili.mixin_key(
+                    "7cd084941338484aae1ad9425b84077c",
+                    "4932caff0ff746eab6f01bf08b70ac45",
+                )
+            ).encode()
+        ).hexdigest()
+    )
 
 
 def test_video_items_reads_all_v2_block():
@@ -45,7 +51,14 @@ def test_video_items_reads_all_v2_block():
                     {"result_type": "tips", "data": []},
                     {
                         "result_type": "video",
-                        "data": [{"bvid": "BV1xx", "title": "晴天", "author": "x", "duration": "4:30"}],
+                        "data": [
+                            {
+                                "bvid": "BV1xx",
+                                "title": "晴天",
+                                "author": "x",
+                                "duration": "4:30",
+                            }
+                        ],
                     },
                 ]
             },
@@ -60,7 +73,15 @@ def test_search_videos_falls_back_when_wbi_empty(monkeypatch):
     monkeypatch.setattr(
         bilibili,
         "_search_all",
-        lambda query, page: [{"bvid": "BV1UZhK61E9z", "title": "<em>晴天</em>", "author": "杰威尔", "duration": "5:16", "pic": ""}],
+        lambda query, page: [
+            {
+                "bvid": "BV1UZhK61E9z",
+                "title": "<em>晴天</em>",
+                "author": "杰威尔",
+                "duration": "5:16",
+                "pic": "",
+            }
+        ],
     )
     monkeypatch.setattr(bilibili.time, "sleep", lambda _s: None)
     hits = bilibili.search_videos("晴天")
@@ -80,7 +101,10 @@ def test_strip_title_and_duration():
     assert bilibili.parse_duration("1:05:16") == 3916
     assert bilibili.parse_duration(240) == 240
     assert bilibili.parse_duration("NA") is None
-    assert bilibili.cover_url("//i0.hdslb.com/bfs/x.jpg") == "https://i0.hdslb.com/bfs/x.jpg"
+    assert (
+        bilibili.cover_url("//i0.hdslb.com/bfs/x.jpg")
+        == "https://i0.hdslb.com/bfs/x.jpg"
+    )
 
 
 def test_score_prefers_official_mv():
@@ -147,15 +171,28 @@ def test_resolve_retries_bilibili_over_cached_youtube(monkeypatch):
     fetch._AUDIO_CACHE.clear()
     fetch.remember_audio_source(
         "186016",
-        {"kind": "ytdlp", "page": "https://youtube.com/watch?v=wrong", "title": "花海 DJ", "provider": "youtube"},
+        {
+            "kind": "ytdlp",
+            "page": "https://youtube.com/watch?v=wrong",
+            "title": "花海 DJ",
+            "provider": "youtube",
+        },
     )
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
-        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+        lambda title, artist="": {
+            "bvid": "BV1UZhK61E9z",
+            "title": "周杰伦-晴天[正版]",
+            "pic": "",
+        },
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    monkeypatch.setattr(
+        fetch.bilibili,
+        "play_urls",
+        lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
+    )
     source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
     assert source["kind"] == "bilibili"
     assert source["bvid"] == "BV1UZhK61E9z"
@@ -166,9 +203,17 @@ def test_resolve_uses_netease_before_bilibili(monkeypatch):
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
-        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+        lambda title, artist="": {
+            "bvid": "BV1UZhK61E9z",
+            "title": "周杰伦-晴天[正版]",
+            "pic": "",
+        },
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    monkeypatch.setattr(
+        fetch.bilibili,
+        "play_urls",
+        lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
+    )
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: True)
     monkeypatch.setattr(fetch.shutil, "which", lambda name: "/usr/bin/yt-dlp")
     source = fetch.resolve_audio_source("186016", "晴天", "周杰伦")
@@ -188,7 +233,11 @@ def test_resolve_retries_cleaned_title_on_bilibili(monkeypatch):
 
     monkeypatch.setattr(fetch, "probe_netease_url", lambda song_id: False)
     monkeypatch.setattr(fetch, "pick_bilibili_mv", fake_pick)
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    monkeypatch.setattr(
+        fetch.bilibili,
+        "play_urls",
+        lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
+    )
     source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
     assert ("晴天(深情版)", "Lucky小爱") in seen
     assert ("晴天", "") in seen
@@ -201,9 +250,17 @@ def test_resolve_uses_bilibili_when_netease_empty(monkeypatch):
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
-        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+        lambda title, artist="": {
+            "bvid": "BV1UZhK61E9z",
+            "title": "周杰伦-晴天[正版]",
+            "pic": "",
+        },
     )
-    monkeypatch.setattr(fetch.bilibili, "play_urls", lambda bvid: {"audio_url": "https://upos.example/a.m4s"})
+    monkeypatch.setattr(
+        fetch.bilibili,
+        "play_urls",
+        lambda bvid: {"audio_url": "https://upos.example/a.m4s"},
+    )
     source = fetch.resolve_audio_source("2652820720", "晴天(深情版)", "Lucky小爱")
     assert source["kind"] == "bilibili"
     assert source["bvid"] == "BV1UZhK61E9z"
@@ -220,13 +277,21 @@ def test_import_uses_bilibili_before_soundcloud(tmp_path, monkeypatch):
     monkeypatch.setattr(
         fetch,
         "search_tonzhon",
-        lambda *args, **kwargs: [{"id": "186016", "name": "晴天", "artist": ["周杰伦"]}],
+        lambda *args, **kwargs: [
+            {"id": "186016", "name": "晴天", "artist": ["周杰伦"]}
+        ],
     )
-    monkeypatch.setattr(fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]故事的小黄花")
+    monkeypatch.setattr(
+        fetch, "fetch_lyric", lambda song_id, source="netease": "[00:01.00]故事的小黄花"
+    )
     monkeypatch.setattr(
         fetch,
         "pick_bilibili_mv",
-        lambda title, artist="": {"bvid": "BV1UZhK61E9z", "title": "周杰伦-晴天[正版]", "pic": ""},
+        lambda title, artist="": {
+            "bvid": "BV1UZhK61E9z",
+            "title": "周杰伦-晴天[正版]",
+            "pic": "",
+        },
     )
 
     def fake_download(bvid, mp3_path, video_path=None):
@@ -236,8 +301,16 @@ def test_import_uses_bilibili_before_soundcloud(tmp_path, monkeypatch):
         return True
 
     monkeypatch.setattr(fetch, "try_bilibili_download", fake_download)
-    monkeypatch.setattr(fetch, "try_ytdlp_search", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("ytdlp")))
-    monkeypatch.setattr(fetch, "try_netease_download", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease")))
+    monkeypatch.setattr(
+        fetch,
+        "try_ytdlp_search",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("ytdlp")),
+    )
+    monkeypatch.setattr(
+        fetch,
+        "try_netease_download",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("netease")),
+    )
     skeleton = fetch.import_song(query="晴天", out_dir=tmp_path, song_id="186016")
     assert skeleton["audio"]["source"] == "bilibili"
     assert skeleton["has_video"] is True

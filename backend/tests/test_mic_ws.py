@@ -36,8 +36,12 @@ def test_set_mix_clamps_volume_and_mic_gain(tmp_path, monkeypatch):
 def test_mix_http_sets_mac_volume_and_snapshot(tmp_path, monkeypatch):
     main, store = _boot(tmp_path, monkeypatch)
     applied = []
-    monkeypatch.setattr(main, "set_host_volume", lambda volume: applied.append(volume) or True)
-    monkeypatch.setattr(main, "host_volume_meta", lambda: {"host_volume_kind": "mac", "host_volume": 35})
+    monkeypatch.setattr(
+        main, "set_host_volume", lambda volume: applied.append(volume) or True
+    )
+    monkeypatch.setattr(
+        main, "host_volume_meta", lambda: {"host_volume_kind": "mac", "host_volume": 35}
+    )
     store.ensure_room("MAC1")
     with TestClient(main.app) as client:
         res = client.post("/api/rooms/MAC1/mix", json={"volume": 35, "mic_gain": 60})
@@ -63,12 +67,14 @@ def test_ws_relays_rtc_and_marks_mic(tmp_path, monkeypatch):
                 join = tv.receive_json()
                 assert join["type"] == "peer"
                 assert join["role"] == "phone"
-                phone.send_json({
-                    "action": "rtc",
-                    "kind": "offer",
-                    "from": "p-phone",
-                    "sdp": {"type": "offer", "sdp": "x"},
-                })
+                phone.send_json(
+                    {
+                        "action": "rtc",
+                        "kind": "offer",
+                        "from": "p-phone",
+                        "sdp": {"type": "offer", "sdp": "x"},
+                    }
+                )
                 rtc = tv.receive_json()
                 assert rtc["type"] == "rtc"
                 assert rtc["kind"] == "offer"

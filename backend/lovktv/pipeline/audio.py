@@ -12,6 +12,7 @@ from pathlib import Path
 
 from lovktv.pipeline.constants import HOP_MS
 
+
 def probe_duration_ms(path: Path) -> int:
     if not path.exists() or not shutil.which("ffprobe"):
         return 0
@@ -35,6 +36,7 @@ def probe_duration_ms(path: Path) -> int:
         return max(0, int(float((result.stdout or "").strip()) * 1000))
     except ValueError:
         return 0
+
 
 def extract_envelope(audio_path: Path, hop_ms: int = HOP_MS) -> tuple[list[float], int]:
     """Mono 16 kHz RMS envelope. Empty if ffmpeg/audio is missing."""
@@ -73,8 +75,11 @@ def extract_envelope(audio_path: Path, hop_ms: int = HOP_MS) -> tuple[list[float
         chunk = samples[offset : offset + hop]
         if not chunk:
             break
-        envelope.append(math.sqrt(sum(sample * sample for sample in chunk) / len(chunk)))
+        envelope.append(
+            math.sqrt(sum(sample * sample for sample in chunk) / len(chunk))
+        )
     return envelope, hop_ms
+
 
 def vocal_regions(
     envelope: list[float],
@@ -112,6 +117,7 @@ def vocal_regions(
             merged.append((start_ms, end_ms))
     return merged
 
+
 def snap_to_onset(
     target_ms: int,
     regions: list[tuple[int, int]],
@@ -132,6 +138,7 @@ def snap_to_onset(
             best = start_ms
             best_delta = delta
     return best if best is not None else target_ms
+
 
 def energy_token_spans(
     start_ms: int,

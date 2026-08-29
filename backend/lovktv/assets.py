@@ -41,7 +41,11 @@ def _stamp(root: Path) -> tuple[int, int]:
 def _compute(root: Path) -> str:
     digest = hashlib.sha256()
     files = sorted(
-        (path for path in root.rglob("*") if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}),
+        (
+            path
+            for path in root.rglob("*")
+            if path.is_file() and path.name not in {"manifest.json", ".DS_Store"}
+        ),
         key=lambda path: path.relative_to(root).as_posix(),
     )
     for path in files:
@@ -60,7 +64,9 @@ def asset_rev(root: Path) -> str:
     manifest = root / "manifest.json"
     if manifest.is_file():
         try:
-            revision = str(json.loads(manifest.read_text(encoding="utf-8")).get("revision", "")).strip()
+            revision = str(
+                json.loads(manifest.read_text(encoding="utf-8")).get("revision", "")
+            ).strip()
             if revision:
                 return revision[:32]
         except (OSError, ValueError, TypeError):
@@ -95,7 +101,9 @@ def versioned_headers(path: Path) -> dict[str, str]:
 
 
 def versioned_response(path: Path, root: Path, status_code: int = 200) -> Response:
-    body = rewrite_frontend_assets(path.read_text(encoding="utf-8"), asset_rev(root)).encode("utf-8")
+    body = rewrite_frontend_assets(
+        path.read_text(encoding="utf-8"), asset_rev(root)
+    ).encode("utf-8")
     return Response(
         content=body,
         status_code=status_code,
@@ -117,7 +125,9 @@ class VersionedStaticFiles(StaticFiles):
         full = Path(file_path)
         if full.suffix.lower() not in ASSET_SUFFIXES and full.name != "manifest.json":
             return response
-        rewritten = versioned_response(full, self.asset_root, status_code=response.status_code)
+        rewritten = versioned_response(
+            full, self.asset_root, status_code=response.status_code
+        )
         if scope.get("method") == "HEAD":
             return Response(
                 content=b"",

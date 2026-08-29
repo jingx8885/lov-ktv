@@ -30,6 +30,7 @@ def test_lifespan_health_and_public_acceptance_paths(tmp_path, monkeypatch):
 
 def test_job_queue_start_stop_drops_pending_jobs():
     import threading
+
     from lovktv.jobs import JobQueue
 
     queue = JobQueue(worker_name="test-lifecycle")

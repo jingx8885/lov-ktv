@@ -4,6 +4,7 @@ The helpers intentionally resolve mutable values from :mod:`lovktv.main` at
 call time.  This keeps the historical ``main.MEDIA_DIR`` and host-volume
 monkeypatch points working while routers are split into focused modules.
 """
+
 from __future__ import annotations
 
 from fastapi import WebSocket

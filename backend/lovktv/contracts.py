@@ -1,4 +1,5 @@
 """Stable application contracts shared by transports and adapters."""
+
 from __future__ import annotations
 
 from typing import Literal, TypedDict

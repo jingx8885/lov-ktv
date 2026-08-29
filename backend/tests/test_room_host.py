@@ -59,5 +59,8 @@ def test_joining_a_room_binds_this_machine(tmp_path, monkeypatch):
 def test_unknown_machine_has_no_room(tmp_path, monkeypatch):
     app, _store = _app(tmp_path, monkeypatch)
     with TestClient(app) as client:
-        mine = client.get("/api/rooms", headers={"User-Agent": "fresh-browser", "X-LovKtv-Machine": "brand-new-99"})
+        mine = client.get(
+            "/api/rooms",
+            headers={"User-Agent": "fresh-browser", "X-LovKtv-Machine": "brand-new-99"},
+        )
     assert mine.json() == {"code": ""}

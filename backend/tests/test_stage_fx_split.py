@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 FX = ROOT / "frontend" / "public" / "tv" / "fx" / "js"
 
@@ -22,7 +21,9 @@ def test_stage_fx_is_split_into_ordered_modules():
     ]
     positions = [tv.index(f'src="{src}"') for src in scripts]
     assert positions == sorted(positions)
-    assert all((ROOT / "frontend" / "public" / src.lstrip("/")).is_file() for src in scripts)
+    assert all(
+        (ROOT / "frontend" / "public" / src.lstrip("/")).is_file() for src in scripts
+    )
     assert not (FX / "stage-fx.js").exists()
 
 
@@ -38,7 +39,7 @@ def test_stage_fx_browser_smoke():
         FX / "stage-fx" / "party.js",
         FX / "stage-fx" / "hooks.js",
     ]
-    script = r'''
+    script = r"""
 const fs = require("fs");
 const vm = require("vm");
 const files = JSON.parse(process.argv[1]);
@@ -70,7 +71,7 @@ for (const effect of context.LovStageFxPrimitives.EFFECTS) {
 }
 fx.clear();
 if (context.LovStageFxTextHooks.hookTexts([{text:"x"},{text:"x"},{text:"x"}]).size !== 1) throw new Error("hookTexts failed");
-'''
+"""
     result = subprocess.run(
         [node, "-e", script, json.dumps([str(path) for path in files])],
         cwd=ROOT,
