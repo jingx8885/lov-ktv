@@ -72,6 +72,10 @@ def test_phone_entry_has_stable_mount_points_and_boot_module():
         for item in elements
     )
     assert _must_ids("phone") <= _ids(elements)
+    app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
+    assert "export function mount(root, deps" in app
+    assert "setDomRoot(root)" in app
+    assert '$must("' not in app
 
 
 def test_tv_entry_has_stable_mount_points_and_boot_module():
@@ -96,6 +100,24 @@ def test_tv_entry_has_stable_mount_points_and_boot_module():
         for item in elements
     )
     assert _must_ids("tv") <= _ids(elements)
+    app = (ROOT / "tv" / "app.js").read_text(encoding="utf-8")
+    assert "export function mount(root, deps" in app
+    assert "setDomRoot(root)" in app
+    assert '$must("' not in app
+
+
+def test_phone_tv_state_has_explicit_ownership_slices():
+    for path, symbols in {
+        ROOT / "phone" / "catalog" / "state.js": ("catalogState",),
+        ROOT / "phone" / "room" / "state.js": ("roomState",),
+        ROOT / "phone" / "player" / "state.js": ("playerState",),
+        ROOT / "tv" / "room" / "state.js": ("roomState",),
+        ROOT / "tv" / "playback" / "state.js": ("playbackState",),
+        ROOT / "tv" / "audio" / "state.js": ("audioState",),
+    }.items():
+        source = path.read_text(encoding="utf-8")
+        for symbol in symbols:
+            assert f"export const {symbol}" in source
 
 
 def test_android_phone_rebind_injection_uses_mount_contract():

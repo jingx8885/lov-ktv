@@ -156,7 +156,7 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     )
 
     # Cold start is explicitly armed by the same button in browser and APK WebView.
-    assert '$must("start").onclick' in app
+    assert 'must("start").onclick' in app
     assert "unlockAudio();" in app
     assert "startPlayback();" in app
     assert "watchRoom(state.room.code, applyRoom)" in app

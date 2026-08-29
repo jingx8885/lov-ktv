@@ -276,12 +276,22 @@ interface PhonePlatform {
   __onHttp?: (msg: any) => void;
 }
 
+interface PhoneMountDeps {
+  api?: Partial<PhoneApi>;
+  platform?: PhonePlatform;
+}
+
 interface TvPlatform {
   http: { available(): boolean; fetchJson: null };
   media: { url(path: string): string };
   mic: { available(): boolean };
   remote: { available(): boolean };
   scanner: { available(): boolean };
+}
+
+interface TvMountDeps {
+  api?: Partial<TvApi>;
+  platform?: TvPlatform;
 }
 
 type Platform = PhonePlatform | TvPlatform;

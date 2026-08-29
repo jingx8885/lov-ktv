@@ -1,58 +1,32 @@
 import { guardState } from "../shared/ui/js/guard.js";
 import { t } from "../shared/i18n/js/i18n.js";
+import { catalogState } from "./catalog/state.js";
+import { roomState } from "./room/state.js";
+import { playerState } from "./player/state.js";
+
+function ownSlice(target, slice) {
+  Object.keys(slice).forEach((key) => {
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      configurable: false,
+      get: () => slice[key],
+      set: (value) => {
+        slice[key] = value;
+      }
+    });
+  });
+}
 
 /** @type {PhoneState} */
-export const state = guardState(
-  {
-    previewId: "",
-    searchPage: 1,
-    searchHits: [],
-    currentPage: "desk",
-    libState: { q: "", by: "all", letter: "", page: 1 },
-    libTimer: 0,
-    libStamp: "",
-    libSongs: [],
-    libLoading: false,
-    libPages: 1,
-    searchLoading: false,
-    searchHasMore: false,
-    playerSong: null,
-    playerLyrics: { cues: [] },
-    selectedCue: -1,
-    lyricsDirty: false,
-    playerVocal: localStorage.getItem("playerVocal") === "0" ? 0 : 1,
-    songMediaRev: "",
-    playerRaf: 0,
-    playerHeld: true,
-    playerHook: null,
-    playerViz: null,
-    alignTl: null,
-    chainRest: false,
-    voiceTrackOn: true,
-    mixTrackOn: true,
-    playOrder: localStorage.getItem("playOrder") === "shuffle" ? "shuffle" : "seq",
-    playerCatalog: [],
-    playerLoad: 0,
-    playerClockHold: null,
-    playerClockHoldAt: 0,
-    playerHoldDur: 0,
-    lyricPaint: { prev: "", cur: "", next: "", align: "" },
-    roomRtc: null,
-    roomRtcCode: "",
-    mixTimer: 0,
-    lyricMode: "all",
-    nowLanguage: "",
-    phoneMic: null,
-    phoneMicSrc: null,
-    phoneMicGain: null,
-    phoneCtx: null,
-    phoneMicLevel: Number(localStorage.getItem("phoneMicGain") || 80),
-    phoneIem: localStorage.getItem("phoneIem") !== "0",
-    phoneNativeLive: false,
-    phoneStartedTv: false
-  },
-  "phone"
-);
+const phoneState = /** @type {PhoneState} */ ({ currentPage: "desk" });
+ownSlice(phoneState, catalogState);
+ownSlice(phoneState, roomState);
+ownSlice(phoneState, playerState);
+
+/** @type {PhoneState} */
+export const state = guardState(phoneState, "phone");
+
+export { catalogState, roomState, playerState };
 
 export const STEP_MS = 100;
 export const LIB_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ#".split("");

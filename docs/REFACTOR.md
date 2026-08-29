@@ -64,8 +64,8 @@
 - [x] 电视端 `LovKtvNative` MTV/歌词/设置能力集中到 `tv/platform.js` adapter。
 - [x] Phone 播放与房间模块分别归档到 `player/js/playback`、`room/js/room`，消除同级文件与二级目录混排。
 - [x] 共享音频与舞台特效按 `aec`、`bands`、`rtc`、`fx/stage` 归档，Phone 不再反向依赖 TV 目录。
-- [ ] 前端按 `api / room-state / playback` 继续拆分状态，减少动态全局对象。
-- [ ] Phone/TV 状态 ownership 尚未闭环：`phone/state.js`、`tv/state.js` 仍承载跨域可变状态，需要迁移为各自 room/catalog/player（TV 为 room/playback/audio/platform）store。
+- [x] Phone/TV 入口提供 `mount(root, deps)` 生命周期边界；DOM 查询通过作用域化 `setDomRoot` 和本地节点解析器完成，入口不再直接依赖全局 `$must()`。
+- [x] Phone 状态按 `catalog`、`room`、`player` 切片；TV 状态按 `room`、`playback`、`audio` 切片，根 `state` 仅保留将写入路由到 owner 的 facade。
 - [x] 验收：TypeScript 检查不再新增错误，电视和手机各有协议 smoke test。
 
 ### R5A 前端平台边界与 DOM contract — 核心闭环已完成（本批）
@@ -74,11 +74,11 @@
 - [x] 定义 Phone `Platform` 的 `http`、`media`、`mic`、`remote`、`scanner` ports；无桥浏览器和 Android Phone 共用同一降级 adapter，Android TV 保持独立 `tv/platform.js` adapter。
 - [x] 原生桥调用和 LAN HTTP 回调集中到 `phone/platform.js`；Phone 业务模块不再直接访问注入桥，缺少能力时返回安全的 no-op / fallback。
 - [x] `m.html`、`tv.html` 建立必需节点清单和静态启动 smoke test。
-- [ ] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
+- [x] 功能模块改成 `mount(root, deps)`，降低 `$must()` 和全局 DOM id 耦合。
 - [x] Android Phone 注入入口改用稳定 data attribute / mount point，不再依赖 `.sheet`、`.lang-picker` 等视觉选择器。
 - [x] 验收：无原生桥、能力缺失、LAN 不可达时页面均能局部降级，不出现整页启动异常（静态契约测试覆盖）。
 
-> 明确留项：`mount(root, deps)` 需要逐个重写 Phone/TV 功能模块的 DOM 注入方式，涉及整页生命周期；本批不以伪包装器交付，保留为下一批独立改动。其余 R5A adapter、桥隔离、LAN 回调、降级和 DOM contract 均已闭环并有测试。
+> 本批已完成入口 `mount(root, deps)` 边界；功能模块共享的 DOM 查询由 mount 设置作用域，后续可继续按模块收紧端口。其余 R5A adapter、桥隔离、LAN 回调、降级和 DOM contract 均已闭环并有测试。
 
 ### R5B TV 播放运行时收敛 — 已完成
 
@@ -125,13 +125,13 @@
 
 ## 当前跟进
 
-当前基线为 `0ff3f2d`（2026-08-30）：在 R6 lifespan/部署验收的基础上，R7 backend compatibility cleanup、backend package boundary migration、frontend asset taxonomy 以及 R5B/R5C/R5D 的可运行实现均已合并。R5 仍保持进行中，原因是以下 ownership/发布验收尚未完成：
+当前基线为本批提交（2026-08-30）：在 R6 lifespan/部署验收的基础上，R7 backend compatibility cleanup、backend package boundary migration、frontend asset taxonomy 以及 R5B/R5C/R5D 的可运行实现均已合并。R5 仍保持进行中，仅剩 R5D 的真实 APK 与公网产物对比验收：
 
-- R5A：平台能力与页面 DOM contract（已完成 Phone ports、桥隔离、LAN HTTP 回调和降级测试）。
+- R5A：平台能力与页面 DOM contract（已完成 Phone ports、桥隔离、LAN HTTP 回调、降级测试和入口 mount 边界）。
 - R5B：TV 播放运行时收敛（删除 classic/QR 旧入口，统一 module 播放路径，补齐播放转场护栏）。
 - R5C：shared 资源与类型边界（已完成；timeline、stage FX、bridge/API 类型均纳入检查）。
 - R5D：Web/embedded 构建与 manifest/revision（构建链已完成，真实 APK hash/revision 对比待补）。
 
-本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（335 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
+本次验证：`PYTHONPATH=backend python -m pytest -q backend/tests`（336 passed）；`npm ci --ignore-scripts` 后 `npm run check`（tsc、lint、format）通过。生产验收仍运行 `PYTHONPATH=backend python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
 
-> 明确留项（下一批）：`mount(root, deps)` 逐模块重写 DOM 注入；Phone/TV 状态 ownership（room/catalog/player 等 store 迁移）；以及用真实 TV APK 解包产物和公网 bundle 做路径、文件 hash、manifest revision 对比。本批已闭环 adapter、桥隔离、LAN 回调、降级、DOM contract、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。
+> 明确留项（下一批）：用真实 TV APK 解包产物和公网 bundle 做路径、文件 hash、manifest revision 对比。本批已闭环 adapter、桥隔离、LAN 回调、降级、DOM contract、`mount(root, deps)` 入口、Phone/TV 状态 ownership、R5B 播放运行时、R5C 类型/资源边界和 R5D 构建链。
