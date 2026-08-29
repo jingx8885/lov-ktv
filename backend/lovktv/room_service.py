@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 from lovktv.contracts import RoomAction, RoomSnapshot
+from lovktv.room_contract import normalize_command, normalize_room_code
 from lovktv.room_store import RoomRepository, SqliteRoomStore
 
 
@@ -37,21 +38,9 @@ class RoomCommand:
         store remains the single place that clamps room values.
         """
 
-        name = str(action or "").strip().lower()
-        if name not in {"enqueue", "bump", "skip", "play", "mix"}:
-            raise ValueError(f"未知房间命令：{name or '空'}")
-        data = dict(payload or {})
-
-        def optional_bool(key: str) -> bool | None:
-            if key not in data or data[key] is None:
-                return None
-            raw = data[key]
-            if isinstance(raw, bool):
-                return raw
-            if isinstance(raw, (int, float)):
-                return bool(raw)
-            text = str(raw).strip().lower()
-            return text in {"1", "true", "yes", "on"}
+        normalized = normalize_command(action, payload)
+        name = normalized["action"]
+        data = normalized
 
         return cls(
             action=name,  # type: ignore[arg-type]
@@ -61,7 +50,7 @@ class RoomCommand:
             volume=data.get("volume"),
             mic_gain=data.get("mic_gain"),
             lyric_mode=str(data["lyric_mode"]) if data.get("lyric_mode") is not None else None,
-            paused=optional_bool("paused"),
+            paused=data.get("paused"),
         )
 
 
@@ -75,7 +64,7 @@ class RoomService:
         return self.repository.room_snapshot(str(code or "").upper())
 
     def execute(self, code: str, command: RoomCommand) -> dict[str, Any]:
-        room = str(code or "").upper()
+        room = normalize_room_code(code)
         if command.action == "enqueue":
             return self.repository.enqueue(room, command.song_id)
         if command.action == "bump":
