@@ -2,6 +2,7 @@ package com.lovktv.tv
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -15,7 +16,16 @@ class SplashActivity : Activity() {
         main.postDelayed({
             startActivity(Intent(this, SetupActivity::class.java))
             finish()
-            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                overrideActivityTransition(
+                    Activity.OVERRIDE_TRANSITION_OPEN,
+                    android.R.anim.fade_in,
+                    android.R.anim.fade_out,
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            }
         }, 1400)
     }
 

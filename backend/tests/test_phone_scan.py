@@ -57,7 +57,10 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "await waitLanReady();" in join
     assert "await api.loadRoom({ quiet: !!quiet });" in join
     assert "const quiet = !!(opts && opts.quiet);" in queue
+    platform = (ROOT / "phone" / "platform.js").read_text(encoding="utf-8")
+    assert "nativeHttpReady" in join
     assert "LovKtvPlatform" in http
+    assert "phonePlatform" in platform
     origin = (ROOT / "phone" / "origin.js").read_text(encoding="utf-8")
     assert "export function adoptLan" in origin
     assert "platformUseLan" in origin

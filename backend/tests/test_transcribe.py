@@ -90,6 +90,8 @@ def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path):
     monkeypatch.setattr(transcribe, "whisper_pids_for", fake_pids_for)
     monkeypatch.setattr(transcribe, "any_whisper_pids", fake_any)
     monkeypatch.setattr(transcribe, "_wait_until_whisper_idle", fake_idle)
+    # Keep the test independent of whether the optional whisper CLI is
+    # installed on the host; the subprocess call itself is mocked below.
     monkeypatch.setattr(transcribe, "WHISPER_BIN", "whisper")
     monkeypatch.setattr(transcribe.subprocess, "run", fake_run)
     transcribe_words(audio, "ja", cache_path=tmp_path / "asr.json")

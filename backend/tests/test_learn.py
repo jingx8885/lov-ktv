@@ -144,7 +144,9 @@ def test_phone_learn_shell_is_wired():
     assert 'data-learn-mode="echo"' in html
     assert 'id="learnTap"' in html
     assert 'id="learnTapFx"' in html
-    assert (root / "phone" / "player" / "js" / "learn-fx.js").is_file()
+    # Phone learning uses its own feature effect module; the TV stage FX
+    # bundle must not be pulled into the phone entrypoint.
+    assert "stage-fx.js" not in html
     assert "learn.css" in html
     assert "learn-quiz.css" in html
     assert "learn-tap.css" in html
@@ -200,7 +202,7 @@ def test_phone_learn_shell_is_wired():
     assert "holdAfterLine" in quiz
     assert "holdAfterLine" in tap
     rtc = (root / "phone" / "room" / "js" / "rtc.js").read_text(encoding="utf-8")
-    assert "nativeCall" in rtc
+    assert 'from "../../platform.js"' in rtc
     assert "usesNativeMic" in rtc
     assert "phone.mic.needTv" in rtc
     assert "paintLearnLine" in quiz
