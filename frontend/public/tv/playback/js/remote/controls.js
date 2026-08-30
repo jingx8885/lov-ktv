@@ -2,7 +2,7 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
-import { nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
+import { nativeAppVersion, nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
 import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
 import { applyMix } from "../media/mix.js";
@@ -180,6 +180,12 @@ export function paintSettings() {
   if (setup) {
     const native = nativeSetupAvailable();
     setup.hidden = !native && !document.body.classList.contains("androidtv");
+  }
+  const version = $("tvVersion");
+  if (version) {
+    const label = nativeAppVersion();
+    version.hidden = !label;
+    if (label) version.textContent = t("common.version", { version: label });
   }
 }
 

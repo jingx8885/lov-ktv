@@ -444,6 +444,14 @@ class DeskActivity : Activity() {
         MicService.apply(this, micHost, micPort, micRate, gain = value)
     }
 
+    fun appVersionName(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     private fun publicDeskUrl(): String {
         return DeskPage.url(server.ifBlank { Prefs.DEFAULT_SERVER }, roomCode, "")
     }

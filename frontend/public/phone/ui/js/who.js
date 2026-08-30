@@ -3,6 +3,7 @@ import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
+import { nativeAppVersion } from "../../platform.js";
 
 export function loginQs() {
   const q = new URLSearchParams();
@@ -28,6 +29,12 @@ export async function loadWho() {
   } else {
     $("whoAvatar").hidden = true;
     paintTopWho(user);
+  }
+  const version = $("whoVersion");
+  if (version) {
+    const label = nativeAppVersion();
+    version.hidden = !label;
+    if (label) version.textContent = t("common.version", { version: label });
   }
 }
 

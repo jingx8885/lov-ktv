@@ -120,6 +120,16 @@ export function hasNativeTv() {
   return !!bridge();
 }
 
+export function nativeAppVersion() {
+  const native = bridge();
+  if (!native || typeof native.version !== "function") return "";
+  try {
+    return String(native.version() || "").trim();
+  } catch (err) {
+    return "";
+  }
+}
+
 /** Named ports keep browser and Android-TV playback on one capability shape. */
 export const tvPlatform = {
   http: { available: () => true, fetchJson: null },

@@ -28,6 +28,7 @@ export default {
   "common.searching": "Searching…",
   "common.all": "All",
   "common.seq": "Order",
+  "common.version": "Version {version}",
   "common.shuffle": "Shuffle",
   "common.seqPlay": "Play in order",
   "common.shufflePlay": "Shuffle play",

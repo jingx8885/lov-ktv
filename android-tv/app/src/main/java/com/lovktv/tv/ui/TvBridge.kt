@@ -42,6 +42,9 @@ class TvBridge(private val host: TvHost) {
     fun openSetup() {
         host.runOnUi { host.openSetup() }
     }
+
+    @JavascriptInterface
+    fun version(): String = host.appVersion()
 }
 
 interface TvHost {
@@ -55,4 +58,5 @@ interface TvHost {
     fun mtvDurationMs(): Int
     fun mtvPlaying(): Boolean
     fun openSetup()
+    fun appVersion(): String
 }

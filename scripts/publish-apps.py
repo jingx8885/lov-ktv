@@ -4,7 +4,9 @@
 APKs stay on the server data volume. They are not committed to git.
 
   set LOVKTV_APP_UPLOAD_TOKEN=...
-  python scripts/publish-apps.py --tv path/to/tv.apk --phone path/to/phone.apk --version 2026.8.29
+  python scripts/publish-apps.py --tv path/to/tv.apk --phone path/to/phone.apk --version 2026.8.30
+
+Default --version is VERSION name. Tag with: python scripts/version.py tag
 
 Defaults: LOVKTV_PUBLIC_URL or https://ktv.lovbrowser.com
 Optional paths fall back to local Gradle outputs if they exist.
@@ -23,6 +25,8 @@ from pathlib import Path
 from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from version import read_version  # noqa: E402
 DEFAULT_BASE = "https://ktv.lovbrowser.com"
 CHANNELS = ("tv", "phone")
 DEFAULT_APKS = {
@@ -104,7 +108,11 @@ def main() -> int:
     parser.add_argument("--token", default=os.environ.get("LOVKTV_APP_UPLOAD_TOKEN") or "")
     parser.add_argument("--tv", type=Path, help="TV APK path")
     parser.add_argument("--phone", type=Path, help="Phone APK path")
-    parser.add_argument("--version", default="", help="Version label stored in the catalog")
+    parser.add_argument(
+        "--version",
+        default="",
+        help="Version label stored in the catalog (default: VERSION file)",
+    )
     parser.add_argument("--list", action="store_true", help="Print the public catalog and exit")
     args = parser.parse_args()
     base = str(args.base).rstrip("/")
@@ -133,12 +141,13 @@ def main() -> int:
     if not token:
         print("set LOVKTV_APP_UPLOAD_TOKEN or pass --token", file=sys.stderr)
         return 1
+    version = str(args.version or "").strip() or read_version()[0]
 
     failed = 0
     for channel, path in uploads:
         fields = {}
-        if args.version:
-            fields["version"] = args.version
+        if version:
+            fields["version"] = version
         body, content_type = _multipart(fields, {"file": path})
         status, data = _request("POST", f"{base}/api/apps/{channel}", token, body, content_type)
         if status != 200 or not isinstance(data, dict) or not data.get("url"):

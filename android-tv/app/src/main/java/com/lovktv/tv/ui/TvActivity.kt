@@ -126,6 +126,14 @@ class TvActivity : Activity(), TvHost {
         finish()
     }
 
+    override fun appVersion(): String {
+        return try {
+            packageManager.getPackageInfo(packageName, 0).versionName.orEmpty()
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     private fun loadWhenReady() {
         webView.post(object : Runnable {
             private var tries = 0

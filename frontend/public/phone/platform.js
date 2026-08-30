@@ -37,6 +37,16 @@ export function hasNativePhone() {
   return !!bridge();
 }
 
+export function nativeAppVersion() {
+  const native = bridge();
+  if (!native || typeof native.version !== "function") return "";
+  try {
+    return String(native.version() || "").trim();
+  } catch (_) {
+    return "";
+  }
+}
+
 export function nativeCapabilities() {
   const native = bridge();
   if (!native || typeof native.capabilities !== "function") {

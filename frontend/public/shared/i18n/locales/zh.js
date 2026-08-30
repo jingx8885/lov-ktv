@@ -28,6 +28,7 @@ export default {
   "common.searching": "搜索中…",
   "common.all": "全部",
   "common.seq": "顺序",
+  "common.version": "版本 {version}",
   "common.shuffle": "随机",
   "common.seqPlay": "顺序播放",
   "common.shufflePlay": "随机播放",

@@ -49,6 +49,30 @@ def test_prod_compose_binds_localhost_and_reuses_origin_cert():
     assert "127.0.0.1:8790" in nginx
 
 
+def test_version_file_drives_apk_and_git_tag():
+    version = (ROOT / "VERSION").read_text(encoding="utf-8")
+    assert "name=" in version
+    assert "code=" in version
+    tv = (ROOT / "android-tv" / "app" / "build.gradle.kts").read_text(encoding="utf-8")
+    phone = (ROOT / "android-phone" / "app" / "build.gradle.kts").read_text(
+        encoding="utf-8"
+    )
+    publish = (ROOT / "scripts" / "publish-apps.py").read_text(encoding="utf-8")
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "fun lovktvVersion()" in tv
+    assert "fun lovktvVersion()" in phone
+    assert "versionName = appVersionName" in tv
+    assert "versionName = appVersionName" in phone
+    assert "from version import read_version" in publish
+    assert "python scripts/version.py tag" in agents
+    assert 'id="tvVersion"' in (ROOT / "frontend" / "public" / "tv.html").read_text(
+        encoding="utf-8"
+    )
+    assert 'id="whoVersion"' in (ROOT / "frontend" / "public" / "m.html").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_dockerignore_keeps_vendor_and_media_out():
     text = (ROOT / ".dockerignore").read_text(encoding="utf-8")
     assert "vendor" in text

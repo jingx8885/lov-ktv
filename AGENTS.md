@@ -42,22 +42,31 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 
 ## App 发版
 
-- APK 不进 git、不进镜像。落在生产机 `data/apps/`，落地页读 `GET /api/apps`。
+- 版本写在仓库根 `VERSION`（`name=` 给人看，`code=` 给 Android `versionCode`，必须递增）。
+- **每次发版先改 `VERSION`，提交后打 annotated tag `v{name}`，再推 tag。**
+
+```bash
+python scripts/version.py          # 看当前 name/code/tag
+python scripts/version.py tag      # git tag -a v2026.8.30
+git push origin HEAD --tags
+```
+
+- APK 不进 git、不进镜像。落在生产机 `data/apps/`，落地页读 `GET /api/apps`。电视/手机设置页显示 APK `versionName`。
 - 下载：`https://ktv.lovbrowser.com/apps/tv.apk`、`/apps/phone.apk`。
 - **直接打接口上传。不要 scp、不要 ssh 拷数据卷、不要另写上传流程。**
 - 43 的 `~/lov-ktv/.env` 有 `LOVKTV_APP_UPLOAD_TOKEN`（不要打印、不要写进聊天）。本机读进环境变量后立刻：
 
 ```bash
-python scripts/publish-apps.py --version 2026.8.29
+python scripts/publish-apps.py
 ```
 
-未指定路径时用 Gradle 产物：电视 `android-tv/.../debug/app-debug.apk`，手机 `android-phone/.../release/app-release.apk`。
+未指定 `--version` 时用 `VERSION` 的 `name`。未指定路径时用 Gradle 产物：电视 `android-tv/.../debug/app-debug.apk`，手机 `android-phone/.../release/app-release.apk`。
 - 接口：`POST /api/apps/{tv|phone}`，`Authorization: Bearer`，multipart 字段 `file`，可选 `version`。默认 `https://ktv.lovbrowser.com`。
 - 本机 Clash 掐 Cloudflare 时，只加一条隧道打同一接口（生产只绑 `127.0.0.1:8790`），不要改成别的办法：
 
 ```bash
 ssh -o ExitOnForwardFailure=yes -N -L 18790:127.0.0.1:8790 ubuntu@43.134.133.185
-python scripts/publish-apps.py --base http://127.0.0.1:18790 --version 2026.8.29
+python scripts/publish-apps.py --base http://127.0.0.1:18790
 ```
 
 - 电视 APK 会烤进 `frontend/public`。重打前对 `android-tv` 跑 `:app:copyWebAssets assembleDebug --rerun-tasks`。

@@ -42,4 +42,7 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun useLan(lan: String, room: String) {
         activity.useLan(lan, room)
     }
+
+    @JavascriptInterface
+    fun version(): String = activity.appVersionName()
 }

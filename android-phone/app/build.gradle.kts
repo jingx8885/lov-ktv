@@ -3,6 +3,25 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+fun lovktvVersion(): Pair<String, Int> {
+    var name = "1.0"
+    var code = 1
+    val file = rootProject.projectDir.resolve("../VERSION")
+    if (file.isFile) {
+        file.readLines().forEach { line ->
+            val parts = line.split("=", limit = 2)
+            if (parts.size != 2) return@forEach
+            when (parts[0].trim()) {
+                "name" -> name = parts[1].trim().ifBlank { name }
+                "code" -> code = parts[1].trim().toIntOrNull() ?: code
+            }
+        }
+    }
+    return name to code
+}
+
+val (appVersionName, appVersionCode) = lovktvVersion()
+
 android {
     namespace = "com.lovktv.phone"
     compileSdk = 34
@@ -11,8 +30,8 @@ android {
         applicationId = "com.lovktv.phone"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
 
     buildTypes {

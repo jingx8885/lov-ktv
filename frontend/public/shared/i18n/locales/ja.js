@@ -28,6 +28,7 @@ export default {
   "common.searching": "検索中…",
   "common.all": "すべて",
   "common.seq": "順送り",
+  "common.version": "バージョン {version}",
   "common.shuffle": "シャッフル",
   "common.seqPlay": "順送り再生",
   "common.shufflePlay": "シャッフル再生",
