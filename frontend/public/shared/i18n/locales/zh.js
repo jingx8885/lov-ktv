@@ -128,6 +128,7 @@ export default {
   "phone.desk.goLib": "去曲库加点",
   "phone.desk.emptyLib": "曲库还是空的",
   "phone.desk.goSearch": "去搜歌",
+  "phone.desk.refresh": "刷新",
   "phone.desk.libPh": "搜歌名 / 歌星",
   "phone.desk.libPhTitle": "搜歌名",
   "phone.desk.libPhArtist": "搜歌星",

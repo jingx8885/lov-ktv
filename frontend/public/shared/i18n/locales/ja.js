@@ -128,6 +128,7 @@ export default {
   "phone.desk.goLib": "曲庫から追加",
   "phone.desk.emptyLib": "曲庫はまだ空です",
   "phone.desk.goSearch": "曲を探す",
+  "phone.desk.refresh": "更新",
   "phone.desk.libPh": "曲名 / 歌手で検索",
   "phone.desk.libPhTitle": "曲名で検索",
   "phone.desk.libPhArtist": "歌手で検索",
@@ -241,6 +242,8 @@ export default {
   "phone.mic.idleSpeaker": "この端末で歌うと、伴奏と声がスピーカーから出ます。ハウリングが大きければモニターをオン。",
 
   "learn.title": "ゲーム",
+  "learn.cleared": "単語と行を覚えてクリア",
+  "learn.book": "復習ノート",
   "learn.lead":
     "遊び方を選んでください。クイズとタップ：ゆっくりは各行で確認待ち、標準は5秒停止、むずかしいは止まらない。タップするとカウントダウンで始まります。",
   "learn.diff": "難易度",

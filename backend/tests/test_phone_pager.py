@@ -13,6 +13,11 @@ def test_library_append_dedupes_and_poll_does_not_rewind_page():
     assert "id !== after" in lib
     assert 'data-song="${escapeHtml(song.id)}"' in lib
     assert "if (state.libState.page <= 1) loadSongs(false)" in app
+    html = (ROOT / "m.html").read_text(encoding="utf-8")
+    assert 'id="libRefresh"' in html
+    assert "phone.desk.refresh" in html
+    assert 'cache: "no-store"' in lib
+    assert "loadSongs(false, true)" in lib
     assert "extra.length > 0" in hits
     assert "data.page !== state.searchPage" in hits
     assert "btn.onclick = () => runSearch(Number(btn.dataset.page), true)" not in hits

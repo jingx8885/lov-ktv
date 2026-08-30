@@ -202,12 +202,44 @@
 .desk-tabs { display: none; }
 .desk-pane[hidden] { display: none !important; }
 .desk-lib { display: flex; flex-direction: column; min-height: 0; }
+.lib-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .lib-search input {
+  flex: 1 1 auto;
+  min-width: 0;
   min-height: 36px;
   padding: 8px 12px;
   border-radius: 10px;
   background: var(--fill);
   font-size: 17px;
+}
+.lib-refresh {
+  appearance: none;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text);
+  cursor: pointer;
+}
+.lib-refresh svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+.lib-refresh:active { opacity: .55; }
+.lib-refresh:disabled { opacity: .45; cursor: default; }
+.lib-refresh.is-busy svg { animation: lib-spin .7s linear infinite; }
+@keyframes lib-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .lib-refresh.is-busy svg { animation: none; }
 }
 .lib-tools {
   flex: 0 0 auto;

@@ -166,7 +166,20 @@ function knownLibIds() {
   return new Set([...fromState, ...fromDom].filter(Boolean));
 }
 
-export async function loadSongs(append = false) {
+function paintLibRefresh(busy) {
+  const btn = $("libRefresh");
+  if (!btn) return;
+  btn.disabled = !!busy;
+  btn.classList.toggle("is-busy", !!busy);
+}
+
+export async function loadSongs(append = false, force = false) {
+  if (force) {
+    append = false;
+    state.libStamp = "";
+    state.libState.page = 1;
+    state.libLoading = false;
+  }
   if (state.libLoading) return;
   const have = state.libSongs || [];
   if (append && (Number(state.libState.page) || 1) >= (state.libPages || 1)) return;
@@ -174,6 +187,7 @@ export async function loadSongs(append = false) {
   const nextPage = append ? (Number(state.libState.page) || 1) + 1 : 1;
   const after = append ? libSongId(have[have.length - 1]) : "";
   state.libLoading = true;
+  if (!append) paintLibRefresh(true);
   const params = new URLSearchParams({
     q: state.libState.q,
     by: state.libState.by,
@@ -183,8 +197,11 @@ export async function loadSongs(append = false) {
   });
   if (after) params.set("after", after);
   /** @type {{ data: SongListPage } | null} */
-  const loaded = await fetchJson("/api/songs?" + params.toString()).catch(() => null);
+  const loaded = await fetchJson("/api/songs?" + params.toString(), { cache: "no-store" }).catch(
+    () => null
+  );
   state.libLoading = false;
+  if (!append) paintLibRefresh(false);
   if (!loaded) return;
   const data = loaded.data;
   const songs = data.songs || [];
@@ -275,5 +292,10 @@ export function bindLibrary() {
       if (state.libLoading) return;
       if (nearBottom($("songs"))) loadSongs(true);
     });
+  }
+  const refresh = $("libRefresh");
+  if (refresh && !refresh.dataset.bound) {
+    refresh.dataset.bound = "1";
+    refresh.onclick = () => loadSongs(false, true);
   }
 }

@@ -128,6 +128,7 @@ export default {
   "phone.desk.goLib": "去曲庫加點",
   "phone.desk.emptyLib": "曲庫仲係空嘅",
   "phone.desk.goSearch": "去搵歌",
+  "phone.desk.refresh": "刷新",
   "phone.desk.libPh": "搵歌名 / 歌星",
   "phone.desk.libPhTitle": "搵歌名",
   "phone.desk.libPhArtist": "搵歌星",
@@ -238,6 +239,8 @@ export default {
   "phone.mic.idleSpeaker": "本機唱歌，伴奏同人聲一齊由手機喇叭出嚟。回音大就打開耳返。",
 
   "learn.title": "遊戲",
+  "learn.cleared": "通關要詞句都識",
+  "learn.book": "錯題本",
   "learn.lead": "揀一種玩法。測驗同點詞：輕鬆每句等你確認，標準停 5 秒，困難不停。撳落去倒數就開。",
   "learn.diff": "難度",
   "learn.diff.easy": "輕鬆",

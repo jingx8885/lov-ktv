@@ -129,6 +129,7 @@ export default {
   "phone.desk.goLib": "Add from library",
   "phone.desk.emptyLib": "Library is empty",
   "phone.desk.goSearch": "Go search",
+  "phone.desk.refresh": "Refresh",
   "phone.desk.libPh": "Search title / artist",
   "phone.desk.libPhTitle": "Search title",
   "phone.desk.libPhArtist": "Search artist",
@@ -242,6 +243,8 @@ export default {
     "Sing on this phone — backing and vocals come from the speaker. Turn on monitor if echo is loud.",
 
   "learn.title": "Game",
+  "learn.cleared": "Know every word and line to clear",
+  "learn.book": "Review notebook",
   "learn.lead":
     "Pick a mode. Quiz and tap: Easy waits for you after each line, Normal pauses 5 seconds, Hard does not pause. Tap a mode and the countdown starts.",
   "learn.diff": "Difficulty",
