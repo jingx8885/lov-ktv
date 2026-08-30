@@ -304,6 +304,34 @@ def test_search_songs_puts_mugen_first(monkeypatch):
     assert result["has_more"] is False
 
 
+def test_search_songs_marks_exact_duration_hits_first(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "search_mugen",
+        lambda *args, **kwargs: {
+            "hits": [
+                {
+                    "id": "mugen-exact",
+                    "title": "Exact",
+                    "source": "mugen",
+                    "lyrics_ready": True,
+                    "duration": 180,
+                }
+            ],
+            "has_more": False,
+        },
+    )
+    monkeypatch.setattr(
+        search,
+        "search_bilibili_hits",
+        lambda *args, **kwargs: [{"id": "bili", "title": "Other", "source": "bilibili", "duration": 180}],
+    )
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("Exact", count=10, page=1)
+    assert result["hits"][0]["duration_match"] == "exact"
+    assert result["hits"][0]["duration_match_score"] == 3
+
+
 def test_search_songs_queries_channels_together(monkeypatch):
     called = []
 

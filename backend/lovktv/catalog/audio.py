@@ -185,6 +185,68 @@ def try_bilibili_download(
     return bilibili.download_mv(bvid, mp3_path, video_path)
 
 
+def sync_video_to_audio(video_path: Path, audio_path: Path) -> bool:
+    """Replace video audio and make the video exactly as long as the MP3.
+
+    The MP3 is authoritative: a longer video is trimmed, while a shorter one
+    loops seamlessly before being trimmed. The resulting track is encoded
+    muted at playback by the client, but carrying the same timeline avoids
+    drift for native-MV playback.
+    """
+    if not video_path.exists() or not audio_path.exists() or not shutil.which("ffmpeg"):
+        return False
+    try:
+        from lovktv.pipeline.audio import probe_duration_ms
+
+        video_ms = probe_duration_ms(video_path)
+        audio_ms = probe_duration_ms(audio_path)
+    except Exception:
+        return False
+    if video_ms <= 0 or audio_ms <= 0:
+        return False
+    tmp = video_path.with_suffix(video_path.suffix + ".sync.part")
+    cmd = ["ffmpeg", "-y"]
+    if video_ms < audio_ms:
+        cmd += ["-stream_loop", "-1"]
+    cmd += [
+        "-i",
+        str(video_path),
+        "-i",
+        str(audio_path),
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0",
+        "-t",
+        f"{audio_ms / 1000:.3f}",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "22",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-movflags",
+        "+faststart",
+        str(tmp),
+    ]
+    try:
+        subprocess.run(cmd, check=True, timeout=900, capture_output=True)
+        if not tmp.exists() or tmp.stat().st_size <= 1000:
+            return False
+        tmp.replace(video_path)
+        return True
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return False
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def open_bilibili_audio(bvid: str, timeout: float = 20):
     return bilibili.open_audio(bvid, timeout=timeout)
 

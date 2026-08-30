@@ -21,6 +21,7 @@ from .audio import (
     try_bilibili_download,
     try_netease_download,
     try_ytdlp_search,
+    sync_video_to_audio,
 )
 from .bilibili import is_bvid
 from .kugou import fetch_kugou_lyrics
@@ -77,6 +78,8 @@ def _complete_mugen_audio(
             filled, audio["title"] = "youtube", got_title
     if not filled or not mp3_path.exists():
         return skeleton
+    if mtv_path.exists():
+        sync_video_to_audio(mtv_path, mp3_path)
     audio.update(file="original.mp3", source=f"mugen-{filled}", needs_separate=True)
     skeleton.update(audio=audio, source=source, needs_separate=True)
     (out_dir / "skeleton.json").write_text(
@@ -224,6 +227,7 @@ def import_song(
         if ok:
             audio_file, audio_source, audio_title = "original.mp3", "youtube", got_title
     if has_video:
+        sync_video_to_audio(mtv_path, mp3_path)
         lp = out_dir / "lyrics.json"
         if lp.exists():
             try:

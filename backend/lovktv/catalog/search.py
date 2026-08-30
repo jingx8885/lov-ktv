@@ -57,6 +57,41 @@ TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
 SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
 
 
+def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
+    """Attach a comparable lyric/audio duration score when metadata permits.
+
+    Mugen's timed ASS is shipped with the same media, so a ready lyric hit is
+    an exact match by construction. Other providers may populate both fields
+    later (for example from a lyric cache); unknown durations remain neutral.
+    """
+    song_ms = hit.get("duration_ms")
+    if song_ms is None and hit.get("duration"):
+        song_ms = int(float(hit["duration"]) * 1000)
+        hit["duration_ms"] = song_ms
+    lyric_ms = hit.get("lyrics_duration_ms")
+    if lyric_ms is None and hit.get("lyrics_duration"):
+        lyric_ms = int(float(hit["lyrics_duration"]) * 1000)
+        hit["lyrics_duration_ms"] = lyric_ms
+    if (
+        hit.get("source") == "mugen"
+        and hit.get("lyrics_ready")
+        and isinstance(song_ms, int)
+        and song_ms > 0
+    ):
+        lyric_ms = song_ms
+        hit["lyrics_duration_ms"] = song_ms
+    if not isinstance(song_ms, int) or not isinstance(lyric_ms, int) or song_ms <= 0 or lyric_ms <= 0:
+        hit.setdefault("duration_match", "unknown")
+        hit.setdefault("duration_match_score", 0)
+        return hit
+    diff = abs(song_ms - lyric_ms)
+    ratio = diff / max(song_ms, lyric_ms)
+    hit["duration_diff_ms"] = diff
+    hit["duration_match"] = "exact" if diff <= 1500 else ("close" if ratio <= 0.08 else "mismatch")
+    hit["duration_match_score"] = 3 if diff <= 1500 else (2 if ratio <= 0.03 else (1 if ratio <= 0.08 else -1))
+    return hit
+
+
 def is_clean_title(title: str) -> bool:
     low = (title or "").lower()
     return not any(tok in low for tok in BAD_TITLE_TOKENS)
@@ -144,7 +179,7 @@ def search_bilibili_hits(
             },
         )
         hits.append(
-            {
+            annotate_duration_match({
                 "id": bvid,
                 "title": title,
                 "artist": str(item.get("author") or ""),
@@ -154,7 +189,8 @@ def search_bilibili_hits(
                 "is_mv": True,
                 "clean": is_clean_title(title),
                 "preview_url": f"/api/preview/{bvid}",
-            }
+                "duration": duration,
+            })
         )
         if len(hits) >= count:
             break
@@ -223,7 +259,7 @@ def search_ytdlp_hits(
             {"kind": "ytdlp", "page": page_url, "title": title, "provider": provider},
         )
         hits.append(
-            {
+            annotate_duration_match({
                 "id": hid,
                 "title": title,
                 "artist": "",
@@ -233,7 +269,8 @@ def search_ytdlp_hits(
                 "is_mv": provider == "youtube",
                 "clean": is_clean_title(title),
                 "preview_url": f"/api/preview/{hid}",
-            }
+                "duration": row.get("duration"),
+            })
         )
         if len(hits) >= count:
             break
@@ -293,6 +330,8 @@ def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
         "soundcloud": soundcloud,
     }
     hits = merge_channel_hits(groups, count)
+    hits = [annotate_duration_match(hit) for hit in hits]
+    hits.sort(key=lambda hit: (int(hit.get("duration_match_score") or 0), hit.get("source") == "mugen"), reverse=True)
     available = sum(len(bucket) for bucket in groups.values())
     return {
         "query": query,

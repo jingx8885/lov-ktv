@@ -1,6 +1,25 @@
 from lovktv.catalog import audio, importer, search
 
 
+def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
+    video = tmp_path / "mtv.mp4"
+    audio_path = tmp_path / "original.mp3"
+    video.write_bytes(b"video")
+    audio_path.write_bytes(b"audio")
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+    durations = {video: 5_000, audio_path: 8_000}
+    monkeypatch.setattr("lovktv.pipeline.audio.probe_duration_ms", lambda path: durations[path])
+
+    def fake_run(cmd, **kwargs):
+        from pathlib import Path
+
+        Path(cmd[-1]).write_bytes(b"synced-video" * 200)
+
+    monkeypatch.setattr(audio.subprocess, "run", fake_run)
+    assert audio.sync_video_to_audio(video, audio_path)
+    assert video.read_bytes() == b"synced-video" * 200
+
+
 def test_clean_search_title_strips_version_marks():
     assert search.clean_search_title("晴天(深情版)") == "晴天"
     assert search.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"
