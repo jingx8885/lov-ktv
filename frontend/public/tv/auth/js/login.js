@@ -32,6 +32,41 @@ export function roomCode() {
   return (new URLSearchParams(location.search).get("room") || localStorage.getItem("tvRoom") || "").toUpperCase();
 }
 
+function absUrl(origin, path) {
+  const href = String(path || "").trim();
+  if (!href) return "";
+  if (/^https?:\/\//i.test(href)) return href;
+  const base = String(origin || "").replace(/\/$/, "");
+  return base + (href.startsWith("/") ? href : "/" + href);
+}
+
+export async function paintPhoneAppQr() {
+  const box = $("appQrBox");
+  const link = $("appLink");
+  if (!box || !link) return;
+  const origin = await hostOrigin();
+  let href = absUrl(origin, "/apps/phone.apk");
+  try {
+    const { ok, data } = await fetchJson("/api/apps");
+    const phone = ok && data && data.phone;
+    if (!phone || !phone.url) {
+      box.hidden = true;
+      return;
+    }
+    href = absUrl(origin, phone.url) || href;
+  } catch (err) {
+    box.hidden = true;
+    return;
+  }
+  if (!href) {
+    box.hidden = true;
+    return;
+  }
+  link.href = href;
+  renderQr(href, "appQr");
+  box.hidden = false;
+}
+
 export async function hostOrigin() {
   try {
     const { data } = await fetchJson("/api/host");
@@ -108,6 +143,7 @@ export async function bootAuth() {
   if (/LovKtvAndroidTV/i.test(navigator.userAgent || "") || new URLSearchParams(location.search).get("androidtv")) {
     document.body.classList.add("androidtv");
   }
+  paintPhoneAppQr();
   const wanted = roomCode();
   /** @type {{ ok: boolean, data: Room }} */
   const roomRes = wanted

@@ -139,6 +139,14 @@ body.tv.is-waiting .party-fx { display: none !important; }
   color: inherit;
   text-decoration: none;
 }
+.wait-app-qr {
+  left: auto;
+  right: 24px;
+}
+.wait-app-qr[hidden],
+body.tv:not(.is-waiting) .wait-app-qr {
+  display: none !important;
+}
 .remote-hint {
   display: none;
   margin: 0;

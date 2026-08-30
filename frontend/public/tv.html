@@ -26,6 +26,12 @@
     </a>
       <p class="remote-hint" id="remoteHint" hidden>确认 暂停/播放 · 菜单 切歌、原唱伴唱</p>
   </div>
+  <div class="qrbox wait-app-qr" id="appQrBox" hidden>
+    <a id="appLink" href="/apps/phone.apk">
+      <div id="appQr" class="qr"></div>
+      <span class="qr-cap" data-i18n="tv.appScan">扫码下载手机 App</span>
+    </a>
+  </div>
   <div class="tv-sheet" id="tvSheet" data-mount="tv-settings" hidden>
     <button type="button" class="overlay-backdrop" id="tvSheetBack" tabindex="-1" data-i18n-aria="common.close"></button>
     <div class="tv-sheet-card" role="dialog" aria-modal="true" aria-labelledby="tvSheetTitle">

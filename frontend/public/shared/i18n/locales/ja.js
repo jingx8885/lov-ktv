@@ -288,6 +288,7 @@ export default {
 
   "tv.title": "lov-ktv テレビ",
   "tv.scan": "スキャン · ",
+  "tv.appScan": "スキャンしてスマホアプリを入れる",
   "tv.loginTitle": "WeChatでスキャン",
   "tv.loginLead": "スキャンするだけでID取得。確認タップは不要。",
   "tv.loginHint": "QRコードは約3分間有効",

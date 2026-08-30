@@ -288,6 +288,7 @@ export default {
 
   "tv.title": "lov-ktv TV",
   "tv.scan": "Scan · ",
+  "tv.appScan": "Scan to install the phone app",
   "tv.loginTitle": "Scan with WeChat",
   "tv.loginLead": "Scan to claim an ID — no confirm tap.",
   "tv.loginHint": "QR code is valid for about 3 minutes",

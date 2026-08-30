@@ -284,6 +284,7 @@ export default {
 
   "tv.title": "lov-ktv 電視",
   "tv.scan": "掃碼 · ",
+  "tv.appScan": "掃碼下載手機 App",
   "tv.loginTitle": "微信掃一下",
   "tv.loginLead": "掃碼直接認號，唔使撳確認。",
   "tv.loginHint": "二維碼大約 3 分鐘有效",

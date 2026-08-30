@@ -34,6 +34,15 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert 'href="/shared/lyrics/css/lyrics.css"' in html
     assert 'class="tv is-waiting"' in html
     assert 'src="/brand/wait-tv.jpg"' in html
+    assert 'id="appQrBox"' in html
+    assert 'id="appQr"' in html
+    assert 'href="/apps/phone.apk"' in html
+    assert "wait-app-qr" in html
+    assert "body.tv:not(.is-waiting) .wait-app-qr" in stage
+    login = (ROOT / "tv" / "auth" / "js" / "login.js").read_text(encoding="utf-8")
+    assert "export async function paintPhoneAppQr" in login
+    assert 'fetchJson("/api/apps")' in login
+    assert 'renderQr(href, "appQr")' in login
     assert "body.tv.is-waiting .lyric-plate" in tv
     assert "body.tv.is-waiting .lyric-plate" in shared
     assert "body.tv.is-waiting .wait-art" in stage
