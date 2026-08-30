@@ -22,7 +22,7 @@ from lovktv.pipeline.lyrics import tokenize
 
 # Bump this whenever the semantic-translation instructions change.  Existing
 # notes contain per-word glosses and must not silently survive a prompt change.
-TRANSLATE_SCHEMA = "lovjpn-zh-v4"
+TRANSLATE_SCHEMA = "lovjpn-zh-v5"
 CHINESE_LANGS = {"zh", "zh-cn", "zh-hans", "zh-hant", "yue", "cmn", "chinese"}
 
 SYSTEM = """You translate karaoke lyrics for Chinese singers. Aim for a faithful,
@@ -42,7 +42,12 @@ Rules:
 3. `units` follow the sung pieces in order. `sing` is the surface from the line (Japanese kana/kanji, English word, etc.). A unit's `zh` is a concise *contextual contribution* to the line, normally 1–6 Chinese characters, not a dictionary definition.
 4. When a Japanese source word/compound is written in Hanzi that is directly understandable in modern Chinese, prefer copying that same Hanzi into its unit `zh` (and retain it in the line translation), converting Japanese/traditional forms to Simplified Chinese as needed. For example, 電光石火 → 电光石火; do not rewrite it as “转瞬即逝”. Only change it when the Japanese and Chinese meanings differ or copying it would mislead (a Japanese false friend); then make the smallest context-appropriate correction.
 5. Resolve remaining polysemy from context (for example, Japanese 君 may be “你” or “君”; English miss may be “想念” or “错过”). Prefer the closest sense that makes the whole line understandable and coherent with nearby lines. Do not preserve a dictionary/literal sense when it would change the lyric's meaning, but do not replace it with a freer poetic interpretation either.
-6. Function words and particles are grammatical, not standalone vocabulary. Their `zh` may be empty (`""`) when their meaning is already expressed by Chinese word order, aspect, or the line gloss. If they do contribute meaning, use the contextual relation (such as “向/对/从/把/的/吗”), never a fixed mapping. Do not force a visible Chinese word for every particle.
+6. Function words and particles are grammatical, not standalone vocabulary.
+   For Japanese/other languages their `zh` may be empty when Chinese word
+   order already expresses them. For English, however, every sung word unit
+   must have a non-empty, concise contextual Chinese gloss (including words
+   like the/of/to); use the relation that fits this line rather than leaving a
+   blank. Do not force units for punctuation.
 7. For English lines, return exactly one unit for every sung word (the same
    words produced by normal English tokenization). Keep contractions and
    hyphenated words whole, and omit punctuation-only units. Never group
@@ -159,7 +164,7 @@ def _english_unit_map(
     for unit in units:
         sing = str(unit.get("sing") or "").strip()
         gloss = str(unit.get("zh") or "").strip()
-        if not sing or not gloss:
+        if not sing:
             continue
         wanted = [
             _surface_key(piece, "en")
@@ -195,10 +200,37 @@ def _english_unit_map(
         # A correctly regenerated note has one gloss per word.  For an old
         # grouped note we cannot infer a faithful split, so repeat the
         # contextual phrase rather than leaving later words untranslated.
-        for index in covered:
-            out[index] = gloss
+        if gloss:
+            for index in covered:
+                out[index] = gloss
         cursor = end
     return out
+
+
+_EN_FUNCTION_GLOSSES = {
+    "a": "一个",
+    "an": "一个",
+    "and": "和",
+    "are": "是",
+    "at": "在",
+    "be": "是",
+    "but": "但",
+    "by": "被",
+    "for": "为",
+    "from": "从",
+    "in": "在",
+    "is": "是",
+    "it": "它",
+    "of": "的",
+    "on": "在",
+    "or": "或",
+    "that": "那",
+    "the": "这",
+    "to": "到",
+    "was": "是",
+    "were": "是",
+    "with": "和",
+}
 
 
 def apply_zh_translation(
@@ -228,6 +260,12 @@ def apply_zh_translation(
             for index, token in enumerate(tokens):
                 if index in projected and (overwrite or not str(token.get("zh") or "").strip()):
                     token["zh"] = projected[index]
+                elif not str(token.get("zh") or "").strip():
+                    fallback = _EN_FUNCTION_GLOSSES.get(
+                        _surface_key(str(token.get("text") or ""), "en")
+                    )
+                    if fallback:
+                        token["zh"] = fallback
             continue
         missing = [token for token in tokens if not str(token.get("zh") or "").strip()]
         if not missing:

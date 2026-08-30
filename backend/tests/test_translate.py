@@ -161,6 +161,26 @@ def test_apply_zh_translation_aligns_grouped_english_units_and_punctuation():
     ]
 
 
+def test_apply_zh_translation_falls_back_for_untranslated_english_function_word():
+    timeline = {
+        "language": "en",
+        "cues": [{"text": "the light", "tokens": [{"text": "the"}, {"text": "light"}]}],
+    }
+    apply_zh_translation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "the light",
+                    "zh": "这道光",
+                    "units": [{"sing": "the", "zh": ""}, {"sing": "light", "zh": "光"}],
+                }
+            ]
+        },
+    )
+    assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == ["这", "光"]
+
+
 def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv.storage import room_store, store
