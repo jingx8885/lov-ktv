@@ -79,9 +79,7 @@ function choiceButtons(item) {
       ${(item.choices || [])
         .map(
           (choice) =>
-            `<button type="button" class="learn-choice" data-cid="${choice.id}">${escapeHtml(
-              choice.text
-            )}</button>`
+            `<button type="button" class="learn-choice" data-cid="${choice.id}">${escapeHtml(choice.text)}</button>`
         )
         .join("")}
     </div>

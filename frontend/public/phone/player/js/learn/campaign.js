@@ -97,24 +97,19 @@ export function paintCampaign(data) {
       <section class="learn-unit">
         <div class="learn-unit-h">
           <b>${escapeHtml(t("learn.unit", { n: unit.index + 1 }))}</b>
-          <span>${escapeHtml(
-            t("learn.unitLines", { from: unit.from_line + 1, to: unit.to_line + 1 })
-          )}</span>
+          <span>${escapeHtml(t("learn.unitLines", { from: unit.from_line + 1, to: unit.to_line + 1 }))}</span>
         </div>
         <div class="learn-nodes">
           ${(unit.skills || [])
             .map((skill) => {
-              const current =
-                ready && ready.unit.id === unit.id && ready.skill.id === skill.id;
+              const current = ready && ready.unit.id === unit.id && ready.skill.id === skill.id;
               return `<button type="button" class="learn-node is-${skill.status}${
                 current ? " is-current" : ""
               }" data-unit="${escapeHtml(unit.id)}" data-skill="${escapeHtml(
                 skill.id
               )}" data-status="${escapeHtml(skill.status)}" data-start="${escapeHtml(
                 t("learn.start")
-              )}" ${skill.status === "locked" ? "disabled" : ""}>${escapeHtml(
-                nodeLabel(skill.id)
-              )}</button>`;
+              )}" ${skill.status === "locked" ? "disabled" : ""}>${escapeHtml(nodeLabel(skill.id))}</button>`;
             })
             .join("")}
         </div>
