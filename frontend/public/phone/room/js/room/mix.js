@@ -108,7 +108,13 @@ export function postMix(body) {
     body: JSON.stringify(body)
   })
     .then(({ data: room }) => {
-      paintMix(room);
+      // paintMix intentionally leaves sliders alone while they are being
+      // edited.  Lyric mode must still be applied from the authoritative
+      // response so the phone and TV settle on the same selection.
+      if (room && room.code) {
+        paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
+        paintMix(room);
+      }
       return room;
     })
     .catch(() => {});

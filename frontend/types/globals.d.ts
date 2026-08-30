@@ -316,6 +316,7 @@ interface LovKtvNativeBridge {
 }
 
 interface LovKtvPhoneBridge {
+  version?: () => string;
   scanTv?: () => void;
   http?: (id: string, url: string, method: string, body: string) => void;
   useLan?: (lan: string, room: string) => void;
