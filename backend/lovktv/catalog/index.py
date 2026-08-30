@@ -9,6 +9,7 @@ from typing import Any
 
 PAGE_SIZE = 12
 LETTERS = tuple("ABCDEFGHIJKLMNOPQRSTUVWXYZ#")
+_LETTER_RANK = {letter: index for index, letter in enumerate(LETTERS)}
 
 _GBK_INITIALS = (
     (0xB0A1, "A"),
@@ -48,6 +49,8 @@ _KANA_ROWS = (
     ("らりるれろラリルレロ", "R"),
     ("わをんワヲンゎヮ", "W"),
 )
+
+_KAKASI_CONVERTER = None
 
 
 def display_title(song: dict[str, Any]) -> str:
@@ -92,7 +95,30 @@ def _kana_initial(char: str) -> str:
     return "#"
 
 
-def first_letter(text: str) -> str:
+def _japanese_initial(text: str) -> str:
+    """Return the Hepburn/Romaji initial for a Japanese title or artist."""
+    global _KAKASI_CONVERTER
+    try:
+        if _KAKASI_CONVERTER is None:
+            from pykakasi import kakasi
+
+            _KAKASI_CONVERTER = kakasi()
+        converted = _KAKASI_CONVERTER.convert(unicodedata.normalize("NFKC", text or ""))
+    except Exception:
+        return "#"
+    for part in converted:
+        reading = str(part.get("hepburn") or "")
+        for char in reading:
+            if char.isascii() and char.isalpha():
+                return char.upper()
+            if char.isascii() and char.isdigit():
+                return "#"
+    return "#"
+
+
+def first_letter(text: str, language: str = "") -> str:
+    if str(language or "").strip().lower() in {"ja", "jpn", "japanese"}:
+        return _japanese_initial(text)
     folded = unicodedata.normalize("NFKC", text or "")
     for char in folded:
         if char.isascii() and char.isalpha():
@@ -107,9 +133,39 @@ def first_letter(text: str) -> str:
 
 
 def song_letter(song: dict[str, Any], by: str = "title") -> str:
-    if by == "artist":
-        return first_letter(display_artist(song) or display_title(song))
-    return first_letter(display_title(song))
+    text = (
+        (display_artist(song) or display_title(song))
+        if by == "artist"
+        else display_title(song)
+    )
+    language = str(song.get("language") or "").strip().lower()
+    source = str(song.get("audio_source") or "").strip().lower()
+    # Japanese kanji has no reliable Unicode/pinyin ordering.  Use the
+    # language/source metadata (and kana as a safe fallback) to read it in
+    # Hepburn. Karaoke Mugen's catalog is Japanese even for kanji-only titles.
+    if (
+        language in {"ja", "jpn", "japanese"}
+        or source.startswith("mugen")
+        or any("\u3040" <= char <= "\u30ff" for char in text)
+    ):
+        return _japanese_initial(text)
+    return first_letter(text)
+
+
+def library_sort_key(song: dict[str, Any], by: str = "title") -> tuple[int, str, str, str]:
+    """Return the stable A-Z ordering key used by every library response.
+
+    ``#`` represents titles (or artists) that do not start with a Latin,
+    Han, or kana character.  It is intentionally ranked after ``Z`` instead
+    of relying on Python's punctuation ordering.
+    """
+    letter = song_letter(song, by)
+    return (
+        _LETTER_RANK.get(letter, _LETTER_RANK["#"]),
+        display_title(song).casefold(),
+        display_artist(song).casefold(),
+        str(song.get("id") or ""),
+    )
 
 
 def _norm(text: str) -> str:
@@ -169,14 +225,7 @@ def query_library(
     counts = Counter(item["letter"] for item in indexed)
     if key:
         indexed = [item for item in indexed if item["letter"] == key]
-    indexed.sort(
-        key=lambda item: (
-            item["letter"],
-            display_title(item).casefold(),
-            display_artist(item).casefold(),
-            str(item.get("id") or ""),
-        )
-    )
+    indexed.sort(key=lambda item: library_sort_key(item, index_by))
     total = len(indexed)
     pages = max(1, math.ceil(total / count)) if total else 1
     after_id = str(after or "").strip()

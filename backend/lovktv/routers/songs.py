@@ -12,7 +12,12 @@ from lovktv.catalog.audio import (
     open_preview_stream,
     resolve_audio_source,
 )
-from lovktv.catalog.index import prefer_native_library, query_library, song_letter
+from lovktv.catalog.index import (
+    library_sort_key,
+    prefer_native_library,
+    query_library,
+    song_letter,
+)
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
@@ -224,6 +229,7 @@ def api_songs(
     )
     if page is None and not q and not letter and not after:
         tagged = [{**song, "letter": song_letter(song)} for song in songs]
+        tagged.sort(key=library_sort_key)
         return {"songs": tagged, "total": len(tagged)}
     return query_library(
         songs, q=q, by=by, letter=letter, page=page or 1, count=count, after=after

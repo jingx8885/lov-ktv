@@ -22,6 +22,14 @@ def test_song_letter_uses_title_or_artist():
     assert song_letter(song, "artist") == "Y"
 
 
+def test_japanese_song_letter_uses_hepburn_reading():
+    assert first_letter("真夜中のドア", "ja") == "M"
+    assert song_letter({"title": "真夜中のドア", "language": "ja"}) == "M"
+    assert song_letter({"title": "群青", "language": "ja"}) == "G"
+    assert song_letter({"title": "ナイトダンサー", "language": "ja"}) == "N"
+    assert song_letter({"title": "群青", "audio_source": "mugen"}) == "G"
+
+
 def test_song_matches_title_and_artist():
     song = {"title": "So Sick · Ne-Yo", "artist": "Ne-Yo"}
     assert song_matches(song, "sick", "title")
@@ -107,3 +115,16 @@ def test_query_library_filters_letter_and_pages():
     titled = query_library(songs, q="night", by="title")
     assert titled["total"] == 1
     assert titled["songs"][0]["letter"] == "N"
+
+
+def test_query_library_orders_a_to_z_before_hash():
+    songs = [
+        {"id": "hash", "title": "123 intro", "artist": ""},
+        {"id": "z", "title": "中文", "artist": ""},
+        {"id": "a", "title": "Apple", "artist": ""},
+        {"id": "q", "title": "群青", "artist": ""},
+    ]
+
+    page = query_library(songs, count=20)
+
+    assert [song["id"] for song in page["songs"]] == ["a", "q", "z", "hash"]
