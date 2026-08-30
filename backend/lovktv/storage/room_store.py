@@ -218,18 +218,17 @@ def enqueue(code: str, song_id: str) -> dict[str, Any]:
 
 
 def bump(code: str, item_id: str) -> dict[str, Any]:
+    code = str(code or "").upper()
     snap = room_snapshot(code)
-    items = snap["queue"]
+    items = list(snap["queue"])
     idx = next((i for i, item in enumerate(items) if item["id"] == item_id), None)
     if idx is None or idx <= snap["now_index"] + 1:
         return snap
-    target = (
-        items[snap["now_index"] + 1]["position"]
-        if len(items) > snap["now_index"] + 1
-        else items[idx]["position"]
-    )
+    item = items.pop(idx)
+    items.insert(int(snap["now_index"]) + 1, item)
     with _LOCK, connect() as conn:
-        execute(conn, "UPDATE queue SET position=? WHERE id=?", (target - 1, item_id))
+        for position, row in enumerate(items, start=1):
+            execute(conn, "UPDATE queue SET position=? WHERE id=?", (position, row["id"]))
     return room_snapshot(code)
 
 

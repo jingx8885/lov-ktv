@@ -88,12 +88,15 @@ def whisper_ready() -> bool:
     import os
     import shutil
 
-    if not shutil.which("whisper"):
-        return False
     root = Path(os.environ.get("LOVKTV_WHISPER_DIR") or WHISPER_DIR)
-    if not root.exists():
+    if shutil.which("whisper") and root.exists():
+        if any(root.glob("*.pt")) or any(root.glob("small*")):
+            return True
+    try:
+        import faster_whisper  # noqa: F401
+    except ImportError:
         return False
-    return any(root.glob("*.pt")) or any(root.glob("small*"))
+    return root.exists() and any(root.rglob("model.bin"))
 
 
 def model_status() -> dict[str, object]:

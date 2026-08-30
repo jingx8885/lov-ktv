@@ -101,10 +101,15 @@ async def api_enqueue(request: Request, code: str, payload: RoomCommandPayload) 
 
 
 @router.post("/api/rooms/{code}/bump")
-def api_bump(code: str, payload: RoomCommandPayload) -> dict:
-    return run_command(
-        code.upper(), RoomCommand.from_payload("bump", payload.as_dict())
+async def api_bump(request: Request, code: str, payload: RoomCommandPayload) -> dict:
+    code = code.upper()
+    view = room_view(
+        code,
+        run_command(code, RoomCommand.from_payload("bump", payload.as_dict())),
+        lang=request_lang(request),
     )
+    await broadcast(code, {"type": "snapshot", "room": view})
+    return view
 
 
 @router.post("/api/rooms/{code}/skip")

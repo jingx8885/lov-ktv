@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
+from lovktv.agents.alignment import align_lines_with_agent
 from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
@@ -241,7 +242,16 @@ def process_import(
         from lovktv.pipeline.loudness import normalize_file
 
         normalize_file(src)
-        if skeleton.get("needs_align", True) or not (out_dir / "lyrics.json").exists():
+        # Pre-timed lyrics are trustworthy only when they belong to the native
+        # MV that will be played.  Downloaded/alternate audio (including
+        # Kugou and Karaoke Mugen audio without a native video) still needs
+        # vocal-based alignment.
+        native_timed = _native_timed_matches_media(out_dir, skeleton, src)
+        if (
+            skeleton.get("needs_align", True)
+            or not (out_dir / "lyrics.json").exists()
+            or not native_timed
+        ):
             _align_and_mtv(
                 song_id,
                 out_dir,
@@ -282,6 +292,47 @@ def _has_native_mtv(out_dir: Path) -> bool:
         if isinstance(data, dict) and data.get(key):
             return True
     return False
+
+
+def _native_timed_matches_media(out_dir: Path, skeleton: dict, src: Path) -> bool:
+    """Decide whether pre-timed lyrics belong to the media being played.
+
+    A native MV and its subtitle track normally have nearly identical end
+    times.  If either duration cannot be probed, keep the historical Mugen
+    fallback; otherwise require a small (8%, capped at 20s) difference.
+    """
+    has_video = bool(skeleton.get("has_video")) or (out_dir / "mtv.mp4").exists() or (
+        out_dir / "mugen.mp4"
+    ).exists()
+    if not has_video:
+        return False
+    lyrics_path = out_dir / "lyrics.json"
+    try:
+        import json
+
+        timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    cues = timeline.get("cues") if isinstance(timeline, dict) else []
+    subtitle_ms = max(
+        [
+            int(cue.get("end_ms") or cue.get("start_ms") or 0)
+            for cue in cues
+            if isinstance(cue, dict)
+        ]
+        or [0]
+    )
+    media = out_dir / "mtv.mp4"
+    if not media.exists():
+        media = out_dir / "mugen.mp4"
+    if not media.exists():
+        media = src
+    media_ms = probe_duration_ms(media)
+    if not subtitle_ms or not media_ms:
+        source = skeleton.get("source")
+        return isinstance(source, dict) and source.get("provider") == "karaoke-mugen"
+    tolerance = min(20_000, max(5_000, int(media_ms * 0.08)))
+    return abs(int(media_ms) - subtitle_ms) <= tolerance
 
 
 def _stamp_native_video(timeline: dict, out_dir: Path) -> bool:
@@ -576,13 +627,20 @@ def _align_and_mtv(
         cache_path=out_dir / "asr.json",
         prompt=prompt,
     )
-    timeline = align_lyrics(
+    agent_matches = align_lines_with_agent(
         lines,
+        asr_words,
         lang,
-        audio_path=voice,
-        duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
-        asr_words=asr_words or None,
+        cache_path=out_dir / "agent-align.json",
     )
+    align_kwargs = {
+        "audio_path": voice,
+        "duration_ms": probe_duration_ms(src) or probe_duration_ms(voice),
+        "asr_words": asr_words or None,
+    }
+    if agent_matches:
+        align_kwargs["agent_matches"] = agent_matches
+    timeline = align_lyrics(lines, lang, **align_kwargs)
     keep_native = _stamp_native_video(timeline, out_dir)
     if lang == "ja" and timeline.get("cues"):
         update_song(song_id, status="annotating")

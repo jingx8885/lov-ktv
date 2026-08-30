@@ -38,6 +38,22 @@ class LocalRoomTest {
     }
 
     @Test
+    fun bumpMovesQueuedSongAfterNowPlaying() {
+        val room = LocalRoom(songLookup = { id -> songs.firstOrNull { it.id == id } })
+        room.ensure("BUMP1")
+        room.enqueue("BUMP1", "s1")
+        room.enqueue("BUMP1", "s2")
+        var snap = room.enqueue("BUMP1", "busy")
+        assertEquals(listOf("s1", "s2", "busy"), snap.queue.map { it.songId })
+        val late = snap.queue.first { it.songId == "busy" }
+        snap = room.bump("BUMP1", late.id)
+        assertEquals("s1", snap.nowPlaying?.songId)
+        assertEquals(listOf("s1", "busy", "s2"), snap.queue.map { it.songId })
+        snap = room.bump("BUMP1", late.id)
+        assertEquals(listOf("s1", "busy", "s2"), snap.queue.map { it.songId })
+    }
+
+    @Test
     fun queuesUncachedSongsAndRefreshesWhenReady() {
         val live = songs.associateBy { it.id }.toMutableMap()
         val room = LocalRoom(songLookup = { id -> live[id] })

@@ -1,4 +1,4 @@
-"""ASR via the local whisper CLI. Known lyrics stay the text source."""
+"""ASR via Whisper CLI or the bundled no-Torch faster-whisper runtime."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import time
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,72 @@ from lovktv.core.config import WHISPER_DIR
 from lovktv.pipeline.language import whisper_language
 
 WHISPER_BIN = shutil.which("whisper")
+
+
+@lru_cache(maxsize=2)
+def _faster_whisper_model(model_name: str, model_dir: str):
+    """Load the optional no-Torch Whisper runtime lazily and reuse it per model."""
+    try:
+        from faster_whisper import WhisperModel
+
+        return WhisperModel(
+            model_name,
+            device="cpu",
+            compute_type=os.environ.get("LOVKTV_WHISPER_COMPUTE_TYPE", "int8"),
+            download_root=model_dir,
+        )
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _transcribe_faster_whisper(
+    audio_path: Path,
+    language: str,
+    cache_path: Path | None,
+    prompt: str,
+) -> list[dict[str, Any]]:
+    model_name = (os.environ.get("LOVKTV_WHISPER_MODEL") or "small").strip()
+    model_dir = str(Path(os.environ.get("LOVKTV_WHISPER_DIR") or WHISPER_DIR))
+    model = _faster_whisper_model(model_name, model_dir)
+    if model is None:
+        return []
+    try:
+        segments, _info = model.transcribe(
+            str(audio_path),
+            language=language,
+            task="transcribe",
+            word_timestamps=True,
+            condition_on_previous_text=False,
+            vad_filter=False,
+            beam_size=1,
+            initial_prompt=prompt.strip()[:400] if prompt.strip() else None,
+        )
+        payload_segments: list[dict[str, Any]] = []
+        for segment in segments:
+            words = [
+                {
+                    "word": str(word.word or "").strip(),
+                    "start": float(word.start),
+                    "end": float(word.end),
+                }
+                for word in (segment.words or [])
+                if str(word.word or "").strip()
+            ]
+            payload_segments.append(
+                {
+                    "start": float(segment.start),
+                    "end": float(segment.end),
+                    "text": str(segment.text or "").strip(),
+                    "words": words,
+                }
+            )
+        payload = {"segments": payload_segments}
+        if cache_path:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps(payload), encoding="utf-8")
+        return _parse_whisper_payload(payload)
+    except Exception:  # noqa: BLE001
+        return []
 
 
 def _whisper_pids(needle: str | None = None) -> list[int]:
@@ -141,6 +208,9 @@ def transcribe_words(
             cached = _copy_cache(sibling, cache_path)
             if cached:
                 return cached
+    if WHISPER_BIN is None:
+        return _transcribe_faster_whisper(audio_path, whisper_language(language), cache_path, prompt)
+
     cmd = [
         WHISPER_BIN or "whisper",
         str(audio_path),
@@ -185,6 +255,10 @@ def _parse_whisper_json(path: Path) -> list[dict[str, Any]]:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return []
+    return _parse_whisper_payload(data)
+
+
+def _parse_whisper_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
     words: list[dict[str, Any]] = []
     for seg_i, segment in enumerate(data.get("segments") or []):
         seg_text = str(segment.get("text") or "").strip()

@@ -177,6 +177,20 @@ def test_has_native_mtv_from_bilibili_skeleton(tmp_path):
     assert jobs._has_native_mtv(tmp_path / "missing") is False
 
 
+def test_native_timed_requires_close_media_duration(tmp_path, monkeypatch):
+    out = tmp_path / "s"
+    out.mkdir()
+    (out / "mtv.mp4").write_bytes(b"v")
+    (out / "lyrics.json").write_text(
+        '{"cues":[{"start_ms":1000,"end_ms":118000}]}', encoding="utf-8"
+    )
+    skeleton = {"has_video": True, "source": {"provider": "karaoke-mugen"}}
+    monkeypatch.setattr(jobs, "probe_duration_ms", lambda path: 120000)
+    assert jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
+    monkeypatch.setattr(jobs, "probe_duration_ms", lambda path: 180000)
+    assert not jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
+
+
 def test_resume_stuck_align_keeps_bilibili_mv(monkeypatch, tmp_path):
     out = tmp_path / "b1"
     out.mkdir()

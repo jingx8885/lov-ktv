@@ -88,6 +88,8 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "if (adoptLan(room))" in join
     queue_js = (ROOT / "phone" / "desk" / "js" / "queue.js").read_text(encoding="utf-8")
     assert "adoptLan(cloud.data)" in queue_js
+    assert 'data-bump="' in queue_js
+    assert "/bump" in queue_js
     assert "api.loadRoom({ room: data })" in (
         ROOT / "phone" / "desk" / "js" / "library.js"
     ).read_text(encoding="utf-8")

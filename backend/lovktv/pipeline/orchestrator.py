@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from statistics import median
 from typing import Any
 
 from lovktv.pipeline.audio import (
@@ -28,6 +29,7 @@ from lovktv.pipeline.energy import merge_with_energy as _merge_with_energy
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
     build_cue,
+    drop_credit_lines,
     prepare_lyric_lines,
     timeline_from_lrc,
     tokenize,
@@ -51,6 +53,7 @@ def align_lyrics(
     envelope: list[float] | None = None,
     hop_ms: int = HOP_MS,
     asr_words: list[dict[str, Any]] | None = None,
+    agent_matches: list[dict[str, int]] | None = None,
 ) -> dict[str, Any]:
     """Return karaoke timeline anchored to voice when possible."""
     joined = "".join(str(item.get("text") or "") for item in lines)
@@ -73,10 +76,15 @@ def align_lyrics(
 
     if asr_words:
         timed_lines = [item for item in lines if item.get("ms") is not None]
+        used_asr_clock = False
         if timed_lines:
             bounds = _align_lines_official_clock(
                 lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
             )
+            asr_clock = _prefer_asr_clock(lines, asr_words, lang, envelope, hop_ms)
+            if asr_clock is not None:
+                bounds = asr_clock
+                used_asr_clock = True
         else:
             from lovktv.pipeline.lyric_anchor import (
                 align_lines_with_anchor,
@@ -100,6 +108,9 @@ def align_lyrics(
                     hop_ms,
                 )
         if bounds:
+            agent_count = _apply_agent_matches(
+                bounds, lines, asr_words, agent_matches, lang
+            )
             cues = []
             for row in bounds:
                 pieces = tokenize(str(row["text"]), lang)
@@ -121,8 +132,10 @@ def align_lyrics(
                     cues.append(cue)
             return {
                 "language": lang,
-                "alignment": "lrc" if timed_lines else "asr",
-                "alignment_source": "official" if timed_lines else "whisper",
+                "alignment": "agent" if agent_count else ("asr" if used_asr_clock else ("lrc" if timed_lines else "asr")),
+                "alignment_source": (
+                    "agent+whisper" if agent_count else ("whisper" if used_asr_clock or not timed_lines else "official")
+                ),
                 "cues": cues,
             }
 
@@ -177,3 +190,98 @@ def align_lyrics(
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
     return timeline
+
+
+def _apply_agent_matches(
+    bounds: list[dict[str, Any]],
+    lines: list[dict[str, Any]],
+    asr_words: list[dict[str, Any]],
+    matches: list[dict[str, int]] | None,
+    language: str,
+) -> int:
+    """Overlay validated agent-selected ASR spans on deterministic bounds."""
+    if not bounds or not matches or not asr_words:
+        return 0
+    from lovktv.pipeline.matching import _usable_asr_words
+
+    kept = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
+    words = _usable_asr_words(asr_words)
+    if len(kept) != len(bounds) or not words:
+        return 0
+    applied = 0
+    for match in matches:
+        try:
+            line_index = int(match["lyric"]) - 1
+            start_index = int(match["from"]) - 1
+            end_index = int(match["to"]) - 1
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (0 <= line_index < len(bounds) and 0 <= start_index <= end_index < len(words)):
+            continue
+        start_ms = int(words[start_index].get("start_ms") or 0)
+        end_ms = int(words[end_index].get("end_ms") or start_ms + 40)
+        if line_index and start_ms < int(bounds[line_index - 1]["start_ms"]):
+            continue
+        if end_ms <= start_ms:
+            continue
+        bounds[line_index]["start_ms"] = max(0, start_ms)
+        bounds[line_index]["end_ms"] = max(start_ms + 40, end_ms)
+        bounds[line_index]["from_asr"] = True
+        applied += 1
+    if applied:
+        for index in range(1, len(bounds)):
+            bounds[index]["start_ms"] = max(
+                int(bounds[index]["start_ms"]), int(bounds[index - 1]["end_ms"])
+            )
+            bounds[index]["end_ms"] = max(
+                int(bounds[index]["start_ms"]) + 40, int(bounds[index]["end_ms"])
+            )
+    return applied
+
+
+def _prefer_asr_clock(
+    lines: list[dict[str, Any]],
+    asr_words: list[dict[str, Any]],
+    language: str,
+    envelope: list[float] | None,
+    hop_ms: int,
+) -> list[dict[str, Any]] | None:
+    """Use Whisper's clock when it consistently disagrees with official LRC.
+
+    Official LRC remains the default.  A high-coverage, internally consistent
+    ASR match with a large global offset indicates a different edit/version;
+    in that case keeping the official clock leaves every cue out of sync.
+    """
+    candidate = _align_lines_to_asr(
+        lines, asr_words, language, envelope=envelope, hop_ms=hop_ms
+    )
+    if not candidate:
+        return None
+    kept = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
+    if len(candidate) != len(kept):
+        return None
+    matched = [row for row in candidate if row.get("from_asr")]
+    if len(matched) < 3 or len(matched) / len(candidate) < 0.55:
+        return None
+    offsets = [
+        int(row["start_ms"]) - int(line["ms"])
+        for row, line in zip(candidate, kept)
+        if row.get("from_asr") and line.get("ms") is not None
+    ]
+    if len(offsets) < 3:
+        return None
+    center = median(offsets)
+    if abs(center) < 5_000:
+        return None
+    spread = median([abs(value - center) for value in offsets])
+    if spread > 4_000:
+        return None
+    return candidate

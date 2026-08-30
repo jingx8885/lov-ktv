@@ -9,7 +9,7 @@ A self-hosted karaoke system for homes and private rooms. Guests search and queu
 ## Features
 
 - **Search-first library**: search by song title instead of preparing files in advance; local upload is a fallback.
-- **Automatic processing**: retrieves timestamped official LRC when available and separates vocals with ONNX Runtime—no Torch or openai-whisper required.
+- **Automatic processing**: retrieves timestamped official LRC when available, separates vocals with ONNX Runtime, and uses the no-Torch faster-whisper runtime for word-level vocal alignment; it still falls back to LRC/onset when Whisper is unavailable.
 - **Multi-device rooms**: the TV displays a room QR code; phones can search, queue, prioritize, skip, and control playback.
 - **Multiple hosts**: use the browser TV player, Android TV host, or native Android phone remote.
 - **Offline cache**: Android TV keeps completed songs playable when the processing server is temporarily unavailable.
@@ -48,7 +48,7 @@ Once ready, open:
 - Mobile remote: <http://localhost:8787/m.html>
 - Service status: <http://localhost:8787/api/host>
 
-For TVs and phones on your LAN, replace `localhost` with the address of the computer or NAS running lov-ktv. The `models.separator` value returned by `/api/host` should be `true`.
+For TVs and phones on your LAN, replace `localhost` with the address of the computer or NAS running lov-ktv. The `models.separator` and `models.whisper` values returned by `/api/host` should be `true` for production-quality vocal alignment.
 
 ### Local Python setup
 

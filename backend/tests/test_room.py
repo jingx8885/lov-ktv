@@ -1,6 +1,7 @@
 import pytest
 
 from lovktv.storage.room_store import (
+    bump,
     enqueue,
     ensure_room,
     play_now,
@@ -102,6 +103,42 @@ def test_catalog_enqueue_does_not_cut_in(tmp_path, monkeypatch):
     assert [item["song_id"] for item in queued["queue"]] == [first["id"], extra["id"]]
     jumped = play_now("Q1", song_id=extra["id"])
     assert jumped["now_playing"]["song_id"] == first["id"]
+
+
+def test_bump_moves_song_to_next(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    store.init_db()
+    first = store.create_song("正在唱", "a", "zh")
+    second = store.create_song("原来下一首", "b", "zh")
+    third = store.create_song("插队", "c", "zh")
+    for song in (first, second, third):
+        store.update_song(song["id"], status="ready")
+    ensure_room("BUMP1")
+    enqueue("BUMP1", first["id"])
+    enqueue("BUMP1", second["id"])
+    queued = enqueue("BUMP1", third["id"])
+    assert [item["song_id"] for item in queued["queue"]] == [
+        first["id"],
+        second["id"],
+        third["id"],
+    ]
+    bumped = bump("BUMP1", queued["queue"][2]["id"])
+    assert bumped["now_playing"]["song_id"] == first["id"]
+    assert [item["song_id"] for item in bumped["queue"]] == [
+        first["id"],
+        third["id"],
+        second["id"],
+    ]
+    again = bump("BUMP1", bumped["queue"][1]["id"])
+    assert [item["song_id"] for item in again["queue"]] == [
+        first["id"],
+        third["id"],
+        second["id"],
+    ]
 
 
 def test_enqueue_after_empty_queue_starts_song(tmp_path, monkeypatch):

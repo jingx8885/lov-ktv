@@ -1,4 +1,6 @@
 import json
+import sys
+import types
 
 from lovktv.pipeline.transcribe import _parse_whisper_json, transcribe_words
 
@@ -110,3 +112,28 @@ def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path):
     transcribe_words(audio, "ja", cache_path=tmp_path / "asr.json")
     assert started["idle"] == 1
     assert started["run"] == 1
+
+
+def test_transcribe_uses_faster_whisper_when_cli_missing(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    class Word:
+        word, start, end = " hello ", 1.25, 2.5
+
+    class Segment:
+        start, end, text, words = 1.25, 2.5, "hello", [Word()]
+
+    class Model:
+        def transcribe(self, *_args, **_kwargs):
+            return iter([Segment()]), types.SimpleNamespace(duration=4.0)
+
+    fake_module = types.SimpleNamespace(WhisperModel=lambda *args, **kwargs: Model())
+    monkeypatch.setitem(sys.modules, "faster_whisper", fake_module)
+    monkeypatch.setattr(transcribe, "WHISPER_BIN", None)
+    transcribe._faster_whisper_model.cache_clear()
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"x")
+    words = transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    assert words == [
+        {"text": "hello", "start_ms": 1250, "end_ms": 2500, "segment": 0}
+    ]

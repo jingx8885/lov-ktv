@@ -125,6 +125,41 @@ export function renderAlignList() {
   ensureTimeline().render();
 }
 
+async function regenerateLyrics() {
+  const song = state.playerSong;
+  if (!song) return showToast(t("phone.player.needSong"));
+  const btn = $("playerRegenerate");
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const started = await fetchJson(`/api/songs/${song.id}/realign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rebuild_mtv: false })
+    });
+    if (!started.ok) throw new Error(started.data?.detail || t("phone.player.regenerateFailed"));
+    showToast(t("phone.player.regenerateStarted"));
+    for (let attempt = 0; attempt < 360; attempt += 1) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1500);
+      });
+      const current = await fetchJson(`/api/songs/${song.id}`).catch(() => null);
+      const status = current && current.data && current.data.status;
+      if (status === "failed") throw new Error(t("phone.player.regenerateFailed"));
+      if (status !== "ready") continue;
+      const { loadPlayerSong } = await import("./song.js");
+      await loadPlayerSong(song.id, { play: false });
+      showToast(t("phone.player.regenerateDone"));
+      return;
+    }
+    throw new Error(t("phone.player.regenerateFailed"));
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : t("phone.player.regenerateFailed"));
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 export function shiftSelected(delta, rest) {
   const cues = state.playerLyrics.cues || [];
   if (state.selectedCue < 0 || state.selectedCue >= cues.length) return;
@@ -159,6 +194,7 @@ export function shiftSelected(delta, rest) {
 export function bindAlign() {
   $("editPlay").onclick = () => api.togglePlayer();
   $("playerEdit").onclick = () => enterEdit();
+  $("playerRegenerate").onclick = () => regenerateLyrics();
   $("editBack").onclick = () => exitEdit();
   $("tlMixHead").onclick = () => {
     state.mixTrackOn = !state.mixTrackOn;

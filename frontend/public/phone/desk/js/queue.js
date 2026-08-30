@@ -83,6 +83,7 @@ export async function loadRoom(opts) {
       .map((item, i) => {
         const playing = i === room.now_index;
         const ready = item.status === "ready";
+        const canBump = !playing && i > (room.now_index || 0) + 1;
         return `
         <div class="desk-row ${playing ? "on" : ""}">
           <span class="desk-index ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1)}</span>
@@ -91,6 +92,7 @@ export async function loadRoom(opts) {
             <span class="tiny">${playing ? t("phone.desk.now") : ready ? t("phone.desk.nextQueued") : STATUS[item.status] || item.status}</span>
           </div>
           <div class="desk-actions">
+            ${canBump ? `<button class="row-action ghost" data-bump="${item.id}" aria-label="${t("phone.desk.bump")}">${ICO.bump}</button>` : ""}
             <button class="row-action ${playing ? "on" : "ghost"}" data-play="${item.id}" aria-label="${t("phone.desk.playThis")}">${ICO.play}</button>
           </div>
         </div>`;
@@ -107,6 +109,20 @@ export async function loadRoom(opts) {
           body: JSON.stringify({ id: btn.dataset.play })
         });
         if (!ok) showToast(data.detail || t("phone.desk.cantQueue"));
+        loadRoom({ room: data });
+      };
+    });
+  $("queue")
+    .querySelectorAll("[data-bump]")
+    .forEach((btn) => {
+      btn.onclick = async () => {
+        const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/bump`), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: btn.dataset.bump })
+        });
+        if (!ok) showToast(data.detail || t("phone.desk.cantQueue"));
+        else showToast(t("phone.desk.bumped"));
         loadRoom({ room: data });
       };
     });

@@ -9,6 +9,8 @@ WORKDIR /app
 ENV PYTHONPATH=/app/backend \
     LOVKTV_DATA=/app/data \
     LOVKTV_MODELS=/opt/lovktv/models \
+    LOVKTV_WHISPER_DIR=/opt/lovktv/models/whisper \
+    LOVKTV_WHISPER_MODEL=small \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
@@ -18,7 +20,8 @@ RUN mkdir -p /app/backend/lovktv /app/data /opt/lovktv/models \
     && pip install --no-cache-dir -e /app/backend yt-dlp \
     && curl -fsSL --retry 3 -o /opt/lovktv/models/UVR_MDXNET_KARA_2.onnx \
         https://github.com/TRvlvr/model_repo/releases/download/all_public_uvr_models/UVR_MDXNET_KARA_2.onnx \
-    && test -s /opt/lovktv/models/UVR_MDXNET_KARA_2.onnx
+    && test -s /opt/lovktv/models/UVR_MDXNET_KARA_2.onnx \
+    && python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8', download_root='/opt/lovktv/models/whisper')"
 
 FROM base AS app
 

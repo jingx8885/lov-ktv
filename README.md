@@ -9,7 +9,7 @@
 ## 功能
 
 - **搜歌入库**：主流程是搜索歌名，不需要先准备本地文件；本地上传仅作后备。
-- **自动处理**：优先获取带时间戳的官方 LRC，使用 ONNX Runtime 完成人声 / 伴奏分离，无需 Torch 或 openai-whisper。
+- **自动处理**：优先获取带时间戳的官方 LRC，使用 ONNX Runtime 完成人声 / 伴奏分离，并用无 Torch 的 faster-whisper 做人声词级对齐；Whisper 不可用时仍可回退到 LRC / onset。
 - **多端协作**：电视显示房间二维码，手机扫码后即可搜歌、点歌、顶歌、切歌和控制播放。
 - **多种宿主**：支持浏览器电视端、Android TV 宿主和 Android 手机点歌台。
 - **离线缓存**：Android TV 可缓存处理完成的歌曲，处理端暂时离线时仍能播放。
@@ -87,10 +87,34 @@ Windows PowerShell 可使用 `.venv\Scripts\python -m pip install -e backend`，
 
 不要提交 `.env`、密钥、`data/`、曲库或构建出的 APK。
 
-本地验收：`scripts/accept.sh` 使用仓库根目录 `.venv` 和锁定的 `backend/uv.lock`；公网验收可运行
-`.venv/bin/python scripts/accept-production.py --base https://ktv.lovbrowser.com`。
+本地验收：`scripts/accept.sh` 使用仓库根目录 `.venv` 和锁定的 `backend/uv.lock`。
 
-公网（`ktv.lovbrowser.com`，43 上只绑 `127.0.0.1:8790`）：
+### 生产发布
+
+生产镜像分为 `base` 与 `app` 两层；`base` 包含 ONNX 分离模型和无 Torch 的
+`faster-whisper` small 模型，`app` 只包含 backend / frontend。提交并推送后，在生产机执行：
+
+```bash
+ssh ubuntu@43.134.133.185
+cd ~/lov-ktv
+git pull --ff-only origin master
+sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build
+```
+
+上线后从生产机执行公网验收（避免本地代理或 Cloudflare 握手干扰）：
+
+```bash
+python3 scripts/accept-production.py \
+  --base https://ktv.lovbrowser.com \
+  --expect-origin https://ktv.lovbrowser.com \
+  --require-whisper
+```
+
+验收必须看到 `/`、`/tv.html`、`/m.html` 为 200，且 `/api/host` 中
+`models.separator=true`、`models.whisper=true`。若 Whisper 未就绪，不要继续用 onset
+回退结果验收歌词；先确认镜像确实重新构建了 base 层，再对目标歌曲执行重新对齐。
+
+本机无法访问公网时，可用 SSH 隧道指向生产端口 `127.0.0.1:8790`，不要把处理端绑定到公网。
 
 ## 项目文档
 

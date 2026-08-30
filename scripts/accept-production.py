@@ -15,7 +15,13 @@ PATHS = ("/", "/api/host", "/tv.html", "/m.html")
 
 
 def fetch(base: str, path: str) -> tuple[int, bytes]:
-    request = urllib.request.Request(f"{base}{path}", headers={"Accept": "application/json"})
+    request = urllib.request.Request(
+        f"{base}{path}",
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "lov-ktv-accept/1.0 (Mozilla/5.0)",
+        },
+    )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:
             return response.status, response.read()
@@ -30,6 +36,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Check public lov-ktv endpoints")
     parser.add_argument("--base", default=os.environ.get("LOVKTV_PUBLIC_URL") or DEFAULT_BASE)
     parser.add_argument("--expect-origin", default="", help="Optional exact /api/host origin")
+    parser.add_argument(
+        "--require-whisper",
+        action="store_true",
+        help="Fail unless the bundled Whisper runtime and model are ready",
+    )
     args = parser.parse_args()
     base = str(args.base).rstrip("/")
     failed = False
@@ -47,6 +58,9 @@ def main() -> int:
                 ok = False
             if ok and host.get("models", {}).get("separator") is not True:
                 print(f"{path}: separator model is not ready", file=sys.stderr)
+                ok = False
+            if ok and args.require_whisper and host.get("models", {}).get("whisper") is not True:
+                print(f"{path}: whisper model is not ready", file=sys.stderr)
                 ok = False
         print(f"{path}: HTTP {status} {'ok' if ok else 'FAILED'}")
         failed = failed or not ok
