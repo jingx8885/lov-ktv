@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from lovktv.identity.quota import guest_key, is_account, quota_payload
 from lovktv.services.http import current_user, fail
 from lovktv.storage import points as store
@@ -13,6 +15,13 @@ AD_SECONDS = 30
 REGISTER_BONUS = 10
 DOWNLOAD_BONUS = 10
 AD_DAY_LIMIT = 40
+# Off until the admin/recharge flow is in daily use. Set LOVKTV_POINTS=1 to charge.
+POINTS_ENFORCED = (os.environ.get("LOVKTV_POINTS") or "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 def wallet_owner(request, user: dict | None = None) -> str:
@@ -69,6 +78,8 @@ def grant_register(request, user: dict) -> dict:
 
 
 def charge_process(request) -> dict:
+    if not POINTS_ENFORCED:
+        return {"free": True, "skipped": True, "points": points_payload(request)}
     user = current_user(request)
     if not is_account(user):
         quota = quota_payload(request, user)
@@ -80,6 +91,8 @@ def charge_process(request) -> dict:
 
 
 def charge_queue(request, song_id: str = "") -> dict:
+    if not POINTS_ENFORCED:
+        return points_payload(request)
     return spend(request, QUEUE_COST, "queue", song_id)
 
 

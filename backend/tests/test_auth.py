@@ -207,6 +207,9 @@ def test_guest_song_quota_then_login_unlimited(tmp_path, monkeypatch):
 
     _init(store, tmp_path)
     monkeypatch.setattr(songs, "spawn", lambda *args, **kwargs: None)
+    from lovktv.identity import points as points_mod
+
+    monkeypatch.setattr(points_mod, "POINTS_ENFORCED", True)
     from lovktv.main import app
 
     with TestClient(app) as guest:

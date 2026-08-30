@@ -16,6 +16,9 @@ def test_register_bonus_ad_and_costs(tmp_path, monkeypatch):
     _init(store, tmp_path)
     monkeypatch.setattr(songs, "spawn", lambda *args, **kwargs: None)
     monkeypatch.setattr(ads_mod, "AD_MIN_MS", 0)
+    from lovktv.identity import points as points_mod
+
+    monkeypatch.setattr(points_mod, "POINTS_ENFORCED", True)
     from lovktv.main import app
 
     headers = {"X-LovKtv-Machine": "phone-machine-01"}
