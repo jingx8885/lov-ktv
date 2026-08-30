@@ -34,7 +34,11 @@ export function bindSearchHits(q) {
           language: hit.language || "",
           source: hit.source || ""
         };
-        const { ok, status, data: created } = await fetchJson("/api/songs/import", {
+        const {
+          ok,
+          status,
+          data: created
+        } = await fetchJson("/api/songs/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
@@ -58,11 +62,20 @@ export function bindSearchHits(q) {
 export function searchCard(hit) {
   const isMv = hit.is_mv === true || hit.source === "mugen" || hit.source === "bilibili";
   const duration = Number(hit.duration || 0);
-  const durationText = duration > 0 ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "";
-  const match = hit.duration_match === "exact" ? t("phone.search.durationExact") : hit.duration_match === "close" ? t("phone.search.durationClose") : "";
-  const bits = [escapeHtml(hit.artist || t("common.unknownArtist")), isMv ? "MV" : t("phone.search.song"), durationText, match].filter(
-    Boolean
-  );
+  const durationText =
+    duration > 0 ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "";
+  const match =
+    hit.duration_match === "exact"
+      ? t("phone.search.durationExact")
+      : hit.duration_match === "close"
+        ? t("phone.search.durationClose")
+        : "";
+  const bits = [
+    escapeHtml(hit.artist || t("common.unknownArtist")),
+    isMv ? "MV" : t("phone.search.song"),
+    durationText,
+    match
+  ].filter(Boolean);
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
           <div class="list-copy">

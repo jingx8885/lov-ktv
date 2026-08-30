@@ -238,6 +238,8 @@ export default {
   "phone.mic.idleSpeaker": "本机唱歌，伴奏和人声一起从手机喇叭出来。回音大就打开耳返。",
 
   "learn.title": "游戏",
+  "learn.cleared": "通关要词句都认识",
+  "learn.book": "错题本",
   "learn.lead": "选一种玩法。测验和点词：轻松每句等你确认，标准停 5 秒，困难不停。点下去倒计时就开始。",
   "learn.diff": "难度",
   "learn.diff.easy": "轻松",

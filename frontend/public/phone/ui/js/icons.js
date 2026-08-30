@@ -54,8 +54,6 @@ export function paintTopWho(user) {
     $("topWho").innerHTML = `<img alt="" src="${user.avatar}">`;
     return;
   }
-  const mark = user
-    ? String(user.username || user.sid || user.nickname || "").slice(0, 1)
-    : "";
+  const mark = user ? String(user.username || user.sid || user.nickname || "").slice(0, 1) : "";
   $("topWho").innerHTML = mark ? `<em>${mark}</em>` : WHO_ICO;
 }

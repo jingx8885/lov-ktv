@@ -44,8 +44,7 @@ function paintQuotaBar(quota, signedIn) {
   }
   if (whoQuota) {
     whoQuota.hidden = false;
-    whoQuota.textContent =
-      remaining <= 0 ? t("phone.search.quotaOut") : t("phone.search.quota", { n: remaining });
+    whoQuota.textContent = remaining <= 0 ? t("phone.search.quotaOut") : t("phone.search.quota", { n: remaining });
   }
 }
 

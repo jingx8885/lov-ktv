@@ -57,6 +57,9 @@ TABLES: dict[str, tuple[str, ...]] = {
         "clicked",
     ),
     "point_claims": ("owner", "kind", "created_at"),
+    "learn_progress": ("owner", "song_id", "unit_id", "skill", "status", "score", "attempts", "updated_at"),
+    "learn_mastery": ("owner", "song_id", "kind", "item_key", "text", "zh", "correct", "wrong", "streak", "mastered", "updated_at"),
+    "learn_mistakes": ("owner", "song_id", "qkind", "item_key", "prompt", "stem", "answer_text", "payload", "wrong_count", "correct_streak", "last_wrong_at", "resolved_at"),
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
@@ -173,6 +176,25 @@ CREATE TABLE IF NOT EXISTS point_claims (
   created_at INTEGER NOT NULL,
   PRIMARY KEY (owner, kind)
 );
+CREATE TABLE IF NOT EXISTS learn_progress (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, unit_id TEXT NOT NULL, skill TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ready', score INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL,
+  PRIMARY KEY (owner, song_id, unit_id, skill)
+);
+CREATE TABLE IF NOT EXISTS learn_mastery (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, kind TEXT NOT NULL, item_key TEXT NOT NULL,
+  text TEXT NOT NULL DEFAULT '', zh TEXT NOT NULL DEFAULT '', correct INTEGER NOT NULL DEFAULT 0,
+  wrong INTEGER NOT NULL DEFAULT 0, streak INTEGER NOT NULL DEFAULT 0, mastered INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL, PRIMARY KEY (owner, song_id, kind, item_key)
+);
+CREATE TABLE IF NOT EXISTS learn_mistakes (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, qkind TEXT NOT NULL, item_key TEXT NOT NULL,
+  prompt TEXT NOT NULL DEFAULT '', stem TEXT NOT NULL DEFAULT '', answer_text TEXT NOT NULL DEFAULT '',
+  payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
+  correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at INTEGER NOT NULL DEFAULT 0,
+  resolved_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
+);
 """
 
 POSTGRES_DDL = """
@@ -282,6 +304,25 @@ CREATE TABLE IF NOT EXISTS point_claims (
   kind TEXT NOT NULL,
   created_at BIGINT NOT NULL,
   PRIMARY KEY (owner, kind)
+);
+CREATE TABLE IF NOT EXISTS learn_progress (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, unit_id TEXT NOT NULL, skill TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ready', score INTEGER NOT NULL DEFAULT 0,
+  attempts INTEGER NOT NULL DEFAULT 0, updated_at BIGINT NOT NULL,
+  PRIMARY KEY (owner, song_id, unit_id, skill)
+);
+CREATE TABLE IF NOT EXISTS learn_mastery (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, kind TEXT NOT NULL, item_key TEXT NOT NULL,
+  text TEXT NOT NULL DEFAULT '', zh TEXT NOT NULL DEFAULT '', correct INTEGER NOT NULL DEFAULT 0,
+  wrong INTEGER NOT NULL DEFAULT 0, streak INTEGER NOT NULL DEFAULT 0, mastered INTEGER NOT NULL DEFAULT 0,
+  updated_at BIGINT NOT NULL, PRIMARY KEY (owner, song_id, kind, item_key)
+);
+CREATE TABLE IF NOT EXISTS learn_mistakes (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, qkind TEXT NOT NULL, item_key TEXT NOT NULL,
+  prompt TEXT NOT NULL DEFAULT '', stem TEXT NOT NULL DEFAULT '', answer_text TEXT NOT NULL DEFAULT '',
+  payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
+  correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at BIGINT NOT NULL DEFAULT 0,
+  resolved_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
 );
 """
 

@@ -70,7 +70,8 @@ export default {
   "api.username_taken": "That username is taken",
   "api.login_failed": "Wrong username or password",
   "api.guest_limit": "Guests can queue {limit} songs a day. Sign in to continue.",
-  "api.need_points": "Not enough points (need {cost}, have {have}). Watch a 30s ad for +1, or register / download the app for +10.",
+  "api.need_points":
+    "Not enough points (need {cost}, have {have}). Watch a 30s ad for +1, or register / download the app for +10.",
   "api.ad_too_soon": "Watch the ad for 30 seconds first",
   "api.ad_invalid": "This ad expired — start another",
   "api.ad_done": "Points for this ad were already claimed",

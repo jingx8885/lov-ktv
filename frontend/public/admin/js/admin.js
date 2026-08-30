@@ -25,7 +25,9 @@ function fmtTime(ms) {
 
 function labelUser(user, owner) {
   if (user && (user.username || user.sid)) {
-    return (user.username || user.sid) + (user.nickname && user.nickname !== user.username ? " · " + user.nickname : "");
+    return (
+      (user.username || user.sid) + (user.nickname && user.nickname !== user.username ? " · " + user.nickname : "")
+    );
   }
   return owner || t("admin.guest");
 }
@@ -317,10 +319,9 @@ function paintRoomDetail(room) {
     .querySelectorAll("[data-drop]")
     .forEach((btn) => {
       btn.onclick = async () => {
-        const { ok, data } = await api(
-          "/api/admin/rooms/" + currentRoom + "/queue/" + btn.dataset.drop,
-          { method: "DELETE" }
-        );
+        const { ok, data } = await api("/api/admin/rooms/" + currentRoom + "/queue/" + btn.dataset.drop, {
+          method: "DELETE"
+        });
         if (ok) paintRoomDetail(data);
         loadRooms();
       };
