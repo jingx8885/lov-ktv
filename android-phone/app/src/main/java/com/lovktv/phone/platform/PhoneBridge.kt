@@ -42,4 +42,9 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun useLan(lan: String, room: String) {
         activity.useLan(lan, room)
     }
+
+    @JavascriptInterface
+    fun openUrl(url: String) {
+        activity.openExternal(url)
+    }
 }

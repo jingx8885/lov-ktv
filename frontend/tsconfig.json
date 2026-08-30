@@ -18,6 +18,7 @@
     "public/phone/**/*.js",
     "public/tv/**/*.js",
     "public/shared/ui/**/*.js",
+    "public/shared/ads/**/*.js",
     "public/shared/lyrics/**/*.js",
     "public/phone/player/js/playback/timeline.js",
     "public/shared/fx/**/*.js",

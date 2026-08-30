@@ -1,4 +1,19 @@
 .search-bar { display: flex; }
+.quota-bar {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.quota-bar button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
 .page-search { padding-top: 4px; }
 .search-hero { position: sticky; top: 0; z-index: 4; padding-bottom: 8px; background: var(--bg); }
 .search-row { display: flex; align-items: center; gap: 8px; }

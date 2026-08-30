@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title data-i18n-title="login.title">lov-ktv 认号</title>
+  <title data-i18n-title="login.title">lov-ktv 登录</title>
   <meta http-equiv="Cache-Control" content="no-store" />
   <link rel="icon" href="/brand/icon.png" type="image/png" />
   <link rel="icon" href="/brand/logo.svg" type="image/svg+xml" />
@@ -21,18 +21,32 @@
       <option value="en">English</option>
       <option value="ja">日本語</option>
     </select>
-    <h1 id="heading" data-i18n="login.heading">认号</h1>
-    <p class="muted" id="lead" data-i18n="login.lead">微信扫一下，直接拿一个稳定 ID。</p>
+    <h1 id="heading" data-i18n="login.heading">登录</h1>
+    <p class="muted" id="lead" data-i18n="login.lead">写个用户名和密码就能进。用户名可以是房间号，也可以自己起。</p>
     <p class="err" id="err" hidden></p>
 
     <div class="card who" id="meBox" hidden>
       <div>
-        <p class="tiny" data-i18n="login.yourId">你的 ID</p>
+        <p class="tiny" data-i18n="login.yourId">你的号</p>
         <p class="sid-display" id="sid">—</p>
         <p class="tiny" id="meHint"></p>
       </div>
       <button class="btn" id="logout" type="button" data-i18n="login.logout">退出</button>
     </div>
+
+    <form class="card" id="passBox" hidden>
+      <p class="tiny" id="quotaHint"></p>
+      <label class="field">
+        <span class="tiny" data-i18n="login.username">用户名</span>
+        <input id="username" name="username" autocomplete="username" maxlength="32" data-i18n-placeholder="login.usernamePh" placeholder="房间号或自己起一个" />
+      </label>
+      <label class="field">
+        <span class="tiny" data-i18n="login.password">密码</span>
+        <input id="password" name="password" type="password" autocomplete="current-password" maxlength="72" data-i18n-placeholder="login.passwordPh" placeholder="随便设一个，下次还能用" />
+      </label>
+      <button class="btn primary" id="passLogin" type="submit" data-i18n="login.enter">进入</button>
+      <button class="btn" id="passRegister" type="button" data-i18n="login.register">没有号，直接注册</button>
+    </form>
 
     <div class="card" id="loginBox" hidden>
       <a class="btn wechat" id="wechatScan" href="/api/auth/scan" data-i18n="login.wechatBtn">微信扫码认号</a>

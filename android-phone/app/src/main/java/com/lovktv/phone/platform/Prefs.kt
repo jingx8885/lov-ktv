@@ -13,6 +13,7 @@ object Prefs {
     private const val KEY_MIC_HOST = "mic_host"
     private const val KEY_MIC_PORT = "mic_port"
     private const val KEY_MIC_RATE = "mic_rate"
+    private const val KEY_MACHINE = "machine_id"
 
     fun serverUrl(context: Context): String {
         return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -47,6 +48,15 @@ object Prefs {
         val rate = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
             .getInt(KEY_MIC_RATE, LanMic.SAMPLE_RATE)
         return if (rate in 8000..96000) rate else LanMic.SAMPLE_RATE
+    }
+
+    fun machineId(context: Context): String {
+        val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+        val have = prefs.getString(KEY_MACHINE, "").orEmpty()
+        if (have.length >= 8) return have
+        val id = java.util.UUID.randomUUID().toString().replace("-", "")
+        prefs.edit().putString(KEY_MACHINE, id).apply()
+        return id
     }
 
     fun save(

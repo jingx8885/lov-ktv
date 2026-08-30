@@ -54,6 +54,11 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert "LovKtvPlatform.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
+    assert 'id="passBox"' in login
+    assert 'id="whoPassForm"' in phone
+    assert 'id="quotaBar"' in phone
+    assert 'id="adLayer"' in phone
+    assert 'id="whoWatchAd"' in phone
     for module in (
         "media.js",
         "controls.js",

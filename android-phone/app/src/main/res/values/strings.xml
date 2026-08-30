@@ -10,6 +10,10 @@
     <string name="scan_joining">正在进房…</string>
     <string name="mic_channel">低延时麦</string>
     <string name="splash_desc">lov-ktv 启动</string>
+    <string name="ad_splash">开屏广告</string>
+    <string name="ad_skip">跳过</string>
+    <string name="ad_jump">了解一下</string>
+    <string name="ad_remain">再看 %1$d 秒得 1 积分</string>
     <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码或填房间号。</string>
     <string name="tv_reconnecting">正在重连电视…</string>
     <string name="tv_reconnected">已重新连上电视</string>

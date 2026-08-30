@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="/phone/player/css/learn-tap.css" />
   <link rel="stylesheet" href="/phone/player/css/learn-echo.css" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css" />
+  <link rel="stylesheet" href="/shared/ads/css/ads.css" />
 </head>
 <body class="phone" data-app="phone" data-mount="phone-root">
   <div class="app" data-mount="phone-app">
@@ -36,6 +37,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 1.8c-4.2 0-7.6 2.1-7.6 4.7V20h15.2v-1.5c0-2.6-3.4-4.7-7.6-4.7z"/></svg>
       </button>
     </header>
+    <div class="ad-wait-bar" id="adWaitBar" hidden>
+      <span data-i18n="ads.processing">正在处理，看广告可赚积分</span>
+      <button type="button" id="adWaitWatch" data-i18n="phone.who.watchAd">看广告 +1</button>
+    </div>
 
     <section class="page page-search" id="page-search" data-mount="phone-search" hidden>
       <div class="search-hero">
@@ -54,6 +59,7 @@
           </button>
           <button class="search-cancel" id="searchCancel" type="button" hidden data-i18n="common.cancel">取消</button>
         </div>
+        <p class="quota-bar" id="quotaBar" hidden></p>
       </div>
       <audio id="preview" preload="none"></audio>
       <input type="file" id="file" accept="audio/*,video/*" hidden />
@@ -468,10 +474,27 @@
           <img class="avatar" id="whoAvatar" alt="" hidden />
           <div>
             <b id="whoName" data-i18n="phone.who.out">未登录</b>
-            <p class="tiny" id="whoHint" data-i18n="phone.who.hint">微信扫一下就能认号</p>
+            <p class="tiny" id="whoHint" data-i18n="phone.who.hint">写个用户名和密码就能进。用户名可用房间号。</p>
           </div>
         </div>
-        <a class="btn wechat" id="whoLogin" href="/api/auth/scan" data-i18n="phone.who.login">认号</a>
+        <p class="tiny" id="whoQuota" hidden></p>
+        <p class="tiny" id="whoPoints" hidden></p>
+        <p class="tiny" data-i18n="phone.who.pointsRule">点歌 1 积分 · 处理 5 积分 · 看 30 秒广告 +1</p>
+        <button class="btn primary" id="whoWatchAd" type="button" data-i18n="phone.who.watchAd">看广告 +1</button>
+        <form id="whoPassForm">
+          <label class="field">
+            <span class="tiny" data-i18n="login.username">用户名</span>
+            <input id="whoUsername" autocomplete="username" maxlength="32" data-i18n-placeholder="login.usernamePh" placeholder="房间号或自己起一个" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="login.password">密码</span>
+            <input id="whoPassword" type="password" autocomplete="current-password" maxlength="72" data-i18n-placeholder="login.passwordPh" placeholder="随便设一个，下次还能用" />
+          </label>
+          <p class="err" id="whoErr" hidden></p>
+          <button class="btn primary" id="whoEnter" type="submit" data-i18n="login.enter">进入</button>
+          <button class="btn" id="whoRegister" type="button" data-i18n="login.register">没有号，直接注册</button>
+        </form>
+        <a class="btn wechat" id="whoLogin" href="/api/auth/scan" data-i18n="phone.who.login">微信认号</a>
         <button class="btn" id="whoLogout" type="button" hidden data-i18n="phone.who.logout">退出</button>
         <button class="btn" id="rebindTv" type="button" hidden data-i18n="phone.room.bind">绑定电视</button>
         <select class="lang-picker" data-mount="phone-language" data-i18n-aria="lang.label" aria-label="语言">
@@ -521,6 +544,19 @@
     </div>
 
     <div class="toast" id="toast" hidden></div>
+    <div class="ad-layer" id="adLayer" hidden>
+      <div class="ad-card">
+        <img id="adImage" alt="" />
+        <button type="button" class="ad-skip" id="adSkip" hidden data-i18n="ads.skip">跳过</button>
+        <div class="ad-copy">
+          <p class="tiny" id="adKind"></p>
+          <h2 id="adTitle"></h2>
+          <p class="tiny" id="adBody"></p>
+          <p class="ad-timer" id="adTimer"></p>
+          <button class="btn primary" id="adJump" type="button"></button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="/shared/audio/js/bands/index.js"></script>
   <script src="/phone/player/js/playback/timeline.js"></script>

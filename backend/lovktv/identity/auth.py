@@ -24,10 +24,14 @@ def wechat_ready(kind: str = "web") -> bool:
 
 
 def auth_status() -> dict:
+    from lovktv.identity.quota import GUEST_SONG_LIMIT
+
     return {
         "wechat": wechat_ready("web"),
         "wechat_quick": wechat_ready("mp"),
         "qr": True,
+        "password": True,
+        "guest_limit": GUEST_SONG_LIMIT,
     }
 
 

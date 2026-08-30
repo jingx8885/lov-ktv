@@ -8,6 +8,7 @@ import { state, LIB_LETTERS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
+import { handlePointError, syncWaitBar } from "../../ui/js/ads.js";
 
 function nearBottom(el) {
   if (!el) return false;
@@ -94,14 +95,15 @@ function bindSongActions() {
         const code = $("room").value.trim();
         if (api.needTvOrRoom && api.needTvOrRoom()) return;
         btn.disabled = true;
-        const { ok, data } = await fetchJson(roomUrl(`/api/rooms/${code}/queue`), {
+        const { ok, status, data } = await fetchJson(roomUrl(`/api/rooms/${code}/queue`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ song_id: btn.dataset.queue })
         });
         btn.disabled = false;
         if (!ok) {
-          showToast(lanOrigin() ? t("phone.room.lanFail") : data.detail || t("phone.desk.cantQueue"));
+          if (status === 402) handlePointError(status, data.detail);
+          else showToast(lanOrigin() ? t("phone.room.lanFail") : data.detail || t("phone.desk.cantQueue"));
           loadSongs(false);
           return;
         }
@@ -226,6 +228,7 @@ export async function loadSongs(append = false) {
     }
   }
   renderLibTail(state.libState.page, state.libPages, data.total || 0);
+  syncWaitBar(state.libSongs);
   bindSongActions();
 }
 

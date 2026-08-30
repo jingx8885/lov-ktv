@@ -46,6 +46,11 @@ _EXC_KEYS = {
     "未知命令": "api.unknown_command",
     "无效的设备": "api.bad_device",
     "微信未返回账号": "api.wechat_no_account",
+    "用户名只能用字、数字和 ._-，1 到 32 个": "api.bad_username",
+    "密码至少 4 位": "api.bad_password",
+    "这个用户名已经被用了": "api.username_taken",
+    "用户名或密码不对": "api.login_failed",
+    "积分不够": "api.need_points",
 }
 
 

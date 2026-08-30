@@ -12,6 +12,12 @@ from lovktv.core.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 from lovktv.core.db import connect as db_connect
 from lovktv.core.db import execute, init_schema
 from lovktv.core.schema import SONG_FIELDS
+from lovktv.identity.passwords import (
+    hash_password,
+    normalize_username,
+    username_key,
+    verify_password,
+)
 from lovktv.storage.media import (
     media_flags as _media_flags,
 )
@@ -183,12 +189,16 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         return None
     data = dict(row)
     user_id = str(data["id"])
+    username = str(data.get("username") or "")
+    wechat = bool(data.get("wechat_openid"))
     return {
         "id": user_id,
         "sid": user_id[:6].upper(),
-        "nickname": data.get("nickname") or f"ID {user_id[:6].upper()}",
+        "nickname": data.get("nickname") or username or f"ID {user_id[:6].upper()}",
         "avatar": data.get("avatar") or "",
-        "wechat": bool(data.get("wechat_openid")),
+        "wechat": wechat,
+        "username": username,
+        "account": bool(username or wechat),
     }
 
 
@@ -300,6 +310,114 @@ def delete_session(token: str) -> None:
         return
     with _LOCK, connect() as conn:
         execute(conn, "DELETE FROM sessions WHERE token=?", (token,))
+
+
+def get_user_by_username(name: str) -> dict[str, Any] | None:
+    try:
+        key = username_key(name)
+    except ValueError:
+        return None
+    with connect() as conn:
+        row = execute(
+            conn, "SELECT * FROM users WHERE username_key=?", (key,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def register_password_user(
+    name: str, password: str, attach_user_id: str = ""
+) -> dict[str, Any]:
+    username = normalize_username(name)
+    key = username_key(username)
+    hashed = hash_password(password)
+    now = now_ms()
+    with _LOCK, connect() as conn:
+        taken = execute(
+            conn, "SELECT id FROM users WHERE username_key=?", (key,)
+        ).fetchone()
+        if taken:
+            raise ValueError("这个用户名已经被用了")
+        attached = None
+        if attach_user_id:
+            row = execute(
+                conn, "SELECT * FROM users WHERE id=?", (attach_user_id,)
+            ).fetchone()
+            attached = dict(row) if row else None
+        if attached and not str(attached.get("username") or ""):
+            execute(
+                conn,
+                "UPDATE users SET username=?, username_key=?, password_hash=?, nickname=? WHERE id=?",
+                (
+                    username,
+                    key,
+                    hashed,
+                    username,
+                    attach_user_id,
+                ),
+            )
+            user_id = attach_user_id
+        else:
+            user_id = new_id()
+            execute(
+                conn,
+                "INSERT INTO users (id, username, username_key, password_hash, nickname, created_at) VALUES (?,?,?,?,?,?)",
+                (user_id, username, key, hashed, username, now),
+            )
+    user = get_user(user_id)
+    if not user:
+        raise RuntimeError("创建用户失败")
+    return user
+
+
+def login_password_user(name: str, password: str) -> dict[str, Any]:
+    row = get_user_by_username(name)
+    if not row or not verify_password(password, str(row.get("password_hash") or "")):
+        raise ValueError("用户名或密码不对")
+    user = get_user(str(row["id"]))
+    if not user:
+        raise ValueError("用户名或密码不对")
+    return user
+
+
+def guest_song_used(key: str, day: str) -> int:
+    if not key or not day:
+        return 0
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT used FROM guest_song_counts WHERE guest_key=? AND day=?",
+            (key, day),
+        ).fetchone()
+    if not row:
+        return 0
+    data = dict(row)
+    return int(data.get("used") or 0)
+
+
+def increment_guest_song(key: str, day: str) -> int:
+    if not key or not day:
+        return 0
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn,
+            "SELECT used FROM guest_song_counts WHERE guest_key=? AND day=?",
+            (key, day),
+        ).fetchone()
+        used = int(dict(row).get("used") or 0) if row else 0
+        nxt = used + 1
+        if row:
+            execute(
+                conn,
+                "UPDATE guest_song_counts SET used=? WHERE guest_key=? AND day=?",
+                (nxt, key, day),
+            )
+        else:
+            execute(
+                conn,
+                "INSERT INTO guest_song_counts (guest_key, day, used) VALUES (?,?,?)",
+                (key, day, nxt),
+            )
+    return nxt
 
 
 def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:

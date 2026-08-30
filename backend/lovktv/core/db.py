@@ -9,7 +9,12 @@ from typing import Any, Iterable
 
 from lovktv.core.config import DB_PATH as DEFAULT_DB_PATH
 from lovktv.core.config import MEDIA_DIR
-from lovktv.core.schema import POSTGRES_DDL, ROOM_MIGRATIONS, SQLITE_DDL
+from lovktv.core.schema import (
+    POSTGRES_DDL,
+    ROOM_MIGRATIONS,
+    SQLITE_DDL,
+    USER_MIGRATIONS,
+)
 
 
 def database_url() -> str:
@@ -106,3 +111,11 @@ def init_schema(conn: Any) -> None:
     for name, decl in ROOM_MIGRATIONS:
         if name not in cols:
             conn.execute(f"ALTER TABLE rooms ADD COLUMN {name} {decl}")
+    user_cols = table_columns(conn, "users")
+    for name, decl in USER_MIGRATIONS:
+        if name not in user_cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {name} {decl}")
+    username_where = "username_key != ''" if kind == "sqlite" else "username_key <> ''"
+    conn.execute(
+        f"CREATE UNIQUE INDEX IF NOT EXISTS users_username_key ON users (username_key) WHERE {username_where}"
+    )

@@ -11,10 +11,15 @@
 | `songs` | 曲库元数据与处理状态 |
 | `rooms` | 包厢 / 房间播放状态 |
 | `queue` | 房间点歌队列 |
-| `users` | 微信或本机设备身份 |
+| `users` | 微信、密码账号或本机设备身份 |
 | `sessions` | 登录 cookie |
 | `login_tickets` | 电视扫码登录票 |
 | `hosts` | 本机 / UA 与房间的绑定 |
+| `guest_song_counts` | 未登录每天免费入库次数 |
+| `point_wallets` | 积分余额 |
+| `point_ledger` | 积分流水 |
+| `ad_sessions` | 开屏 / 等待广告观看 |
+| `point_claims` | 注册 / 下载一次性奖励 |
 
 ### songs
 
@@ -62,6 +67,9 @@
 | device_id | TEXT | 本机身份 |
 | nickname | TEXT | 显示名 |
 | avatar | TEXT | 头像 URL |
+| username | TEXT | 登录名，可空；房间号或自定义 |
+| username_key | TEXT | 小写用户名，非空时唯一 |
+| password_hash | TEXT | `pbkdf2_sha256`，无密码账号为空 |
 | created_at | BIGINT | 纪元毫秒 |
 
 ### sessions
@@ -92,6 +100,20 @@
 | user_id | TEXT | 确认后写入 |
 | created_at | BIGINT | 纪元毫秒 |
 | expires_at | BIGINT | 默认 180s |
+
+### guest_song_counts
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| guest_key | TEXT | `u:` 游客用户 / `h:` 宿主 cookie / `g:` IP+UA |
+| day | TEXT | `YYYY-MM-DD`（东八区） |
+| used | INTEGER | 当天已点歌数 |
+
+主键 `(guest_key, day)`。有用户名或微信的账号不限。游客免费 5 首用完后按积分扣。
+
+### point_wallets / point_ledger / ad_sessions / point_claims
+
+积分：点歌 −1，处理歌 −5，看满 30 秒广告 +1，注册 +10，下载 App +10。钱包 `owner` 为 `u:` 用户或 `m:` 机器号。广告 token 服务端计时，未满 30 秒不能领。
 
 ## Supabase
 

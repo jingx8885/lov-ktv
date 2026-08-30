@@ -12,3 +12,7 @@
   min-width: 0;
   text-align: center;
 }
+#passBox .field { display: block; margin: 10px 0; }
+#passBox .field .tiny { display: block; margin-bottom: 6px; }
+#passBox .btn { width: 100%; margin-top: 8px; }
+#quotaHint { margin: 0 0 8px; }
