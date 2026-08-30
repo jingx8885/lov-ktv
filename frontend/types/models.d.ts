@@ -4,8 +4,10 @@ type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
 type LyricMode = "ja" | "zh" | "roma" | "all";
 type RoomAction = "enqueue" | "bump" | "skip" | "play" | "mix";
-type LearnMode = "quiz" | "tap" | "echo";
-type LearnQuestionKind = "meaning" | "word" | "listen";
+type LearnMode = "quiz" | "tap" | "echo" | "lesson";
+type LearnQuestionKind = "meaning" | "word" | "listen" | "match" | "blank" | "reverse";
+type LearnSkillId = "word" | "sentence" | "listen" | "read" | "sing" | "review";
+type LearnNodeStatus = "locked" | "ready" | "passed" | "mastered";
 
 interface SearchHit {
   id: string;
@@ -197,6 +199,83 @@ interface LearnQuiz {
   questions_per_line?: number;
   lines: LearnLine[];
   total_questions: number;
+}
+
+interface LearnGoalSlice {
+  done: number;
+  total: number;
+}
+
+interface LearnCampaignGoal {
+  words: LearnGoalSlice;
+  sentences: LearnGoalSlice;
+  read: LearnGoalSlice;
+  sing: LearnGoalSlice;
+  cleared: boolean;
+}
+
+interface LearnSkillNode {
+  id: LearnSkillId | string;
+  status: LearnNodeStatus | string;
+  score?: number;
+  attempts?: number;
+  play_mode?: "tap" | "echo" | null;
+}
+
+interface LearnUnit {
+  id: string;
+  index: number;
+  from_line: number;
+  to_line: number;
+  preview?: string;
+  line_indexes?: number[];
+  skills: LearnSkillNode[];
+}
+
+interface LearnCampaign {
+  schema?: string;
+  song_id: string;
+  title?: string;
+  artist?: string;
+  language?: string;
+  lines?: LearnLine[];
+  goal: LearnCampaignGoal;
+  mistakes: number;
+  units: LearnUnit[];
+  skills?: string[];
+  pass_pct?: number;
+  modes?: LearnMode[];
+}
+
+interface LearnLessonItem {
+  id: string;
+  kind: LearnQuestionKind | string;
+  prompt?: string;
+  stem?: string;
+  choices?: LearnChoice[];
+  answer?: number;
+  answer_text?: string;
+  pairs?: { id: number; left: string; right: string; key?: string }[];
+  blank?: { before: string; gap: string; after: string };
+  knowledge?: { kind: string; key: string; text?: string; zh?: string };
+  start_ms?: number;
+  end_ms?: number;
+  line_index?: number;
+  romaji?: string;
+}
+
+interface LearnLesson {
+  schema?: string;
+  song_id: string;
+  title?: string;
+  unit_id: string;
+  skill: LearnSkillId | string;
+  play_mode?: "tap" | "echo" | null;
+  lines: LearnLine[];
+  items: LearnLessonItem[];
+  total: number;
+  pass_pct?: number;
+  review?: boolean;
 }
 
 interface LearnSession {

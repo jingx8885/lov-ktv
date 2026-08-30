@@ -22,6 +22,7 @@
   <link rel="stylesheet" href="/phone/player/css/learn-quiz.css" />
   <link rel="stylesheet" href="/phone/player/css/learn-tap.css" />
   <link rel="stylesheet" href="/phone/player/css/learn-echo.css" />
+  <link rel="stylesheet" href="/phone/player/css/learn-campaign.css" />
   <link rel="stylesheet" href="/phone/sheets/css/sheets.css" />
 </head>
 <body class="phone" data-app="phone" data-mount="phone-root">
@@ -316,7 +317,15 @@
         </div>
         <div class="learn-body" id="learnHome">
           <p class="learn-song" id="learnSong"></p>
-          <p class="learn-lead" data-i18n="learn.lead">选一种玩法。测验和点词：轻松每句等你确认，标准停 5 秒，困难不停。点下去倒计时就开始。</p>
+          <p class="learn-lead" data-i18n="learn.lead">一首歌是一大关。通关要词句都认识，并且能读能唱。每关从这首歌抽知识点，打错的会进错题本。</p>
+          <div class="learn-goals" id="learnGoals" hidden></div>
+          <button type="button" class="learn-book-card" id="learnBookBtn" hidden>
+            <b data-i18n="learn.book">错题本</b>
+            <span id="learnBookMeta"></span>
+          </button>
+          <div class="learn-path" id="learnPath"></div>
+          <details class="learn-free" id="learnFree">
+            <summary data-i18n="learn.free">自由练习</summary>
           <div class="learn-diff" id="learnDiff" role="radiogroup" data-i18n-aria="learn.diff">
             <button type="button" data-learn-diff="easy">
               <em data-i18n="learn.diff.easy">轻松</em>
@@ -361,6 +370,29 @@
               <span data-i18n="learn.echoHint">听原唱，对着伴奏翻唱。试听满意再下一句。</span>
             </span>
           </button>
+          </details>
+        </div>
+        <div class="learn-body is-play" id="learnLesson" hidden>
+          <div class="learn-progress" aria-hidden="true"><i id="learnLessonBar"></i></div>
+          <p class="learn-combo" id="learnLessonCombo"></p>
+          <p class="learn-prompt" id="learnLessonPrompt"></p>
+          <div class="learn-line">
+            <p class="learn-src" id="learnLessonSrc"></p>
+            <p class="learn-roma" id="learnLessonRoma"></p>
+            <p class="learn-zh" id="learnLessonZh"></p>
+          </div>
+          <button type="button" class="learn-replay" id="learnLessonReplay" hidden data-i18n="learn.replay">再听一遍</button>
+          <div class="learn-qs" id="learnLessonQs"></div>
+          <div class="learn-hold-row">
+            <button class="btn primary learn-next" id="learnLessonNext" type="button" hidden data-i18n="learn.continue">继续</button>
+          </div>
+        </div>
+        <div class="learn-body" id="learnBook" hidden>
+          <p class="learn-lead" id="learnBookLead" data-i18n="learn.bookHint">0 道待复习，连对两次才移出</p>
+          <div class="learn-book-list" id="learnBookList"></div>
+          <div class="learn-dock learn-dock-col">
+            <button class="btn primary" id="learnBookGo" type="button" data-i18n="learn.bookGo">练错题</button>
+          </div>
         </div>
         <div class="learn-body is-play" id="learnQuiz" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnQuizBar"></i></div>
