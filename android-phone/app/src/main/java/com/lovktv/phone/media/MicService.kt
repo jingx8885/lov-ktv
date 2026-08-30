@@ -17,6 +17,7 @@ import android.media.AudioTrack
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
@@ -57,7 +58,12 @@ class MicService : Service() {
         if (!running) {
             running = true
             live = true
-            thread = Thread({ sendLoop(rate) }, "lovktv-mic-tx").also { it.start() }
+            thread = Thread({
+                // Keep capture/packetization off the UI scheduler.  This is
+                // still Java AudioRecord, but avoids avoidable wake-up jitter.
+                Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+                sendLoop(rate)
+            }, "lovktv-mic-tx").also { it.start() }
         }
         return START_STICKY
     }
@@ -167,9 +173,13 @@ class MicService : Service() {
     private fun buildRecord(source: Int, rate: Int): AudioRecord? {
         val min = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
         if (min <= 0) return null
-        val size = max(min, LanMic.frameBytes(rate) * 4)
-        return try {
-            AudioRecord.Builder()
+        // Four frames (40 ms at the default rate) made the capture side carry
+        // an unnecessary amount of audio before the first UDP packet.  Two
+        // frames is enough headroom for a 10 ms blocking read while keeping
+        // the software queue bounded.
+        val size = max(min, LanMic.frameBytes(rate) * 2)
+        fun build(lowLatency: Boolean): AudioRecord {
+            val builder = AudioRecord.Builder()
                 .setAudioSource(source)
                 .setAudioFormat(
                     AudioFormat.Builder()
@@ -179,9 +189,14 @@ class MicService : Service() {
                         .build(),
                 )
                 .setBufferSizeInBytes(size)
-                .build()
+            return builder.build()
+        }
+        return try {
+            build(lowLatency = true)
         } catch (_: Exception) {
-            null
+            // A few vendor Audio HALs reject the hint instead of ignoring it;
+            // retain compatibility by retrying the ordinary AudioRecord path.
+            runCatching { build(lowLatency = false) }.getOrNull()
         }
     }
 

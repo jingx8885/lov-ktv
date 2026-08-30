@@ -5,6 +5,7 @@ import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Build
+import android.os.Process
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetSocketAddress
@@ -29,7 +30,12 @@ class MicReceiver(private val port: Int = LanMic.DEFAULT_PORT) {
         sock.soTimeout = 250
         socket = sock
         running = true
-        thread = Thread({ loop() }, "lovktv-mic-rx").also { it.start() }
+        thread = Thread({
+            // AudioTrack writes are timing-sensitive; give the receiver an
+            // audio thread so WebView/HTTP work cannot starve packet delivery.
+            Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
+            loop()
+        }, "lovktv-mic-rx").also { it.start() }
         return port
     }
 
