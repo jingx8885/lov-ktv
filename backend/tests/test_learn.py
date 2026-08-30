@@ -3,6 +3,13 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from lovktv.workers.campaign import (
+    build_campaign,
+    build_lesson,
+    chunk_units,
+    knowledge_words,
+    singable_cues,
+)
 from lovktv.workers.learn import QUESTIONS_PER_LINE, build_learn_quiz, is_singable_cue
 
 JA_TIMELINE = {
@@ -141,6 +148,67 @@ def test_tap_words_keeps_order_and_skips_punct():
     assert [item["text"] for item in chars] == list("我从草原来")
 
 
+def test_campaign_is_one_song_with_locked_path():
+    song = {"id": "s1", "title": "群青", "language": "ja"}
+    campaign = build_campaign(JA_TIMELINE, song)
+    assert campaign["schema"] == "lovktv-learn-campaign-v1"
+    assert len(campaign["units"]) == 1
+    skills = [item["id"] for item in campaign["units"][0]["skills"]]
+    assert skills == ["word", "sentence", "listen", "read", "sing"]
+    assert campaign["units"][0]["skills"][0]["status"] == "ready"
+    assert {item["status"] for item in campaign["units"][0]["skills"][1:]} == {"locked"}
+    assert campaign["goal"]["words"]["total"] == len(knowledge_words(singable_cues(JA_TIMELINE)))
+    assert campaign["goal"]["sentences"]["total"] == 3
+    assert campaign["goal"]["cleared"] is False
+    lesson = build_lesson(JA_TIMELINE, song, "u0", "word")
+    assert lesson["items"]
+    assert lesson["play_mode"] is None
+    read = build_lesson(JA_TIMELINE, song, "u0", "read")
+    assert read["play_mode"] == "tap"
+    assert len(read["lines"]) == 3
+    missing = build_lesson(JA_TIMELINE, song, "u9", "word")
+    assert missing == {}
+
+
+def test_campaign_chunks_long_songs():
+    cues = []
+    for index in range(8):
+        cues.append(
+            {
+                "text": f"行{index}走る",
+                "zh": f"第{index}句",
+                "start_ms": index * 1000,
+                "end_ms": index * 1000 + 800,
+                "tokens": [
+                    {"text": "走る", "zh": "奔跑", "romaji": "hashiru"},
+                    {"text": str(index), "zh": f"数{index}", "romaji": ""},
+                ],
+            }
+        )
+    units = chunk_units(cues)
+    assert [len(unit) for unit in units] == [4, 4]
+    campaign = build_campaign({"cues": cues}, {"id": "long"})
+    assert len(campaign["units"]) == 2
+    assert campaign["units"][1]["skills"][0]["status"] == "locked"
+    progressed = build_campaign(
+        {"cues": cues},
+        {"id": "long"},
+        progress=[
+            {
+                "unit_id": "u0",
+                "skill": skill,
+                "status": "passed",
+                "score": 80,
+                "attempts": 1,
+            }
+            for skill in ("word", "sentence", "listen", "read", "sing")
+        ],
+    )
+    assert progressed["units"][1]["skills"][0]["status"] == "ready"
+    assert progressed["goal"]["read"]["done"] == 1
+    assert progressed["goal"]["sing"]["done"] == 1
+
+
 def test_quiz_is_deterministic():
     song = {"id": "s1", "title": "群青"}
     a = build_learn_quiz(JA_TIMELINE, song)
@@ -237,6 +305,11 @@ def test_phone_learn_shell_is_wired():
     assert "confirmLineHold" in quiz
     assert "holdAfterLine" not in echo
     assert 'id="learnCount"' in html
+    assert 'id="learnGoals"' in html
+    assert 'id="learnPath"' in html
+    assert 'id="learnBook"' in html
+    assert 'id="learnLesson"' in html
+    assert "learn-campaign.css" in html
     assert 'id="learnLyricMode"' in html
     assert 'id="learnQuizPrompt"' in html
     assert 'id="learnTapSrc"' in html
@@ -304,6 +377,8 @@ def test_phone_learn_shell_is_wired():
     zh = (root / "shared" / "i18n" / "locales" / "zh.js").read_text(encoding="utf-8")
     assert '"phone.player.learn": "游戏"' in zh
     assert '"learn.title": "游戏"' in zh
+    assert "通关要词句都认识" in zh
+    assert '"learn.book": "错题本"' in zh
     assert '"learn.next": "下一句"' in zh
     assert '"learn.holdWait"' in zh
     assert '"phone.mic.opened"' in zh
@@ -346,3 +421,82 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
         assert data["modes"] == ["quiz", "tap", "echo"]
         assert data["lines"][0]["questions"]
         assert [item["text"] for item in data["lines"][0]["words"]] == ["走る", "記憶"]
+        campaign = client.get(f"/api/songs/{song['id']}/learn/campaign")
+        assert campaign.status_code == 200
+        path = campaign.json()
+        assert path["schema"] == "lovktv-learn-campaign-v1"
+        assert path["goal"]["words"]["total"] == 6
+        assert path["goal"]["sentences"]["total"] == 3
+        assert path["goal"]["read"]["total"] == 1
+        assert path["units"][0]["skills"][0]["status"] == "ready"
+        assert path["units"][0]["skills"][1]["status"] == "locked"
+        lesson = client.get(f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=word")
+        assert lesson.status_code == 200
+        body = lesson.json()
+        assert body["items"]
+        kinds = {item["kind"] for item in body["items"]}
+        assert kinds & {"word", "match", "blank"}
+        first = body["items"][0]
+        wrong = client.post(
+            f"/api/songs/{song['id']}/learn/lesson",
+            json={
+                "unit_id": "u0",
+                "skill": "word",
+                "pct": 0,
+                "answers": [
+                    {
+                        "id": first["id"],
+                        "ok": False,
+                        "qkind": first["kind"],
+                        "key": first["knowledge"]["key"],
+                        "prompt": first["prompt"],
+                        "stem": first["stem"],
+                        "answer_text": first.get("answer_text") or "",
+                        "knowledge": first["knowledge"],
+                        "payload": first,
+                    }
+                ],
+            },
+        )
+        assert wrong.status_code == 200
+        assert wrong.json()["mistakes"] == 1
+        book = client.get(f"/api/songs/{song['id']}/learn/mistakes")
+        assert book.status_code == 200
+        assert book.json()["total"] == 1
+        review = client.get(f"/api/songs/{song['id']}/learn/review")
+        assert review.status_code == 200
+        assert review.json()["items"]
+        again = client.post(
+            f"/api/songs/{song['id']}/learn/review",
+            json={
+                "pct": 100,
+                "answers": [
+                    {
+                        "ok": True,
+                        "qkind": first["kind"],
+                        "key": first["knowledge"]["key"],
+                        "knowledge": first["knowledge"],
+                    }
+                ],
+            },
+        )
+        assert again.status_code == 200
+        still = client.get(f"/api/songs/{song['id']}/learn/mistakes")
+        assert still.json()["total"] == 1
+        done = client.post(
+            f"/api/songs/{song['id']}/learn/review",
+            json={
+                "pct": 100,
+                "answers": [
+                    {
+                        "ok": True,
+                        "qkind": first["kind"],
+                        "key": first["knowledge"]["key"],
+                        "knowledge": first["knowledge"],
+                    }
+                ],
+            },
+        )
+        assert done.status_code == 200
+        empty = client.get(f"/api/songs/{song['id']}/learn/mistakes")
+        assert empty.json()["total"] == 0

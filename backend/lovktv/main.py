@@ -76,12 +76,13 @@ def healthz(request: Request):
     )
 
 
-from lovktv.routers import ads, auth, media, misc, rooms, songs  # noqa: E402
+from lovktv.routers import ads, auth, learn, media, misc, rooms, songs  # noqa: E402
 
 app.include_router(misc.router)
 app.include_router(auth.router)
 app.include_router(ads.router)
 app.include_router(songs.router)
+app.include_router(learn.router)
 app.include_router(rooms.router)
 app.include_router(media.router)
 

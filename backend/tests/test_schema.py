@@ -16,6 +16,9 @@ def test_schema_covers_current_tables():
         "point_ledger",
         "ad_sessions",
         "point_claims",
+        "learn_progress",
+        "learn_mastery",
+        "learn_mistakes",
     }
     assert TABLES["songs"] == (
         "id",
