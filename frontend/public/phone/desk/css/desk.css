@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overflow-x: hidden;
   padding-top: 10px;
 }
 .page-desk .now-bar { flex: 0 0 auto; }
@@ -54,31 +55,36 @@
 .now-cover svg { width: 20px; height: 20px; fill: #fff; }
 .now-tools {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 0 0 14px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 12px;
+  max-width: 100%;
 }
 .now-act {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
-  min-height: 44px;
-  padding: 0 4px;
+  min-height: 52px;
+  padding: 6px 2px;
   border: 0;
   border-radius: 10px;
   background: transparent;
   color: var(--text);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
+  line-height: 1.1;
   white-space: nowrap;
   overflow: hidden;
   cursor: pointer;
 }
 .now-act svg { width: 18px; height: 18px; fill: currentColor; flex: 0 0 18px; }
-.now-act em {
+.now-act em,
+.now-act span {
   font-style: normal;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -146,14 +152,15 @@
 }
 .lyric-seg .seg-btn {
   flex: 1 1 0;
+  min-width: 0;
   min-height: 34px;
-  padding: 0 8px;
+  padding: 0 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, .08);
   color: rgba(235, 235, 245, .58);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
-  letter-spacing: .01em;
+  letter-spacing: 0;
 }
 .lyric-seg .seg-btn.on {
   background: #fff;
@@ -285,7 +292,7 @@
   font-weight: 400;
   line-height: 1.25;
 }
-.desk-actions { display: flex; gap: 0; flex: 0 0 auto; }
+.desk-actions { display: flex; gap: 0; flex: 0 0 auto; max-width: 88px; }
 .desk-pill {
   display: inline-block;
   margin-left: 6px;
@@ -318,7 +325,6 @@
   background: none;
   color: inherit;
   text-align: left;
-  cursor: pointer;
 }
 
 @media (min-width: 700px) {
@@ -353,16 +359,17 @@
 
   .page-desk .now-tools {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 10px;
+    gap: 8px;
     margin-bottom: 22px;
   }
 
   .page-desk .now-act {
-    min-height: 48px;
+    min-height: 56px;
     border: 1px solid rgba(255, 255, 255, .07);
     border-radius: 13px;
     background: rgba(255, 255, 255, .055);
     color: rgba(255, 255, 255, .9);
+    font-size: 12px;
     transition: background .16s ease, border-color .16s ease, transform .16s ease;
   }
 
@@ -472,10 +479,10 @@
     grid-row: 2;
     align-self: start;
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
     margin: 0;
-    padding: 14px;
+    padding: 10px;
     border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 12px;
     background: rgba(23, 26, 36, .72);
@@ -536,16 +543,6 @@
 }
 .now-hit > div, .now-idle > div { flex: 1; min-width: 0; }
 .now-hit b, .now-idle b { display: block; font-size: 17px; }
-.now-go {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--accent);
-  display: grid;
-  place-items: center;
-  flex: 0 0 auto;
-}
-.now-go svg { width: 16px; height: 16px; fill: #fff; }
 .icon-chip {
   flex: 1;
   min-height: 52px;
@@ -571,5 +568,4 @@
   background: none;
   color: inherit;
   text-align: left;
-  cursor: pointer;
 }

@@ -63,21 +63,18 @@ export async function loadRoom(opts) {
   api.connectRoomRtc(code);
   if ($("queueCount")) $("queueCount").textContent = room.queue.length ? String(room.queue.length) : "";
   $("nowCard").innerHTML = now
-    ? `<button type="button" class="now-hit" id="nowToPlayer" ${now.status === "ready" ? "" : "disabled"}>
+    ? `<div class="now-hit">
             <span class="now-cover">${now.status === "ready" ? ICO.play : escapeHtml(songInitial(now.title))}</span>
             <div>
               <p class="kicker">${now.status === "ready" ? t("phone.desk.now") : STATUS[now.status] || now.status}</p>
               <b>${escapeHtml(now.title)}</b>
               <p class="tiny">${escapeHtml(now.artist || "")}</p>
             </div>
-            ${now.status === "ready" ? `<span class="now-go">${ICO.play}</span>` : ""}
-          </button>`
+          </div>`
     : `<div class="now-idle">
             <span class="now-cover">${ICO.listen}</span>
             <div><b>${t("phone.desk.idle")}</b><p class="tiny">${t("phone.desk.idleHint")}</p></div>
           </div>`;
-  const toPlayer = $("nowToPlayer");
-  if (toPlayer && now && now.status === "ready") toPlayer.onclick = () => api.openPlayer(now.song_id);
   $("queue").innerHTML =
     room.queue
       .map((item, i) => {

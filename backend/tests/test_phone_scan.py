@@ -90,6 +90,8 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "adoptLan(cloud.data)" in queue_js
     assert 'data-bump="' in queue_js
     assert "/bump" in queue_js
+    assert "openPlayer" not in queue_js
+    assert "nowToPlayer" not in queue_js
     assert "api.loadRoom({ room: data })" in (
         ROOT / "phone" / "desk" / "js" / "library.js"
     ).read_text(encoding="utf-8")
