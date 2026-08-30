@@ -23,6 +23,7 @@
     "public/phone/player/js/playback/timeline.js",
     "public/shared/fx/**/*.js",
     "public/login/**/*.js",
+    "public/admin/**/*.js",
     "public/landing/**/*.js"
   ],
   "exclude": ["public/vendor/**", "public/shared/audio/**"]

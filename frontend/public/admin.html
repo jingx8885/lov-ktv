@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n-title="admin.title">lov-ktv 管理</title>
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <link rel="icon" href="/brand/icon.png" type="image/png" />
+  <link rel="stylesheet" href="/shared/ui/css/tokens.css" />
+  <link rel="stylesheet" href="/shared/ui/css/base.css" />
+  <link rel="stylesheet" href="/admin/css/admin.css" />
+</head>
+<body>
+  <div class="wrap wide">
+    <p class="brand"><img class="brand-mark" src="/brand/icon.png" width="28" height="28" alt="">lov-ktv</p>
+    <select class="lang-picker" data-i18n-aria="lang.label" aria-label="语言">
+      <option value="zh">中文</option>
+      <option value="yue">粵語</option>
+      <option value="en">English</option>
+      <option value="ja">日本語</option>
+    </select>
+    <h1 data-i18n="admin.heading">管理端</h1>
+    <p class="muted" data-i18n="admin.lead">用户、充值、扣分、曲库、房间都在这里管。</p>
+    <p class="err" id="err" hidden></p>
+
+    <form class="card" id="gate">
+      <label class="field">
+        <span class="tiny" data-i18n="admin.token">管理令牌</span>
+        <input id="token" type="password" autocomplete="current-password" data-i18n-placeholder="admin.tokenPh" placeholder="LOVKTV_ADMIN_TOKEN" />
+      </label>
+      <button class="btn primary" type="submit" data-i18n="admin.enter">进入</button>
+    </form>
+
+    <div id="desk" hidden>
+      <p class="tiny" id="summary"></p>
+      <p class="row wrap-row">
+        <button class="btn" id="logout" type="button" data-i18n="admin.logout">退出管理</button>
+      </p>
+      <div class="tabs" id="tabs">
+        <button type="button" class="on" data-tab="recharge" data-i18n="admin.tab.recharge">充值</button>
+        <button type="button" data-tab="points" data-i18n="admin.tab.points">积分</button>
+        <button type="button" data-tab="users" data-i18n="admin.tab.users">用户</button>
+        <button type="button" data-tab="songs" data-i18n="admin.tab.songs">歌曲</button>
+        <button type="button" data-tab="rooms" data-i18n="admin.tab.rooms">房间</button>
+        <button type="button" data-tab="ads" data-i18n="admin.tab.ads">广告</button>
+      </div>
+
+      <section class="pane" id="pane-recharge">
+        <form class="row wrap-row" id="rechargeFind">
+          <input id="rechargeQ" data-i18n-placeholder="admin.searchPh" placeholder="用户名 / 房间号 / ID" />
+          <button class="btn primary" type="submit" data-i18n="admin.search">查找</button>
+        </form>
+        <div class="card">
+          <p class="tiny" id="rechargeHint" data-i18n="admin.noAccount">先查找账号</p>
+          <p id="rechargeName"></p>
+          <p class="sid-display" id="rechargeBal">—</p>
+          <p class="row wrap-row" id="rechargePacks">
+            <button class="btn" type="button" data-pack="10">+10</button>
+            <button class="btn" type="button" data-pack="50">+50</button>
+            <button class="btn" type="button" data-pack="100">+100</button>
+            <button class="btn" type="button" data-pack="500">+500</button>
+          </p>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.amount">数量</span>
+            <input id="rechargeAmt" type="number" min="1" step="1" value="50" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.note">备注</span>
+            <input id="rechargeNote" data-i18n-placeholder="admin.rechargeNotePh" placeholder="现金 / 微信 / 房间" />
+          </label>
+          <button class="btn primary" id="doRecharge" type="button" data-i18n="admin.recharge">充值</button>
+        </div>
+        <h2 data-i18n="admin.recharges">充值记录</h2>
+        <div id="recharges"></div>
+      </section>
+
+      <section class="pane" id="pane-points" hidden>
+        <form class="row wrap-row" id="findForm">
+          <input id="findQ" data-i18n-placeholder="admin.searchPh" placeholder="用户名 / 房间号 / ID" />
+          <button class="btn primary" type="submit" data-i18n="admin.search">查找</button>
+        </form>
+        <div class="card" id="accountBox">
+          <p class="tiny" id="accountHint" data-i18n="admin.noAccount">先查找账号</p>
+          <p id="accountName"></p>
+          <p class="sid-display" id="accountBal">—</p>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.amount">数量</span>
+            <input id="amount" type="number" min="1" step="1" value="1" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.note">备注</span>
+            <input id="note" data-i18n-placeholder="admin.notePh" placeholder="为什么加减" />
+          </label>
+          <p class="row wrap-row">
+            <button class="btn primary" id="addPts" type="button" data-i18n="admin.add">加分</button>
+            <button class="btn danger" id="cutPts" type="button" data-i18n="admin.cut">扣分</button>
+          </p>
+        </div>
+        <h2 data-i18n="admin.ledger">流水</h2>
+        <div id="ledger"></div>
+        <h2 data-i18n="admin.tab.points">积分</h2>
+        <div id="wallets"></div>
+      </section>
+
+      <section class="pane" id="pane-users" hidden>
+        <form class="card" id="createUser">
+          <h2 data-i18n="admin.createUser">开号</h2>
+          <label class="field">
+            <span class="tiny" data-i18n="login.username">用户名</span>
+            <input id="newUser" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="login.password">密码</span>
+            <input id="newPass" type="password" autocomplete="new-password" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.nickname">昵称</span>
+            <input id="newNick" />
+          </label>
+          <button class="btn primary" type="submit" data-i18n="admin.saveUser">保存用户</button>
+        </form>
+        <form class="row wrap-row" id="userFind">
+          <input id="userQ" data-i18n-placeholder="admin.searchPh" placeholder="用户名 / 房间号 / ID" />
+          <button class="btn" type="submit" data-i18n="admin.search">查找</button>
+        </form>
+        <div id="users"></div>
+      </section>
+      <section class="pane" id="pane-songs" hidden>
+        <form class="card" id="importSong">
+          <h2 data-i18n="admin.import">入库</h2>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.songQuery">歌名</span>
+            <input id="songQuery" />
+          </label>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.artistField">歌手</span>
+            <input id="songArtist" />
+          </label>
+          <button class="btn primary" type="submit" data-i18n="admin.import">入库</button>
+        </form>
+        <form class="row wrap-row" id="songFind">
+          <input id="songQ" data-i18n-placeholder="admin.songQuery" placeholder="歌名" />
+          <button class="btn" type="submit" data-i18n="admin.search">查找</button>
+        </form>
+        <div id="songs"></div>
+      </section>
+      <section class="pane" id="pane-rooms" hidden>
+        <form class="card" id="createRoom">
+          <h2 data-i18n="admin.createRoom">开房</h2>
+          <label class="field">
+            <span class="tiny" data-i18n="admin.roomCode">房间码</span>
+            <input id="newRoom" maxlength="12" data-i18n-placeholder="admin.roomCodePh" placeholder="空着会自动生成" />
+          </label>
+          <button class="btn primary" type="submit" data-i18n="admin.createRoom">开房</button>
+        </form>
+        <form class="row wrap-row" id="roomFind">
+          <input id="roomQ" data-i18n-placeholder="admin.roomCode" placeholder="房间码" />
+          <button class="btn" type="submit" data-i18n="admin.search">查找</button>
+        </form>
+        <div id="roomDetail" class="card" hidden>
+          <p id="roomDetailName"></p>
+          <p class="tiny" id="roomDetailMeta"></p>
+          <form class="row wrap-row" id="roomEnqueue">
+            <input id="roomSongId" data-i18n-placeholder="admin.songIdPh" placeholder="歌曲 ID" />
+            <button class="btn" type="submit" data-i18n="admin.addQueue">点进队列</button>
+          </form>
+          <p class="row wrap-row">
+            <button class="btn" id="roomSkip" type="button" data-i18n="admin.skip">切歌</button>
+            <button class="btn" id="roomClear" type="button" data-i18n="admin.clearQueue">清空队列</button>
+            <button class="btn danger" id="roomDelete" type="button" data-i18n="admin.deleteRoom">删房</button>
+          </p>
+          <div id="roomQueue"></div>
+        </div>
+        <div id="rooms"></div>
+      </section>
+      <section class="pane" id="pane-ads" hidden>
+        <p class="tiny" id="rules"></p>
+        <div id="ads"></div>
+      </section>
+    </div>
+  </div>
+  <script type="module" src="/admin/js/admin.js"></script>
+</body>
+</html>

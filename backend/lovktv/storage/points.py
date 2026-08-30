@@ -38,7 +38,7 @@ def apply_delta(owner: str, kind: str, delta: int, ref: str = "") -> int:
         current = int(dict(row).get("balance") or 0) if row else 0
         nxt = current + int(delta)
         if nxt < 0:
-            return current
+            raise ValueError("积分不够")
         if row:
             execute(
                 conn,
@@ -146,6 +146,80 @@ def mark_ad_completed(token: str) -> bool:
             (now, token),
         )
         return int(getattr(cur, "rowcount", 0) or 0) == 1
+
+
+def list_wallets(limit: int = 80) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 80), 200))
+    with connect() as conn:
+        rows = execute(
+            conn,
+            "SELECT owner, balance, updated_at FROM point_wallets ORDER BY updated_at DESC, owner DESC",
+        ).fetchall()
+    out = []
+    for row in rows[:limit]:
+        data = dict(row)
+        out.append(
+            {
+                "owner": str(data.get("owner") or ""),
+                "balance": int(data.get("balance") or 0),
+                "updated_at": int(data.get("updated_at") or 0),
+            }
+        )
+    return out
+
+
+def list_ledger(owner: str = "", kind: str = "", limit: int = 80) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 80), 200))
+    kind = str(kind or "").strip()
+    with connect() as conn:
+        if owner and kind:
+            rows = execute(
+                conn,
+                "SELECT * FROM point_ledger WHERE owner=? AND kind=? ORDER BY created_at DESC, id DESC",
+                (owner, kind),
+            ).fetchall()
+        elif owner:
+            rows = execute(
+                conn,
+                "SELECT * FROM point_ledger WHERE owner=? ORDER BY created_at DESC, id DESC",
+                (owner,),
+            ).fetchall()
+        elif kind:
+            rows = execute(
+                conn,
+                "SELECT * FROM point_ledger WHERE kind=? ORDER BY created_at DESC, id DESC",
+                (kind,),
+            ).fetchall()
+        else:
+            rows = execute(
+                conn,
+                "SELECT * FROM point_ledger ORDER BY created_at DESC, id DESC",
+            ).fetchall()
+    out = []
+    for row in rows[:limit]:
+        data = dict(row)
+        out.append(
+            {
+                "id": str(data.get("id") or ""),
+                "owner": str(data.get("owner") or ""),
+                "kind": str(data.get("kind") or ""),
+                "delta": int(data.get("delta") or 0),
+                "ref": str(data.get("ref") or ""),
+                "created_at": int(data.get("created_at") or 0),
+            }
+        )
+    return out
+
+
+def points_total() -> int:
+    with connect() as conn:
+        row = execute(
+            conn, "SELECT COALESCE(SUM(balance),0) AS n FROM point_wallets"
+        ).fetchone()
+    if not row:
+        return 0
+    data = dict(row)
+    return int(data.get("n") or list(data.values())[0] or 0)
 
 
 def completed_ads_today(owner: str, day_start_ms: int) -> int:

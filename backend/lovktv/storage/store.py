@@ -199,6 +199,7 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         "wechat": wechat,
         "username": username,
         "account": bool(username or wechat),
+        "created_at": int(data.get("created_at") or 0),
     }
 
 
@@ -206,6 +207,36 @@ def get_user(user_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         row = execute(conn, "SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     return _user_row(row)
+
+
+def list_users(query: str = "", limit: int = 80) -> list[dict[str, Any]]:
+    needle = str(query or "").strip()
+    limit = max(1, min(int(limit or 80), 200))
+    with connect() as conn:
+        rows = execute(
+            conn, "SELECT * FROM users ORDER BY created_at DESC, id DESC"
+        ).fetchall()
+    out: list[dict[str, Any]] = []
+    key = needle.casefold()
+    for row in rows:
+        user = _user_row(row)
+        if not user:
+            continue
+        if key:
+            blob = " ".join(
+                [
+                    user.get("id") or "",
+                    user.get("sid") or "",
+                    user.get("username") or "",
+                    user.get("nickname") or "",
+                ]
+            ).casefold()
+            if key not in blob and f"u:{user['id']}".casefold() != key:
+                continue
+        out.append(user)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def upsert_wechat_user(
@@ -367,6 +398,27 @@ def register_password_user(
     if not user:
         raise RuntimeError("创建用户失败")
     return user
+
+
+def update_password_user(
+    user_id: str, nickname: str = "", password: str = ""
+) -> dict[str, Any]:
+    user = get_user(user_id)
+    if not user:
+        raise ValueError("管理找不到这个账号")
+    nick = str(nickname or "").strip()[:32]
+    hashed = hash_password(password) if str(password or "") else ""
+    with _LOCK, connect() as conn:
+        if nick:
+            execute(conn, "UPDATE users SET nickname=? WHERE id=?", (nick, user_id))
+        if hashed:
+            execute(
+                conn, "UPDATE users SET password_hash=? WHERE id=?", (hashed, user_id)
+            )
+    updated = get_user(user_id)
+    if not updated:
+        raise RuntimeError("创建用户失败")
+    return updated
 
 
 def login_password_user(name: str, password: str) -> dict[str, Any]:

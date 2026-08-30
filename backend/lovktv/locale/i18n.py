@@ -51,6 +51,10 @@ _EXC_KEYS = {
     "这个用户名已经被用了": "api.username_taken",
     "用户名或密码不对": "api.login_failed",
     "积分不够": "api.need_points",
+    "还没配置管理令牌": "api.admin_not_configured",
+    "管理令牌不对": "api.admin_unauthorized",
+    "管理找不到这个账号": "api.admin_need_owner",
+    "房间不存在": "api.room_not_found",
 }
 
 

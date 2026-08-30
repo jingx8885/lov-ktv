@@ -65,6 +65,15 @@ def _count_value(row: Any) -> int:
     return int(row[0])
 
 
+def room_exists(code: str) -> bool:
+    code = str(code or "").strip().upper()
+    if not code:
+        return False
+    with connect() as conn:
+        row = execute(conn, "SELECT code FROM rooms WHERE code=?", (code,)).fetchone()
+    return bool(row)
+
+
 def ensure_room(code: str | None = None) -> dict[str, Any]:
     code = str(code or uuid.uuid4().hex[:6]).upper()
     with _LOCK, connect() as conn:
@@ -77,6 +86,34 @@ def ensure_room(code: str | None = None) -> dict[str, Any]:
             )
             row = execute(conn, "SELECT * FROM rooms WHERE code=?", (code,)).fetchone()
     return dict(row)
+
+
+def list_rooms(limit: int = 80) -> list[dict[str, Any]]:
+    limit = max(1, min(int(limit or 80), 200))
+    with connect() as conn:
+        rows = execute(
+            conn, "SELECT * FROM rooms ORDER BY created_at DESC, code DESC"
+        ).fetchall()
+    out = []
+    for row in rows[:limit]:
+        code = str(dict(row).get("code") or "").upper()
+        if not code:
+            continue
+        snap = room_snapshot(code)
+        now = snap.get("now_playing") or {}
+        out.append(
+            {
+                "code": code,
+                "queue_n": len(snap.get("queue") or []),
+                "now_index": int(snap.get("now_index") or 0),
+                "now_title": str(now.get("title") or ""),
+                "paused": bool(int(snap.get("paused") or 0)),
+                "volume": int(snap.get("volume") or 80),
+                "vocal_mix": float(snap.get("vocal_mix") or 1),
+                "created_at": int(dict(row).get("created_at") or 0),
+            }
+        )
+    return out
 
 
 def room_for_hosts(keys: list[str]) -> str:
@@ -231,6 +268,51 @@ def bump(code: str, item_id: str) -> dict[str, Any]:
     with _LOCK, connect() as conn:
         execute(conn, "UPDATE queue SET position=? WHERE id=?", (target - 1, item_id))
     return room_snapshot(code)
+
+
+def remove_queue_item(code: str, item_id: str) -> dict[str, Any]:
+    code = code.upper()
+    snap = room_snapshot(code)
+    items = snap["queue"]
+    idx = next((i for i, item in enumerate(items) if item["id"] == item_id), None)
+    if idx is None:
+        return snap
+    now = int(snap.get("now_index") or 0)
+    nxt = now
+    if idx < now:
+        nxt = max(0, now - 1)
+    elif idx == now:
+        remaining = len(items) - 1
+        nxt = 0 if remaining <= 0 or now >= remaining else now
+    with _LOCK, connect() as conn:
+        execute(conn, "DELETE FROM queue WHERE id=? AND room=?", (item_id, code))
+        execute(
+            conn, "UPDATE rooms SET now_index=?, paused=0 WHERE code=?", (nxt, code)
+        )
+    return room_snapshot(code)
+
+
+def clear_queue(code: str) -> dict[str, Any]:
+    code = code.upper()
+    ensure_room(code)
+    with _LOCK, connect() as conn:
+        execute(conn, "DELETE FROM queue WHERE room=?", (code,))
+        execute(conn, "UPDATE rooms SET now_index=0, paused=0 WHERE code=?", (code,))
+    return room_snapshot(code)
+
+
+def delete_room(code: str) -> bool:
+    code = str(code or "").strip().upper()
+    if not code:
+        return False
+    with _LOCK, connect() as conn:
+        row = execute(conn, "SELECT code FROM rooms WHERE code=?", (code,)).fetchone()
+        if not row:
+            return False
+        execute(conn, "DELETE FROM queue WHERE room=?", (code,))
+        execute(conn, "DELETE FROM hosts WHERE room=?", (code,))
+        execute(conn, "DELETE FROM rooms WHERE code=?", (code,))
+    return True
 
 
 def skip(code: str) -> dict[str, Any]:
