@@ -154,3 +154,84 @@ def test_scan_in_wechat_goes_silent(tmp_path, monkeypatch):
         loc = res.headers["location"]
         assert "open.weixin.qq.com" in loc
         assert "snsapi_base" in loc
+
+
+def test_password_register_login_and_casefold(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    from lovktv.main import app
+
+    with TestClient(app) as client:
+        status = client.get("/api/auth/status").json()
+        assert status["password"] is True
+        assert status["guest_limit"] == 5
+        me = client.get("/api/auth/me").json()
+        assert me["user"] is None
+        assert me["quota"]["unlimited"] is False
+        assert me["quota"]["remaining"] == 5
+        bad = client.post("/api/auth/register", json={"username": "ab", "password": "1"})
+        assert bad.status_code == 400
+        created = client.post(
+            "/api/auth/register", json={"username": "EABAB5", "password": "1234"}
+        )
+        assert created.status_code == 200
+        user = created.json()["user"]
+        assert user["username"] == "EABAB5"
+        assert user["account"] is True
+        assert "password_hash" not in user
+        assert client.get("/api/auth/me").json()["user"]["username"] == "EABAB5"
+        taken = client.post(
+            "/api/auth/register", json={"username": "eabab5", "password": "abcd"}
+        )
+        assert taken.status_code == 400
+        client.post("/api/auth/logout")
+        assert client.get("/api/auth/me").json()["user"] is None
+        wrong = client.post(
+            "/api/auth/login", json={"username": "EABAB5", "password": "nope"}
+        )
+        assert wrong.status_code == 400
+        again = client.post(
+            "/api/auth/login", json={"username": "eabab5", "password": "1234"}
+        )
+        assert again.status_code == 200
+        assert again.json()["user"]["username"] == "EABAB5"
+        assert again.json()["quota"]["unlimited"] is True
+
+
+def test_guest_song_quota_then_login_unlimited(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.routers import songs
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    monkeypatch.setattr(songs, "spawn", lambda *args, **kwargs: None)
+    from lovktv.identity import points as points_mod
+
+    monkeypatch.setattr(points_mod, "POINTS_ENFORCED", True)
+    from lovktv.main import app
+
+    with TestClient(app) as guest:
+        for i in range(5):
+            res = guest.post(
+                "/api/songs/import",
+                json={"query": f"song {i}", "title": f"song {i}"},
+            )
+            assert res.status_code == 200, res.text
+        blocked = guest.post(
+            "/api/songs/import", json={"query": "song 6", "title": "song 6"}
+        )
+        assert blocked.status_code == 402
+        me = guest.get("/api/auth/me").json()
+        assert me["quota"]["remaining"] == 0
+        registered = guest.post(
+            "/api/auth/register", json={"username": "room1", "password": "pass"}
+        )
+        assert registered.status_code == 200
+        assert registered.json()["quota"]["unlimited"] is True
+        assert registered.json()["points"]["balance"] == 10
+        extra = guest.post(
+            "/api/songs/import", json={"query": "song 7", "title": "song 7"}
+        )
+        assert extra.status_code == 200

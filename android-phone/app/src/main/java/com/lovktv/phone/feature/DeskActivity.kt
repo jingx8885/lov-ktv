@@ -32,6 +32,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import org.json.JSONObject
 
 class DeskActivity : Activity() {
     private lateinit var webView: WebView
@@ -151,6 +152,7 @@ class DeskActivity : Activity() {
             override fun onPageFinished(view: WebView?, url: String?) {
                 injectLanHttp()
                 injectRebindEntry()
+                injectMachine()
             }
         }
     }
@@ -161,6 +163,23 @@ class DeskActivity : Activity() {
         if (hash.isNotBlank()) url += "#$hash"
         webView.stopLoading()
         webView.loadUrl(url)
+    }
+
+    fun openExternal(url: String) {
+        if (url.isBlank()) return
+        runOnUiThread {
+            runCatching {
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+        }
+    }
+
+    private fun injectMachine() {
+        val id = JSONObject.quote(Prefs.machineId(this))
+        webView.evaluateJavascript(
+            "try{localStorage.setItem('lovktv.machine',$id)}catch(e){}",
+            null,
+        )
     }
 
     fun scanTv() {

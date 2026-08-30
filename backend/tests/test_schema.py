@@ -16,9 +16,6 @@ def test_schema_covers_current_tables():
         "point_ledger",
         "ad_sessions",
         "point_claims",
-        "learn_progress",
-        "learn_mastery",
-        "learn_mistakes",
     }
     assert TABLES["songs"] == (
         "id",
@@ -53,6 +50,9 @@ def test_schema_covers_current_tables():
         "device_id",
         "nickname",
         "avatar",
+        "username",
+        "username_key",
+        "password_hash",
         "created_at",
     )
     assert TABLES["guest_song_counts"] == ("guest_key", "day", "used")

@@ -38,6 +38,9 @@ CREATE TABLE IF NOT EXISTS users (
   device_id TEXT NOT NULL DEFAULT '',
   nickname TEXT NOT NULL DEFAULT '',
   avatar TEXT NOT NULL DEFAULT '',
+  username TEXT NOT NULL DEFAULT '',
+  username_key TEXT NOT NULL DEFAULT '',
+  password_hash TEXT NOT NULL DEFAULT '',
   created_at BIGINT NOT NULL
 );
 
@@ -60,6 +63,7 @@ CREATE INDEX IF NOT EXISTS queue_room_pos ON queue (room, position);
 CREATE INDEX IF NOT EXISTS queue_song ON queue (song_id);
 CREATE INDEX IF NOT EXISTS users_wechat ON users (wechat_openid);
 CREATE INDEX IF NOT EXISTS users_device ON users (device_id);
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_key ON users (username_key) WHERE username_key <> '';
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS login_tickets_exp ON login_tickets (expires_at);
 
@@ -78,6 +82,7 @@ CREATE TABLE IF NOT EXISTS guest_song_counts (
   used INTEGER NOT NULL,
   PRIMARY KEY (guest_key, day)
 );
+
 CREATE TABLE IF NOT EXISTS point_wallets (
   owner TEXT PRIMARY KEY,
   balance INTEGER NOT NULL DEFAULT 0,
@@ -108,49 +113,3 @@ CREATE TABLE IF NOT EXISTS point_claims (
   created_at BIGINT NOT NULL,
   PRIMARY KEY (owner, kind)
 );
-
-CREATE TABLE IF NOT EXISTS learn_progress (
-  owner TEXT NOT NULL,
-  song_id TEXT NOT NULL,
-  unit_id TEXT NOT NULL,
-  skill TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'ready',
-  score INTEGER NOT NULL DEFAULT 0,
-  attempts INTEGER NOT NULL DEFAULT 0,
-  updated_at BIGINT NOT NULL,
-  PRIMARY KEY (owner, song_id, unit_id, skill)
-);
-CREATE INDEX IF NOT EXISTS learn_progress_owner_song ON learn_progress (owner, song_id);
-
-CREATE TABLE IF NOT EXISTS learn_mastery (
-  owner TEXT NOT NULL,
-  song_id TEXT NOT NULL,
-  kind TEXT NOT NULL,
-  item_key TEXT NOT NULL,
-  text TEXT NOT NULL DEFAULT '',
-  zh TEXT NOT NULL DEFAULT '',
-  correct INTEGER NOT NULL DEFAULT 0,
-  wrong INTEGER NOT NULL DEFAULT 0,
-  streak INTEGER NOT NULL DEFAULT 0,
-  mastered INTEGER NOT NULL DEFAULT 0,
-  updated_at BIGINT NOT NULL,
-  PRIMARY KEY (owner, song_id, kind, item_key)
-);
-CREATE INDEX IF NOT EXISTS learn_mastery_owner_song ON learn_mastery (owner, song_id);
-
-CREATE TABLE IF NOT EXISTS learn_mistakes (
-  owner TEXT NOT NULL,
-  song_id TEXT NOT NULL,
-  qkind TEXT NOT NULL,
-  item_key TEXT NOT NULL,
-  prompt TEXT NOT NULL DEFAULT '',
-  stem TEXT NOT NULL DEFAULT '',
-  answer_text TEXT NOT NULL DEFAULT '',
-  payload TEXT NOT NULL DEFAULT '',
-  wrong_count INTEGER NOT NULL DEFAULT 0,
-  correct_streak INTEGER NOT NULL DEFAULT 0,
-  last_wrong_at BIGINT NOT NULL DEFAULT 0,
-  resolved_at BIGINT NOT NULL DEFAULT 0,
-  PRIMARY KEY (owner, song_id, qkind, item_key)
-);
-CREATE INDEX IF NOT EXISTS learn_mistakes_open ON learn_mistakes (owner, song_id, resolved_at);

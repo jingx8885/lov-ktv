@@ -1,0 +1,26 @@
+.wrap.wide { max-width: 960px; }
+.field { display: block; margin: 10px 0; }
+.field .tiny { display: block; margin-bottom: 6px; }
+#gate .btn { width: 100%; margin-top: 8px; }
+.pane { margin-top: 8px; }
+.table-wrap { overflow: auto; }
+table.admin {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+table.admin th, table.admin td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid #243;
+  vertical-align: top;
+}
+table.admin button { min-height: 36px; padding: 0 12px; }
+.delta-pos { color: #7dffa3; }
+.delta-neg { color: #ff8aa8; }
+#accountBal, #rechargeBal { font-size: 36px; }
+table.admin input {
+  min-width: 8em;
+  padding: 8px 10px;
+  font-size: 14px;
+}

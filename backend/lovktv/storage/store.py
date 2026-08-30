@@ -12,6 +12,12 @@ from lovktv.core.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
 from lovktv.core.db import connect as db_connect
 from lovktv.core.db import execute, init_schema
 from lovktv.core.schema import SONG_FIELDS
+from lovktv.identity.passwords import (
+    hash_password,
+    normalize_username,
+    username_key,
+    verify_password,
+)
 from lovktv.storage.media import (
     media_flags as _media_flags,
 )
@@ -183,14 +189,17 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         return None
     data = dict(row)
     user_id = str(data["id"])
+    username = str(data.get("username") or "")
     wechat = bool(data.get("wechat_openid"))
     return {
         "id": user_id,
         "sid": user_id[:6].upper(),
-        "nickname": data.get("nickname") or f"ID {user_id[:6].upper()}",
+        "nickname": data.get("nickname") or username or f"ID {user_id[:6].upper()}",
         "avatar": data.get("avatar") or "",
         "wechat": wechat,
-        "account": wechat,
+        "username": username,
+        "account": bool(username or wechat),
+        "created_at": int(data.get("created_at") or 0),
     }
 
 
@@ -198,6 +207,36 @@ def get_user(user_id: str) -> dict[str, Any] | None:
     with connect() as conn:
         row = execute(conn, "SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     return _user_row(row)
+
+
+def list_users(query: str = "", limit: int = 80) -> list[dict[str, Any]]:
+    needle = str(query or "").strip()
+    limit = max(1, min(int(limit or 80), 200))
+    with connect() as conn:
+        rows = execute(
+            conn, "SELECT * FROM users ORDER BY created_at DESC, id DESC"
+        ).fetchall()
+    out: list[dict[str, Any]] = []
+    key = needle.casefold()
+    for row in rows:
+        user = _user_row(row)
+        if not user:
+            continue
+        if key:
+            blob = " ".join(
+                [
+                    user.get("id") or "",
+                    user.get("sid") or "",
+                    user.get("username") or "",
+                    user.get("nickname") or "",
+                ]
+            ).casefold()
+            if key not in blob and f"u:{user['id']}".casefold() != key:
+                continue
+        out.append(user)
+        if len(out) >= limit:
+            break
+    return out
 
 
 def upsert_wechat_user(
@@ -302,6 +341,94 @@ def delete_session(token: str) -> None:
         return
     with _LOCK, connect() as conn:
         execute(conn, "DELETE FROM sessions WHERE token=?", (token,))
+
+
+def get_user_by_username(name: str) -> dict[str, Any] | None:
+    try:
+        key = username_key(name)
+    except ValueError:
+        return None
+    with connect() as conn:
+        row = execute(
+            conn, "SELECT * FROM users WHERE username_key=?", (key,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def register_password_user(
+    name: str, password: str, attach_user_id: str = ""
+) -> dict[str, Any]:
+    username = normalize_username(name)
+    key = username_key(username)
+    hashed = hash_password(password)
+    now = now_ms()
+    with _LOCK, connect() as conn:
+        taken = execute(
+            conn, "SELECT id FROM users WHERE username_key=?", (key,)
+        ).fetchone()
+        if taken:
+            raise ValueError("这个用户名已经被用了")
+        attached = None
+        if attach_user_id:
+            row = execute(
+                conn, "SELECT * FROM users WHERE id=?", (attach_user_id,)
+            ).fetchone()
+            attached = dict(row) if row else None
+        if attached and not str(attached.get("username") or ""):
+            execute(
+                conn,
+                "UPDATE users SET username=?, username_key=?, password_hash=?, nickname=? WHERE id=?",
+                (
+                    username,
+                    key,
+                    hashed,
+                    username,
+                    attach_user_id,
+                ),
+            )
+            user_id = attach_user_id
+        else:
+            user_id = new_id()
+            execute(
+                conn,
+                "INSERT INTO users (id, username, username_key, password_hash, nickname, created_at) VALUES (?,?,?,?,?,?)",
+                (user_id, username, key, hashed, username, now),
+            )
+    user = get_user(user_id)
+    if not user:
+        raise RuntimeError("创建用户失败")
+    return user
+
+
+def update_password_user(
+    user_id: str, nickname: str = "", password: str = ""
+) -> dict[str, Any]:
+    user = get_user(user_id)
+    if not user:
+        raise ValueError("管理找不到这个账号")
+    nick = str(nickname or "").strip()[:32]
+    hashed = hash_password(password) if str(password or "") else ""
+    with _LOCK, connect() as conn:
+        if nick:
+            execute(conn, "UPDATE users SET nickname=? WHERE id=?", (nick, user_id))
+        if hashed:
+            execute(
+                conn, "UPDATE users SET password_hash=? WHERE id=?", (hashed, user_id)
+            )
+    updated = get_user(user_id)
+    if not updated:
+        raise RuntimeError("创建用户失败")
+    return updated
+
+
+def login_password_user(name: str, password: str) -> dict[str, Any]:
+    row = get_user_by_username(name)
+    if not row or not verify_password(password, str(row.get("password_hash") or "")):
+        raise ValueError("用户名或密码不对")
+    user = get_user(str(row["id"]))
+    if not user:
+        raise ValueError("用户名或密码不对")
+    return user
 
 
 def guest_song_used(key: str, day: str) -> int:

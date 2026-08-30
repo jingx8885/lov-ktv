@@ -5,6 +5,8 @@ import { api } from "../../api.js";
 import { state, searchEmpty } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
+import { loadWho } from "../../ui/js/who.js";
+import { handlePointError } from "../../ui/js/ads.js";
 import { stopPreview, togglePreview } from "./preview.js";
 
 export function bindSearchHits(q) {
@@ -32,28 +34,33 @@ export function bindSearchHits(q) {
           language: hit.language || "",
           source: hit.source || ""
         };
-        const { data: created } = await fetchJson("/api/songs/import", {
+        const { ok, status, data: created } = await fetchJson("/api/songs/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
-        if (!created.id) {
+        if (!ok || !created.id) {
           btn.disabled = false;
           btn.classList.remove("busy");
           showToast(created.detail || t("phone.search.importFailed"));
+          if (status === 402 || status === 429) handlePointError(status, created.detail);
           return;
         }
         btn.classList.add("on");
         btn.setAttribute("aria-label", t("phone.search.added"));
         showToast(t("phone.search.addedToast"));
         api.loadSongs();
+        loadWho();
       };
     });
 }
 
 export function searchCard(hit) {
   const isMv = hit.is_mv === true || hit.source === "mugen" || hit.source === "bilibili";
-  const bits = [escapeHtml(hit.artist || t("common.unknownArtist")), isMv ? "MV" : t("phone.search.song")].filter(
+  const duration = Number(hit.duration || 0);
+  const durationText = duration > 0 ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "";
+  const match = hit.duration_match === "exact" ? t("phone.search.durationExact") : hit.duration_match === "close" ? t("phone.search.durationClose") : "";
+  const bits = [escapeHtml(hit.artist || t("common.unknownArtist")), isMv ? "MV" : t("phone.search.song"), durationText, match].filter(
     Boolean
   );
   return `
@@ -179,9 +186,13 @@ export function bindSearch() {
       fd.append("file", file);
       fd.append("title", file.name);
       fd.append("lyrics", "");
-      const { ok, data } = await fetchJson("/api/songs", { method: "POST", body: fd });
-      if (!ok) throw new Error(data.detail || t("phone.search.uploadFailed"));
+      const { ok, status, data } = await fetchJson("/api/songs", { method: "POST", body: fd });
+      if (!ok) {
+        if (status === 402 || status === 429) handlePointError(status, data.detail);
+        throw new Error(data.detail || t("phone.search.uploadFailed"));
+      }
       $("file").value = "";
+      loadWho();
       api.showPage("desk");
     } catch (err) {
       showToast(err.message || t("phone.search.uploadFailed"));

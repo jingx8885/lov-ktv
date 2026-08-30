@@ -327,6 +327,7 @@ interface LovKtvPhoneBridge {
   startIem?: () => string;
   stopIem?: () => string;
   setGain?: (value: number) => void;
+  openUrl?: (url: string) => void;
 }
 
 interface Window {

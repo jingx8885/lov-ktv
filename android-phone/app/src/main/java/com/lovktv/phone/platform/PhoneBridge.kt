@@ -44,5 +44,7 @@ class PhoneBridge(private val activity: DeskActivity) {
     }
 
     @JavascriptInterface
-    fun version(): String = activity.appVersionName()
+    fun openUrl(url: String) {
+        activity.openExternal(url)
+    }
 }

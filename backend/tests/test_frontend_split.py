@@ -39,6 +39,7 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     phone = (ROOT / "m.html").read_text(encoding="utf-8")
     tv = (ROOT / "tv.html").read_text(encoding="utf-8")
     login = (ROOT / "login.html").read_text(encoding="utf-8")
+    admin = (ROOT / "admin.html").read_text(encoding="utf-8")
     assert "function applyKaraokeGain" not in phone
     assert "function hostOrigin" not in tv
     assert "function deviceLogin" not in login
@@ -54,6 +55,18 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert "LovKtvPlatform.http" in http
     assert 'fetchJson(roomUrl("/api/rooms"))' in join
     assert 'src="/login/js/login.js' in login
+    assert 'src="/admin/js/admin.js' in admin
+    assert "function adjust" not in admin
+    assert 'id="doRecharge"' in admin
+    assert 'id="createUser"' in admin
+    assert 'id="importSong"' in admin
+    assert 'id="createRoom"' in admin
+    assert 'id="roomDetail"' in admin
+    assert 'id="passBox"' in login
+    assert 'id="whoPassForm"' in phone
+    assert 'id="quotaBar"' in phone
+    assert 'id="adLayer"' in phone
+    assert 'id="whoWatchAd"' in phone
     for module in (
         "media.js",
         "controls.js",

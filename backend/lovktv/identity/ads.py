@@ -14,7 +14,6 @@ from lovktv.identity.points import (
     points_payload,
     wallet_owner,
 )
-from lovktv.identity.quota import shanghai_day
 from lovktv.services.http import fail, request_base
 from lovktv.storage import points as store
 from lovktv.storage.store import now_ms
@@ -150,7 +149,3 @@ def complete_ad(request, token: str) -> dict:
     owner = row["owner"]
     store.apply_delta(owner, "ad", AD_REWARD, token)
     return {"ok": True, "reward": AD_REWARD, "points": points_payload(request)}
-
-
-def shanghai_today() -> str:
-    return shanghai_day()

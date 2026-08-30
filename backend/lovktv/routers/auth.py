@@ -17,6 +17,8 @@ from lovktv.identity.auth import (
     wechat_authorize_url,
     wechat_ready,
 )
+from lovktv.identity.points import grant_register, points_payload
+from lovktv.identity.quota import quota_payload
 from lovktv.locale.i18n import localize_exc
 from lovktv.services.http import (
     clear_session,
@@ -32,6 +34,8 @@ from lovktv.storage.store import (
     create_session,
     delete_session,
     get_login_ticket,
+    login_password_user,
+    register_password_user,
     upsert_device_user,
     upsert_wechat_user,
 )
@@ -46,7 +50,54 @@ def api_auth_status() -> dict:
 
 @router.get("/api/auth/me")
 def api_auth_me(request: Request) -> dict:
-    return {"user": current_user(request)}
+    user = current_user(request)
+    return {
+        "user": user,
+        "quota": quota_payload(request, user),
+        "points": points_payload(request, user),
+    }
+
+
+def _password_session(request: Request, user: dict, extra: dict | None = None) -> JSONResponse:
+    payload = {
+        "user": user,
+        "quota": quota_payload(request, user),
+        "points": (extra or {}).get("points") or points_payload(request, user),
+    }
+    response = JSONResponse(payload)
+    set_session(response, create_session(user["id"]), request)
+    return response
+
+
+@router.post("/api/auth/login")
+def api_auth_login(request: Request, payload: dict = Body(default={})) -> JSONResponse:
+    try:
+        user = login_password_user(
+            str(payload.get("username") or ""), str(payload.get("password") or "")
+        )
+    except ValueError as exc:
+        raise HTTPException(400, localize_exc(request, exc)) from exc
+    return _password_session(request, user)
+
+
+@router.post("/api/auth/register")
+def api_auth_register(
+    request: Request, payload: dict = Body(default={})
+) -> JSONResponse:
+    guest = current_user(request)
+    attach_id = ""
+    if guest and not guest.get("account"):
+        attach_id = str(guest.get("id") or "")
+    try:
+        user = register_password_user(
+            str(payload.get("username") or ""),
+            str(payload.get("password") or ""),
+            attach_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, localize_exc(request, exc)) from exc
+    points = grant_register(request, user)
+    return _password_session(request, user, {"points": points})
 
 
 @router.post("/api/auth/logout")

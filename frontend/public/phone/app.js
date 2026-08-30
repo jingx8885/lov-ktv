@@ -4,6 +4,7 @@ import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js";
 import { PAGES, state, pageTitle, searchEmpty } from "./state.js";
 import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho, loadWho } from "./ui/js/who.js";
+import { bootAds, syncWaitBar } from "./ui/js/ads.js";
 import { bindOverlays } from "./ui/js/overlays.js";
 import { bindNav, showPage } from "./nav/js/pages.js";
 import { bindSearch, paintSearchHits } from "./search/js/hits.js";
@@ -99,6 +100,7 @@ export function mount(root, deps = {}) {
   });
 
   bindWho();
+  bootAds();
   bindOverlays();
   bindNav();
   bindSearch();
@@ -119,6 +121,7 @@ export function mount(root, deps = {}) {
     if (!desk || desk.hidden) return;
     loadRoom();
     if (state.libState.page <= 1) loadSongs(false);
+    syncWaitBar(state.libSongs);
   }, 2000);
 
   const bootHash = (location.hash || "").replace("#", "");

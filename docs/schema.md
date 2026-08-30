@@ -11,14 +11,15 @@
 | `songs` | 曲库元数据与处理状态 |
 | `rooms` | 包厢 / 房间播放状态 |
 | `queue` | 房间点歌队列 |
-| `users` | 微信或本机设备身份 |
+| `users` | 微信、密码账号或本机设备身份 |
 | `sessions` | 登录 cookie |
 | `login_tickets` | 电视扫码登录票 |
 | `hosts` | 本机 / UA 与房间的绑定 |
-| `guest_song_counts` | 未登录每天点歌次数 |
-| `learn_progress` | 一首歌闯关：每个 unit × 技能的通关状态 |
-| `learn_mastery` | 词 / 句知识点掌握 |
-| `learn_mistakes` | 错题本，可反复练 |
+| `guest_song_counts` | 未登录每天免费入库次数 |
+| `point_wallets` | 积分余额 |
+| `point_ledger` | 积分流水 |
+| `ad_sessions` | 开屏 / 等待广告观看 |
+| `point_claims` | 注册 / 下载一次性奖励 |
 
 ### songs
 
@@ -66,6 +67,9 @@
 | device_id | TEXT | 本机身份 |
 | nickname | TEXT | 显示名 |
 | avatar | TEXT | 头像 URL |
+| username | TEXT | 登录名，可空；房间号或自定义 |
+| username_key | TEXT | 小写用户名，非空时唯一 |
+| password_hash | TEXT | `pbkdf2_sha256`，无密码账号为空 |
 | created_at | BIGINT | 纪元毫秒 |
 
 ### sessions
@@ -105,63 +109,11 @@
 | day | TEXT | `YYYY-MM-DD`（东八区） |
 | used | INTEGER | 当天已点歌数 |
 
-主键 `(guest_key, day)`。有用户名或微信的账号不限。
+主键 `(guest_key, day)`。有用户名或微信的账号不限。游客免费 5 首用完后按积分扣。
 
-### learn_progress
+### point_wallets / point_ledger / ad_sessions / point_claims
 
-一首歌是一大关。歌词按约 4 句切成 unit，每个 unit 五门技能：识词、识句、听辨、拼读、跟唱。
-
-| 列 | 类型 | 说明 |
-|---|---|---|
-| owner | TEXT | `u:` 用户或游客键 |
-| song_id | TEXT | 歌曲 |
-| unit_id | TEXT | `u0` / `u1` / `review` |
-| skill | TEXT | `word` `sentence` `listen` `read` `sing` |
-| status | TEXT | `ready` `passed` `mastered` |
-| score | INTEGER | 最近一次百分 |
-| attempts | INTEGER | 挑战次数 |
-| updated_at | BIGINT | 纪元毫秒 |
-
-主键 `(owner, song_id, unit_id, skill)`。通关目标：词都认识、句都认识、每个 unit 能读能唱。
-
-### learn_mastery
-
-| 列 | 类型 | 说明 |
-|---|---|---|
-| owner | TEXT | 同上 |
-| song_id | TEXT | 歌曲 |
-| kind | TEXT | `word` / `sentence` |
-| item_key | TEXT | 规范化原文 |
-| text | TEXT | 原文 |
-| zh | TEXT | 释义 |
-| correct | INTEGER | 累计答对 |
-| wrong | INTEGER | 累计答错 |
-| streak | INTEGER | 连续答对，满 2 记掌握 |
-| mastered | INTEGER | 0/1 |
-| updated_at | BIGINT | 纪元毫秒 |
-
-主键 `(owner, song_id, kind, item_key)`。
-
-### learn_mistakes
-
-打错的题进错题本，连对两次才移出。
-
-| 列 | 类型 | 说明 |
-|---|---|---|
-| owner | TEXT | 同上 |
-| song_id | TEXT | 歌曲 |
-| qkind | TEXT | `meaning` `word` `listen` `match` `blank` `reverse` |
-| item_key | TEXT | 对应知识点 |
-| prompt | TEXT | 题干 |
-| stem | TEXT | 展示文本 |
-| answer_text | TEXT | 正确答案 |
-| payload | TEXT | JSON，用来重出同一题 |
-| wrong_count | INTEGER | 累计打错 |
-| correct_streak | INTEGER | 订正连对 |
-| last_wrong_at | BIGINT | 最近一次打错 |
-| resolved_at | BIGINT | 0 表示还在错题本里 |
-
-主键 `(owner, song_id, qkind, item_key)`。
+积分：点歌 −1，处理歌 −5，看满 30 秒广告 +1，注册 +10，下载 App +10。钱包 `owner` 为 `u:` 用户或 `m:` 机器号。广告 token 服务端计时，未满 30 秒不能领。
 
 ## Supabase
 
