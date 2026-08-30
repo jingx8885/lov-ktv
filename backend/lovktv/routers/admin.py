@@ -14,20 +14,12 @@ from lovktv.identity.admin import (
     set_admin_cookie,
 )
 from lovktv.identity.ads import catalog, public_ad
-from lovktv.identity.points import (
-    AD_DAY_LIMIT,
-    AD_REWARD,
-    AD_SECONDS,
-    DOWNLOAD_BONUS,
-    PROCESS_COST,
-    QUEUE_COST,
-    REGISTER_BONUS,
-)
 from lovktv.locale.i18n import localize_exc
 from lovktv.rooms.service import RoomCommand
 from lovktv.services.http import fail
 from lovktv.services.room_runtime import room_view, run_command
 from lovktv.storage import points as point_store
+from lovktv.storage import settings
 from lovktv.storage.room_store import (
     clear_queue,
     delete_room,
@@ -129,6 +121,26 @@ def api_admin_me(request: Request) -> dict:
     return {"ok": True}
 
 
+@router.get("/api/admin/settings")
+def api_admin_settings(request: Request) -> dict:
+    require_admin(request)
+    return {"settings": settings.catalog()}
+
+
+@router.post("/api/admin/settings")
+def api_admin_update_settings(request: Request, payload: dict = Body(default={})) -> dict:
+    require_admin(request)
+    values = payload.get("settings") if isinstance(payload.get("settings"), dict) else payload
+    if not isinstance(values, dict):
+        raise HTTPException(400, "settings must be an object")
+    updated = {}
+    for key, value in values.items():
+        if key not in settings.SETTINGS:
+            raise HTTPException(400, f"unknown setting: {key}")
+        updated[key] = settings.set_value(key, value)
+    return {"settings": settings.catalog(), "updated": updated}
+
+
 @router.get("/api/admin/summary")
 def api_admin_summary(request: Request) -> dict:
     require_admin(request)
@@ -139,13 +151,7 @@ def api_admin_summary(request: Request) -> dict:
         "wallets": len(point_store.list_wallets(limit=200)),
         "points_total": point_store.points_total(),
         "rules": {
-            "queue_cost": QUEUE_COST,
-            "process_cost": PROCESS_COST,
-            "ad_reward": AD_REWARD,
-            "ad_seconds": AD_SECONDS,
-            "register_bonus": REGISTER_BONUS,
-            "download_bonus": DOWNLOAD_BONUS,
-            "ad_day_limit": AD_DAY_LIMIT,
+            **{item["key"]: item["value"] for item in settings.catalog()},
         },
     }
 

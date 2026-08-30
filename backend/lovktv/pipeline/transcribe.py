@@ -23,10 +23,12 @@ def _faster_whisper_model(model_name: str, model_dir: str):
     try:
         from faster_whisper import WhisperModel
 
+        from lovktv.storage import settings
+
         return WhisperModel(
             model_name,
             device="cpu",
-            compute_type=os.environ.get("LOVKTV_WHISPER_COMPUTE_TYPE", "int8"),
+            compute_type=settings.get("whisper_compute_type"),
             download_root=model_dir,
         )
     except Exception:  # noqa: BLE001
@@ -39,7 +41,9 @@ def _transcribe_faster_whisper(
     cache_path: Path | None,
     prompt: str,
 ) -> list[dict[str, Any]]:
-    model_name = (os.environ.get("LOVKTV_WHISPER_MODEL") or "small").strip()
+    from lovktv.storage import settings
+
+    model_name = settings.get("whisper_model")
     model_dir = str(Path(os.environ.get("LOVKTV_WHISPER_DIR") or WHISPER_DIR))
     model = _faster_whisper_model(model_name, model_dir)
     if model is None:

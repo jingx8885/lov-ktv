@@ -53,8 +53,10 @@ Rules:
 
 
 def agent_base_url() -> str:
+    from lovktv.storage import settings
+
     raw = (
-        os.environ.get("LOVKTV_AGENT_URL") or os.environ.get("OPENAI_BASE_URL") or ""
+        settings.get("agent_url") or os.environ.get("OPENAI_BASE_URL") or ""
     ).rstrip("/")
     if not raw:
         return ""
@@ -62,10 +64,17 @@ def agent_base_url() -> str:
 
 
 def agent_api_key() -> str:
-    return os.environ.get("LOVKTV_AGENT_KEY") or os.environ.get("OPENAI_API_KEY") or ""
+    from lovktv.storage import settings
+
+    return settings.get("agent_key") or os.environ.get("OPENAI_API_KEY") or ""
 
 
 def agent_model() -> str:
+    from lovktv.storage import settings
+
+    configured = settings.get("agent_model")
+    if configured:
+        return configured
     return (
         os.environ.get("LOVKTV_AGENT_MODEL")
         or os.environ.get("OPENAI_MODEL")
@@ -74,7 +83,9 @@ def agent_model() -> str:
 
 
 def agent_enabled() -> bool:
-    if os.environ.get("LOVKTV_JA_AGENT", "1") in {"0", "false", "no"}:
+    from lovktv.storage import settings
+
+    if not settings.get("ja_agent_enabled"):
         return False
     return bool(agent_base_url() and agent_api_key())
 

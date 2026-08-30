@@ -386,11 +386,36 @@ async function loadAds() {
   );
 }
 
+async function loadSettings() {
+  const { ok, data } = await api("/api/admin/settings");
+  if (!ok) return;
+  $("settings").innerHTML = (data.settings || []).map((item) => {
+    const checked = item.type === "bool" ? (item.value ? " checked" : "") : "";
+    if (item.type === "bool") return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="checkbox" data-setting="${item.key}"${checked}></label>`;
+    const type = item.secret ? "password" : "text";
+    const value = item.secret ? "" : String(item.value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+    const placeholder = item.secret && item.value ? "已配置，留空保持不变" : "";
+    return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="${type}" data-setting="${item.key}" value="${value}" placeholder="${placeholder}"></label>`;
+  }).join("");
+}
+
+$("settingsForm").onsubmit = async (event) => {
+  event.preventDefault();
+  const values = {};
+  $("settings").querySelectorAll("[data-setting]").forEach((el) => {
+    if (el.type === "password" && !el.value) return;
+    values[el.dataset.setting] = el.type === "checkbox" ? el.checked : el.value;
+  });
+  await api("/api/admin/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: values }) });
+  loadSummary();
+  loadSettings();
+};
+
 function showTab(name) {
   document.querySelectorAll("[data-tab]").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.tab === name);
   });
-  ["recharge", "points", "users", "songs", "rooms", "ads"].forEach((key) => {
+  ["recharge", "points", "users", "songs", "rooms", "ads", "settings"].forEach((key) => {
     const pane = $(`pane-${key}`);
     if (pane) pane.hidden = key !== name;
   });
@@ -399,6 +424,7 @@ function showTab(name) {
   if (name === "songs") loadSongs();
   if (name === "rooms") loadRooms();
   if (name === "ads") loadAds();
+  if (name === "settings") loadSettings();
   if (name === "points") loadPoints($("findQ").value.trim());
 }
 

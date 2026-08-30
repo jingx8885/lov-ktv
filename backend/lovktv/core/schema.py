@@ -195,6 +195,11 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at INTEGER NOT NULL DEFAULT 0,
   resolved_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
 );
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 """
 
 POSTGRES_DDL = """
@@ -323,6 +328,11 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at BIGINT NOT NULL DEFAULT 0,
   resolved_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
+);
+CREATE TABLE IF NOT EXISTS settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at BIGINT NOT NULL
 );
 """
 

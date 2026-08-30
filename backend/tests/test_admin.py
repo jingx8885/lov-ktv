@@ -77,6 +77,11 @@ def test_admin_deduct_and_add_points(tmp_path, monkeypatch):
         summary = client.get("/api/admin/summary").json()
         assert summary["rules"]["process_cost"] == 5
         assert summary["rules"]["queue_cost"] == 1
+        settings = client.get("/api/admin/settings")
+        assert settings.status_code == 200
+        saved = client.post("/api/admin/settings", json={"settings": {"queue_cost": 3}})
+        assert saved.status_code == 200
+        assert next(item for item in saved.json()["settings"] if item["key"] == "queue_cost")["value"] == 3
         store.create_song("晴天", "周杰伦", "zh")
         songs = client.get("/api/admin/songs").json()["songs"]
         assert songs[0]["title"] == "晴天"

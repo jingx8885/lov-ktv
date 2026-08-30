@@ -3,15 +3,18 @@ from __future__ import annotations
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-from lovktv.core.config import PUBLIC_URL, SESSION_DAYS
+from lovktv.core.config import SESSION_DAYS
 from lovktv.identity.auth import SESSION_COOKIE, public_base
 from lovktv.locale.i18n import t as i18n_t
 from lovktv.storage.store import user_from_session
 
 
 def request_base(request) -> str:
-    if PUBLIC_URL:
-        return PUBLIC_URL
+    from lovktv.storage import settings
+
+    configured = settings.get("public_url")
+    if configured:
+        return configured.rstrip("/")
     proto = request.headers.get("x-forwarded-proto") or request.url.scheme
     host = (
         request.headers.get("x-forwarded-host")

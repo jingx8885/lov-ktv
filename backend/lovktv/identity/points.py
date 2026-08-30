@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import os
-
 from lovktv.identity.quota import guest_key, is_account, quota_payload
 from lovktv.services.http import current_user, fail
 from lovktv.storage import points as store
+from lovktv.storage import settings
 
 QUEUE_COST = 1
 PROCESS_COST = 5
@@ -15,13 +14,12 @@ AD_SECONDS = 30
 REGISTER_BONUS = 10
 DOWNLOAD_BONUS = 10
 AD_DAY_LIMIT = 40
-# Off until the admin/recharge flow is in daily use. Set LOVKTV_POINTS=1 to charge.
-POINTS_ENFORCED = (os.environ.get("LOVKTV_POINTS") or "").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
+POINTS_ENFORCED = False
+
+def _setting(key: str):
+    if key == "points_enabled" and POINTS_ENFORCED:
+        return True
+    return settings.get(key)
 
 
 def wallet_owner(request, user: dict | None = None) -> str:
@@ -35,12 +33,12 @@ def points_payload(request, user: dict | None = None) -> dict:
     owner = wallet_owner(request, user)
     return {
         "balance": store.wallet_balance(owner),
-        "queue_cost": QUEUE_COST,
-        "process_cost": PROCESS_COST,
-        "ad_reward": AD_REWARD,
-        "ad_seconds": AD_SECONDS,
-        "register_bonus": REGISTER_BONUS,
-        "download_bonus": DOWNLOAD_BONUS,
+        "queue_cost": _setting("queue_cost"),
+        "process_cost": _setting("process_cost"),
+        "ad_reward": _setting("ad_reward"),
+        "ad_seconds": _setting("ad_seconds"),
+        "register_bonus": _setting("register_bonus"),
+        "download_bonus": _setting("download_bonus"),
     }
 
 
@@ -73,12 +71,12 @@ def grant_register(request, user: dict) -> dict:
     if src and src != dest:
         store.merge_wallets(src, dest)
     if store.add_claim(dest, "register"):
-        store.apply_delta(dest, "register", REGISTER_BONUS, "register")
+        store.apply_delta(dest, "register", _setting("register_bonus"), "register")
     return points_payload(request, user)
 
 
 def charge_process(request) -> dict:
-    if not POINTS_ENFORCED:
+    if not _setting("points_enabled"):
         return {"free": True, "skipped": True, "points": points_payload(request)}
     user = current_user(request)
     if not is_account(user):
@@ -87,13 +85,13 @@ def charge_process(request) -> dict:
             from lovktv.identity.quota import consume_guest_song
 
             return {"free": True, "quota": consume_guest_song(request)}
-    return {"free": False, "points": spend(request, PROCESS_COST, "process")}
+    return {"free": False, "points": spend(request, _setting("process_cost"), "process")}
 
 
 def charge_queue(request, song_id: str = "") -> dict:
-    if not POINTS_ENFORCED:
+    if not _setting("points_enabled"):
         return points_payload(request)
-    return spend(request, QUEUE_COST, "queue", song_id)
+    return spend(request, _setting("queue_cost"), "queue", song_id)
 
 
 def day_start_ms() -> int:

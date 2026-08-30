@@ -4,12 +4,9 @@ from fastapi import APIRouter, Body
 from starlette.requests import Request
 
 from lovktv.identity.ads import catalog, click_ad, complete_ad, public_ad, start_ad
-from lovktv.identity.points import (
-    DOWNLOAD_BONUS,
-    claim_bonus,
-    points_payload,
-)
+from lovktv.identity.points import claim_bonus, points_payload
 from lovktv.services.http import fail
+from lovktv.storage import settings
 
 router = APIRouter()
 
@@ -57,4 +54,4 @@ def api_points_claim(request: Request, payload: dict = Body(default={})) -> dict
     kind = str(payload.get("kind") or "")
     if kind != "download":
         fail(request, 400, "api.ad_invalid")
-    return claim_bonus(request, "download", DOWNLOAD_BONUS)
+    return claim_bonus(request, "download", settings.get("download_bonus"))

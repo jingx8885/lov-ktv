@@ -8,12 +8,13 @@ should go through Clash.
 
 from __future__ import annotations
 
-import os
 import urllib.request
 
 
 def outbound_proxy() -> str:
-    return (os.environ.get("LOVKTV_HTTPS_PROXY") or "").strip()
+    from lovktv.storage import settings
+
+    return settings.get("https_proxy")
 
 
 def proxy_args(flag: str) -> list[str]:

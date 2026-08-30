@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
 from pathlib import Path
 
@@ -57,7 +56,9 @@ def _compute(root: Path) -> str:
 
 
 def asset_rev(root: Path) -> str:
-    pinned = (os.environ.get("LOVKTV_ASSET_REV") or "").strip()
+    from lovktv.storage import settings
+
+    pinned = settings.get("asset_rev")
     if pinned:
         return pinned[:32]
     key = str(root.resolve())

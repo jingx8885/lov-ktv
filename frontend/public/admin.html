@@ -43,6 +43,7 @@
         <button type="button" data-tab="songs" data-i18n="admin.tab.songs">歌曲</button>
         <button type="button" data-tab="rooms" data-i18n="admin.tab.rooms">房间</button>
         <button type="button" data-tab="ads" data-i18n="admin.tab.ads">广告</button>
+        <button type="button" data-tab="settings">配置</button>
       </div>
 
       <section class="pane" id="pane-recharge">
@@ -176,6 +177,10 @@
       <section class="pane" id="pane-ads" hidden>
         <p class="tiny" id="rules"></p>
         <div id="ads"></div>
+      </section>
+      <section class="pane" id="pane-settings" hidden>
+        <p class="tiny">管理端配置优先于环境变量；未保存的项目继续使用环境变量。</p>
+        <form class="card" id="settingsForm"><div id="settings"></div><button class="btn primary" type="submit">保存配置</button></form>
       </section>
     </div>
   </div>
