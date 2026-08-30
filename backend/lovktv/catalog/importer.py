@@ -40,6 +40,12 @@ def _complete_mugen_audio(
 ) -> dict[str, Any]:
     mp3_path = out_dir / "original.mp3"
     if mp3_path.exists() and mp3_path.stat().st_size > 200:
+        # A Mugen import can already contain both files.  Keep the MP3 as the
+        # master clock even on this fast path (the previous implementation
+        # returned before normalising the official MV duration/audio track).
+        mtv_path = out_dir / "mtv.mp4"
+        if mtv_path.exists():
+            sync_video_to_audio(mtv_path, mp3_path)
         return skeleton
     title, artist = (
         str(skeleton.get("title") or query),

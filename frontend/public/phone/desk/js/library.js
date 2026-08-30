@@ -197,9 +197,7 @@ export async function loadSongs(append = false, force = false) {
   });
   if (after) params.set("after", after);
   /** @type {{ data: SongListPage } | null} */
-  const loaded = await fetchJson("/api/songs?" + params.toString(), { cache: "no-store" }).catch(
-    () => null
-  );
+  const loaded = await fetchJson("/api/songs?" + params.toString(), { cache: "no-store" }).catch(() => null);
   state.libLoading = false;
   if (!append) paintLibRefresh(false);
   if (!loaded) return;

@@ -22,6 +22,11 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert "keepGloss" in paint
     assert "keepZh" in paint
     assert "keepRt" in paint
+    assert "export function sanitizeLyrics" in paint
+    song = (ROOT / "phone" / "player" / "js" / "playback" / "song.js").read_text(
+        encoding="utf-8"
+    )
+    assert "sanitizeLyrics(lyrics.data)" in song
     app = (ROOT / "phone" / "app.js").read_text(encoding="utf-8")
     html = (ROOT / "m.html").read_text(encoding="utf-8")
     assert 'getElementById("page-desk")' in app

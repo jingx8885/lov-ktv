@@ -8,7 +8,9 @@ from typing import Any
 
 from .search import TONZHON_API, post_form
 
-LRC_LINE = re.compile(r"^\[(\d+):(\d+(?:\.\d+)?)\](.*)$")
+LRC_TAG = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
+LRC_WORD_TAG = re.compile(r"<\d+:\d+(?:\.\d+)?>")
+EMPTY_MARKERS = {"-", "—", "–"}
 META_PREFIX = (
     "作词",
     "作曲",
@@ -33,27 +35,57 @@ def fetch_lyric(song_id: str, source: str = "netease") -> str:
     return str(obj.get("lyric") or "")
 
 
+def _stamp_ms(mins: str, secs: str) -> int:
+    return int((int(mins) * 60 + float(secs)) * 1000)
+
+
+def _leading_stamps(text: str) -> tuple[list[int], str]:
+    """Pull every leading [mm:ss.xx] tag. Chorus repeats share one lyric line."""
+    stamps: list[int] = []
+    pos = 0
+    length = len(text)
+    while pos < length:
+        while pos < length and text[pos].isspace():
+            pos += 1
+        match = LRC_TAG.match(text, pos)
+        if not match:
+            break
+        stamps.append(_stamp_ms(match.group(1), match.group(2)))
+        pos = match.end()
+    return stamps, text[pos:].strip()
+
+
+def _lyric_body(text: str) -> str:
+    body = LRC_WORD_TAG.sub("", text)
+    _, rest = _leading_stamps(body)
+    return re.sub(r"\s+", " ", rest).strip()
+
+
+def _is_meta_lyric(text: str) -> bool:
+    if any(text.startswith(prefix) for prefix in META_PREFIX):
+        return True
+    return bool(re.match(r"^(作词|作曲|编曲|作詞|編曲)\s*[:：]", text))
+
+
 def parse_lrc(lrc: str) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for line in lrc.splitlines():
-        textline = line.strip()
-        match = LRC_LINE.match(textline)
-        if not match:
+        stamps, raw_text = _leading_stamps(line.strip())
+        if not stamps:
             continue
-        mins, secs, text = match.group(1), match.group(2), match.group(3).strip()
-        ms = int((int(mins) * 60 + float(secs)) * 1000)
-        if not text or text in {"-", "—", "–"}:
+        text = _lyric_body(raw_text)
+        if not text or text in EMPTY_MARKERS:
             if not text:
+                ms = stamps[0]
                 for item in reversed(out):
                     if item.get("end_ms") is None and item["ms"] < ms:
                         item["end_ms"] = ms
                         break
             continue
-        if any(text.startswith(prefix) for prefix in META_PREFIX):
+        if _is_meta_lyric(text):
             continue
-        if re.match(r"^(作词|作曲|编曲|作詞|編曲)\s*[:：]", text):
-            continue
-        out.append({"ms": ms, "text": text})
+        for ms in stamps:
+            out.append({"ms": ms, "text": text})
     out.sort(key=lambda item: item["ms"])
     dedup: list[dict[str, Any]] = []
     for item in out:

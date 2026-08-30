@@ -53,6 +53,12 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
     assert "transform: none !important" in tv
+    assert "export function sanitizeLyrics" in paint
+    tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(
+        encoding="utf-8"
+    )
+    assert "sanitizeLyrics(lyricsHit.data)" in tick
+    assert "const next = sanitizeLyrics(data)" in tick
 
 
 def test_tv_page_has_no_language_picker():

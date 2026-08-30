@@ -20,6 +20,53 @@ def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     assert video.read_bytes() == b"synced-video" * 200
 
 
+def test_complete_mugen_audio_syncs_existing_media_fast_path(tmp_path, monkeypatch):
+    mp3 = tmp_path / "original.mp3"
+    mtv = tmp_path / "mtv.mp4"
+    mp3.write_bytes(b"a" * 500)
+    mtv.write_bytes(b"v" * 500)
+    calls = []
+    monkeypatch.setattr(importer, "sync_video_to_audio", lambda video, audio: calls.append((video, audio)) or True)
+    skeleton = {"audio": {"file": "original.mp3"}, "has_video": True}
+    assert importer._complete_mugen_audio(skeleton, tmp_path, "song") is skeleton
+    assert calls == [(mtv, mp3)]
+
+
+def test_duration_match_classifies_and_scores():
+    assert search.annotate_duration_match({"duration": 180, "lyrics_duration": 180})["duration_match"] == "exact"
+    close = search.annotate_duration_match({"duration": 180, "lyrics_duration": 174})
+    assert close["duration_match"] == "close"
+    assert close["duration_match_score"] == 1
+    mismatch = search.annotate_duration_match({"duration": 180, "lyrics_duration": 120})
+    assert mismatch["duration_match"] == "mismatch"
+    assert mismatch["duration_match_score"] == -1
+
+
+def test_search_ranks_late_exact_hit_before_unknowns(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "search_mugen",
+        lambda *args, **kwargs: {
+            "hits": [
+                {"id": "m1", "title": "Unknown 1", "source": "mugen"},
+                {"id": "m2", "title": "Unknown 2", "source": "mugen"},
+            ],
+            "has_more": False,
+        },
+    )
+    monkeypatch.setattr(
+        search,
+        "search_bilibili_hits",
+        lambda *args, **kwargs: [
+            {"id": "b1", "title": "Exact", "source": "bilibili", "duration": 180, "lyrics_duration": 180}
+        ],
+    )
+    monkeypatch.setattr(search, "search_ytdlp_hits", lambda *args, **kwargs: [])
+    result = search.search_songs("Exact", count=2)
+    assert result["hits"][0]["id"] == "b1"
+    assert len(result["hits"]) == 2
+
+
 def test_clean_search_title_strips_version_marks():
     assert search.clean_search_title("晴天(深情版)") == "晴天"
     assert search.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"

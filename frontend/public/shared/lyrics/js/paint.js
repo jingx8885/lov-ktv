@@ -45,6 +45,48 @@ export function tokenProgress(tok, t) {
   return 0;
 }
 
+const LEADING_STAMPS = /^(?:\s*\[\d+:\d+(?:\.\d+)?\])+/;
+const STAMP_ONLY = /^(?:\[\d+:\d+(?:\.\d+)?\]\s*)+$/;
+
+/** @param {unknown} text */
+export function stampOnlyLyric(text) {
+  const body = String(text || "").trim();
+  return !body || STAMP_ONLY.test(body);
+}
+
+/** @param {unknown} text */
+export function stripLyricStamps(text) {
+  return String(text || "")
+    .replace(LEADING_STAMPS, "")
+    .trim();
+}
+
+/** @param {LyricCue[] | null | undefined} cues */
+export function sanitizeLyricCues(cues) {
+  const out = [];
+  for (const cue of cues || []) {
+    const raw = String(cue.text || "");
+    if (stampOnlyLyric(raw)) continue;
+    const text = stripLyricStamps(raw);
+    if (!text || stampOnlyLyric(text)) continue;
+    if (text === raw.trim()) {
+      out.push(cue);
+      continue;
+    }
+    const next = Object.assign({}, cue, { text, tokens: [] });
+    if (next.zh) next.zh = stripLyricStamps(next.zh);
+    out.push(next);
+  }
+  return out;
+}
+
+/** @param {unknown} data */
+export function sanitizeLyrics(data) {
+  if (!data || typeof data !== "object") return { cues: [] };
+  const payload = /** @type {LyricsDoc} */ (data);
+  return Object.assign({}, payload, { cues: sanitizeLyricCues(payload.cues) });
+}
+
 /** @param {LyricCue | null | undefined} cue */
 export function cueKey(cue) {
   return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}:${cue.zh || ""}` : "";

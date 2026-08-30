@@ -6,6 +6,7 @@ import { state } from "../../../state.js";
 import { roomCode } from "../../../auth/js/login.js";
 import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "../media/mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
+import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem, shouldStopEmptyNow } from "./state.js";
 import { closeRoomWs, fetchRoomSnapshot, roomWsLive, snapshotStamp, watchRoom } from "../room/state.js";
@@ -249,7 +250,7 @@ export async function applyRoom(room) {
     }));
     const [lyricsHit, skeletonHit] = await Promise.all([lyricsPromise, skeletonPromise]);
     if (generation !== applyGeneration) return;
-    state.lyrics = lyricsHit.ok ? lyricsHit.data : { cues: [] };
+    state.lyrics = lyricsHit.ok ? sanitizeLyrics(lyricsHit.data) : { cues: [] };
     state.skeleton = skeletonHit.ok ? skeletonHit.data : null;
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;
@@ -276,8 +277,10 @@ export async function applyRoom(room) {
       const prev = lyricsFingerprint(state.lyrics);
       fetchJson(mediaUrl(now.song_id, "lyrics.json"))
         .then(({ ok, data }) => {
-          if (!ok || !data || !data.cues || lyricsFingerprint(data) === prev) return;
-          state.lyrics = data;
+          if (!ok || !data || !data.cues) return;
+          const next = sanitizeLyrics(data);
+          if (lyricsFingerprint(next) === prev) return;
+          state.lyrics = next;
           syncNativeMv();
         })
         .catch(() => {});

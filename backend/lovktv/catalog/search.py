@@ -64,14 +64,33 @@ def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
     an exact match by construction. Other providers may populate both fields
     later (for example from a lyric cache); unknown durations remain neutral.
     """
+    def coerce_duration(value: Any, *, seconds: bool) -> int | None:
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None
+        if number <= 0:
+            return None
+        return int(round(number * 1000)) if seconds else int(round(number))
+
     song_ms = hit.get("duration_ms")
-    if song_ms is None and hit.get("duration"):
-        song_ms = int(float(hit["duration"]) * 1000)
-        hit["duration_ms"] = song_ms
+    if song_ms is None:
+        song_ms = coerce_duration(hit.get("duration"), seconds=True)
+        if song_ms is not None:
+            hit["duration_ms"] = song_ms
+    else:
+        song_ms = coerce_duration(song_ms, seconds=False)
+        if song_ms is not None:
+            hit["duration_ms"] = song_ms
     lyric_ms = hit.get("lyrics_duration_ms")
-    if lyric_ms is None and hit.get("lyrics_duration"):
-        lyric_ms = int(float(hit["lyrics_duration"]) * 1000)
-        hit["lyrics_duration_ms"] = lyric_ms
+    if lyric_ms is None:
+        lyric_ms = coerce_duration(hit.get("lyrics_duration"), seconds=True)
+        if lyric_ms is not None:
+            hit["lyrics_duration_ms"] = lyric_ms
+    else:
+        lyric_ms = coerce_duration(lyric_ms, seconds=False)
+        if lyric_ms is not None:
+            hit["lyrics_duration_ms"] = lyric_ms
     if (
         hit.get("source") == "mugen"
         and hit.get("lyrics_ready")
@@ -80,7 +99,7 @@ def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
     ):
         lyric_ms = song_ms
         hit["lyrics_duration_ms"] = song_ms
-    if not isinstance(song_ms, int) or not isinstance(lyric_ms, int) or song_ms <= 0 or lyric_ms <= 0:
+    if song_ms is None or lyric_ms is None:
         hit.setdefault("duration_match", "unknown")
         hit.setdefault("duration_match_score", 0)
         return hit
@@ -329,9 +348,18 @@ def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
         "bilibili": bili,
         "soundcloud": soundcloud,
     }
-    hits = merge_channel_hits(groups, count)
+    # Collect every hit returned by the providers before ranking.  Taking the
+    # first ``count`` items from the round-robin merge would hide a later
+    # exact-duration match behind a full page of unknown-duration results.
+    hits = merge_channel_hits(groups, sum(len(bucket) for bucket in groups.values()))
     hits = [annotate_duration_match(hit) for hit in hits]
-    hits.sort(key=lambda hit: (int(hit.get("duration_match_score") or 0), hit.get("source") == "mugen"), reverse=True)
+    hits.sort(
+        # Python's sort is stable, so the round-robin provider order remains
+        # the tie-breaker while duration quality is the primary ranking.
+        key=lambda hit: int(hit.get("duration_match_score") or 0),
+        reverse=True,
+    )
+    hits = hits[:count]
     available = sum(len(bucket) for bucket in groups.values())
     return {
         "query": query,

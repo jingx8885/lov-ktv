@@ -7,6 +7,7 @@ import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { applyPlayerVocalMix, hookPlayerAudio, setPlayIcon, syncGuide, unlockPlayerGesture } from "./controls.js";
 import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
+import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
 import { renderPlayerList } from "./queue.js";
 
@@ -41,7 +42,7 @@ export async function loadPlayerSong(songId, opts) {
     if (guide) guide.currentTime = 0;
   } catch (err) {}
   const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
-  state.playerLyrics = lyrics.ok ? lyrics.data : { cues: [] };
+  state.playerLyrics = lyrics.ok ? sanitizeLyrics(lyrics.data) : { cues: [] };
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
   if (gen !== state.playerLoad) return;
   state.lyricsDirty = false;

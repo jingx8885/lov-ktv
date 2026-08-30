@@ -67,6 +67,7 @@ def drop_leading_title_echo(lines: list[dict[str, Any]]) -> list[dict[str, Any]]
 _CREDIT_LINE = re.compile(
     r"(収録\s*[:：]|発売日\s*[:：]|^\s*「[^」]{1,48}」\s*(OP|ED)?\s*$)",
 )
+_STAMP_ONLY = re.compile(r"^(?:\[\d+:\d+(?:\.\d+)?\]\s*)+$")
 # NetEase ja LRC often ships Simplified Chinese lookalikes of Japanese kanji.
 _CN_TO_JP = str.maketrans(
     {
@@ -141,6 +142,8 @@ def fold_ja_netease_kanji(text: str) -> str:
 def is_credit_lyric(text: str) -> bool:
     body = unicodedata.normalize("NFKC", text or "").strip()
     if not body:
+        return True
+    if _STAMP_ONLY.match(body):
         return True
     if _CREDIT_LINE.search(body):
         return True

@@ -27,6 +27,39 @@ def test_parse_lrc_skips_meta_and_dedups():
     assert lines[0]["ms"] == 12100
 
 
+def test_parse_lrc_expands_repeat_stamps_and_drops_stamp_only_line():
+    lines = parse_lrc(
+        """
+[00:00.00] 作词 : 戸田昭吾
+[00:00.00][00:06.28][00:11.01][00:29.58][00:48.26][01:05.72]
+[00:04.34]OK！
+[00:06.66]OK!
+[00:08.01]作曲・編曲:たなかひろかず
+[00:12.03]OK！ つぎに 進もうぜ！
+[00:57.76][01:52.22]かわりばんこに カオだして
+[01:01.31]みんなを 強くしてくれてるよ
+"""
+    )
+    assert [item["text"] for item in lines] == [
+        "OK！",
+        "OK!",
+        "OK！ つぎに 進もうぜ！",
+        "かわりばんこに カオだして",
+        "みんなを 強くしてくれてるよ",
+        "かわりばんこに カオだして",
+    ]
+    assert [item["ms"] for item in lines if "カオだして" in item["text"]] == [
+        57760,
+        112220,
+    ]
+    assert all("[" not in item["text"] for item in lines)
+
+
+def test_parse_lrc_strips_enhanced_word_stamps():
+    lines = parse_lrc("[00:12.03]OK！<00:13.50>つぎに 進もうぜ！\n")
+    assert lines == [{"ms": 12030, "text": "OK！つぎに 進もうぜ！"}]
+
+
 def test_empty_timestamp_closes_previous_line():
     lines = parse_lrc(
         """
@@ -162,6 +195,9 @@ def test_netease_ja_credits_and_simplified_kanji():
     assert is_credit_lyric("「Give a reason」")
     assert is_credit_lyric("「スレイヤーズNEXT」OP")
     assert is_credit_lyric("発売日：1996/04/24")
+    assert is_credit_lyric(
+        "[00:06.28][00:11.01][00:29.58][00:48.26][01:05.72][01:25.93]"
+    )
     assert not is_credit_lyric("Here we go! go! 走り続ける")
     cleaned = drop_credit_lines(
         [
