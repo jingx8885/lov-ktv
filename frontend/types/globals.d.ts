@@ -417,3 +417,34 @@ interface AudioContext {
 interface ScreenOrientation {
   lock?(orientation: string): Promise<void>;
 }
+interface LearnCampaignGoalSlice { done: number; total: number }
+interface LearnCampaignGoal {
+  words: LearnCampaignGoalSlice;
+  sentences: LearnCampaignGoalSlice;
+  read: LearnCampaignGoalSlice;
+  sing: LearnCampaignGoalSlice;
+  cleared: boolean;
+}
+interface LearnCampaignSkill { id: string; status: string; score?: number; attempts?: number; play_mode?: string }
+interface LearnCampaignUnit {
+  id: string;
+  index: number;
+  from_line: number;
+  to_line: number;
+  preview: string;
+  line_indexes: number[];
+  skills: LearnCampaignSkill[];
+}
+interface LearnCampaign {
+  schema?: string;
+  song_id: string;
+  title?: string;
+  artist?: string;
+  language?: string;
+  goal?: LearnCampaignGoal;
+  units?: LearnCampaignUnit[];
+  skills?: string[];
+  mistakes?: number;
+  pass_pct?: number;
+  modes?: string[];
+}
