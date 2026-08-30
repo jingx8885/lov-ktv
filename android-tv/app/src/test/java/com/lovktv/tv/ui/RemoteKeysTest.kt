@@ -25,7 +25,8 @@ class RemoteKeysTest {
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_MENU))
         assertFalse(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_RIGHT))
-        assertFalse(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_CENTER))
+        assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_CENTER))
+        assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_ENTER))
         assertFalse(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_BACK))
     }
 }

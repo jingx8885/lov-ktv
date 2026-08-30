@@ -71,3 +71,40 @@ CREATE TABLE IF NOT EXISTS hosts (
   last_seen BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS hosts_room ON hosts (room);
+
+CREATE TABLE IF NOT EXISTS guest_song_counts (
+  guest_key TEXT NOT NULL,
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL,
+  PRIMARY KEY (guest_key, day)
+);
+CREATE TABLE IF NOT EXISTS point_wallets (
+  owner TEXT PRIMARY KEY,
+  balance INTEGER NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS point_ledger (
+  id TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  delta INTEGER NOT NULL,
+  ref TEXT NOT NULL DEFAULT '',
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS point_ledger_owner ON point_ledger (owner, created_at);
+CREATE TABLE IF NOT EXISTS ad_sessions (
+  token TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  placement TEXT NOT NULL,
+  ad_id TEXT NOT NULL,
+  started_at BIGINT NOT NULL,
+  completed_at BIGINT NOT NULL DEFAULT 0,
+  clicked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS point_claims (
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  PRIMARY KEY (owner, kind)
+);

@@ -11,6 +11,11 @@ def test_schema_covers_current_tables():
         "sessions",
         "login_tickets",
         "hosts",
+        "guest_song_counts",
+        "point_wallets",
+        "point_ledger",
+        "ad_sessions",
+        "point_claims",
     }
     assert TABLES["songs"] == (
         "id",
@@ -47,6 +52,7 @@ def test_schema_covers_current_tables():
         "avatar",
         "created_at",
     )
+    assert TABLES["guest_song_counts"] == ("guest_key", "day", "used")
     assert TABLES["sessions"] == ("token", "user_id", "created_at", "expires_at")
     assert TABLES["login_tickets"] == (
         "id",

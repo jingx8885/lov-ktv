@@ -98,10 +98,20 @@ interface MtvSkeleton {
 }
 
 interface AuthUser {
+  id?: string;
   sid?: string;
   nickname?: string;
   avatar?: string;
   wechat?: boolean;
+  account?: boolean;
+}
+
+interface AuthQuota {
+  unlimited?: boolean;
+  limit?: number;
+  used?: number;
+  remaining?: number | null;
+  account?: boolean;
 }
 
 interface SongListPage {

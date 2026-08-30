@@ -53,4 +53,14 @@ class NativeMicTest {
         assertEquals(0, pcm[2].toInt())
         assertEquals(0, pcm[3].toInt())
     }
+
+    @Test
+    fun playGainBoostsSliderToStayLevel() {
+        assertEquals(220, NativeMic.playGainPct(100))
+        assertEquals(176, NativeMic.playGainPct(80))
+        val pcm = byteArrayOf(0x00, 0x10, 0x00, 0x20)
+        NativeMic.scalePcm(pcm, 4, 200)
+        assertEquals(0x20, pcm[1].toInt())
+        assertEquals(0x40, pcm[3].toInt())
+    }
 }

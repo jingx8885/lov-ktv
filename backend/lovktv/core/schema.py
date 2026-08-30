@@ -41,6 +41,19 @@ TABLES: dict[str, tuple[str, ...]] = {
     "sessions": ("token", "user_id", "created_at", "expires_at"),
     "login_tickets": ("id", "status", "user_id", "created_at", "expires_at"),
     "hosts": ("key", "room", "ua", "created_at", "last_seen"),
+    "guest_song_counts": ("guest_key", "day", "used"),
+    "point_wallets": ("owner", "balance", "created_at", "updated_at"),
+    "point_ledger": ("id", "owner", "kind", "delta", "ref", "created_at"),
+    "ad_sessions": (
+        "token",
+        "owner",
+        "placement",
+        "ad_id",
+        "started_at",
+        "completed_at",
+        "clicked",
+    ),
+    "point_claims": ("owner", "kind", "created_at"),
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
@@ -118,6 +131,42 @@ CREATE TABLE IF NOT EXISTS hosts (
   last_seen INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS hosts_room ON hosts (room);
+CREATE TABLE IF NOT EXISTS guest_song_counts (
+  guest_key TEXT NOT NULL,
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL,
+  PRIMARY KEY (guest_key, day)
+);
+CREATE TABLE IF NOT EXISTS point_wallets (
+  owner TEXT PRIMARY KEY,
+  balance INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS point_ledger (
+  id TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  delta INTEGER NOT NULL,
+  ref TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS point_ledger_owner ON point_ledger (owner, created_at);
+CREATE TABLE IF NOT EXISTS ad_sessions (
+  token TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  placement TEXT NOT NULL,
+  ad_id TEXT NOT NULL,
+  started_at INTEGER NOT NULL,
+  completed_at INTEGER NOT NULL DEFAULT 0,
+  clicked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS point_claims (
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (owner, kind)
+);
 """
 
 POSTGRES_DDL = """
@@ -189,6 +238,42 @@ CREATE TABLE IF NOT EXISTS hosts (
   last_seen BIGINT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS hosts_room ON hosts (room);
+CREATE TABLE IF NOT EXISTS guest_song_counts (
+  guest_key TEXT NOT NULL,
+  day TEXT NOT NULL,
+  used INTEGER NOT NULL,
+  PRIMARY KEY (guest_key, day)
+);
+CREATE TABLE IF NOT EXISTS point_wallets (
+  owner TEXT PRIMARY KEY,
+  balance INTEGER NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS point_ledger (
+  id TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  delta INTEGER NOT NULL,
+  ref TEXT NOT NULL DEFAULT '',
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS point_ledger_owner ON point_ledger (owner, created_at);
+CREATE TABLE IF NOT EXISTS ad_sessions (
+  token TEXT PRIMARY KEY,
+  owner TEXT NOT NULL,
+  placement TEXT NOT NULL,
+  ad_id TEXT NOT NULL,
+  started_at BIGINT NOT NULL,
+  completed_at BIGINT NOT NULL DEFAULT 0,
+  clicked INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS point_claims (
+  owner TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  PRIMARY KEY (owner, kind)
+);
 """
 
 ROOM_MIGRATIONS = (

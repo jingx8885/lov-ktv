@@ -51,7 +51,7 @@ class HostApiHandler(
                 call.response.headers.append(HttpHeaders.CacheControl, "no-store")
                 call.response.headers.append("Access-Control-Allow-Origin", "*")
                 call.respondText(json, ContentType.Application.Json)
-                if (kind is ApiKind.RoomQueue || kind is ApiKind.RoomPlay) puller.hint()
+                if (kind is ApiKind.RoomQueue || kind is ApiKind.RoomPlay || kind is ApiKind.RoomSkip) puller.hint()
                 if (kind !is ApiKind.RoomGet) {
                     val code = JSONObject(json).optString("code")
                     if (code.isNotBlank()) broadcast(code, json)

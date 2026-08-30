@@ -7,9 +7,9 @@ import { roomCode } from "../../../auth/js/login.js";
 import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "../media/mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
 import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
-import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem } from "./state.js";
+import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem, shouldStopEmptyNow } from "./state.js";
 import { closeRoomWs, fetchRoomSnapshot, roomWsLive, snapshotStamp, watchRoom } from "../room/state.js";
-import { nativeMtvAvailable, stopNativeMtv } from "../../../platform.js";
+import { nativeMtvAvailable, pauseNativeMtv, stopNativeMtv } from "../../../platform.js";
 
 export { closeRoomWs, roomWsLive, watchRoom };
 
@@ -125,6 +125,7 @@ export function claimLeader() {
 
 export function pauseAudio() {
   ["karaoke", "vocal", "mtv"].forEach((id) => $(id).pause());
+  pauseNativeMtv();
 }
 
 export function stopAudioOnly() {
@@ -171,14 +172,13 @@ export function stopPlayback() {
 export async function tick() {
   const code = roomCode() || (state.room && state.room.code);
   if (!code) return;
-  if (roomWsLive() && state.room && state.room.code) {
-    await applyRoom(state.room);
-    return;
-  }
   /** @type {{ ok: boolean, data: Room }} */
   const roomHit = await fetchRoomSnapshot(code);
-  if (!roomHit.ok || !roomHit.data || !roomHit.data.code) return;
-  await applyRoom(roomHit.data);
+  if (roomHit.ok && roomHit.data && roomHit.data.code) {
+    await applyRoom(roomHit.data);
+    return;
+  }
+  if (state.room && state.room.code) await applyRoom(state.room);
 }
 
 export async function applyRoom(room) {
@@ -192,9 +192,8 @@ export async function applyRoom(room) {
   prefetchQueue(state.room);
   const now = state.room.now_playing;
   $("qinfo").textContent = roomLine(state.room);
-  if (!now) {
-    state.emptyNow += 1;
-    if (state.emptyNow < 3) return;
+  if (shouldStopEmptyNow(now)) {
+    state.emptyNow = 0;
     stopPlayback();
     setWaiting(true);
     $("gate").hidden = true;
@@ -210,6 +209,14 @@ export async function applyRoom(room) {
   $("title").textContent = now.title;
   $("meta").textContent = `${now.artist || ""} · ${STATUS[now.status] || now.status}`;
   if (now.status !== "ready") {
+    const { itemKey, mediaRev } = roomItemIdentity(now);
+    if (shouldReloadRoomItem(state.lastItem, state.lastMediaRev, now)) {
+      state.lastItem = itemKey;
+      state.lastMediaRev = mediaRev;
+      stopAudioOnly();
+      stopNativeMtv();
+      state.boundMtvSong = "";
+    }
     $("prev").innerHTML = "";
     $("cur").textContent = "";
     $("next").textContent = "";
@@ -226,6 +233,10 @@ export async function applyRoom(room) {
     // and should never add network latency to a room skip.
     state.lyrics = { cues: [] };
     state.skeleton = null;
+    state.resumeAt = 0;
+    stopAudioOnly();
+    stopNativeMtv();
+    state.boundMtvSong = "";
     syncNativeMv();
     startPlayback();
     const lyricsPromise = fetchJson(mediaUrl(now.song_id, "lyrics.json")).catch(() => ({

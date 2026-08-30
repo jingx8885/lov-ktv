@@ -115,12 +115,15 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
     karaoke = out_dir / "karaoke.m4a"
     guide = out_dir / "guide.m4a"
     if shutil.which("ffmpeg"):
+        from lovktv.pipeline.loudness import loudnorm_args
+
         subprocess.run(
             [
                 "ffmpeg",
                 "-y",
                 "-i",
                 str(src),
+                *loudnorm_args(),
                 "-c:a",
                 "aac",
                 "-b:a",
@@ -132,7 +135,18 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
             capture_output=True,
         )
         subprocess.run(
-            ["ffmpeg", "-y", "-i", str(src), "-c:a", "aac", "-b:a", "64k", str(guide)],
+            [
+                "ffmpeg",
+                "-y",
+                "-i",
+                str(src),
+                *loudnorm_args(),
+                "-c:a",
+                "aac",
+                "-b:a",
+                "64k",
+                str(guide),
+            ],
             check=True,
             timeout=120,
             capture_output=True,
@@ -223,6 +237,9 @@ def process_import(
                 _fallback_media(src, out_dir)
         elif not (out_dir / "karaoke.m4a").exists():
             _fallback_media(src, out_dir)
+        from lovktv.pipeline.loudness import normalize_file
+
+        normalize_file(src)
         if skeleton.get("needs_align", True) or not (out_dir / "lyrics.json").exists():
             _align_and_mtv(
                 song_id,

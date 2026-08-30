@@ -15,6 +15,7 @@
 | `sessions` | 登录 cookie |
 | `login_tickets` | 电视扫码登录票 |
 | `hosts` | 本机 / UA 与房间的绑定 |
+| `guest_song_counts` | 未登录每天点歌次数 |
 
 ### songs
 
@@ -92,6 +93,16 @@
 | user_id | TEXT | 确认后写入 |
 | created_at | BIGINT | 纪元毫秒 |
 | expires_at | BIGINT | 默认 180s |
+
+### guest_song_counts
+
+| 列 | 类型 | 说明 |
+|---|---|---|
+| guest_key | TEXT | `u:` 游客用户 / `h:` 宿主 cookie / `g:` IP+UA |
+| day | TEXT | `YYYY-MM-DD`（东八区） |
+| used | INTEGER | 当天已点歌数 |
+
+主键 `(guest_key, day)`。有用户名或微信的账号不限。
 
 ## Supabase
 

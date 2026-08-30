@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 
 from lovktv.pipeline import separate
+from lovktv.pipeline.loudness import KTV_LUFS, LOUDNORM_FILTER, loudnorm_args
 from lovktv.pipeline.mdx_onnx import assign_stems
 
 
@@ -117,3 +118,9 @@ def test_separate_vocals_does_not_copy_original_as_vocals(tmp_path: Path, monkey
     assert (tmp_path / "vocals.wav").read_bytes() == b"MID-VOICE"
     assert (tmp_path / "guide.m4a").read_bytes() == b"MID-VOICE"
     assert (tmp_path / "vocals.wav").read_bytes() != src.read_bytes()
+
+
+def test_ktv_loudness_matches_stay_level():
+    assert KTV_LUFS == -9.0
+    assert "loudnorm=I=-9" in LOUDNORM_FILTER
+    assert loudnorm_args() == ["-af", LOUDNORM_FILTER]

@@ -183,12 +183,14 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         return None
     data = dict(row)
     user_id = str(data["id"])
+    wechat = bool(data.get("wechat_openid"))
     return {
         "id": user_id,
         "sid": user_id[:6].upper(),
         "nickname": data.get("nickname") or f"ID {user_id[:6].upper()}",
         "avatar": data.get("avatar") or "",
-        "wechat": bool(data.get("wechat_openid")),
+        "wechat": wechat,
+        "account": wechat,
     }
 
 
@@ -300,6 +302,47 @@ def delete_session(token: str) -> None:
         return
     with _LOCK, connect() as conn:
         execute(conn, "DELETE FROM sessions WHERE token=?", (token,))
+
+
+def guest_song_used(key: str, day: str) -> int:
+    if not key or not day:
+        return 0
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT used FROM guest_song_counts WHERE guest_key=? AND day=?",
+            (key, day),
+        ).fetchone()
+    if not row:
+        return 0
+    data = dict(row)
+    return int(data.get("used") or 0)
+
+
+def increment_guest_song(key: str, day: str) -> int:
+    if not key or not day:
+        return 0
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn,
+            "SELECT used FROM guest_song_counts WHERE guest_key=? AND day=?",
+            (key, day),
+        ).fetchone()
+        used = int(dict(row).get("used") or 0) if row else 0
+        nxt = used + 1
+        if row:
+            execute(
+                conn,
+                "UPDATE guest_song_counts SET used=? WHERE guest_key=? AND day=?",
+                (nxt, key, day),
+            )
+        else:
+            execute(
+                conn,
+                "INSERT INTO guest_song_counts (guest_key, day, used) VALUES (?,?,?)",
+                (key, day, nxt),
+            )
+    return nxt
 
 
 def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:

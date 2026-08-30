@@ -36,7 +36,28 @@ def test_tv_does_not_restart_on_network_stall():
     assert "export function wantsResume" in tick
     assert "export function restoreResume" in tick
     assert "if (t > 0.5)" in tick
-    assert "state.emptyNow < 3" in tick
+    assert "export function shouldStopEmptyNow" in playback_state
+    assert "if (shouldStopEmptyNow(now))" in tick
+    assert "state.emptyNow < 3" not in tick
+    assert "if (roomWsLive() && state.room && state.room.code)" not in tick
+    assert "fetchRoomSnapshot(code)" in tick
+    assert "stopAudioOnly();" in tick
+    handler = (
+        ROOT.parent.parent
+        / "android-tv"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "tv"
+        / "feature"
+        / "host"
+        / "HostApiHandler.kt"
+    ).read_text(encoding="utf-8")
+    assert "kind is ApiKind.RoomSkip" in handler
+    assert "RoomQueue || kind is ApiKind.RoomPlay || kind is ApiKind.RoomSkip" in handler
     assert 'karaoke.src = mediaUrl(songId, "original.mp3")' in tick
     assert "if (srcHasSong(karaoke, songId))" in tick
     assert "wantsResume(karaoke)" in tick
@@ -110,6 +131,22 @@ def test_tv_does_not_restart_on_network_stall():
     assert "setVideoScalingMode" not in silent
     assert "PixelFormat.OPAQUE" not in silent
     assert "resumeMtv()" in activity
+    assert "pauseNativeMtv()" in tick
+    keys = (
+        ROOT.parent.parent
+        / "android-tv"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "tv"
+        / "ui"
+        / "RemoteKeys.kt"
+    ).read_text(encoding="utf-8")
+    assert "KEYCODE_DPAD_CENTER" in keys
+    assert "KeyEvent.KEYCODE_DPAD_CENTER," in keys.split("fun interceptInNative")[1]
     mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
         encoding="utf-8"
     )

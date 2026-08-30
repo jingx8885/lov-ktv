@@ -39,7 +39,9 @@ class MicService : Service() {
         val rate = intent?.getIntExtra(EXTRA_RATE, LanMic.SAMPLE_RATE) ?: LanMic.SAMPLE_RATE
         if (intent?.hasExtra(EXTRA_SEND) == true) sendEnabled = intent.getBooleanExtra(EXTRA_SEND, sendEnabled)
         if (intent?.hasExtra(EXTRA_IEM) == true) iemEnabled = intent.getBooleanExtra(EXTRA_IEM, iemEnabled)
-        if (intent?.hasExtra(EXTRA_GAIN) == true) gainPct = intent.getIntExtra(EXTRA_GAIN, gainPct).coerceIn(0, 100)
+        if (intent?.hasExtra(EXTRA_GAIN) == true) {
+            gainPct = NativeMic.playGainPct(intent.getIntExtra(EXTRA_GAIN, 100))
+        }
         sendHost = host
         sendPort = port
         if (!sendEnabled && !iemEnabled) {
@@ -57,7 +59,7 @@ class MicService : Service() {
             live = true
             thread = Thread({ sendLoop(rate) }, "lovktv-mic-tx").also { it.start() }
         }
-        return START_NOT_STICKY
+        return START_STICKY
     }
 
     override fun onDestroy() {
@@ -95,9 +97,14 @@ class MicService : Service() {
         socket = sock
         var dest: InetAddress? = null
         var destKey = ""
+        var liveSock = sock
         try {
             while (running && (sendEnabled || iemEnabled)) {
-                val got = rec.read(pcm, 0, frame)
+                val got = try {
+                    rec.read(pcm, 0, frame)
+                } catch (_: Exception) {
+                    -1
+                }
                 if (got <= 0) continue
                 NativeMic.scalePcm(pcm, got, gainPct)
                 if (iemEnabled) {
@@ -108,30 +115,45 @@ class MicService : Service() {
                 val destHost = sendHost
                 val destPort = sendPort
                 if (sendEnabled && destHost.isNotBlank() && destPort in 1..65535) {
-                    val key = "$destHost:$destPort"
-                    if (dest == null || destKey != key) {
-                        dest = InetAddress.getByName(destHost)
-                        destKey = key
+                    try {
+                        val key = "$destHost:$destPort"
+                        if (dest == null || destKey != key) {
+                            dest = InetAddress.getByName(destHost)
+                            destKey = key
+                        }
+                        val packetBytes = LanMic.pack(seq and 0xFFFF, rate, pcm, 0, got)
+                        seq += 1
+                        liveSock.send(DatagramPacket(packetBytes, packetBytes.size, dest, destPort))
+                    } catch (_: Exception) {
+                        try {
+                            liveSock.close()
+                        } catch (_: Exception) {
+                        }
+                        liveSock = DatagramSocket()
+                        socket = liveSock
+                        dest = null
+                        destKey = ""
                     }
-                    val packetBytes = LanMic.pack(seq and 0xFFFF, rate, pcm, 0, got)
-                    seq += 1
-                    sock.send(DatagramPacket(packetBytes, packetBytes.size, dest, destPort))
                 }
             }
-        } catch (_: Exception) {
         } finally {
             running = false
             live = false
             releaseIem()
+            try {
+                liveSock.close()
+            } catch (_: Exception) {
+            }
+            if (socket === liveSock) socket = null
             stopSelf()
         }
     }
 
     private fun openRecord(rate: Int): AudioRecord? {
         val sources = listOf(
-            MediaRecorder.AudioSource.UNPROCESSED,
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
             MediaRecorder.AudioSource.MIC,
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            MediaRecorder.AudioSource.UNPROCESSED,
         )
         for (source in sources) {
             val rec = buildRecord(source, rate) ?: continue
@@ -270,7 +292,7 @@ class MicService : Service() {
             private set
 
         @Volatile
-        var gainPct: Int = 100
+        var gainPct: Int = NativeMic.DEFAULT_GAIN_PCT
             private set
 
         @Volatile
@@ -294,7 +316,7 @@ class MicService : Service() {
         ) {
             if (send != null) sendEnabled = send
             if (iem != null) iemEnabled = iem
-            if (gain != null) gainPct = gain.coerceIn(0, 100)
+            if (gain != null) gainPct = NativeMic.playGainPct(gain)
             sendHost = host
             sendPort = port
             if (!sendEnabled && !iemEnabled) {

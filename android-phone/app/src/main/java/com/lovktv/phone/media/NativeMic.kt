@@ -1,6 +1,14 @@
 package com.lovktv.phone.media
 
 object NativeMic {
+    const val MAX_GAIN_PCT = 400
+    const val DEFAULT_GAIN_PCT = 220
+
+    fun playGainPct(sliderPct: Int): Int {
+        val slider = sliderPct.coerceIn(0, 100)
+        return (slider * DEFAULT_GAIN_PCT / 100).coerceIn(0, MAX_GAIN_PCT)
+    }
+
     fun canStart(host: String, port: Int): Boolean {
         return host.isNotBlank() && port in 1..65535
     }
@@ -29,8 +37,8 @@ object NativeMic {
     }
 
     fun scalePcm(pcm: ByteArray, length: Int, gainPct: Int) {
-        val g = gainPct.coerceIn(0, 100)
-        if (g >= 100 || length < 2) return
+        val g = gainPct.coerceIn(0, MAX_GAIN_PCT)
+        if (g == 100 || length < 2) return
         var i = 0
         while (i + 1 < length) {
             val sample = ((pcm[i + 1].toInt() shl 8) or (pcm[i].toInt() and 0xFF)).toShort().toInt()

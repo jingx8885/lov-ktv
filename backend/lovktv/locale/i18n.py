@@ -46,6 +46,7 @@ _EXC_KEYS = {
     "未知命令": "api.unknown_command",
     "无效的设备": "api.bad_device",
     "微信未返回账号": "api.wechat_no_account",
+    "积分不够": "api.need_points",
 }
 
 

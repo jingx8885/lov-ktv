@@ -19,6 +19,7 @@ class MicReceiver(private val port: Int = LanMic.DEFAULT_PORT) {
     private var track: AudioTrack? = null
     private var trackRate = 0
     private var lastSeq = -1
+    private var idleTicks = 0
 
     fun start(): Int {
         if (running) return port
@@ -48,8 +49,11 @@ class MicReceiver(private val port: Int = LanMic.DEFAULT_PORT) {
             try {
                 socket?.receive(packet) ?: break
             } catch (_: Exception) {
+                idleTicks += 1
+                if (idleTicks >= 3) lastSeq = -1
                 continue
             }
+            idleTicks = 0
             val frame = LanMic.unpack(packet.data, packet.length) ?: continue
             if (lastSeq >= 0 && !LanMic.isNewerSeq(frame.seq, lastSeq)) continue
             lastSeq = frame.seq

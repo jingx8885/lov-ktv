@@ -16,6 +16,7 @@ from lovktv.catalog.index import prefer_native_library, query_library, song_lett
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
+from lovktv.identity.points import charge_process
 from lovktv.locale.i18n import localize_exc, localize_song, request_lang
 from lovktv.locale.i18n import t as i18n_t
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
@@ -100,6 +101,7 @@ def api_import(request: Request, payload: dict) -> dict:
     query = str(payload.get("query") or payload.get("title") or "").strip()
     if not query:
         fail(request, 400, "api.missing_query")
+    charge_process(request)
     raw_id = str(payload.get("id") or "")
     language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
     song = create_song(
@@ -121,6 +123,7 @@ async def api_upload(
     lyrics: str = Form(""),
     request: Request = None,
 ) -> dict:
+    charge_process(request)
     song = create_song(
         title or file.filename or i18n_t(request, "api.unnamed"), artist, language
     )

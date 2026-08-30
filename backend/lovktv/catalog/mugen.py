@@ -533,6 +533,8 @@ def classify_dual_audio(streams: list[dict[str, Any]]) -> dict[str, int] | None:
 
 
 def extract_audio(src: Path, dest: Path, stream_index: int | None = None) -> None:
+    from lovktv.pipeline.loudness import loudnorm_args
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     args = ["-i", str(src)]
     if stream_index is not None:
@@ -542,9 +544,9 @@ def extract_audio(src: Path, dest: Path, stream_index: int | None = None) -> Non
     if dest.suffix.lower() == ".wav":
         args += ["-acodec", "pcm_s16le", str(dest)]
     elif dest.suffix.lower() == ".m4a":
-        args += ["-c:a", "aac", "-b:a", "192k", str(dest)]
+        args += [*loudnorm_args(), "-c:a", "aac", "-b:a", "192k", str(dest)]
     else:
-        args += ["-c:a", "libmp3lame", "-q:a", "2", str(dest)]
+        args += [*loudnorm_args(), "-c:a", "libmp3lame", "-q:a", "2", str(dest)]
     _ffmpeg(*args)
 
 

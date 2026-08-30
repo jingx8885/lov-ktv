@@ -40,3 +40,12 @@ export function shouldReloadRoomItem(previousItemKey, previousMediaRev, item) {
     (!!next.mediaRev && next.mediaRev !== String(previousMediaRev || ""))
   );
 }
+
+/**
+ * A room snapshot with no now_playing is authoritative. Debouncing empty
+ * snapshots never reached 3 while the room websocket stayed live, so skip
+ * of the last song left the previous track playing until the next enqueue.
+ */
+export function shouldStopEmptyNow(now) {
+  return !now;
+}

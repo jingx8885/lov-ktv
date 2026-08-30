@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from lovktv.pipeline.loudness import loudnorm_args
+
 STEM_AUDIO = {".wav", ".flac", ".mp3", ".m4a", ".ogg"}
 
 
@@ -141,13 +143,13 @@ def separate_vocals(src: Path, out_dir: Path) -> dict[str, str]:
             karaoke_src = src
             degraded = True
 
-    _ffmpeg("-i", str(karaoke_src), "-c:a", "aac", "-b:a", "192k", str(karaoke))
+    _ffmpeg("-i", str(karaoke_src), *loudnorm_args(), "-c:a", "aac", "-b:a", "192k", str(karaoke))
     if not karaoke.exists() or karaoke.stat().st_size < 2048:
-        _ffmpeg("-i", str(src), "-c:a", "aac", "-b:a", "192k", str(karaoke))
+        _ffmpeg("-i", str(src), *loudnorm_args(), "-c:a", "aac", "-b:a", "192k", str(karaoke))
         degraded = True
     if not vocals.exists():
         raise RuntimeError("人声轨没有保存下来")
-    _ffmpeg("-i", str(vocals), "-c:a", "aac", "-b:a", "192k", str(guide))
+    _ffmpeg("-i", str(vocals), *loudnorm_args(), "-c:a", "aac", "-b:a", "192k", str(guide))
     return {
         "instrumental": instrumental.name,
         "vocals": vocals.name,

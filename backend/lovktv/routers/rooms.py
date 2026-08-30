@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from lovktv.api.models import RoomCommandPayload, RoomLanPayload
 from lovktv.domain.room_contract import normalize_playback_event
+from lovktv.identity.points import charge_queue
 from lovktv.locale.i18n import (
     localize_error_text,
     localize_exc,
@@ -14,7 +15,7 @@ from lovktv.locale.i18n import (
     ws_lang,
 )
 from lovktv.platform.runtime import _mics, _peers, _rooms
-from lovktv.rooms.service import RoomCommand
+from lovktv.rooms.service import RoomCommand, room_service
 from lovktv.services.http import fail, set_host_cookie
 from lovktv.services.room_runtime import (
     bind_host,
@@ -84,8 +85,12 @@ def api_room_lan(request: Request, code: str, payload: RoomLanPayload) -> JSONRe
 @router.post("/api/rooms/{code}/queue")
 async def api_enqueue(request: Request, code: str, payload: RoomCommandPayload) -> dict:
     code = code.upper()
-    if not get_song(str(payload.song_id or "")):
+    song_id = str(payload.song_id or "")
+    if not get_song(song_id):
         fail(request, 404, "api.song_not_found")
+    queued = {item.get("song_id") for item in room_service.snapshot(code).get("queue") or []}
+    if song_id not in queued:
+        charge_queue(request, song_id)
     try:
         snap = run_command(code, RoomCommand.from_payload("enqueue", payload.as_dict()))
     except ValueError as exc:
@@ -205,6 +210,22 @@ async def ws_room(ws: WebSocket, code: str) -> None:
                         code, RoomCommand.from_payload(event["action"], event)
                     )
                 elif action == "enqueue":
+                    song_id = str(msg.get("song_id") or "")
+                    queued = {
+                        item.get("song_id")
+                        for item in room_service.snapshot(code).get("queue") or []
+                    }
+                    if song_id and song_id not in queued:
+                        try:
+                            charge_queue(ws, song_id)
+                        except HTTPException as exc:
+                            await ws.send_json(
+                                {
+                                    "type": "error",
+                                    "message": str(exc.detail),
+                                }
+                            )
+                            continue
                     snap = run_command(code, RoomCommand.from_payload("enqueue", msg))
                 elif action == "mix":
                     snap = run_command(code, RoomCommand.from_payload("mix", msg))
