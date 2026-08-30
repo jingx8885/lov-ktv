@@ -3,7 +3,7 @@ import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { showToast } from "./toast.js";
 import { loadWho, promptLogin } from "./who.js";
-import { hasNativePhone } from "../../platform.js";
+import { hasNativePhone, phonePlatform } from "../../platform.js";
 
 let token = "";
 let remain = 0;
@@ -13,11 +13,7 @@ let lastPoints = null;
 
 function nativeOpen(url) {
   try {
-    const bridge = window.LovKtvPhone;
-    if (bridge && typeof bridge.openUrl === "function") {
-      bridge.openUrl(url);
-      return true;
-    }
+    if (hasNativePhone() && phonePlatform.remote.open(url)) return true;
   } catch (_) {}
   return false;
 }
