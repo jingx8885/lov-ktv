@@ -88,6 +88,7 @@ export async function showAd(kind) {
     return false;
   }
   const ad = data.ad || {};
+  const url = ad.url || "";
   token = data.token;
   remain = Number(ad.seconds || 30);
   paintPoints(data.points);
@@ -95,7 +96,8 @@ export async function showAd(kind) {
   $("adTitle").textContent = ad.title || "";
   $("adBody").textContent = ad.body || "";
   $("adJump").textContent = ad.cta || t("ads.watch");
-  $("adJump").dataset.url = ad.url || "";
+  $("adJump").dataset.url = url;
+  $("adJump").hidden = !url;
   $("adImage").src = ad.image || "/brand/icon.png";
   $("adTimer").textContent = t("ads.remain", { n: remain });
   $("adSkip").hidden = true;

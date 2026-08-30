@@ -22,7 +22,7 @@
 | GET | `/api/points` | 积分余额与规则 |
 | GET | `/api/ads?placement=` | `splash` / `wait` 广告 |
 | POST | `/api/ads/start` | `{placement}` 开一条广告，看 30 秒 |
-| POST | `/api/ads/click` | `{token}` 手机跳转落地页 |
+| POST | `/api/ads/click` | `{token}` 手机跳转落地页。默认不跳（`LOVKTV_ADS_OPEN=1` 才给 `url`） |
 | POST | `/api/ads/complete` | `{token}` 看满 30 秒 +1 积分 |
 | POST | `/api/points/claim` | `{kind:download}` 安装 App +10，只能领一次 |
 | POST | `/api/admin/login` | `{token}` 管理令牌；Cookie `lovktv_admin`。令牌来自 `LOVKTV_ADMIN_TOKEN`（可复用上传令牌） |
@@ -60,6 +60,6 @@
 
 管理端：`/admin.html`。用 `LOVKTV_ADMIN_TOKEN`（没有则用 `LOVKTV_APP_UPLOAD_TOKEN`）进入。积分加减尤其是扣分走这里。
 
-登录页：`/login.html`。Cookie：`lovktv_session`。主路是用户名 + 密码，用户名默认可填房间号。积分扣费默认关闭（`LOVKTV_POINTS=1` 才扣：处理歌 5 分、点歌 1 分）。看 30 秒广告 +1，注册或下载 App 各 +10。未配置微信时仍可用本机身份 + 电视扫码。微信需 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`，公众号快捷登录另配 `WECHAT_MP_APP_ID` / `WECHAT_MP_APP_SECRET`，公网回调 `LOVKTV_PUBLIC_URL`。
+登录页：`/login.html`。Cookie：`lovktv_session`。主路是用户名 + 密码，用户名默认可填房间号。积分扣费默认关闭（`LOVKTV_POINTS=1` 才扣：处理歌 5 分、点歌 1 分）。看 30 秒广告 +1，注册或下载 App 各 +10。广告外链默认关闭（`LOVKTV_ADS_OPEN=1` 才跳落地页）。未配置微信时仍可用本机身份 + 电视扫码。微信需 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`，公众号快捷登录另配 `WECHAT_MP_APP_ID` / `WECHAT_MP_APP_SECRET`，公网回调 `LOVKTV_PUBLIC_URL`。
 
 媒体目录：`data/media/{song_id}/original.mp3`、`lyrics.lrc`、`lyrics.json`、`karaoke.m4a`、`guide.m4a`。

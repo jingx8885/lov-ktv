@@ -32,6 +32,7 @@ def test_compose_exposes_port_and_data_volume():
     assert "LOVKTV_OSS_PREFIX" in text
     assert "LOVKTV_DATABASE_URL" in text
     assert "LOVKTV_APP_UPLOAD_TOKEN" in text
+    assert "LOVKTV_ADS_OPEN" in text
     assert "healthcheck" in text
     assert "/api/host" in text
     assert "restart:" in text

@@ -95,3 +95,10 @@ def test_scan_reload_uses_url_room_and_waits_for_lan():
     assert "api.loadRoom({ room: data })" in (
         ROOT / "phone" / "desk" / "js" / "library.js"
     ).read_text(encoding="utf-8")
+
+
+def test_phone_ads_hide_jump_without_url():
+    ads = (ROOT / "phone" / "ui" / "js" / "ads.js").read_text(encoding="utf-8")
+    assert 'const url = ad.url || "";' in ads
+    assert '$("adJump").hidden = !url;' in ads
+    assert "jumpTo(data.url || jump.dataset.url || \"\")" in ads

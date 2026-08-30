@@ -20,6 +20,13 @@ from lovktv.storage.store import now_ms
 
 AD_MIN_MS = 29_000
 PLACEMENTS = ("splash", "wait")
+# Off until outbound landing jumps are wanted. Set LOVKTV_ADS_OPEN=1 to jump.
+ADS_OPEN = (os.environ.get("LOVKTV_ADS_OPEN") or "").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 def _public(request) -> str:
@@ -91,17 +98,19 @@ def pick_ad(request, placement: str) -> dict:
     return ads[0]
 
 
-def public_ad(ad: dict) -> dict:
+def public_ad(ad: dict, *, open_links: bool | None = None) -> dict:
+    allow = ADS_OPEN if open_links is None else open_links
     return {
         "id": ad.get("id"),
         "title": ad.get("title") or "",
         "body": ad.get("body") or "",
         "image": ad.get("image") or "",
-        "url": ad.get("url") or "",
+        "url": (ad.get("url") or "") if allow else "",
         "cta": ad.get("cta") or "",
         "kind": ad.get("kind") or "",
         "seconds": int(ad.get("seconds") or AD_SECONDS),
         "reward": int(ad.get("reward") or AD_REWARD),
+        "open": allow,
     }
 
 
@@ -134,7 +143,9 @@ def click_ad(request, token: str) -> dict:
     store.mark_ad_clicked(token)
     ad = next((item for item in catalog(request) if item["id"] == row["ad_id"]), None)
     url = (ad or {}).get("url") or pick_ad(request, row["placement"])["url"]
-    return {"url": url, "kind": (ad or {}).get("kind") or ""}
+    if not ADS_OPEN:
+        url = ""
+    return {"url": url, "kind": (ad or {}).get("kind") or "", "open": ADS_OPEN}
 
 
 def complete_ad(request, token: str) -> dict:

@@ -443,4 +443,4 @@ def api_admin_remove_item(request: Request, code: str, item_id: str) -> dict:
 @router.get("/api/admin/ads")
 def api_admin_ads(request: Request) -> dict:
     require_admin(request)
-    return {"ads": [public_ad(item) for item in catalog(request)]}
+    return {"ads": [public_ad(item, open_links=True) for item in catalog(request)]}
