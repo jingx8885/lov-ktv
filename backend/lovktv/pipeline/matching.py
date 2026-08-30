@@ -101,6 +101,12 @@ def _en_asr_token_spans(
     ]
     if not window:
         return None
+    # Punctuation is kept as a visual token, but it is not an ASR word.  Do
+    # not let commas/quotes lower the lexical match ratio or make a good line
+    # fall back to an untimed even split.
+    lexical = [piece for piece in pieces if _norm_word(piece)]
+    if not lexical:
+        return None
     used = 0
     hits: list[tuple[int, int] | None] = []
     matched = 0
@@ -120,7 +126,7 @@ def _en_asr_token_spans(
         left = max(start_ms, int(window[found]["start_ms"]))
         right = min(end_ms, max(left + 40, int(window[found]["end_ms"])))
         hits.append((left, right))
-    if matched < max(2, int(len(pieces) * 0.55)):
+    if matched < max(1, int(len(lexical) * 0.55)):
         return None
     return _finish_token_hits(hits, start_ms, end_ms)
 

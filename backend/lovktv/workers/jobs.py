@@ -11,6 +11,7 @@ from lovktv.agents.ja_lyrics import (
     line_is_romaji,
 )
 from lovktv.agents.translate import (
+    TRANSLATE_SCHEMA,
     apply_zh_translation,
     is_chinese_lang,
     translate_lines,
@@ -320,12 +321,29 @@ def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
 
 
 def _translate_foreign_timeline(
-    song_id: str, out_dir: Path, timeline: dict, language: str | None
+    song_id: str,
+    out_dir: Path,
+    timeline: dict,
+    language: str | None,
+    *,
+    force: bool = False,
 ) -> bool:
     cues = timeline.get("cues") or []
     if not cues or is_chinese_lang(language or timeline.get("language")):
         return False
-    if all(str(cue.get("zh") or "").strip() for cue in cues):
+    cache_path = out_dir / "zh-translate.json"
+    cache_stale = False
+    if cache_path.exists():
+        try:
+            import json
+
+            cache_stale = json.loads(cache_path.read_text(encoding="utf-8")).get(
+                "schema"
+            ) != TRANSLATE_SCHEMA
+        except (OSError, ValueError, TypeError):
+            cache_stale = True
+    force = force or cache_stale
+    if all(str(cue.get("zh") or "").strip() for cue in cues) and not force:
         return False
     song = get_song(song_id) or {}
     lines = [str(cue.get("text") or _cue_source(cue)) for cue in cues]
@@ -335,9 +353,10 @@ def _translate_foreign_timeline(
             title=str(song.get("title") or ""),
             artist=str(song.get("artist") or ""),
             language=str(language or timeline.get("language") or ""),
-            cache_path=out_dir / "zh-translate.json",
+            cache_path=cache_path,
+            force=force,
         )
-        apply_zh_translation(timeline, notes)
+        apply_zh_translation(timeline, notes, overwrite=force)
         previous = str((get_song(song_id) or {}).get("error") or "")
         if "翻译降级" in previous:
             update_song(song_id, error="")

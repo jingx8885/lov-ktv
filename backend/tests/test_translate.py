@@ -121,6 +121,46 @@ def test_apply_zh_keeps_existing_gloss_when_unit_count_differs():
     ]
 
 
+def test_apply_zh_translation_aligns_grouped_english_units_and_punctuation():
+    timeline = {
+        "language": "en",
+        "cues": [
+            {
+                "text": "Stay with me, tonight",
+                "tokens": [
+                    {"text": "Stay"},
+                    {"text": "with"},
+                    {"text": "me"},
+                    {"text": ","},
+                    {"text": "tonight"},
+                ],
+            }
+        ],
+    }
+    apply_zh_translation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "Stay with me, tonight",
+                    "zh": "今晚陪着我",
+                    "units": [
+                        {"sing": "Stay with me", "zh": "陪着我"},
+                        {"sing": "tonight", "zh": "今晚"},
+                    ],
+                }
+            ]
+        },
+    )
+    assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == [
+        "陪着我",
+        "陪着我",
+        "陪着我",
+        None,
+        "今晚",
+    ]
+
+
 def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv.storage import room_store, store
