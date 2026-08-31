@@ -28,6 +28,15 @@ def test_media_falls_back_to_local(tmp_path, monkeypatch):
         res = client.get("/media/abc123/karaoke.m4a")
     assert res.status_code == 200
     assert res.content == b"audio"
+    assert res.headers["content-type"] == "audio/mp4"
+
+
+def test_oss_content_type_for_audio_assets():
+    from lovktv.media.oss import _content_type
+
+    assert _content_type("karaoke.m4a") == "audio/mp4"
+    assert _content_type("guide.m4a") == "audio/mp4"
+    assert _content_type("original.mp3") == "audio/mpeg"
 
 
 def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):

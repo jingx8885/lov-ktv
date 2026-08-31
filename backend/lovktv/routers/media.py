@@ -12,6 +12,15 @@ from lovktv.platform.runtime import WEB_ROOT, media_root
 
 router = APIRouter()
 
+_MEDIA_TYPES = {
+    ".mp3": "audio/mpeg",
+    ".m4a": "audio/mp4",
+    ".mp4": "video/mp4",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".webm": "audio/webm",
+}
+
 
 @router.get("/media/{song_id}/{name}")
 def media(song_id: str, name: str, request: Request):
@@ -25,7 +34,9 @@ def media(song_id: str, name: str, request: Request):
     )
     if path.exists():
         return FileResponse(
-            path, headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache}
+            path,
+            media_type=_MEDIA_TYPES.get(path.suffix.lower()),
+            headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache},
         )
     if oss_ready():
         url = public_url(song_id, name)

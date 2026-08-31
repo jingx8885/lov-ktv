@@ -92,6 +92,16 @@ def public_url(song_id: str, name: str) -> str:
 
 
 def _content_type(name: str) -> str:
+    explicit = {
+        ".mp3": "audio/mpeg",
+        ".m4a": "audio/mp4",
+        ".mp4": "video/mp4",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+        ".webm": "audio/webm",
+    }.get(Path(name).suffix.lower())
+    if explicit:
+        return explicit
     guessed, _ = mimetypes.guess_type(name)
     return guessed or "application/octet-stream"
 
