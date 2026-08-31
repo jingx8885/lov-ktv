@@ -51,8 +51,15 @@ class SplashActivity : Activity() {
                 "$server/api/ads/start",
                 JSONObject().put("placement", "splash").toString(),
             )
-            val ad = start.optJSONObject("ad") ?: JSONObject()
-            token = start.optString("token")
+            val ad = start.optJSONObject("ad")
+            val nextToken = start.optString("token")
+            // No upstream ad is a normal no-op. Leave the splash immediately
+            // instead of rendering an empty card or starting a fake timer.
+            if (ad == null || ad.optString("id").isBlank() || nextToken.isBlank()) {
+                main.post { goDesk() }
+                return
+            }
+            token = nextToken
             remain = ad.optInt("seconds", 30).coerceAtLeast(5)
             jumpUrl = ad.optString("url")
             val imageUrl = ad.optString("image")
@@ -74,7 +81,7 @@ class SplashActivity : Activity() {
                 tick()
             }
         } catch (_: Exception) {
-            main.postDelayed({ goDesk() }, 1400)
+            main.post { goDesk() }
         }
     }
 
