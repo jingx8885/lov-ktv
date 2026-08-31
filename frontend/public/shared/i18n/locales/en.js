@@ -473,7 +473,7 @@ export default {
   "admin.removeItem": "Remove",
   "admin.roomMeta": "Queue {n} · now {title}",
 
-  "landing.title": "lov-ktv · Your stage, sing anytime",
+  "landing.title": "lov-ktv · Your stage · Sing anytime",
   "landing.desc":
     "Turn on the TV to sing and scan with your phone to request songs. Perfect for family nights, friends’ rooms, and solo practice.",
   "landing.ogDesc":
@@ -485,7 +485,7 @@ export default {
   "landing.nav.phone": "Queue",
   "landing.nav.tv": "Open TV room",
   "landing.hero.badge": "Home karaoke · Ready whenever you are",
-  "landing.hero.h1a": "Your stage,",
+  "landing.hero.h1a": "Your stage",
   "landing.hero.h1b": "Sing anytime",
   "landing.hero.lead":
     "TV handles the big-screen singing; your phone handles the requests. Search, queue, bump, and skip from one phone — everyone at home knows what to do.",
