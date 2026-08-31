@@ -97,6 +97,8 @@ interface LyricCue {
 
 interface LyricsDoc {
   cues: LyricCue[];
+  offset_ms?: number;
+  lyric_offset_ms?: number;
   native_video?: boolean;
   language?: string;
   alignment?: string;

@@ -129,8 +129,8 @@ export function syncGuide(forceTime) {
   const clock = forceTime != null ? forceTime : audio.currentTime || 0;
   if (guide.readyState >= 1 && !guide.seeking) {
     const drift = Math.abs((guide.currentTime || 0) - clock);
-    const slack = forceTime != null ? 0.08 : 0.32;
-    const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.2;
+    const slack = forceTime != null ? 0.05 : 0.12;
+    const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.05;
     if (drift > slack && targetReady) {
       try {
         guide.currentTime = clock;

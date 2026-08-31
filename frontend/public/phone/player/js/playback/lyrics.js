@@ -1,12 +1,12 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
-import { applyLyricMode, paintLine, cueIndexAt as cueIndexAtCues } from "../../../../shared/lyrics/js/paint.js";
+import { paintLine, cueIndexAt as cueIndexAtCues } from "../../../../shared/lyrics/js/paint.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 
 export function cueIndexAt(time) {
-  return cueIndexAtCues(state.playerLyrics.cues || [], time);
+  return cueIndexAtCues(state.playerLyrics.cues || [], lyricClockMs(time));
 }
 
 export function fmtClock(ms) {
@@ -14,31 +14,28 @@ export function fmtClock(ms) {
   return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
 }
 
-export function drawPlayerBands(time) {
-  if (!state.playerViz) state.playerViz = LovBands.create($("playerBands"));
-  const audio = $("playerAudio");
-  if (audio && (audio.currentSrc || audio.src)) state.playerViz.setSource(audio.currentSrc || audio.src);
-  const playing = !!(state.playerHook && audio && !audio.paused && audio.src);
-  if (playing) LovBands.pull(state.playerHook);
-  state.playerViz.draw({
-    playing,
-    freq: state.playerHook && state.playerHook.freq,
-    wave: state.playerHook && state.playerHook.time,
-    playMs: time || 0,
-    duration: (audio.duration || 0) * 1000,
-    cues: state.playerLyrics.cues || [],
-    selected: state.selectedCue
-  });
-}
-
 function playerIdleLyric() {
   return state.playerSong ? "" : t("phone.player.idle");
+}
+
+function lyricClockMs(audioMs) {
+  const raw = state.playerLyrics && (state.playerLyrics.offset_ms ?? state.playerLyrics.lyric_offset_ms);
+  const offset = Number(raw);
+  return Math.max(0, Math.round(Number(audioMs) || 0) + (Number.isFinite(offset) ? offset : 0));
+}
+
+function videoClockSec(audio, video) {
+  const audioDuration = Number(audio && audio.duration) || 0;
+  const videoDuration = Number(video && video.duration) || 0;
+  const extra = videoDuration - audioDuration;
+  const lead = extra >= 1.5 && extra <= 30 ? extra : 0;
+  return Math.max(0, (Number(audio && audio.currentTime) || 0) + lead);
 }
 
 function paintPlayerScroll(cues, time, mode) {
   const list = $("playerLyricScroll");
   if (!list) return;
-  const key = cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|");
+  const key = `${mode}|${cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|")}`;
   let rebuilt = false;
   if (list.dataset.cuesKey !== key) {
     rebuilt = true;
@@ -50,18 +47,21 @@ function paintPlayerScroll(cues, time, mode) {
       const row = document.createElement("div");
       row.className = "player-lyric-scroll-line line";
       row.dataset.cueIndex = String(index);
+      row.textContent = mode === "zh" ? String(cue.zh || cue.text || "") : String(cue.text || "");
       list.appendChild(row);
     });
   }
-  const active = cues.findIndex((cue) => time >= cue.start_ms && time < cue.end_ms);
-  const upcoming = cues.findIndex((cue) => time < cue.start_ms);
+  const lyricTime = lyricClockMs(time);
+  const active = cues.findIndex((cue) => lyricTime >= cue.start_ms && lyricTime < cue.end_ms);
+  const upcoming = cues.findIndex((cue) => lyricTime < cue.start_ms);
   const index = active >= 0 ? active : upcoming >= 0 ? upcoming : cues.length - 1;
   const previous = Number(list.dataset.activeIndex || -1);
   if (rebuilt) {
     cues.forEach((cue, cueIndex) => {
+      if (cueIndex !== index && Math.abs(cueIndex - index) > 10) return;
       const row = list.children[cueIndex];
       if (!row) return;
-      const rowTime = cueIndex === active ? time : cueIndex < index ? 1e12 : -1;
+      const rowTime = cueIndex === active ? lyricTime : cueIndex < index ? 1e12 : -1;
       paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
       row.classList.toggle("is-current", cueIndex === index);
     });
@@ -81,7 +81,7 @@ function paintPlayerScroll(cues, time, mode) {
       paintLine(
         list.children[index],
         cues[index],
-        index === active ? time : -1,
+        index === active ? lyricTime : -1,
         `scroll:${index}`,
         state.lyricPaint.scroll,
         "",
@@ -98,7 +98,7 @@ function paintPlayerScroll(cues, time, mode) {
     }
   } else if (active >= 0 && list.children[active]) {
     // Karaoke fill is the only part that changes every frame.
-    paintLine(list.children[active], cues[active], time, `scroll:${active}`, state.lyricPaint.scroll, "", mode);
+    paintLine(list.children[active], cues[active], lyricTime, `scroll:${active}`, state.lyricPaint.scroll, "", mode);
   }
 }
 
@@ -112,7 +112,7 @@ export function paintPlayer() {
   const hold = state.playerClockHold;
   const time = Math.floor((hold != null ? hold : audio.currentTime || 0) * 1000);
   const cues = state.playerLyrics.cues || [];
-  const mode = applyLyricMode(document.body, state.lyricMode);
+  const mode = document.body.dataset.lyricMode || state.lyricMode || "all";
   const lyricsOnly = document.body.classList.contains("display-lyrics");
   const scroll = $("playerLyricScroll");
   if (scroll) scroll.hidden = !lyricsOnly;
@@ -120,11 +120,12 @@ export function paintPlayer() {
     if (el) el.hidden = lyricsOnly;
   });
   if (lyricsOnly) paintPlayerScroll(cues, time, mode);
-  const idx = cues.findIndex((c) => time >= c.start_ms && time < c.end_ms);
-  const upcomingIdx = cues.findIndex((c) => time < c.start_ms);
+  const lyricTime = lyricClockMs(time);
+  const idx = cues.findIndex((c) => lyricTime >= c.start_ms && lyricTime < c.end_ms);
+  const upcomingIdx = cues.findIndex((c) => lyricTime < c.start_ms);
   if (!lyricsOnly && idx >= 0) {
     paintLine($("playerPrev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
-    paintLine($("playerCur"), cues[idx], time, "cur", state.lyricPaint, "", mode);
+    paintLine($("playerCur"), cues[idx], lyricTime, "cur", state.lyricPaint, "", mode);
     paintLine($("playerNext"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
   } else if (!lyricsOnly && upcomingIdx >= 0) {
     const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
@@ -148,7 +149,6 @@ export function paintPlayer() {
   const nextSel = cueIndexAt(time);
   if (nextSel !== state.selectedCue && !dragging) state.selectedCue = nextSel;
   if (document.body.classList.contains("edit-on")) api.updateAlignNow(time);
-  drawPlayerBands(time);
   const durSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : state.playerHoldDur;
   const dur = (durSec || 0) * 1000;
   const nowText = fmtClock(time);
@@ -175,12 +175,13 @@ export function paintPlayer() {
     mtv.hidden = !showMtv;
     if (art) art.classList.toggle("has-mtv", showMtv);
     if (showMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
-      const drift = Math.abs((mtv.currentTime || 0) - (audio.currentTime || 0));
+      const target = videoClockSec(audio, mtv);
+      const drift = Math.abs((mtv.currentTime || 0) - target);
       if (!audio.paused && mtv.paused) mtv.play().catch(() => {});
       if (audio.paused && !mtv.paused) mtv.pause();
       if (drift > 0.45 && !mtv.seeking) {
         try {
-          mtv.currentTime = Math.min(audio.currentTime || 0, Math.max(0, mtv.duration - 0.05));
+          mtv.currentTime = Math.min(target, Math.max(0, mtv.duration - 0.05));
         } catch (err) {}
       }
     } else if (!showMtv && !mtv.paused) {
@@ -249,7 +250,6 @@ export function resetPlayerFace() {
     seek.value = "0";
     seek.style.setProperty("--seek-p", "0%");
   });
-  if (state.playerViz) state.playerViz.draw({ playing: false, playMs: 0, duration: 0, cues: [], selected: 0 });
 }
 
 registerPaintPlayer(paintPlayer);

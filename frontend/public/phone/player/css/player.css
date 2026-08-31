@@ -439,16 +439,7 @@ button.tl-head {
 }
 .player-art.has-mtv .player-cover { opacity: 0; }
 .player-art.has-mtv .player-bands { opacity: 0; }
-.player-art .bands {
-  position: relative;
-  z-index: 3;
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-}
+.player-art .bands { display: none !important; }
 .player-clock {
   display: flex;
   align-items: center;
