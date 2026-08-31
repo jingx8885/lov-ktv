@@ -181,17 +181,18 @@ function fitLyricLine(el) {
       /** @type {HTMLElement} */ (anno).style.width = "";
     });
     const words = box.querySelector(".line-words");
-    if (!words) return;
+    const content = words || box.querySelector(".rb");
+    if (!content) return;
     fitLyricExtras(box);
     const maxW = box.clientWidth;
     if (maxW <= 0) return;
-    const needW = words.scrollWidth;
+    const needW = content.scrollWidth;
     if (needW <= maxW + 1) return;
     const base = parseFloat(getComputedStyle(box).fontSize) || 24;
     const next = Math.max(14, base * (maxW / needW) * 0.98);
     box.style.fontSize = `${next.toFixed(2)}px`;
     fitLyricExtras(box);
-    const again = words.scrollWidth;
+    const again = content.scrollWidth;
     if (again > maxW + 1) {
       const retry = Math.max(14, next * (maxW / again) * 0.97);
       box.style.fontSize = `${retry.toFixed(2)}px`;

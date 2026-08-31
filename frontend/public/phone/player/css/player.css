@@ -1312,7 +1312,9 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     flex: 1 1 auto;
     display: grid;
     min-height: 0;
-    padding: 0 16px 18%;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0 8px 18%;
     background: transparent;
     text-shadow: 0 2px 12px rgba(0, 0, 0, .92), 0 1px 3px rgba(0, 0, 0, .95);
   }
@@ -1324,8 +1326,33 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"].display-mv .player-lyrics .line {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: clamp(15px, 5.2vw, 26px);
+    line-height: 1.2;
+    letter-spacing: 0;
     color: #fff;
     opacity: 1;
+  }
+
+  body.phone[data-page="player"].display-mv .player-lyrics .line-words {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    column-gap: .18em;
+    row-gap: .08em;
+  }
+
+  body.phone[data-page="player"].display-mv .player-lyrics .prev,
+  body.phone[data-page="player"].display-mv .player-lyrics .next {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: clamp(11px, 3.3vw, 17px);
   }
 
   body.phone[data-page="player"].display-mv .player-head {
