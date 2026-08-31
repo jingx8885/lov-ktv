@@ -71,6 +71,26 @@ python scripts/publish-apps.py --base http://127.0.0.1:18790
 
 - 电视 APK 会烤进 `frontend/public`。重打前对 `android-tv` 跑 `:app:copyWebAssets assembleDebug --rerun-tasks`。
 
+### Windows 打包环境
+
+- Windows 本机统一使用 Android Studio 自带/已安装的 Java 21 与 Gradle 8.9；不要回退到 Gradle 8.5。当前 Gradle 路径为 `C:\Users\Administrator\Android\gradle-8.9`。
+- 用户级环境变量应保持：`GRADLE_HOME=C:\Users\Administrator\Android\gradle-8.9`，`PATH` 包含 `%GRADLE_HOME%\bin`（或对应的绝对路径），`JAVA_HOME` 使用现有 Java 21。
+- Gradle 8.x 在部分 Windows/JDK 组合下会在启动 Daemon 时报 `Unable to establish loopback connection`。构建前设置 `JAVA_TOOL_OPTIONS=-Djdk.net.unixdomain.tmpdir=C:\tmp`，并确保 `C:\tmp` 存在；新开终端后再运行 Gradle。
+- 电视端先同步 Web 资源再打包；手机端直接打 Release：
+
+```powershell
+New-Item -ItemType Directory -Force C:\tmp | Out-Null
+$env:JAVA_TOOL_OPTIONS='-Djdk.net.unixdomain.tmpdir=C:\tmp'
+
+cd android-tv
+gradle --no-daemon :app:copyWebAssets assembleDebug --rerun-tasks
+
+cd ..\android-phone
+gradle --no-daemon :app:assembleRelease
+```
+
+- 构建完成后用 Android SDK 的 `aapt dump badging` 核对两个 APK 的 `versionName` / `versionCode`，再按“App 发版”章节通过接口上传；APK 不提交 git。若 Gradle 仍报 loopback 错误，先确认终端已重启并实际使用 `gradle --version` 显示的 8.9。
+
 ## 产品边界
 
 - 主路是搜歌名入库，不是先上传文件。
