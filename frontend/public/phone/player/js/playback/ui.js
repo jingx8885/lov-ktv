@@ -2,24 +2,11 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
-import {
-  applyPlayerVocalMix,
-  kickPlayerPaint,
-  refreshPlayIcon,
-  seekPlayerRatio,
-  syncGuide,
-  syncPlayerFullscreen,
-  togglePlayer,
-  togglePlayerFullscreen
-} from "./controls.js";
+import { applyPlayerVocalMix, kickPlayerPaint, refreshPlayIcon, seekPlayerRatio, syncGuide, togglePlayer } from "./controls.js";
 import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
   $("playerPlay").onclick = () => togglePlayer();
-  const fullscreen = $("playerFullscreen");
-  if (fullscreen) fullscreen.onclick = () => togglePlayerFullscreen();
-  document.addEventListener("fullscreenchange", syncPlayerFullscreen);
-  syncPlayerFullscreen();
   ["play", "playing", "pause", "ended", "seeking", "timeupdate"].forEach((name) => {
     $("playerAudio").addEventListener(name, refreshPlayIcon);
     $("playerAudio").addEventListener(name, () => syncGuide());

@@ -109,40 +109,19 @@ export function syncVocal(forceTime) {
   // audio has resumed instead of fighting the media pipeline.
   if (state.mediaStall) {
     if (!vocal.paused) vocal.pause();
-    // Do not carry a corrective rate through a buffering pause.  The next
-    // sync pass will establish a fresh rate from the karaoke master clock.
-    vocal.playbackRate = 1;
     return;
   }
   if (mix <= 0.01 && forceTime == null) {
     if (!vocal.paused) vocal.pause();
-    vocal.playbackRate = 1;
     return;
   }
   if (vocal.readyState < 1) return;
   const t = forceTime != null ? forceTime : karaoke.currentTime || 0;
   const now = Date.now();
-  // Paint runs every frame, but media clocks only need a modest cadence.  A
-  // 120 ms cadence keeps the two decoded tracks phase-locked without
-  // repeatedly seeking the vocal stream.
-  if (forceTime == null && now - state.lastVocalSync < 120) return;
+  if (forceTime == null && now - state.lastVocalSync < 400) return;
   state.lastVocalSync = now;
   try {
-    const drift = (vocal.currentTime || 0) - t;
-    const magnitude = Math.abs(drift);
-    if (magnitude > 0.22) {
-      // Large errors are normally caused by a late decode/start or a seek;
-      // correct them immediately so the audience never hears a full syllable
-      // out of phase.
-      vocal.currentTime = Math.max(0, t);
-      vocal.playbackRate = 1;
-    } else if (karaoke && !karaoke.paused && magnitude > 0.015) {
-      // Audio elements have independent clocks and can drift by a few ms/s.
-      // A bounded rate correction converges smoothly without audible seeks.
-      vocal.playbackRate = Math.max(0.985, Math.min(1.015, 1 - drift * 0.8));
-    } else {
-      vocal.playbackRate = 1;
-    }
+    if (Math.abs((vocal.currentTime || 0) - t) > 0.35) vocal.currentTime = t;
   } catch (err) {}
   if (karaoke && !karaoke.paused && karaoke.src) {
     vocal.play().catch(() => {});
