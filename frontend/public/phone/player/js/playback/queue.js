@@ -54,6 +54,21 @@ export async function loadPlayerList() {
   renderPlayerList();
 }
 
+/**
+ * Keep the currently playing row in sync without rebuilding the catalog.
+ * Automatic next-track playback uses this path so updating the song cannot
+ * scroll/reveal the catalog sheet while the singer is listening.
+ * @param {string} songId
+ */
+export function markCurrentPlayerPick(songId) {
+  const box = $("playerList");
+  if (!box) return;
+  const current = String(songId || "");
+  box.querySelectorAll("[data-pick]").forEach((btn) => {
+    btn.classList.toggle("on", btn.dataset.pick === current);
+  });
+}
+
 export function renderPlayerList() {
   const box = $("playerList");
   if (!box) return;
@@ -88,5 +103,5 @@ export function playNextSong() {
   const cur = state.playerSong && state.playerSong.id;
   const next = nextSongId(state.playerCatalog, cur, state.playOrder);
   if (!next) return;
-  loadPlayerSong(next, { play: true });
+  loadPlayerSong(next, { play: true, refreshPlayerCatalog: false });
 }

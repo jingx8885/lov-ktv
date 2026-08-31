@@ -9,7 +9,7 @@ import { applyPlayerVocalMix, hookPlayerAudio, setPlayIcon, syncGuide, unlockPla
 import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
-import { renderPlayerList } from "./queue.js";
+import { markCurrentPlayerPick, renderPlayerList } from "./queue.js";
 import { paintDeskLyrics } from "../../../desk/lyrics.js";
 
 export async function loadPlayerSong(songId, opts) {
@@ -105,7 +105,8 @@ export async function loadPlayerSong(songId, opts) {
   api.ensureTimeline().setVoiceUrl(guideUrl);
   api.applyEditorTracks();
   api.renderAlignList();
-  renderPlayerList();
+  if (opts?.refreshPlayerCatalog === false) markCurrentPlayerPick(song.id);
+  else renderPlayerList();
   const ready = await waitMedia(audio, gen, karaoke);
   if (gen !== state.playerLoad) return;
   try {

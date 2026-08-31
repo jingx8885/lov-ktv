@@ -179,6 +179,8 @@ interface ActionSheetOpts {
 
 interface LoadPlayerOpts {
   play?: boolean;
+  /** Skip rebuilding/scrolling the player catalog during automatic next-track playback. */
+  refreshPlayerCatalog?: boolean;
 }
 
 interface LearnChoice {
