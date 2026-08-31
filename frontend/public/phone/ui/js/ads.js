@@ -78,16 +78,28 @@ export async function showAd(kind) {
   placement = kind === "splash" ? "splash" : "wait";
   const layer = $("adLayer");
   if (!layer) return false;
-  const { ok, data } = await fetchJson("/api/ads/start", {
+  const response = await fetchJson("/api/ads/start", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ placement })
-  });
-  if (!ok) {
-    showToast(data.detail || t("api.ad_invalid"));
+  }).catch(() => null);
+  if (!response) {
+    closeAd();
     return false;
   }
-  const ad = data.ad || {};
+  const { ok, status, data } = response;
+  if (!ok) {
+    closeAd();
+    if (status !== 204 && status !== 404 && data && data.detail) showToast(data.detail);
+    return false;
+  }
+  const ad = data && data.ad;
+  // An upstream response without an ad is a no-op. Do not flash an empty
+  // ad card (especially on splash) or start a timer without a claim token.
+  if (!ad || typeof ad !== "object" || !ad.id || !data.token) {
+    closeAd();
+    return false;
+  }
   const url = ad.url || "";
   token = data.token;
   remain = Number(ad.seconds || 30);
