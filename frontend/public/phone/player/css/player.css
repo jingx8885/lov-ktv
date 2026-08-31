@@ -889,6 +889,7 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"] .player-clock {
+    width: 100%;
     min-height: 34px;
   }
 
@@ -1110,6 +1111,22 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
 @media (min-width: 1200px) {
   body.phone[data-page="player"] .player-main {
     grid-template-columns: minmax(0, 1.65fr) minmax(360px, .95fr);
+  }
+}
+
+/* 宽屏端已有左侧主导航，播放器不再重复显示返回箭头；
+   进度/波形条也不占用听歌主区域，让歌词与曲库保持连续的双栏布局。 */
+@media (min-width: 1100px) {
+  body.phone[data-page="player"] .player-head {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-stage {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-main {
+    grid-template-rows: minmax(220px, 1fr);
   }
 }
 
