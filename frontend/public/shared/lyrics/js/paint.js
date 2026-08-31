@@ -174,6 +174,13 @@ function fitLyricExtras(el) {
 
 function fitLyricLine(el) {
   if (tvStage()) return;
+  // The listen page owns its responsive lyric sizing. Shrinking each cue to
+  // its text width made translated lines appear at different sizes and made
+  // long cues overflow narrow phone viewports.
+  if (el.closest && el.closest(".player-lyrics")) {
+    fitLyricExtras(el);
+    return;
+  }
   const run = () => {
     const box = /** @type {HTMLElement} */ (el);
     box.style.fontSize = "";

@@ -58,6 +58,12 @@ export function paintDisplayMode(mode) {
   const on = String(mode || "mv").toLowerCase() !== "lyrics";
   document.body.classList.toggle("display-mv", on);
   document.body.classList.toggle("display-lyrics", !on);
+  // Apply visibility synchronously; waiting for the lyric RAF made the
+  // MV/lyrics toggle feel sluggish on mobile.
+  const mtv = $("playerMtv");
+  const art = $("playerArt");
+  if (mtv) mtv.hidden = !(on && !!mtv.src);
+  if (art) art.classList.toggle("has-mtv", on && !!mtv?.src);
   const btn = $("playerDisplayMode");
   const label = $("playerDisplayModeLabel");
   if (btn) {

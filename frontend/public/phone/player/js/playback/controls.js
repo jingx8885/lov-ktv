@@ -52,14 +52,43 @@ export function unlockPlayerGesture() {
 }
 
 export function playerTrackName(vocal = state.playerVocal) {
+  // Listen mode keeps karaoke as the shared clock; the guide stem is mixed
+  // independently for an immediate vocal toggle.
+  if (
+    typeof document !== "undefined" &&
+    !document.body.classList.contains("learn-on") &&
+    !document.body.classList.contains("edit-on")
+  ) {
+    return "karaoke.m4a";
+  }
   return vocal ? "original.mp3" : "karaoke.m4a";
 }
 
-/** Switch the single normal-playback track without mixing two full songs. */
+/** Switch the listen track (or the guide stem in normal playback). */
 export function switchPlayerTrack(vocal = state.playerVocal, preserveTime = true) {
   const audio = $("playerAudio");
+  const guide = $("playerGuide");
   const song = state.playerSong;
   if (!audio || !song || !song.id) return Promise.resolve(false);
+  // Normal listen mode uses the preloaded karaoke + guide stems. Toggling the
+  // guide stem is instantaneous and avoids reloading a full song file.
+  if (
+    !document.body.classList.contains("learn-on") &&
+    !document.body.classList.contains("edit-on") &&
+    guide?.src &&
+    mediaPath(audio.currentSrc || audio.src).includes("karaoke.m4a")
+  ) {
+    if (preserveTime && audio.currentTime > 0 && guide.readyState >= 1) {
+      try {
+        guide.currentTime = audio.currentTime;
+      } catch (err) {}
+    }
+    if (guide.readyState < 1) {
+      guide.addEventListener("loadedmetadata", () => syncGuide(audio.currentTime), { once: true });
+    }
+    syncGuide();
+    return Promise.resolve(true);
+  }
   const url = mediaUrl(song.id, playerTrackName(vocal));
   if (mediaPath(audio.currentSrc || audio.src) === mediaPath(url)) return Promise.resolve(true);
   const time = preserveTime ? Number(audio.currentTime) || 0 : 0;
@@ -156,11 +185,9 @@ export function syncGuide(forceTime) {
   if (!guide || !guide.getAttribute("src")) return;
   const editing = document.body.classList.contains("edit-on");
   if (!editing) {
-    guide.pause();
-    guide.muted = true;
-    return;
+    if (!state.playerVocal) guide.pause();
   }
-  const want = !state.playerHeld && !!(audio && audio.src) && state.voiceTrackOn;
+  const want = !state.playerHeld && !!(audio && audio.src) && (editing ? state.voiceTrackOn : !!state.playerVocal);
   const clock = forceTime != null ? forceTime : audio.currentTime || 0;
   const now = Date.now();
   const shouldAlign = forceTime != null || now - lastGuideSyncAt >= 400;

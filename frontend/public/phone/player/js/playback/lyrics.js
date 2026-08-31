@@ -181,9 +181,12 @@ export function paintPlayer() {
   const art = $("playerArt");
   if (mtv) {
     const showMtv = document.body.classList.contains("display-mv") && !!mtv.src;
+    const hasMtv = !!mtv.src;
     mtv.hidden = !showMtv;
     if (art) art.classList.toggle("has-mtv", showMtv);
-    if (showMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
+    // Keep a loaded MV warm while lyrics are shown so switching back is
+    // immediate instead of waiting for another decode/buffer cycle.
+    if (hasMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
       const target = videoClockSec(audio, mtv);
       const drift = Math.abs((mtv.currentTime || 0) - target);
       if (!audio.paused && mtv.paused) mtv.play().catch(() => {});
@@ -193,8 +196,6 @@ export function paintPlayer() {
           mtv.currentTime = Math.min(target, Math.max(0, mtv.duration - 0.05));
         } catch (err) {}
       }
-    } else if (!showMtv && !mtv.paused) {
-      mtv.pause();
     }
   }
   if (art)

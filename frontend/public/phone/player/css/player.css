@@ -337,6 +337,7 @@ button.tl-head {
 @media (max-width: 699px) {
   body.phone[data-page="player"] .topbar { display: none; }
 }
+
 .page-player {
   display: flex;
   flex-direction: column;
@@ -611,6 +612,16 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .rt { display: non
   line-height: 1.22;
   letter-spacing: -.02em;
   row-gap: 0.08em;
+}
+.page-player .player-lyrics .line-words {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.page-player .player-lyrics .lyric-zh {
+  /* Keep translations optically consistent when the source line wraps. */
+  font-size: clamp(14px, min(3.2cqi, 2.8cqh), 24px);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
   font-size: clamp(18px, min(6.2cqi, 9cqh), 32px);
@@ -1363,5 +1374,44 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   /* 曲库抽屉和底部控制条仍需盖在 MV 之上。 */
   body.phone[data-page="player"].display-mv .player-sheet {
     z-index: 8;
+  }
+}
+
+/* Portrait listen mode stays in normal flow so neither the video nor the
+   lyric layer can extend below the viewport/navigation bar. */
+@media (max-width: 699px) and (orientation: portrait) {
+  body.phone[data-page="player"].display-mv .player-main {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  body.phone[data-page="player"].display-mv .player-stage {
+    position: relative;
+    inset: auto;
+    flex: 0 0 clamp(150px, 32dvh, 300px);
+    width: 100%;
+    height: clamp(150px, 32dvh, 300px);
+    min-height: 0;
+  }
+  body.phone[data-page="player"].display-mv .player-art {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+  }
+  body.phone[data-page="player"].display-mv .player-lyric-stack {
+    position: relative;
+    inset: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+  }
+  body.phone[data-page="player"].display-mv .player-lyrics {
+    padding: 8px 12px 12px;
   }
 }
