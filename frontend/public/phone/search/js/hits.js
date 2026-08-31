@@ -132,9 +132,21 @@ export async function runSearch(page, append = false) {
   } else if (moreBtn) {
     moreBtn.textContent = t("common.loading");
   }
-  /** @type {{ ok: boolean, data: SearchPage }} */
-  const { ok, data } = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`);
+  /** @type {{ ok: boolean, data: SearchPage } | null} */
+  const loaded = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`).catch(
+    () => null
+  );
   state.searchLoading = false;
+  if (!loaded) {
+    if (append && moreBtn) {
+      moreBtn.textContent = t("common.loadMore");
+      showToast(t("common.loadFailed"));
+      return;
+    }
+    $("hits").innerHTML = `<div class="empty-state"><p>${t("common.loadFailed")}</p></div>`;
+    return;
+  }
+  const { ok, data } = loaded;
   if (!ok) {
     if (append && moreBtn) {
       moreBtn.textContent = t("common.loadMore");
