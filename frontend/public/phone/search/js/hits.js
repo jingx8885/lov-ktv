@@ -64,7 +64,9 @@ export function searchCard(hit) {
   const duration = Number(hit.duration || 0);
   const durationText =
     duration > 0 ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "";
-  const lyricScore = Number(hit.lyrics_match_score);
+  // ``null`` means no comparable LRC was found; Number(null) would turn it
+  // into 0 and falsely present a real percentage.
+  const lyricScore = hit.lyrics_match_score == null ? Number.NaN : Number(hit.lyrics_match_score);
   const lyricLabel = Number.isFinite(lyricScore)
     ? t("phone.search.lyricsMatch", { n: Math.round(lyricScore) })
     : hit.lyrics_match === "available"

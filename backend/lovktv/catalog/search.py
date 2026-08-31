@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import urllib.parse
 import urllib.request
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 from lovktv.catalog import bilibili
@@ -128,6 +128,119 @@ def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
         else max(0, min(100, int(round((1 - ratio) * 100))))
     )
     return hit
+
+
+def _pick_lyric_candidate(
+    rows: list[dict[str, Any]], title: str, artist: str = ""
+) -> dict[str, Any] | None:
+    """Pick the closest NetEase result for a video/audio search hit."""
+    target = clean_search_title(title).casefold()
+    artist_tokens = {
+        token.casefold()
+        for token in re.split(r"\s+[/&,、，·-]\s*|\s+", artist)
+        if len(token.strip()) >= 2
+    }
+    ranked: list[tuple[int, int, dict[str, Any]]] = []
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict) or not row.get("id"):
+            continue
+        name = str(row.get("name") or row.get("title") or "").strip()
+        cleaned = clean_search_title(name).casefold()
+        score = 0
+        if name.casefold() == target:
+            score += 100
+        elif cleaned == target:
+            score += 80
+        elif target and (target in cleaned or cleaned in target):
+            score += 25
+        row_artists = " ".join(
+            str(value)
+            for value in (row.get("artist") or [])
+            if value
+        ).casefold()
+        if artist_tokens and any(token in row_artists for token in artist_tokens):
+            score += 20
+        ranked.append((score, -index, row))
+    ranked.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    # Do not attach an unrelated popular lyric merely because the provider
+    # returned no exact title match.
+    return ranked[0][2] if ranked and ranked[0][0] >= 25 else None
+
+
+def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int | None:
+    """Fetch a NetEase LRC and return its last timed cue in milliseconds."""
+    title = str(hit.get("title") or "").strip()
+    artist = str(hit.get("artist") or "").strip()
+    query = " ".join(part for part in (clean_search_title(title), artist) if part)
+    queries = [query]
+    if fallback_query.strip() and fallback_query.strip() not in queries:
+        queries.append(fallback_query.strip())
+    try:
+        from lovktv.catalog.lyrics import fetch_lyric, parse_lrc
+
+        for lyric_query in queries:
+            if not lyric_query:
+                continue
+            rows = search_tonzhon(lyric_query, count=5, page=1)
+            candidate = _pick_lyric_candidate(rows, title or lyric_query, artist)
+            if not candidate:
+                continue
+            candidates = [candidate] + [
+                row for row in rows if row is not candidate
+            ]
+            for row in candidates:
+                song_id = str(row.get("lyric_id") or row.get("id") or "").strip()
+                if not song_id.isdigit():
+                    continue
+                try:
+                    cues = parse_lrc(fetch_lyric(song_id))
+                except Exception:
+                    continue
+                times = [int(cue.get("ms")) for cue in cues if cue.get("ms") is not None]
+                if times:
+                    return max(times)
+    except Exception:
+        return None
+    return None
+
+
+def enrich_lyric_durations(
+    hits: list[dict[str, Any]], query: str = ""
+) -> list[dict[str, Any]]:
+    """Fill lyric durations for non-Mugen providers before score calculation."""
+    targets: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for hit in hits:
+        if (
+            hit.get("source") == "mugen"
+            or hit.get("lyrics_duration_ms") is not None
+            or hit.get("lyrics_duration") is not None
+        ):
+            continue
+        if not hit.get("duration") or not str(hit.get("title") or "").strip():
+            continue
+        key = (
+            str(hit.get("source") or ""),
+            str(hit.get("title") or ""),
+            str(hit.get("artist") or ""),
+        )
+        targets.setdefault(key, []).append(hit)
+    if not targets:
+        return hits
+    with ThreadPoolExecutor(max_workers=min(6, len(targets))) as pool:
+        futures = {
+            pool.submit(_fetch_lyric_duration, rows[0], query): rows
+            for rows in targets.values()
+        }
+        for future in as_completed(futures):
+            try:
+                lyric_ms = future.result()
+            except Exception:
+                lyric_ms = None
+            if lyric_ms is None:
+                continue
+            for hit in futures[future]:
+                hit["lyrics_duration_ms"] = lyric_ms
+    return hits
 
 
 def is_clean_title(title: str) -> bool:
@@ -371,6 +484,7 @@ def search_songs(query: str, count: int = 10, page: int = 1) -> dict[str, Any]:
     # first ``count`` items from the round-robin merge would hide a later
     # exact-duration match behind a full page of unknown-duration results.
     hits = merge_channel_hits(groups, sum(len(bucket) for bucket in groups.values()))
+    enrich_lyric_durations(hits, query)
     hits = [annotate_duration_match(hit) for hit in hits]
     hits.sort(
         # Python's sort is stable, so the round-robin provider order remains

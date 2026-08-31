@@ -85,6 +85,29 @@ def test_lyric_match_status_is_explicit_when_duration_is_unknown():
     assert search.annotate_duration_match({})["lyrics_match"] == "unknown"
 
 
+def test_search_enriches_external_hit_from_netease_lrc(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "search_tonzhon",
+        lambda *args, **kwargs: [
+            {"id": "123", "name": "晴天", "artist": [["周杰伦"]]}
+        ],
+    )
+    monkeypatch.setattr(
+        "lovktv.catalog.lyrics.fetch_lyric",
+        lambda *args, **kwargs: "[00:01.00]开场\n[03:59.00]最后一句",
+    )
+    hit = {
+        "source": "bilibili",
+        "title": "晴天",
+        "artist": "周杰伦",
+        "duration": 240,
+    }
+    search.enrich_lyric_durations([hit], "晴天 周杰伦")
+    assert hit["lyrics_duration_ms"] == 239000
+    assert search.annotate_duration_match(hit)["lyrics_match_score"] == 100
+
+
 def test_search_ranks_late_exact_hit_before_unknowns(monkeypatch):
     monkeypatch.setattr(
         search,
