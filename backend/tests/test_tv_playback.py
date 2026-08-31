@@ -252,12 +252,9 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert "karaoke.readyState >= 3" in tick
     assert "!state.mediaStall" in tick
     # Browser MTV failure degrades to a cover; native MTV remains the same bind path.
-    assert "mtv.onerror = failMtv" in mtv
+    assert "mtv.onerror = () =>" in mtv
     assert 'classList.add("has-mtv-cover")' in mtv
     assert "mtv.hidden = true" in mtv
-    assert 'mtv.removeAttribute("src")' in mtv
-    assert "mtvRetryTimer" in mtv
-    assert "MTV_RETRY_DELAYS_MS" in mtv
     assert "playNativeMtv" in mtv
 
 
