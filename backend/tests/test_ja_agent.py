@@ -95,6 +95,57 @@ def test_expand_new_agent_format_keeps_kanji_surface():
     assert ("メモリー", "memory") in specs
 
 
+def test_expand_keeps_new_agent_word_with_complete_reading():
+    assert expand_units(
+        [{"sing": "もう一度", "label": "もういちど", "romaji": "mou ichido"}]
+    ) == [("もう一度", "もういちど")]
+    assert expand_units(
+        [{"sing": "見つめて", "label": "みつめて", "romaji": "mitsumete"}]
+    ) == [("見つめて", "みつめて")]
+
+
+def test_apply_keeps_romaji_with_new_agent_word_unit():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "tada mou ichido aitai",
+                "start_ms": 0,
+                "end_ms": 3000,
+                "tokens": [],
+            }
+        ],
+    }
+    apply_ja_annotation(
+        timeline,
+        {
+            "model": "test-agent",
+            "lines": [
+                {
+                    "source": "tada mou ichido aitai",
+                    "units": [
+                        {"sing": "ただ", "label": "", "romaji": "tada"},
+                        {
+                            "sing": "もう一度",
+                            "label": "もういちど",
+                            "romaji": "mou ichido",
+                        },
+                        {
+                            "sing": "会いたい",
+                            "label": "あいたい",
+                            "romaji": "aitai",
+                        },
+                    ],
+                }
+            ],
+        },
+    )
+    assert [
+        (token["text"], token["romaji"])
+        for token in timeline["cues"][0]["tokens"]
+    ] == [("ただ", "tada"), ("もう一度", "mou ichido"), ("会いたい", "aitai")]
+
+
 def test_latin_words_stay_whole_in_japanese_line():
     specs = ja_token_specs("未来の自分へと Give a reason for life 届けたい")
     sung = [piece for piece, _label in specs]

@@ -447,6 +447,15 @@ def expand_units(
             continue
         surface = "".join(char for char in sing if not char.isspace())
         kanji_only = "".join(char for char in raw_label if _KANJI.match(char))
+        # Newer agent responses already use the sung Japanese surface in
+        # ``sing`` and put its complete reading in ``label``. Keep that
+        # semantic unit intact: splitting ``もう一度`` into ``もう`` + ``一度``
+        # would leave the unit's single ``mou ichido`` romaji under the first
+        # token, making the following token appear untranslated. The legacy
+        # kana-sing/kanji-label format is handled by the branches above.
+        if _KANJI.search(surface) and _HIRA.search(label) and not _KANJI.search(label):
+            specs.append((surface, label))
+            continue
         if _KANJI.search(sing):
             leftover = _merge_plain_kana(ja_token_specs(sing))
             if leftover:
