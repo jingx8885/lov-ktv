@@ -342,6 +342,10 @@ export function startPlayback() {
       $("gate").hidden = true;
     }
     if (!karaoke.paused && !state.mediaStall && vocal.paused && !isMediaStalled(vocal)) {
+      // Keep the vocal track on the master's position before starting it.
+      // `play()` is asynchronous, so starting it after karaoke (the old
+      // chained promise) introduced a repeatable startup offset.
+      syncVocal(karaoke.currentTime || 0);
       api.playEl(vocal).catch(() => {});
     }
     const mtv = $("mtv");
@@ -363,6 +367,7 @@ export function startPlayback() {
   state.mediaStall = 0;
   karaoke.preload = "auto";
   vocal.preload = "auto";
+  vocal.playbackRate = 1;
   karaoke.src = mediaUrl(songId, "karaoke.m4a");
   vocal.src = mediaUrl(songId, "original.mp3");
   bindKaraokeFallback(karaoke, vocal, songId);
@@ -378,11 +383,22 @@ export function startPlayback() {
   };
   karaoke.onloadedmetadata = ready;
   vocal.onloadedmetadata = ready;
+  // Start both decoded tracks from the same master position.  The media
+  // elements resolve their play promises independently; waiting for karaoke
+  // first makes the vocal audibly late on every new song.
+  try {
+    vocal.currentTime = 0;
+  } catch (err) {}
+  syncVocal(0);
+  // Kick both play requests in the same task, but only gate UI readiness on
+  // the karaoke master.  A slow vocal buffer must not hold the whole player
+  // hostage; syncVocal will align it as soon as it becomes ready.
+  api.playEl(vocal).catch(() => {});
   api
     .playEl(karaoke)
     .then(() => {
       $("gate").hidden = true;
-      return api.playEl(vocal).catch(() => {});
+      syncVocal(karaoke.currentTime || 0);
     })
     .catch(() => {
       if (state.audioUnlocked) api.schedulePlayRetries();

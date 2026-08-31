@@ -175,6 +175,8 @@ export default {
   "phone.lyric.all": "全部",
   "phone.player.songLearn": "这首歌",
   "phone.player.displayMode": "播放模式",
+  "phone.player.fullscreen": "全屏播放",
+  "phone.player.exitFullscreen": "退出全屏",
   "phone.player.mvMode": "MV",
   "phone.player.lyricsOnly": "歌词",
   "phone.lyrics.current": "正在播放",

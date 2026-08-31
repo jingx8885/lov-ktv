@@ -49,7 +49,14 @@ export function unlockPlayerGesture() {
   hookPlayerAudio();
   audio.play().catch(() => {});
   const guide = $("playerGuide");
-  if (guide && guide.getAttribute("src") && state.playerVocal) guide.play().catch(() => {});
+  // Start both tracks from the same media position.  Calling guide.play()
+  // only after audio.play() resolves leaves a small but repeatable offset.
+  if (guide && guide.getAttribute("src")) {
+    try {
+      guide.currentTime = audio.currentTime || 0;
+    } catch (err) {}
+    guide.play().catch(() => {});
+  }
 }
 
 export function togglePlayer() {
@@ -64,6 +71,11 @@ export function togglePlayer() {
   state.playerHeld = false;
   setPlayIcon(true);
   kickPlayerPaint();
+  // Align before starting both elements; waiting for audio.play() before
+  // starting the guide makes the guide late on every resume.
+  syncGuide(audio.currentTime || 0);
+  const guide = $("playerGuide");
+  if (guide && guide.getAttribute("src")) guide.play().catch(() => {});
   audio
     .play()
     .then(() => {
@@ -76,6 +88,33 @@ export function togglePlayer() {
     });
 }
 
+export async function togglePlayerFullscreen() {
+  const page = $("page-player");
+  if (!page) return;
+  try {
+    if (document.fullscreenElement === page) {
+      await document.exitFullscreen();
+    } else if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      await page.requestFullscreen({ navigationUI: "hide" });
+    } else if (page.requestFullscreen) {
+      await page.requestFullscreen({ navigationUI: "hide" });
+    }
+  } catch (err) {
+    // Fullscreen can be denied by the browser or embedded webview.
+  }
+  syncPlayerFullscreen();
+}
+
+export function syncPlayerFullscreen() {
+  const page = $("page-player");
+  const button = $("playerFullscreen");
+  if (!button) return;
+  const active = !!page && document.fullscreenElement === page;
+  button.classList.toggle("on", active);
+  button.setAttribute("aria-label", active ? t("phone.player.exitFullscreen") : t("phone.player.fullscreen"));
+}
+
 export function playFromMs(ms) {
   if (!state.playerSong) return;
   const audio = $("playerAudio");
@@ -86,6 +125,8 @@ export function playFromMs(ms) {
     } catch (err) {}
     syncGuide(Math.max(0, ms) / 1000);
     state.playerHeld = false;
+    const guide = $("playerGuide");
+    if (guide && guide.getAttribute("src")) guide.play().catch(() => {});
     audio
       .play()
       .then(() => {
@@ -126,15 +167,25 @@ export function syncGuide(forceTime) {
   if (!guide || !guide.getAttribute("src")) return;
   const editing = document.body.classList.contains("edit-on");
   const want = !state.playerHeld && !!(audio && audio.src) && (editing ? state.voiceTrackOn : !!state.playerVocal);
-  const clock = forceTime != null ? forceTime : audio.currentTime || 0;
+  const clock = forceTime != null ? forceTime : (audio && audio.currentTime) || 0;
+  if (!want) guide.playbackRate = 1;
   if (guide.readyState >= 1 && !guide.seeking) {
-    const drift = Math.abs((guide.currentTime || 0) - clock);
-    const slack = forceTime != null ? 0.05 : 0.12;
+    const signedDrift = (guide.currentTime || 0) - clock;
+    const drift = Math.abs(signedDrift);
+    const slack = forceTime != null ? 0.05 : 0.015;
     const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.05;
-    if (drift > slack && targetReady) {
+    if (drift > 0.22 && targetReady) {
       try {
         guide.currentTime = clock;
+        guide.playbackRate = 1;
       } catch (err) {}
+    } else if (want && audio && !audio.paused && drift > slack) {
+      // Keep independent browser media clocks phase-locked without seeking
+      // on every paint frame.  The bounded correction is inaudible and
+      // converges ordinary decoder clock drift within a few frames.
+      guide.playbackRate = Math.max(0.985, Math.min(1.015, 1 - signedDrift * 0.8));
+    } else {
+      guide.playbackRate = 1;
     }
   }
   guide.muted = !want;

@@ -175,6 +175,8 @@ export default {
   "phone.lyric.all": "All",
   "phone.player.songLearn": "This song",
   "phone.player.displayMode": "Playback mode",
+  "phone.player.fullscreen": "Fullscreen",
+  "phone.player.exitFullscreen": "Exit fullscreen",
   "phone.player.mvMode": "MV",
   "phone.player.lyricsOnly": "Lyrics",
   "phone.player.back": "Back to queue",

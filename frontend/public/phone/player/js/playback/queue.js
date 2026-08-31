@@ -8,6 +8,20 @@ import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
 import { unlockPlayerGesture } from "./controls.js";
 import { loadPlayerSong } from "./song.js";
 
+function primeSongPlayback(songId) {
+  const audio = $("playerAudio");
+  if (!audio || !songId) return;
+  const src = `/media/${encodeURIComponent(songId)}/karaoke.m4a`;
+  // Set the deterministic media URL during the click gesture.  The later
+  // metadata/lyrics fetch can then replace it without losing autoplay credit
+  // on mobile browsers.
+  if (audio.src !== new URL(src, location.href).href) {
+    audio.src = src;
+    audio.load();
+  }
+  audio.play().catch(() => {});
+}
+
 export function updatePlayOrderBtns() {
   const shuffle = state.playOrder === "shuffle";
   const icon = shuffle ? ICO.shuffle : ICO.seq;
@@ -74,6 +88,7 @@ export function renderPlayerList() {
   box.querySelectorAll("[data-pick]").forEach((btn) => {
     btn.onclick = () => {
       unlockPlayerGesture();
+      primeSongPlayback(btn.dataset.pick);
       setPlayerSheet("peek", true);
       loadPlayerSong(btn.dataset.pick, { play: true });
     };

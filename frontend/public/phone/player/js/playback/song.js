@@ -66,6 +66,7 @@ export async function loadPlayerSong(songId, opts) {
   state.songMediaRev = song.media_rev || "";
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
+  if (guide) guide.playbackRate = 1;
   audio.src = karaoke;
   audio.load();
   audio.onerror = () => {
@@ -119,6 +120,9 @@ export async function loadPlayerSong(songId, opts) {
   if (ready && wantPlay) {
     state.playerHeld = false;
     try {
+      // Start karaoke and guide together.  Awaiting karaoke first causes the
+      // guide to begin a few frames late, which is audible on transients.
+      if (guide && guide.getAttribute("src")) guide.play().catch(() => {});
       await audio.play();
       setPlayIcon(true);
       syncGuide(0);
