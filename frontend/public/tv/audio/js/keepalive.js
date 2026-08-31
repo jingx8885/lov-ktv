@@ -71,7 +71,7 @@ export function startKeepAlive() {
     pumpKeepAlive();
     const now = state.room && state.room.now_playing;
     const karaoke = $("karaoke");
-    if (now && now.status === "ready" && wantsResume(karaoke) && api.pageVisible() && state.isLeader) {
+    if (now && now.status === "ready" && wantsResume(karaoke) && state.armed && state.isLeader) {
       api.startPlayback();
     }
   }, 1500);
@@ -102,7 +102,7 @@ export function schedulePlayRetries() {
       state.playRetryTimer = 0;
       return;
     }
-    if (api.pageVisible() && state.isLeader) api.startPlayback();
+    if (state.armed && state.isLeader) api.startPlayback();
     if (n < delays.length) {
       state.playRetryTimer = setTimeout(step, delays[n]);
       n += 1;

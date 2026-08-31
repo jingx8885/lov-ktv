@@ -65,7 +65,7 @@ export function bindRoomRtc(code) {
       const now = snap.now_playing;
       if (now && now.status === "ready") {
         if (state.lastItem !== (now.id || now.song_id)) api.tick();
-        else if (api.pageVisible() && state.isLeader) {
+        else if (state.armed && state.isLeader) {
           const karaoke = $("karaoke");
           if (wantsResume(karaoke)) api.startPlayback();
         }

@@ -17,11 +17,15 @@ export { closeRoomWs, roomWsLive, watchRoom };
 let applyGeneration = 0;
 
 export function pageVisible() {
+  // Keep the browser visibility signal available for autoplay policy checks;
+  // it must not be used to pause an already-running TV session.
   return document.visibilityState === "visible";
 }
 
 export function canPlay() {
-  return state.armed && pageVisible() && state.isLeader;
+  // Once the TV has been armed by a user gesture, audio should keep running
+  // when the browser tab is backgrounded or another page is in front.
+  return state.armed && state.isLeader;
 }
 
 export function srcHasSong(el, songId) {
@@ -292,14 +296,16 @@ export async function applyRoom(room) {
     const karaoke = $("karaoke");
     if (state.room && state.room.paused) {
       pauseAudio();
-    } else if (pageVisible() && state.isLeader && wantsResume(karaoke)) {
+    } else if (state.armed && state.isLeader && wantsResume(karaoke)) {
       startPlayback();
     }
   }
 }
 
 export function startPlayback() {
-  if (!pageVisible()) {
+  // A background tab may not start audio before a user gesture, but it must
+  // not interrupt a session that was already unlocked and playing.
+  if (!state.armed && !pageVisible()) {
     pauseAudio();
     $("gate").hidden = false;
     return;

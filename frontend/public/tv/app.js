@@ -13,7 +13,6 @@ import {
   watchRoom,
   startPlayback,
   pauseAudio,
-  pageVisible,
   restoreResume,
   songReallyEnded,
   wantsResume
@@ -69,10 +68,6 @@ export function mount(root, deps = {}) {
     });
   }
   const onVisibility = () => {
-    if (!pageVisible()) {
-      pauseAudio();
-      return;
-    }
     if (state.room && state.room.paused) return;
     if (state.armed && state.room && state.room.now_playing) startPlayback();
   };
