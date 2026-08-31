@@ -146,3 +146,69 @@
     padding-bottom: 11px;
   }
 }
+
+/* 桌面搜歌结果使用卡片网格，给标题、歌手和操作按钮留出稳定空间。 */
+@media (min-width: 900px) {
+  body.phone .page-search .hits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-content: start;
+    gap: 12px;
+    min-height: 520px;
+    padding: 12px;
+  }
+
+  body.phone .page-search .hits > .list-row {
+    min-width: 0;
+    min-height: 82px;
+    padding: 14px 10px 14px 16px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .035);
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  }
+
+  body.phone .page-search .hits > .list-row::before {
+    display: none;
+  }
+
+  body.phone .page-search .hits > .list-row:hover {
+    border-color: rgba(255, 55, 95, .36);
+    background: rgba(255, 55, 95, .075);
+    transform: translateY(-1px);
+  }
+
+  body.phone .page-search .hits > .empty-state,
+  body.phone .page-search .hits > .list-more {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  body.phone .page-search .hits > .empty-state {
+    min-height: 420px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+  }
+}
+
+@media (min-width: 1100px) {
+  body.phone .page-search {
+    max-width: none;
+    min-height: 0;
+    height: calc(100vh - var(--bar-h) + 5px);
+    padding-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body.phone .page-search .search-row,
+  body.phone .page-search .hits {
+    max-width: none;
+  }
+
+  body.phone .page-search .hits {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}

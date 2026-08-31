@@ -18,6 +18,7 @@ import { getStudyWords } from "../../../desk/lyrics.js";
 
 /** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0, run: null, lesson: null };
+let libraryLoad = 0;
 
 /** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
 const MODES = {
@@ -26,7 +27,7 @@ const MODES = {
   echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView }
 };
 const CYCLE = ["quiz", "tap", "echo"];
-const PANES = ["learnHome", "learnQuiz", "learnTap", "learnEcho", "learnScore", "learnLesson", "learnBook"];
+const PANES = ["learnLibrary", "learnHome", "learnQuiz", "learnTap", "learnEcho", "learnScore", "learnLesson", "learnBook"];
 
 function showPane(id) {
   PANES.forEach((name) => {
@@ -34,7 +35,9 @@ function showPane(id) {
     if (el) el.hidden = name !== id;
   });
   const lyric = $("learnLyricMode");
-  if (lyric) lyric.hidden = id === "learnHome" || id === "learnScore" || id === "learnBook";
+  if (lyric) lyric.hidden = id === "learnLibrary" || id === "learnHome" || id === "learnScore" || id === "learnBook";
+  const shell = $("playerLearn");
+  if (shell) shell.classList.toggle("is-library", id === "learnLibrary");
 }
 
 function restoreVocal() {
@@ -58,6 +61,19 @@ export function isLearnOpen() {
   return document.body.classList.contains("learn-on");
 }
 
+function syncLearnNav(active) {
+  const learnBtn = $("tabLearn");
+  if (learnBtn) learnBtn.classList.toggle("on", !!active);
+  if (active) {
+    document.querySelectorAll("[data-nav]").forEach((btn) => btn.classList.remove("on"));
+  } else {
+    const current = state.currentPage;
+    document.querySelectorAll("[data-nav]").forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.nav === current);
+    });
+  }
+}
+
 function stopModes() {
   ui.boot += 1;
   cancelCountdown();
@@ -72,10 +88,13 @@ export function exitLearn() {
   clearLearnFx();
   resetLearnRate();
   ui.mode = "";
+  ui.pack = null;
   ui.run = null;
   ui.lesson = null;
   document.body.classList.remove("learn-on");
   $("playerLearn").hidden = true;
+  $("topTitle").textContent = t("phone.nav.player");
+  syncLearnNav(false);
   restoreVocal();
   kickPlayerPaint();
 }
@@ -86,7 +105,9 @@ function openLearnShell() {
   ui.vocalWas = state.playerVocal ? 1 : 0;
   document.body.classList.add("learn-on");
   $("playerLearn").hidden = false;
-  $("learnTitle").textContent = t("learn.title");
+  $("topTitle").textContent = t("learn.pageTitle");
+  syncLearnNav(true);
+  $("learnTitle").textContent = t("learn.pageTitle");
   $("learnMeta").textContent = state.playerSong ? `${state.playerSong.title}` : "";
   $("learnSong").textContent = state.playerSong ? state.playerSong.title : "";
   paintDiff();
@@ -120,12 +141,118 @@ function goHome() {
   ui.run = null;
   ui.lesson = null;
   showPane("learnHome");
-  $("learnTitle").textContent = t("learn.title");
+  $("learnTitle").textContent = t("learn.pageTitle");
   $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
   paintDiff();
   loadCampaign(true).then((data) => {
     if (data) paintCampaign(data);
   });
+}
+
+function campaignProgress(data) {
+  const goal = data && data.goal;
+  if (!goal) return { pct: 0, done: false };
+  const slices = [goal.words, goal.sentences, goal.read, goal.sing].filter(Boolean);
+  const total = slices.reduce((sum, item) => sum + Number(item.total || 0), 0);
+  const done = slices.reduce((sum, item) => sum + Math.min(Number(item.done || 0), Number(item.total || 0)), 0);
+  return { pct: total ? Math.round((done / total) * 100) : 0, done: !!goal.cleared };
+}
+
+function paintLearnSongList(songs, campaigns) {
+  const list = $("learnSongList");
+  const count = $("learnLibraryCount");
+  if (!list) return;
+  const ready = (songs || []).filter((song) => song && song.status === "ready");
+  if (count) count.textContent = ready.length ? t("learn.songCount", { n: ready.length }) : "";
+  if (!ready.length) {
+    list.innerHTML = `<div class="empty-state"><p>${escapeHtml(t("learn.noAddedSongs"))}</p><button class="btn primary" type="button" data-go-search>${escapeHtml(t("learn.searchMore"))}</button></div>`;
+    list.querySelector("[data-go-search]")?.addEventListener("click", () => api.showPage("search"));
+    return;
+  }
+  list.innerHTML = ready
+    .map((song) => {
+      const progress = campaignProgress(campaigns.get(song.id));
+      const current = state.playerSong && state.playerSong.id === song.id;
+      return `<button type="button" class="learn-song-row${progress.done ? " is-complete" : ""}${current ? " is-current" : ""}" data-learn-song="${escapeHtml(song.id)}">
+        <span class="learn-song-cover">${progress.done ? "✓" : "♪"}</span>
+        <span class="learn-song-copy"><b>${escapeHtml(song.title || "")}</b><small>${escapeHtml(song.artist || t("common.unknownArtist"))}</small></span>
+        <span class="learn-song-progress"><i style="--pct:${progress.pct}%"></i><em>${progress.done ? escapeHtml(t("learn.completed")) : `${progress.pct}%`}</em></span>
+      </button>`;
+    })
+    .join("");
+  list.querySelectorAll("[data-learn-song]").forEach((btn) => {
+    btn.onclick = () => selectLearnSong(btn.dataset.learnSong);
+  });
+}
+
+async function loadLearnLibrary(query = "") {
+  const loadId = ++libraryLoad;
+  const list = $("learnSongList");
+  if (list && !query) list.innerHTML = `<div class="empty-state"><p>${escapeHtml(t("common.loading"))}</p></div>`;
+  const params = query ? `?q=${encodeURIComponent(query)}&page=1&count=20` : "";
+  const response = await fetchJson("/api/songs" + params, { cache: "no-store" }).catch(() => null);
+  if (loadId !== libraryLoad) return;
+  if (!response || !response.ok) {
+    if (!query && api.loadSongs) await api.loadSongs(false, true).catch(() => {});
+    const fallback = !query && Array.isArray(state.libSongs) ? state.libSongs : [];
+    if (fallback.length) {
+      paintLearnSongList(fallback, new Map());
+    } else if (list) {
+      list.innerHTML = `<div class="empty-state"><p>${escapeHtml(t("common.loadFailed"))}</p><button class="btn" type="button" data-learn-retry>${escapeHtml(t("learn.retry"))}</button></div>`;
+      list.querySelector("[data-learn-retry]")?.addEventListener("click", () => loadLearnLibrary(query));
+    }
+    return;
+  }
+  const payload = response.data || {};
+  const songs = Array.isArray(payload) ? payload : payload.songs || [];
+  const ready = songs.filter((song) => song && song.status === "ready");
+  // 先把曲目列表画出来，进度接口慢或部分歌曲没有学习数据时也不阻塞整个页面。
+  paintLearnSongList(songs, new Map());
+  const campaigns = new Map();
+  await Promise.all(
+    ready.map(async (song) => {
+      const result = await fetchJson(`/api/songs/${encodeURIComponent(song.id)}/learn/campaign`, { cache: "no-store" }).catch(() => null);
+      if (result && result.ok && result.data) campaigns.set(song.id, result.data);
+    })
+  );
+  if (loadId !== libraryLoad) return;
+  paintLearnSongList(songs, campaigns);
+}
+
+async function selectLearnSong(songId) {
+  if (!songId || !api.loadPlayerSong) return;
+  ui.pack = null;
+  syncLearnNav(true);
+  await api.loadPlayerSong(songId, { play: false });
+  if (!state.playerSong || state.playerSong.id !== songId) return;
+  if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
+    showToast(t("learn.needLyrics"));
+    return;
+  }
+  showPane("learnHome");
+  $("learnTitle").textContent = t("learn.pageTitle");
+  $("learnMeta").textContent = state.playerSong.title;
+  $("learnSong").textContent = state.playerSong.title;
+  const data = await loadCampaign(true, true);
+  if (data) paintCampaign(data);
+  else paintCampaign(null);
+}
+
+function showLearnLibrary() {
+  stopModes();
+  restoreVocal();
+  resetLearnRate();
+  ui.mode = "";
+  ui.pack = null;
+  ui.run = null;
+  ui.lesson = null;
+  showPane("learnLibrary");
+  $("topTitle").textContent = t("learn.pageTitle");
+  $("learnTitle").textContent = t("learn.pageTitle");
+  $("learnMeta").textContent = "";
+  if ($("learnSongSearch")) $("learnSongSearch").value = "";
+  if ($("learnSongSearchClear")) $("learnSongSearchClear").hidden = true;
+  loadLearnLibrary();
 }
 
 /** @param {any} score */
@@ -258,7 +385,7 @@ async function startLessonRun(lesson) {
   if (score) showScore(score);
 }
 
-export async function openStudyBook() {
+export async function openStudyBook(kind = "") {
   const song = state.playerSong;
   let data = { mistakes: [] };
   if (song) {
@@ -273,9 +400,16 @@ export async function openStudyBook() {
   const lead = $("learnBookLead");
   const rows = (data && data.mistakes) || [];
   const words = getStudyWords();
-  if (lead) lead.textContent = t("learn.bookSummary", { words: words.length, mistakes: rows.length });
+  if (lead) {
+    lead.textContent =
+      kind === "words"
+        ? t("learn.wordsSummary", { n: words.length })
+        : kind === "mistakes"
+          ? t("learn.mistakesSummary", { n: rows.length })
+          : t("learn.bookSummary", { words: words.length, mistakes: rows.length });
+  }
   if (list) {
-    const wordHtml = words.length
+    const wordHtml = kind !== "mistakes" && words.length
       ? `<section class="learn-book-section"><h3>${escapeHtml(t("learn.savedWords"))}</h3>${words
           .map(
             (word) =>
@@ -283,7 +417,7 @@ export async function openStudyBook() {
           )
           .join("")}</section>`
       : "";
-    const mistakeHtml = rows.length
+    const mistakeHtml = kind !== "words" && rows.length
       ? `<section class="learn-book-section"><h3>${escapeHtml(t("learn.mistakes"))}</h3>${rows
           .map((row) => {
             const kind =
@@ -301,15 +435,17 @@ export async function openStudyBook() {
     `;
           })
           .join("")}</section>`
-      : `<p class="tiny learn-book-empty">${escapeHtml(t("learn.bookEmpty"))}</p>`;
+      : kind === "words"
+        ? `<p class="tiny learn-book-empty">${escapeHtml(words.length ? t("learn.wordsBookHint") : t("learn.bookEmpty"))}</p>`
+        : `<p class="tiny learn-book-empty">${escapeHtml(t("learn.bookEmpty"))}</p>`;
     list.innerHTML = wordHtml + mistakeHtml;
   }
   ui.mode = "";
   showPane("learnBook");
-  $("learnTitle").textContent = t("learn.book");
+  $("learnTitle").textContent = kind === "words" ? t("learn.wordsBook") : kind === "mistakes" ? t("learn.mistakesBook") : t("learn.book");
   $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
   const go = $("learnBookGo");
-  if (go) go.hidden = !rows.length;
+  if (go) go.hidden = kind === "words" || !rows.length;
 }
 
 async function startReview() {
@@ -326,30 +462,33 @@ async function startReview() {
 }
 
 export async function enterLearn() {
-  if (!state.playerSong) return showToast(t("phone.player.needSong"));
-  if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
-    return showToast(t("learn.needLyrics"));
-  }
   openLearnShell();
-  showPane("learnHome");
-  const data = await loadCampaign(true);
-  if (data) paintCampaign(data);
+  // 从听歌页进入时直接打开当前歌曲，避免再让用户重新挑歌。
+  if (state.playerSong) {
+    goHome();
+  } else {
+    showLearnLibrary();
+  }
 }
 
 export function bindLearn() {
   document.querySelectorAll("[data-enter-learn]").forEach((btn) => {
     btn.onclick = () => {
-      if (!state.playerSong) return showToast(t("phone.player.needSong"));
-      if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
-        return showToast(t("learn.needLyrics"));
-      }
       if (state.currentPage !== "player") api.showPage("player");
       enterLearn();
     };
   });
   $("learnBack").onclick = () => {
-    if ($("learnHome").hidden) {
+    if ($("learnLibrary").hidden && $("learnHome").hidden) {
+      if (!state.playerSong) {
+        showLearnLibrary();
+        return;
+      }
       goHome();
+      return;
+    }
+    if ($("learnLibrary").hidden) {
+      showLearnLibrary();
       return;
     }
     exitLearn();
@@ -375,6 +514,54 @@ export function bindLearn() {
     onSkill: (unitId, skill) => startSkill(unitId, skill),
     onBook: () => openStudyBook()
   });
+  const songSearch = $("learnSongSearch");
+  const songSearchClear = $("learnSongSearchClear");
+  if (songSearch) {
+    let timer = 0;
+    const run = () => {
+      const query = songSearch.value.trim();
+      if (songSearchClear) songSearchClear.hidden = !query;
+      const results = $("learnSearchResults");
+      if (results) results.hidden = true;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => loadLearnLibrary(query), query ? 180 : 0);
+    };
+    songSearch.addEventListener("input", run);
+    songSearch.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        run();
+        songSearch.blur();
+      }
+    });
+    if (songSearchClear) {
+      songSearchClear.onclick = () => {
+        songSearch.value = "";
+        run();
+        songSearch.focus();
+      };
+    }
+  }
+  const mistakesBtn = $("learnMistakesBtn");
+  const wordsBtn = $("learnWordsBtn");
+  const openBookFromLibrary = async () => {
+    if (state.playerSong && state.playerSong.status === "ready") return openStudyBook("mistakes");
+    const response = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => null);
+    const song = response && response.ok && response.data && (response.data.songs || []).find((item) => item.status === "ready");
+    if (!song) return showToast(t("learn.noAddedSongs"));
+    await selectLearnSong(song.id);
+    if (state.playerSong && state.playerSong.id === song.id) openStudyBook("mistakes");
+  };
+  if (mistakesBtn) mistakesBtn.onclick = openBookFromLibrary;
+  if (wordsBtn) wordsBtn.onclick = async () => {
+    if (state.playerSong && state.playerSong.status === "ready") return openStudyBook("words");
+    if (getStudyWords().length) return openStudyBook("words");
+    const response = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => null);
+    const song = response && response.ok && response.data && (response.data.songs || []).find((item) => item.status === "ready");
+    if (!song) return showToast(t("learn.noAddedSongs"));
+    await selectLearnSong(song.id);
+    if (state.playerSong && state.playerSong.id === song.id) openStudyBook("words");
+  };
   const bookGo = $("learnBookGo");
   if (bookGo) bookGo.onclick = () => startReview();
   $("learnAgain").onclick = () => {

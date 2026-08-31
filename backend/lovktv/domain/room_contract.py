@@ -37,7 +37,7 @@ def normalize_command(
     for key in ("song_id", "id", "item_id"):
         if data.get(key) is not None:
             result[key] = str(data[key])
-    for key in ("vocal_mix", "volume", "mic_gain", "lyric_mode"):
+    for key in ("vocal_mix", "volume", "mic_gain", "lyric_mode", "display_mode"):
         if data.get(key) is not None:
             result[key] = data[key]
     if "paused" in data:

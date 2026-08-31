@@ -37,13 +37,27 @@ export function paintPaused(paused) {
   if (label) label.textContent = on ? t("common.play") : t("common.pause");
 }
 
+export function paintDisplayMode(mode) {
+  const on = String(mode || "mv").toLowerCase() !== "lyrics";
+  const btn = $("playerDisplayMode");
+  const label = $("playerDisplayModeLabel");
+  if (btn) {
+    btn.classList.toggle("on", on);
+    btn.setAttribute("aria-label", on ? t("phone.player.mvMode") : t("phone.player.lyricsOnly"));
+  }
+  if (label) label.textContent = on ? t("phone.player.mvMode") : t("phone.player.lyricsOnly");
+}
+
 export { lyricModeForScript, lyricScript };
 
 function lyricModeLabel(key, script) {
-  if (key === "ja") return script === "ja" || !script ? t("phone.lyric.ja") : t("phone.lyric.src");
+  if (key === "ja") {
+    if (script === "en") return t("phone.lyric.en");
+    return script === "ja" || !script ? t("phone.lyric.ja") : t("phone.lyric.src");
+  }
   if (key === "zh") return t("phone.lyric.zh");
   if (key === "roma") return t("phone.lyric.roma");
-  if (key === "all") return t("phone.lyric.all");
+  if (key === "all") return script === "zh" ? t("phone.lyric.lyrics") : t("phone.lyric.complete");
   return "";
 }
 
@@ -62,6 +76,16 @@ export function paintLyricMode(mode, language) {
     btn.classList.toggle("on", key === next);
     btn.textContent = lyricModeLabel(key, script);
   });
+  [$("lyricModeSelect"), $("playerLyricModeSelect")].forEach((select) => {
+    if (!select) return;
+    [...select.options].forEach((option) => {
+      const key = option.value || "";
+      option.hidden = (script === "zh" && key !== "all") || (key === "roma" && !!script && script !== "ja");
+      option.textContent = lyricModeLabel(key, script);
+    });
+    select.value = next;
+    select.setAttribute("aria-label", t("phone.lyric.mode"));
+  });
   if (api.paintDeskLyrics) api.paintDeskLyrics();
 }
 
@@ -73,6 +97,7 @@ export function paintMix(room) {
   const micGainVal = $("micGainVal");
   if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
+  paintDisplayMode(room.display_mode);
   paintPaused(!!room.paused);
   const vol = room.host_volume != null ? room.host_volume : room.volume != null ? room.volume : 80;
   const gain = room.mic_gain != null ? room.mic_gain : 80;
@@ -135,6 +160,7 @@ export function bindMixSlider(id, key) {
 }
 
 export function bindMix() {
+  paintDisplayMode("mv");
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
@@ -143,6 +169,28 @@ export function bindMix() {
       postMix({ lyric_mode: btn.dataset.lyricMode });
     };
   });
+  const lyricSelect = $("lyricModeSelect");
+  if (lyricSelect) {
+    lyricSelect.onchange = () => {
+      paintLyricMode(lyricSelect.value);
+      postMix({ lyric_mode: lyricSelect.value });
+    };
+  }
+  const playerLyricSelect = $("playerLyricModeSelect");
+  if (playerLyricSelect) {
+    playerLyricSelect.onchange = () => {
+      paintLyricMode(playerLyricSelect.value);
+      postMix({ lyric_mode: playerLyricSelect.value });
+    };
+  }
+  const displayMode = $("playerDisplayMode");
+  if (displayMode) {
+    displayMode.onclick = () => {
+      const next = displayMode.classList.contains("on") ? "lyrics" : "mv";
+      paintDisplayMode(next);
+      postMix({ display_mode: next });
+    };
+  }
   if ($("vocalMix"))
     $("vocalMix").onclick = () => {
       const next = $("vocalMix").classList.contains("on") ? 0 : 1;

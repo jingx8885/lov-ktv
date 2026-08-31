@@ -24,6 +24,8 @@ export function lyricScript(language) {
 /** @param {unknown} mode @param {string} script */
 export function lyricModeForScript(mode, script) {
   const next = normLyricMode(mode);
+  if (script === "zh") return "all";
+  if (next === "roma" && script === "en") return "all";
   if (next === "roma" && script && script !== "ja") return "ja";
   return next;
 }

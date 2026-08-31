@@ -5,6 +5,7 @@ import { openOverlay } from "../../ui/js/overlays.js";
 import { paintTopRoom } from "../../ui/js/icons.js";
 
 export function showPage(name, songId, push) {
+  if (document.body.classList.contains("learn-on")) api.exitLearn();
   if (name === "upload") name = "search";
   if (name === "room") {
     openOverlay("roomSheet");

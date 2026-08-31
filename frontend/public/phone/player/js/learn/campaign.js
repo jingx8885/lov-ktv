@@ -17,13 +17,13 @@ export function setCampaign(data) {
   return campaign;
 }
 
-export async function loadCampaign(force) {
+export async function loadCampaign(force, silent = false) {
   const song = state.playerSong;
   if (!song) return null;
   if (!force && campaign && campaign.song_id === song.id) return campaign;
   const { ok, status, data } = await fetchJson(`/api/songs/${song.id}/learn/campaign`);
   if (!ok) {
-    showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
+    if (!silent) showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
     return null;
   }
   campaign = data;

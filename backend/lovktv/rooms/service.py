@@ -27,6 +27,7 @@ class RoomCommand:
     volume: int | None = None
     mic_gain: int | None = None
     lyric_mode: str | None = None
+    display_mode: str | None = None
     paused: bool | None = None
 
     @classmethod
@@ -53,6 +54,9 @@ class RoomCommand:
             mic_gain=data.get("mic_gain"),
             lyric_mode=str(data["lyric_mode"])
             if data.get("lyric_mode") is not None
+            else None,
+            display_mode=str(data["display_mode"])
+            if data.get("display_mode") is not None
             else None,
             paused=data.get("paused"),
         )
@@ -84,6 +88,7 @@ class RoomService:
                 volume=command.volume,
                 mic_gain=command.mic_gain,
                 lyric_mode=command.lyric_mode,
+                display_mode=command.display_mode,
                 paused=command.paused,
             )
         # The dataclass type narrows this, but keep a defensive error for

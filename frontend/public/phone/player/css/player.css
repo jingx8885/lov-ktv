@@ -240,7 +240,7 @@ button.tl-head {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 14px 16px 8px;
+  padding: 14px 92px 8px 16px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -291,6 +291,21 @@ button.tl-head {
   padding: 0 0 8px;
 }
 .player-sheet-grab:active { opacity: .82; }
+.player-sheet-actions {
+  position: absolute;
+  top: 7px;
+  right: 10px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.player-sheet-actions .icon-btn {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+}
+.player-sheet-actions .icon-btn svg { width: 18px; height: 18px; }
 .icon-btn {
   width: 44px;
   height: 44px;
@@ -318,7 +333,10 @@ button.tl-head {
 }
 .icon-btn.labeled em { font-style: normal; font-size: 11px; color: var(--muted); }
 .icon-btn.labeled.on em { color: #fff; }
-body.phone[data-page="player"] .topbar { display: none; }
+/* 播放器在手机端保持沉浸式体验；桌面 Web 端沿用公共壳层顶栏。 */
+@media (max-width: 699px) {
+  body.phone[data-page="player"] .topbar { display: none; }
+}
 .page-player {
   display: flex;
   flex-direction: column;
@@ -471,6 +489,42 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   flex: 0 0 auto;
   margin: 0 0 10px;
 }
+.player-lyric-select {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  grid-column: span 2;
+  padding: 0 3px;
+  gap: 4px;
+}
+.player-lyric-select span {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.player-lyric-select select {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 18px 0 7px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .08);
+  color: var(--text);
+  font-size: 11px;
+}
+.player-display-mode {
+  flex-direction: column;
+  gap: 1px;
+}
+.player-display-mode em {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1;
+}
+.player-lyric-stack > .lyric-seg { display: none; }
 .page-player .player-lyrics {
   flex: 1 1 auto;
   min-height: 0;
@@ -565,7 +619,7 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
 }
 .player-transport {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
   padding: 0;
@@ -750,6 +804,9 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
 }
 
 @media (min-width: 700px) {
+  /* 和点歌/搜歌页共享顶部栏，避免播放器单独占满视口。 */
+  body.phone[data-page="player"] .topbar { display: grid; }
+
   body.phone[data-page="player"] {
     background:
       radial-gradient(860px 520px at 12% 8%, rgba(255, 55, 95, .14), transparent 68%),
@@ -759,19 +816,21 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
 
   body.phone[data-page="player"] .page-player {
     width: min(1320px, 100%);
-    min-height: calc(100vh - 24px);
+    /* 由公共 .page flex 参与分配顶栏以下的剩余高度，避免覆盖底部控制条。 */
+    min-height: 0;
     height: auto;
+    flex: 1 1 auto;
     margin: 0 auto;
-    padding: 24px 40px 112px;
+    padding: 28px 32px 24px;
     overflow: visible;
   }
 
   body.phone[data-page="player"] .player-main {
     display: grid;
-    grid-template-columns: minmax(220px, .78fr) minmax(300px, 1fr) minmax(220px, 280px);
-    grid-template-rows: auto minmax(360px, 1fr);
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, .85fr);
+    grid-template-rows: minmax(220px, 1fr) auto;
     gap: 20px 28px;
-    max-width: 1080px;
+    max-width: none;
     margin: 0 auto;
     overflow: visible;
   }
@@ -781,36 +840,48 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"] .player-head {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    padding: 0 4px;
+    position: absolute;
+    inset: -18px 0 auto;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 44px;
+    padding: 0;
+    pointer-events: none;
   }
 
-  body.phone[data-page="player"] .player-head .player-titles b {
-    font-size: 22px;
-  }
+  /* 页面标题已经由公共顶栏显示，播放器内部只保留返回、重算和对齐按钮。 */
+  body.phone[data-page="player"] .player-head .player-titles { display: none; }
+  body.phone[data-page="player"] .player-head .player-head-side { pointer-events: auto; }
+  body.phone[data-page="player"] .player-head .player-head-side.end { display: none; }
+  body.phone[data-page="player"] .player-head .player-head-side.end { gap: 8px; }
 
   body.phone[data-page="player"] .player-stage {
-    grid-column: 1;
+    grid-column: 1 / -1;
     grid-row: 2;
-    align-self: stretch;
-    align-content: center;
+    align-self: start;
+    align-content: start;
     justify-items: center;
-    padding: 24px;
+    /* 进度带横向铺开、纵向收紧，和上方两列内容形成稳定的横向基线。 */
+    width: min(1080px, 100%);
+    min-height: 0;
+    margin: 0 auto;
+    padding: 6px 16px 5px;
     border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 20px;
-    background: rgba(23, 26, 36, .64);
-    gap: 10px;
+    background: rgba(23, 26, 36, .9);
+    gap: 4px;
   }
 
   body.phone[data-page="player"] .player-art {
-    width: min(100%, 340px);
-    height: auto;
-    aspect-ratio: 1;
-    max-height: none;
+    width: 100%;
+    height: 72px;
+    aspect-ratio: auto;
+    max-height: 72px;
     opacity: 1;
     pointer-events: auto;
-    border-radius: 20px;
+    border-radius: 14px;
     background:
       radial-gradient(70% 90% at 18% 20%, rgba(255, 55, 95, .28), transparent 72%),
       linear-gradient(145deg, #292033, #171a26 58%, #10121a);
@@ -822,12 +893,12 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"] .player-lyric-stack {
-    grid-column: 2;
-    grid-row: 2;
-    min-height: 360px;
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
     padding: 8px 0 0;
     border-radius: 20px;
-    background: rgba(23, 26, 36, .64);
+    background: rgba(23, 26, 36, .9);
     border: 1px solid rgba(255, 255, 255, .08);
   }
 
@@ -838,16 +909,17 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
 
   body.phone[data-page="player"] .player-sheet {
     position: relative;
-    grid-column: 3;
-    grid-row: 2;
+    grid-column: 2;
+    grid-row: 1;
     inset: auto;
     width: auto;
-    height: auto !important;
-    min-height: 360px;
+    height: 100% !important;
+    min-height: 0;
     max-height: none;
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 20px;
+    background: rgba(23, 26, 36, .9);
     transform: none !important;
     box-shadow: 0 14px 36px rgba(0, 0, 0, .2);
     will-change: auto;
@@ -858,6 +930,7 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     min-height: 58px;
     padding: 14px 16px 8px;
     cursor: default;
+    padding-right: 92px;
   }
 
   body.phone[data-page="player"] .player-sheet-grip {
@@ -877,10 +950,121 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     overflow: auto;
   }
 
-  body.phone[data-page="player"] .player-lyric-stack .lyric-seg {
-    width: min(460px, calc(100% - 32px));
-    margin: 16px auto 10px;
+  /* 桌面曲库卡片化，宽屏下并排展示更多歌曲；字母索引继续独立贴在右侧。 */
+  body.phone[data-page="player"] .player-sheet-body {
+    gap: 10px;
   }
+
+  body.phone[data-page="player"] .player-sheet .player-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-content: start;
+    gap: 10px;
+    padding: 6px 8px 14px;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row {
+    min-width: 0;
+    min-height: 68px;
+    padding: 11px 10px 11px 13px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, .035);
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row .list-copy {
+    min-width: 0;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row b {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.28;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row .tiny {
+    display: block;
+    margin-top: 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row.on {
+    border-color: rgba(255, 55, 95, .42);
+    background: linear-gradient(135deg, rgba(255, 55, 95, .16), rgba(255, 55, 95, .06));
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row::before {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .list-row:hover {
+    border-color: rgba(255, 55, 95, .36);
+    background: rgba(255, 55, 95, .075);
+    transform: translateY(-1px);
+  }
+
+  body.phone[data-page="player"] .player-sheet .player-list > .empty-state {
+    grid-column: 1 / -1;
+  }
+
+  body.phone[data-page="player"] .player-lyric-stack .lyric-seg {
+    display: none;
+  }
+
+  body.phone[data-page="player"] .player-lyric-select {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: none;
+    grid-column: span 2;
+    gap: 0;
+    padding: 0;
+  }
+
+  body.phone[data-page="player"] .player-lyric-select span { display: none; }
+
+  body.phone[data-page="player"] .player-lyric-select select {
+    width: 100%;
+    height: 34px;
+    padding: 0 20px 0 8px;
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .08);
+    color: var(--text);
+    font-size: 11px;
+  }
+
+  body.phone[data-page="player"] .player-display-mode {
+    width: 58px;
+    height: 44px;
+    border-radius: 12px;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  body.phone[data-page="player"] .player-display-mode em {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    font-style: normal;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  body.phone[data-page="player"] .player-display-mode.on {
+    color: var(--accent);
+    background: rgba(255, 55, 95, .13);
+  }
+
+  body.phone[data-page="player"] .player-display-mode.on em { color: #fff; }
 
   body.phone[data-page="player"] .player-lyrics {
     padding: 0 24px 18px;
@@ -891,30 +1075,61 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
   }
 
   body.phone[data-page="player"] .player-dock {
-    position: sticky;
-    bottom: 0;
-    margin: 28px -40px -112px;
-    padding: 10px 40px 18px;
-    border-top: 1px solid rgba(255, 255, 255, .08);
-    background: rgba(11, 13, 19, .86);
+    position: relative;
+    bottom: auto;
+    margin: 18px 0 0;
+    padding: 10px 0 14px;
+    border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 14px 14px 0 0;
+    background: rgba(23, 26, 36, .92);
   }
 
   body.phone[data-page="player"] .player-transport {
-    width: min(700px, 100%);
+    width: min(760px, 100%);
     margin: 0 auto;
   }
 
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1100px) {
   body.phone[data-page="player"] .page-player {
-    width: min(1320px, 100%);
-    padding-left: 32px;
-    padding-right: 32px;
+    width: calc(100% - 176px);
+    max-width: none;
+    margin-left: 128px;
+    margin-right: 48px;
+    padding-left: 0;
+    padding-right: 0;
   }
 
   body.phone[data-page="player"] .player-main {
-    grid-template-columns: minmax(280px, .85fr) minmax(420px, 1.25fr) minmax(280px, .9fr);
-    max-width: 1240px;
+    grid-template-columns: minmax(0, 1.65fr) minmax(300px, .95fr);
+    max-width: none;
+  }
+}
+
+@media (min-width: 1200px) {
+  body.phone[data-page="player"] .player-main {
+    grid-template-columns: minmax(0, 1.65fr) minmax(360px, .95fr);
+  }
+}
+
+@media (min-width: 1500px) {
+  body.phone[data-page="player"] .player-sheet .player-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 699px) {
+  /* 窄屏控制行保留下拉本身，隐藏冗长标签，避免文字竖排挤压按钮。 */
+  body.phone[data-page="player"] .player-lyric-select {
+    gap: 0;
+    padding: 0;
+  }
+
+  body.phone[data-page="player"] .player-lyric-select span { display: none; }
+
+  body.phone[data-page="player"] .player-lyric-select select {
+    padding: 0 10px 0 5px;
+    font-size: 10px;
   }
 }

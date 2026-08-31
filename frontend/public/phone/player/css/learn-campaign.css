@@ -85,6 +85,65 @@
   color: var(--muted);
   font-size: 13px;
 }
+
+.learn-library { overflow: auto; -webkit-overflow-scrolling: touch; }
+.learn-library-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.learn-library-head .learn-lead { margin: 4px 0 0; }
+.learn-library-search-go { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
+.learn-quick-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  margin: 4px 0 2px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .09);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+.learn-quick-search svg { width: 19px; height: 19px; fill: var(--muted); flex: 0 0 auto; }
+.learn-quick-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; }
+.learn-quick-search input::placeholder { color: var(--muted); }
+.learn-quick-search button { appearance: none; border: 0; color: var(--muted); background: transparent; font-size: 24px; line-height: 1; cursor: pointer; }
+.learn-search-results { display: grid; gap: 6px; }
+.learn-library-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
+.learn-tool-card {
+  appearance: none; display: grid; grid-template-columns: 34px 1fr 12px; align-items: center; gap: 8px; min-width: 0;
+  padding: 11px 10px; border: 0; border-radius: 16px; color: var(--text); text-align: left; cursor: pointer;
+  background: rgba(18, 16, 28, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .09);
+}
+.learn-tool-card:active { transform: scale(.98); }
+.learn-tool-card.is-mistake { box-shadow: inset 3px 0 0 #ff4d8d, inset 0 0 0 1px rgba(255,255,255,.09); }
+.learn-tool-card.is-word { box-shadow: inset 3px 0 0 #58cc02, inset 0 0 0 1px rgba(255,255,255,.09); }
+.learn-tool-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; color: var(--gold); background: rgba(245,193,108,.14); font-size: 13px; font-weight: 900; }
+.learn-tool-card b, .learn-tool-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.learn-tool-card b { font-size: 14px; }
+.learn-tool-card small { margin-top: 2px; color: var(--muted); font-size: 11px; }
+.learn-tool-card strong { color: var(--muted); font-size: 20px; font-weight: 400; }
+.learn-library-section { display: grid; gap: 8px; }
+.learn-library-section-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
+.learn-library-section-h b { font-size: 15px; }
+.learn-library-section-h span { color: var(--muted); font-size: 12px; }
+.learn-song-list { display: grid; gap: 8px; }
+.learn-song-row {
+  appearance: none; display: grid; grid-template-columns: 38px 1fr 72px; align-items: center; gap: 10px; width: 100%; min-width: 0;
+  padding: 11px 12px; border: 0; border-radius: 17px; color: var(--text); text-align: left; cursor: pointer;
+  background: rgba(18, 16, 28, .56); box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.learn-song-row:active { transform: scale(.985); }
+.learn-song-row.is-current { box-shadow: inset 0 0 0 1.5px rgba(245,193,108,.7); }
+.learn-song-row.is-complete { background: linear-gradient(100deg, rgba(72,220,160,.22), rgba(18,16,28,.56)); box-shadow: inset 0 0 0 1.5px rgba(72,220,160,.55); }
+.learn-song-cover { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: var(--gold); background: rgba(245,193,108,.14); font-weight: 900; }
+.is-complete .learn-song-cover { color: #8dffd0; background: rgba(72,220,160,.2); }
+.learn-song-copy { min-width: 0; display: grid; gap: 3px; }
+.learn-song-copy b, .learn-song-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.learn-song-copy b { font-size: 15px; }
+.learn-song-copy small { color: var(--muted); font-size: 12px; }
+.learn-song-progress { display: grid; gap: 4px; justify-items: end; }
+.learn-song-progress i { display: block; width: 62px; height: 4px; border-radius: 99px; background: linear-gradient(90deg, var(--gold) var(--pct), rgba(255,255,255,.12) var(--pct)); }
+.is-complete .learn-song-progress i { background: #48dca0; }
+.learn-song-progress em { color: var(--muted); font-style: normal; font-size: 11px; font-weight: 750; }
+.is-complete .learn-song-progress em { color: #8dffd0; }
 .learn-path {
   display: flex;
   flex-direction: column;

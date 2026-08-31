@@ -51,7 +51,7 @@ interface PhoneApi {
   cueIndexAt(t: number): number;
   setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
   enterLearn(): Promise<void> | void;
-  openStudyBook(): Promise<void> | void;
+  openStudyBook(kind?: "words" | "mistakes" | ""): Promise<void> | void;
   exitLearn(): void;
 }
 

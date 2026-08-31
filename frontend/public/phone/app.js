@@ -12,7 +12,7 @@ import { bindLibrary, loadSongs } from "./desk/js/library.js";
 import { bindDeskLyrics, paintDeskLyrics } from "./desk/lyrics.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin, paintBindBtns } from "./room/js/room/join.js";
-import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/room/mix.js";
+import { bindMix, paintVocalMix, paintLyricMode, paintDisplayMode } from "./room/js/room/mix.js";
 import { bindRoomRtc } from "./room/js/room/rtc.js";
 import { bindPlayback } from "./player/js/playback/ui.js";
 import { updatePlayOrderBtns } from "./player/js/playback/queue.js";
@@ -81,6 +81,7 @@ export function mount(root, deps = {}) {
     }
     paintVocalMix(must("vocalMix").classList.contains("on") ? 1 : 0);
     paintLyricMode(state.lyricMode, state.nowLanguage);
+    paintDisplayMode(document.querySelector("#playerDisplayMode")?.classList.contains("on") ? "mv" : "lyrics");
     paintDeskLyrics();
     paintPhoneMic();
     updatePlayOrderBtns();

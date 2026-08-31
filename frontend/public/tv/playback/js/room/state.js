@@ -24,6 +24,7 @@ export function snapshotStamp(room) {
     volume: room.volume,
     mic: room.mic_on,
     lyric_mode: room.lyric_mode,
+    display_mode: room.display_mode,
     queue: (room.queue || []).map((item) => [
       item.id,
       item.song_id,

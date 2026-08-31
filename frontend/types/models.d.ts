@@ -3,6 +3,7 @@ type SongStatus = "queued" | "fetching" | "separating" | "aligning" | "annotatin
 type PhonePage = "search" | "desk" | "player";
 type PlayOrder = "seq" | "shuffle";
 type LyricMode = "ja" | "zh" | "roma" | "all";
+type DisplayMode = "lyrics" | "mv";
 type RoomAction = "enqueue" | "bump" | "skip" | "play" | "mix";
 type LearnMode = "quiz" | "tap" | "echo";
 type LearnQuestionKind = "meaning" | "word" | "listen";
@@ -53,6 +54,7 @@ interface Room {
   mic_on?: boolean;
   host_volume_kind?: string;
   lyric_mode?: LyricMode | string;
+  display_mode?: DisplayMode | string;
   paused?: boolean | number;
   lan_origin?: string;
   lan_mic_port?: number;
@@ -70,6 +72,7 @@ interface RoomCommand {
   volume?: number;
   mic_gain?: number;
   lyric_mode?: LyricMode | string;
+  display_mode?: DisplayMode | string;
   paused?: boolean | number | string;
 }
 

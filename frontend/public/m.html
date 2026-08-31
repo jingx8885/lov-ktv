@@ -81,15 +81,6 @@
             <div><b data-i18n="phone.desk.idle">还没在唱</b><p class="tiny" data-i18n="phone.desk.idleHint">从曲库点一首</p></div>
           </div>
         </div>
-        <button class="icon-btn ghost" id="nowMore" type="button" data-i18n-aria="common.volume">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4V9zm12.2 1.2a4 4 0 010 3.6l-1.5-.8a2.2 2.2 0 000-2zM18 7.2a7 7 0 010 9.6l-1.4-.9a5.2 5.2 0 000-7.8z"/></svg>
-        </button>
-      </div>
-      <button class="desk-login-cta" id="deskLoginCta" type="button" hidden>
-        <span class="desk-login-icon" aria-hidden="true">♪</span>
-        <span class="desk-login-copy"><strong id="deskLoginTitle" data-i18n="phone.who.loginCta">登录账号</strong><small id="deskLoginHint" data-i18n="phone.who.loginCtaHint">登录后点歌不限量，房间自动记住</small></span>
-        <span class="desk-login-arrow" aria-hidden="true">›</span>
-      </button>
       <div class="now-tools">
         <button class="now-act" id="deskPause" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v14H5zm9 0h5v14h-5z"/></svg>
@@ -103,11 +94,30 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.5a3.5 3.5 0 103.5-3.5H11V8h6V4H9z"/></svg>
           <em id="vocalMixLabel" data-i18n="common.karaoke">伴奏</em>
         </button>
+        <button class="now-act now-volume" id="nowMore" type="button" data-i18n-aria="common.volume">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4V9zm12.2 1.2a4 4 0 010 3.6l-1.5-.8a2.2 2.2 0 000-2zM18 7.2a7 7 0 010 9.6l-1.4-.9a5.2 5.2 0 000-7.8z"/></svg>
+          <em data-i18n="common.volume">音量</em>
+        </button>
         <button class="now-act" id="micToggle" type="button" data-i18n-aria="common.micOn">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
           <em id="micToggleLabel" data-i18n="common.micOn">开麦</em>
         </button>
+        <label class="lyric-select" for="lyricModeSelect">
+          <span data-i18n="phone.lyric.mode">歌词显示</span>
+          <select id="lyricModeSelect" data-i18n-aria="phone.lyric.mode">
+            <option value="ja" data-i18n="phone.lyric.ja">日语</option>
+            <option value="zh" data-i18n="phone.lyric.zh">翻译</option>
+            <option value="roma" data-i18n="phone.lyric.roma">罗马音</option>
+            <option value="all" data-i18n="phone.lyric.all">全部</option>
+          </select>
+        </label>
       </div>
+      </div>
+      <button class="desk-login-cta" id="deskLoginCta" type="button" hidden>
+        <span class="desk-login-icon" aria-hidden="true">♪</span>
+        <span class="desk-login-copy"><strong id="deskLoginTitle" data-i18n="phone.who.loginCta">登录账号</strong><small id="deskLoginHint" data-i18n="phone.who.loginCtaHint">登录后点歌不限量，房间自动记住</small></span>
+        <span class="desk-login-arrow" aria-hidden="true">›</span>
+      </button>
       <div class="seg seg-sm lyric-seg" id="deskLyricMode" role="tablist" data-i18n-aria="phone.lyric.mode">
         <button type="button" class="seg-btn on" data-lyric-mode="ja" data-i18n="phone.lyric.ja">日语</button>
         <button type="button" class="seg-btn" data-lyric-mode="zh" data-i18n="phone.lyric.zh">翻译</button>
@@ -181,12 +191,6 @@
             <p class="tiny" id="playerMeta" data-i18n="phone.player.idleHint">从点歌台听一首</p>
           </div>
           <div class="player-head-side end">
-            <button class="icon-btn ghost" id="playerRegenerate" type="button" data-i18n-aria="phone.player.regenerate">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 106.3 3.1l-1.6 1.2A6 6 0 1112 6h-2.5L13 2.5 16.5 6H14a8 8 0 00-2-2z"/></svg>
-            </button>
-            <button class="icon-btn ghost" id="playerEdit" type="button" data-i18n-aria="phone.player.align">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
-            </button>
           </div>
         </div>
         <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
@@ -227,6 +231,14 @@
             </span>
             <svg class="player-sheet-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.4 14.6L12 10l4.6 4.6 1.4-1.4L12 7.2 6 13.2z"/></svg>
           </button>
+          <div class="player-sheet-actions" aria-label="播放器工具">
+            <button class="icon-btn ghost" id="playerRegenerate" type="button" data-i18n-aria="phone.player.regenerate">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 106.3 3.1l-1.6 1.2A6 6 0 1112 6h-2.5L13 2.5 16.5 6H14a8 8 0 00-2-2z"/></svg>
+            </button>
+            <button class="icon-btn ghost" id="playerEdit" type="button" data-i18n-aria="phone.player.align">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>
+            </button>
+          </div>
           <div class="player-sheet-body" id="playerSheetBody">
             <div class="player-list inset-list" id="playerList"></div>
             <nav class="lib-index" id="playerIndex" data-i18n-aria="phone.desk.letters"></nav>
@@ -245,6 +257,15 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5zm6 7.9V22h2v-2.1A8 8 0 0020 12h-2a6 6 0 11-12 0H4a8 8 0 007 7.9z"/></svg>
             <em class="vh" id="playerMicLabel" data-i18n="common.micOn">开麦</em>
           </button>
+          <label class="player-lyric-select" for="playerLyricModeSelect">
+            <span data-i18n="phone.lyric.mode">歌词显示</span>
+            <select id="playerLyricModeSelect" data-i18n-aria="phone.lyric.mode">
+              <option value="ja" data-i18n="phone.lyric.ja">日语</option>
+              <option value="zh" data-i18n="phone.lyric.zh">翻译</option>
+              <option value="roma" data-i18n="phone.lyric.roma">罗马音</option>
+              <option value="all" data-i18n="phone.lyric.all">全部</option>
+            </select>
+          </label>
           <button class="icon-btn on" id="playerIem" type="button" data-i18n-aria="phone.player.iem">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 00-7 7v4a3 3 0 003 3h1v-6H7a5 5 0 1110 0h-2v6h1a3 3 0 003-3v-4a7 7 0 00-7-7z"/></svg>
           </button>
@@ -262,9 +283,13 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>
             <em class="vh" id="playerOrderLabel" data-i18n="common.seq">顺序</em>
           </button>
-          <button class="icon-btn" id="playerLearnBtn" type="button" data-enter-learn data-i18n-aria="phone.player.learn">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
-            <em class="vh" data-i18n="phone.player.learn">游戏</em>
+          <button class="icon-btn" id="playerLearnBtn" type="button" data-enter-learn data-i18n-aria="learn.pageTitle">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.8a3.5 3.5 0 103 3.4V9h7V4H9z"/></svg>
+            <em class="vh" data-i18n="phone.player.songLearn">这首歌</em>
+          </button>
+          <button class="icon-btn player-display-mode" id="playerDisplayMode" type="button" data-i18n-aria="phone.player.displayMode">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4V5zm2 2v10h12V7H6zm2 7h8v2H8v-2z"/></svg>
+            <em id="playerDisplayModeLabel" data-i18n="phone.player.mvMode">MV</em>
           </button>
         </div>
       </div>
@@ -331,7 +356,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.4 6L9 12.4 15.4 18.8l1.4-1.4-5-5 5-5z"/></svg>
           </button>
           <div class="learn-titles">
-            <b id="learnTitle" data-i18n="learn.title">游戏</b>
+            <b id="learnTitle" data-i18n="learn.pageTitle">学习</b>
             <p class="tiny" id="learnMeta"></p>
           </div>
           <span></span>
@@ -398,6 +423,33 @@
             </span>
           </button>
           </details>
+        </div>
+        <div class="learn-body learn-library" id="learnLibrary" hidden>
+          <div class="learn-library-head">
+            <div>
+              <p class="learn-song" data-i18n="learn.libraryKicker">学习中心</p>
+              <p class="learn-lead" data-i18n="learn.libraryLead">先选一首歌，再继续上次的进度。</p>
+            </div>
+            <button class="btn ghost learn-library-search-go" type="button" data-go-search data-i18n="learn.searchMore">搜歌入库</button>
+          </div>
+          <label class="learn-quick-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"/></svg>
+            <input id="learnSongSearch" type="search" autocomplete="off" data-i18n-placeholder="learn.searchPh" placeholder="快捷搜索已入库的歌" />
+            <button id="learnSongSearchClear" type="button" data-i18n-aria="learn.searchClear" hidden>×</button>
+          </label>
+          <div class="learn-search-results" id="learnSearchResults" hidden></div>
+          <div class="learn-library-tools">
+            <button type="button" class="learn-tool-card is-mistake" id="learnMistakesBtn">
+              <span class="learn-tool-ico">错</span><span><b data-i18n="learn.mistakesBook">错题本</b><small data-i18n="learn.mistakesBookHint">把易错句再练一遍</small></span><strong>›</strong>
+            </button>
+            <button type="button" class="learn-tool-card is-word" id="learnWordsBtn">
+              <span class="learn-tool-ico">词</span><span><b data-i18n="learn.wordsBook">单词背诵</b><small data-i18n="learn.wordsBookHint">复习从歌词收藏的词</small></span><strong>›</strong>
+            </button>
+          </div>
+          <div class="learn-library-section">
+            <div class="learn-library-section-h"><b data-i18n="learn.addedSongs">已添加的歌</b><span id="learnLibraryCount"></span></div>
+            <div class="learn-song-list" id="learnSongList"></div>
+          </div>
         </div>
         <div class="learn-body is-play" id="learnLesson" hidden>
           <div class="learn-progress" aria-hidden="true"><i id="learnLessonBar"></i></div>
@@ -501,7 +553,7 @@
       <button type="button" id="tabLearn" data-enter-learn>
         <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.6h13.2V20H7.4A1.4 1.4 0 016 18.6V4.6z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 8.2h7.2M9 12h7.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <svg class="ico-fill" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>
-        <span data-i18n="phone.player.learn">游戏</span>
+        <span data-i18n="learn.pageTitle">学习</span>
       </button>
       <button type="button" id="tabWho" aria-controls="whoSheet" data-i18n-aria="phone.who.title">
         <svg class="ico-line" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a4 4 0 100-8 4 4 0 000 8zm0 1.8c-4.2 0-7.6 2.1-7.6 4.7V20h15.2v-1.5c0-2.6-3.4-4.7-7.6-4.7z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>

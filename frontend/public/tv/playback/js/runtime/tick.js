@@ -267,9 +267,13 @@ export async function applyRoom(room) {
     bindMtv(now.song_id);
   } else {
     applyMix();
+    syncNativeMv();
     if (nativeMtvAvailable()) {
       bindMtv(now.song_id);
-    } else if (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src")) {
+    } else if (
+      (state.room && state.room.display_mode === "lyrics") ||
+      (!document.body.classList.contains("has-mtv") && !$("mtv").getAttribute("src"))
+    ) {
       bindMtv(now.song_id);
     }
     if (Date.now() - state.lastLyricsAt > 8000) {

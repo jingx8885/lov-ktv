@@ -149,6 +149,7 @@
     margin-right: 48px;
     padding-left: 0;
     padding-right: 0;
+    padding-bottom: 24px;
   }
 
   body.phone .tabbar {

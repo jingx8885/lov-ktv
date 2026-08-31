@@ -436,7 +436,7 @@ body.phone.learn-on #playerLearn {
     padding-top: 24px;
   }
 
-  body.phone.learn-on .learn-body.is-play .learn-src {
+body.phone.learn-on .learn-body.is-play .learn-src {
     font-size: clamp(28px, 3.2vw, 48px);
   }
 
@@ -447,4 +447,44 @@ body.phone.learn-on #playerLearn {
   body.phone.learn-on .learn-dock .btn {
     border-radius: 8px;
   }
+}
+
+/* 学习中心沿用手机 Web 的公共壳层，保留顶部标题和底部导航，避免与播放器沉浸态混在一起。 */
+body.phone.learn-on .topbar { display: grid !important; }
+body.phone.learn-on .tabbar { display: grid !important; }
+body.phone.learn-on #playerLearn.is-library .learn-bar { display: none; }
+body.phone.learn-on #page-player {
+  overflow: auto;
+  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  background: transparent;
+}
+
+@media (min-width: 700px) {
+  body.phone.learn-on #page-player {
+    min-height: 0;
+    height: auto;
+    padding: 28px 32px calc(var(--nav-h) + var(--safe-b) + 112px);
+  }
+  body.phone.learn-on #playerLearn {
+    width: min(1120px, 100%);
+    min-height: 0;
+    margin: 0 auto;
+  }
+  body.phone.learn-on .learn {
+    width: 100%;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  body.phone.learn-on .learn-bar {
+    padding: 0 0 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, .1);
+  }
+}
+
+@media (min-width: 1100px) {
+  body.phone.learn-on .tabbar { display: flex !important; }
 }

@@ -31,11 +31,17 @@ from lovktv.storage.media import (
 READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
 LYRIC_MODES = ("ja", "zh", "roma", "all")
+DISPLAY_MODES = ("lyrics", "mv")
 
 
 def normalize_lyric_mode(value: Any) -> str:
     mode = str(value or "").strip().lower()
     return mode if mode in LYRIC_MODES else "all"
+
+
+def normalize_display_mode(value: Any) -> str:
+    mode = str(value or "").strip().lower()
+    return mode if mode in DISPLAY_MODES else "mv"
 
 
 _LOCK = threading.Lock()

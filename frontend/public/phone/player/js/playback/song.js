@@ -116,6 +116,8 @@ export function openPlayer(songId) {
 
 export async function bootPlayer() {
   kickPlayerPaint();
+  // 学习中心会自行选择歌曲，避免进入学习页时房间当前歌曲抢先加载。
+  if (document.body.classList.contains("learn-on")) return;
   if (state.playerSong) return;
   const code = $("room")?.value.trim();
   if (!code) return;

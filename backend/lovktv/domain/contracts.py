@@ -27,6 +27,7 @@ class RoomSnapshot(TypedDict, total=False):
     volume: int
     mic_gain: int
     lyric_mode: str
+    display_mode: str
     paused: int
     mic_on: bool
     mic_peer: str
