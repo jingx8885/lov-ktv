@@ -66,6 +66,7 @@ interface PhoneState {
   libSongs: Song[];
   libLoading: boolean;
   libPages: number;
+  libTotal: number;
   searchLoading: boolean;
   searchHasMore: boolean;
   playerSong: Song | null;

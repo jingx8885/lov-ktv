@@ -393,6 +393,18 @@ body.phone .page-desk > .lyric-seg { display: none; }
   padding: 8px 0 4px;
 }
 .lib-page-num { color: var(--muted); font-size: 13px; }
+.lib-page-more {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.lib-page-more:disabled { color: var(--muted); cursor: default; }
 .desk-row {
   display: flex;
   align-items: center;
@@ -754,19 +766,19 @@ body.phone .page-desk > .lyric-seg { display: none; }
   }
 
   body.phone .page-desk .desk-lib #songs .desk-actions {
-    /* 操作按钮占用固定列，避免被卡片的 max-width 压缩后溢出到标题区域。 */
-    flex: 0 0 120px;
-    width: 120px;
+    /* 只按实际按钮数量占位，给歌曲标题留出更多空间。 */
+    flex: 0 0 auto;
+    width: auto;
     max-width: none;
     justify-content: flex-end;
     gap: 0;
   }
 
   body.phone .page-desk .desk-lib #songs .desk-actions .row-action {
-    flex: 0 0 40px;
-    width: 40px;
-    height: 40px;
-    min-height: 40px;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 36px;
+    min-height: 36px;
   }
 
   body.phone .page-desk .desk-pane,

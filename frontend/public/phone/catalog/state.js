@@ -12,6 +12,7 @@ export const catalogState = guardState(
     libSongs: [],
     libLoading: false,
     libPages: 1,
+    libTotal: 0,
     searchLoading: false,
     searchHasMore: false
   },

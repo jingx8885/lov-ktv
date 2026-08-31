@@ -86,7 +86,11 @@ function renderLibTail(page, pages, total) {
     return;
   }
   if (page < pages) {
-    $("libPager").innerHTML = `<span class="lib-page-num">${t("common.loading")}</span>`;
+    $("libPager").innerHTML = `<button type="button" class="lib-page-more" ${state.libLoading ? "disabled" : ""}>${
+      state.libLoading ? t("common.loading") : t("phone.desk.morePages", { page, pages })
+    }</button>`;
+    const more = $("libPager").querySelector(".lib-page-more");
+    if (more && !state.libLoading) more.onclick = () => loadSongs(true);
   } else {
     $("libPager").innerHTML = `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
   }
@@ -235,6 +239,7 @@ export async function loadSongs(append = false, force = false) {
   const nextPage = append ? (Number(state.libState.page) || 1) + 1 : 1;
   const after = append ? libSongId(have[have.length - 1]) : "";
   state.libLoading = true;
+  if (append) renderLibTail(state.libState.page, state.libPages || 1, state.libTotal || have.length);
   if (!append) paintLibRefresh(true);
   const params = new URLSearchParams({
     q: state.libState.q,
@@ -248,10 +253,14 @@ export async function loadSongs(append = false, force = false) {
   const loaded = await fetchJson("/api/songs?" + params.toString(), { cache: "no-store" }).catch(() => null);
   state.libLoading = false;
   if (!append) paintLibRefresh(false);
-  if (!loaded) return;
+  if (!loaded) {
+    if (append) renderLibTail(state.libState.page, state.libPages || 1, state.libTotal || have.length);
+    return;
+  }
   const data = loaded.data;
   const songs = data.songs || [];
   state.libPages = Math.max(1, data.pages || 1);
+  state.libTotal = Number(data.total || 0);
   if ($("libCount"))
     $("libCount").textContent = data.lib_total || data.total ? String(data.lib_total || data.total) : "";
   const filterKey = JSON.stringify({
@@ -269,7 +278,11 @@ export async function loadSongs(append = false, force = false) {
         letters: data.letters,
         rows: songs.map((song) => [song.id, song.status, song.error, song.title])
       });
-    if (stamp === state.libStamp && $("songs").querySelector(".desk-row")) return;
+    if (stamp === state.libStamp && $("songs").querySelector(".desk-row")) {
+      // 语言切换等场景无需重绘歌曲卡片，但尾部文案仍需同步当前语言。
+      renderLibTail(state.libState.page, state.libPages, state.libTotal || data.total || 0);
+      return;
+    }
     state.libStamp = stamp;
     state.libState.page = Number(data.page) || 1;
     state.libSongs = songs;
