@@ -89,7 +89,7 @@
     height: 64px;
     padding: 6px;
     transform: translateX(-50%);
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 18px;
     background: rgba(28, 30, 38, .88);
@@ -377,7 +377,7 @@ body.phone .app {
   left: 0; right: 0; bottom: 0;
   z-index: 42;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
   padding: 4px 0 var(--safe-b);
   background: rgba(0, 0, 0, .65);
@@ -415,6 +415,39 @@ body.phone .app {
 .tabbar .ico-line { display: block; fill: none; stroke: currentColor; }
 .tabbar button.on .ico-fill { display: block; }
 .tabbar button.on .ico-line { display: none; }
+
+.desk-login-cta {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 66px;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 55, 95, .28);
+  border-radius: 14px;
+  background: linear-gradient(100deg, rgba(255, 55, 95, .16), rgba(125, 78, 255, .12));
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.desk-login-cta:hover { border-color: rgba(255, 55, 95, .55); }
+.desk-login-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 18px;
+}
+.desk-login-copy { display: grid; gap: 3px; min-width: 0; flex: 1; }
+.desk-login-copy strong { font-size: 14px; }
+.desk-login-copy small { overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.desk-login-arrow { color: var(--accent); font-size: 25px; line-height: 1; }
+.desk-login-cta[hidden] { display: none !important; }
 .icon-chip {
   flex: 1;
   min-height: 52px;

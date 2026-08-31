@@ -135,7 +135,7 @@ async function regenerateLyrics() {
     const started = await fetchJson(`/api/songs/${song.id}/realign`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rebuild_mtv: false })
+      body: JSON.stringify({ rebuild_mtv: false, force: true })
     });
     if (!started.ok) throw new Error(started.data?.detail || t("phone.player.regenerateFailed"));
     showToast(t("phone.player.regenerateStarted"));
@@ -143,7 +143,7 @@ async function regenerateLyrics() {
       await new Promise((resolve) => {
         setTimeout(resolve, 1500);
       });
-      const current = await fetchJson(`/api/songs/${song.id}`).catch(() => null);
+      const current = await fetchJson(`/api/songs/${song.id}`, { cache: "no-store" }).catch(() => null);
       const status = current && current.data && current.data.status;
       if (status === "failed") throw new Error(t("phone.player.regenerateFailed"));
       if (status !== "ready") continue;

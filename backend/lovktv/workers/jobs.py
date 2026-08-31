@@ -591,7 +591,10 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
 
 
 def process_realign(
-    song_id: str, language: str | None = None, rebuild_mtv: bool = False
+    song_id: str,
+    language: str | None = None,
+    rebuild_mtv: bool = False,
+    force: bool = False,
 ) -> None:
     """Re-run the same ASR + lyric pipeline used by import/upload."""
     out_dir = MEDIA_DIR / song_id
@@ -604,6 +607,21 @@ def process_realign(
         if (out_dir / "lyrics.manual.lrc").exists():
             apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
             return
+        if force:
+            # A user-requested recalculation must not silently reuse stale
+            # Whisper or agent alignment caches from the previous run.
+            for path in (out_dir / "asr.json", out_dir / "agent-align.json"):
+                try:
+                    path.unlink()
+                except FileNotFoundError:
+                    pass
+            cache_dir = out_dir / "_asr"
+            if cache_dir.is_dir():
+                for path in cache_dir.glob("*.json"):
+                    try:
+                        path.unlink()
+                    except FileNotFoundError:
+                        pass
         _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=rebuild_mtv)
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))

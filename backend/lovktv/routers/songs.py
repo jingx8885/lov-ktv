@@ -163,12 +163,19 @@ def api_realign(
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
-    spawn(
+    # Mark the song before queuing so clients do not observe the old ready
+    # state and report completion before the worker has started.
+    update_song(song_id, status="aligning", error="")
+    args = (
         process_realign,
         song_id,
         payload.get("language") or song.get("language"),
         bool(payload.get("rebuild_mtv")),
     )
+    if payload.get("force"):
+        spawn(*args, force=True)
+    else:
+        spawn(*args)
     return {"ok": True, "song_id": song_id, "status": "aligning"}
 
 

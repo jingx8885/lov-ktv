@@ -35,9 +35,15 @@ export function showActionSheet({ title, message, confirm, danger } = {}) {
 
 export function bindOverlays() {
   document.querySelectorAll("[data-close-sheet]").forEach((btn) => {
-    btn.onclick = () => closeOverlay(btn.dataset.closeSheet);
+    btn.onclick = () => {
+      closeOverlay(btn.dataset.closeSheet);
+      if (btn.dataset.closeSheet === "whoSheet") $("tabWho")?.classList.remove("on");
+    };
   });
   $("topRoom").onclick = () => openOverlay("roomSheet");
-  $("topWho").onclick = () => openOverlay("whoSheet");
+  $("topWho").onclick = () => {
+    $("tabWho")?.classList.add("on");
+    openOverlay("whoSheet");
+  };
   $("nowMore").onclick = () => openOverlay("mixSheet");
 }

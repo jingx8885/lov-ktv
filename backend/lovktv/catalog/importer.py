@@ -35,6 +35,30 @@ from .search import (
 )
 
 
+def _pick_lyric_result(
+    results: list[dict[str, Any]], target_title: str
+) -> dict[str, Any] | None:
+    """Prefer an exact song title over album/version-suffixed duplicates.
+
+    NetEase often returns both ``Another Day Of Sun`` and
+    ``Another Day Of Sun (From ... Soundtrack)``.  The latter can have a
+    different lyric segmentation/clock, so using the first result makes an
+    otherwise matching MV look like it has scrambled subtitles.
+    """
+    target = clean_search_title(target_title).casefold()
+    if not target:
+        return results[0] if results else None
+    ranked: list[tuple[int, int, dict[str, Any]]] = []
+    for index, item in enumerate(results):
+        title = str(item.get("name") or item.get("title") or "").strip()
+        raw = title.casefold()
+        cleaned = clean_search_title(title).casefold()
+        score = 2 if raw == target else (1 if cleaned == target else 0)
+        ranked.append((score, -index, item))
+    ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    return ranked[0][2] if ranked else None
+
+
 def _complete_mugen_audio(
     skeleton: dict[str, Any], out_dir: Path, query: str
 ) -> dict[str, Any]:
@@ -151,7 +175,13 @@ def import_song(
         lyric_id = str(chosen.get("id") or "")
         lrc = fetch_lyric(lyric_id) if lyric_id.isdigit() else ""
         if not lrc.strip():
-            for song in search_tonzhon(title_name, count=5, page=1):
+            lyric_results = search_tonzhon(title_name, count=5, page=1)
+            # Keep the title-exact duplicate first before fetching lyrics.
+            picked = _pick_lyric_result(lyric_results, title_name)
+            ordered = ([picked] if picked else []) + [
+                item for item in lyric_results if item is not picked
+            ]
+            for song in ordered:
                 sid = str(song.get("id") or "")
                 if sid.isdigit():
                     try:

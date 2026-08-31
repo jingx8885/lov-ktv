@@ -1,6 +1,20 @@
 from lovktv.catalog import audio, importer, search
 
 
+def test_pick_lyric_result_prefers_exact_title_over_version_suffix():
+    rows = [
+        {
+            "id": "445867332",
+            "name": 'Another Day Of Sun (From "La La Land" Soundtrack)',
+        },
+        {"id": "1951109524", "name": "Another Day Of Sun"},
+    ]
+    assert (
+        importer._pick_lyric_result(rows, "Another Day Of Sun")["id"]
+        == "1951109524"
+    )
+
+
 def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     video = tmp_path / "mtv.mp4"
     audio_path = tmp_path / "original.mp3"

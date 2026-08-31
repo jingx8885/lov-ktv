@@ -14,6 +14,8 @@ export const ICO = {
   listen:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 0114 0v6a2 2 0 01-2 2h-2v-7h3a6 6 0 00-12 0h3v7H7a2 2 0 01-2-2v-6z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',
+  refresh:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 105.7 2.9l-1.6 1.2A5 5 0 1112 7h-2.2L13 3.8 16.2 7H14a7 7 0 00-2-2z"/></svg>',
   trash:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM8 9h2v9H8V9z"/></svg>',
   save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>',

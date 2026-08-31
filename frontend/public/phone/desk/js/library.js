@@ -48,6 +48,7 @@ export function renderLibIndex(letters) {
 function songRow(song) {
   const canPlay = song.status === "ready";
   const canRetry = song.status === "failed";
+  const canRecalculate = song.status === "ready";
   const canDelete = song.status !== "fetching" && song.status !== "separating";
   const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
   const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
@@ -60,6 +61,7 @@ function songRow(song) {
           </div>
           <div class="desk-actions">
             ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
+            ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
             ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}</button>` : ""}
             ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
           </div>
@@ -109,6 +111,44 @@ function bindSongActions() {
         }
         btn.classList.add("on");
         api.loadRoom({ room: data });
+      };
+    });
+  $("songs")
+    .querySelectorAll("[data-realign]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = async (event) => {
+        event.stopPropagation();
+        btn.disabled = true;
+        try {
+          const started = await fetchJson(`/api/songs/${btn.dataset.realign}/realign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rebuild_mtv: false, force: true })
+          });
+          if (!started.ok) throw new Error(started.data?.detail || t("phone.desk.recalculateFailed"));
+          showToast(t("phone.desk.recalculateStarted"));
+          await loadSongs(false, true);
+          for (let attempt = 0; attempt < 360; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const current = await fetchJson(`/api/songs/${btn.dataset.realign}`, { cache: "no-store" }).catch(
+              () => null
+            );
+            const status = current?.data?.status;
+            if (status === "failed") throw new Error(t("phone.desk.recalculateFailed"));
+            if (status !== "ready") continue;
+            await loadSongs(false, true);
+            showToast(t("phone.desk.recalculateDone"));
+            return;
+          }
+          throw new Error(t("phone.desk.recalculateFailed"));
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : t("phone.desk.recalculateFailed"));
+          await loadSongs(false, true);
+        } finally {
+          btn.disabled = false;
+        }
       };
     });
   $("songs")
