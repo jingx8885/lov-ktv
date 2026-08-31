@@ -3,7 +3,7 @@ import { t } from "../../../../shared/i18n/js/i18n.js";
 import { celebrateCorrect, playMissSfx } from "./fx.js";
 import { cancelCueWindow, paintLearnLine, playCueWindow } from "./play.js";
 
-/** @type {{ lesson: any, index: number, answers: any[], locked: boolean, running: boolean, missed: boolean, matchLeft: number | null, matched: Set<number>, done: ((score: any) => void) | null }} */
+/** @type {{ lesson: any, index: number, answers: any[], locked: boolean, running: boolean, missed: boolean, matchLeft: number | null, matched: Set<number>, matchMisses: number, done: ((score: any) => void) | null }} */
 const session = {
   lesson: null,
   index: 0,
@@ -13,13 +13,16 @@ const session = {
   missed: false,
   matchLeft: null,
   matched: new Set(),
+  matchMisses: 0,
   done: null
 };
 
 export function stopLesson() {
   session.running = false;
   session.locked = false;
+  const done = session.done;
   session.done = null;
+  if (done) done(null);
   cancelCueWindow();
   const next = $("learnLessonNext");
   if (next) next.hidden = true;
@@ -135,6 +138,7 @@ function paintItem() {
   session.missed = false;
   session.matchLeft = null;
   session.matched = new Set();
+  session.matchMisses = 0;
   paintBar();
   if (!item || !box) {
     if (box) box.innerHTML = "";
@@ -184,15 +188,24 @@ function answerPayload(item, ok, extra) {
     start_ms: item.start_ms,
     end_ms: item.end_ms,
     line_index: item.line_index,
+    picked: extra && extra.picked,
+    matched_ids: (extra && extra.matchedIds) || [],
+    match_misses: (extra && extra.matchMisses) || 0,
     knowledge: knowledgeOf(item, extra)
   };
 }
 
-function finishItem(ok) {
+function finishItem(ok, extra) {
   const item = current();
   if (!item || session.locked) return;
   session.locked = true;
-  session.answers.push(answerPayload(item, ok));
+  session.answers.push(
+    answerPayload(item, ok, {
+      ...(extra || {}),
+      matchedIds: Array.from(session.matched),
+      matchMisses: session.matchMisses
+    })
+  );
   const next = $("learnLessonNext");
   if (ok) {
     celebrateCorrect($("learnLessonSrc") || $("learnLessonPrompt"), { line: true });
@@ -218,7 +231,7 @@ function pickChoice(cid, btn) {
       node.classList.toggle("is-no", node === btn && !ok);
     });
   if (!ok) playMissSfx();
-  finishItem(ok);
+  finishItem(ok, { picked: cid });
 }
 
 function markPair(pid, ok) {
@@ -257,6 +270,7 @@ function pickMatch(btn) {
     return;
   }
   session.missed = true;
+  session.matchMisses += 1;
   playMissSfx();
   btn.classList.add("is-no");
   window.setTimeout(() => btn.classList.remove("is-no"), 420);

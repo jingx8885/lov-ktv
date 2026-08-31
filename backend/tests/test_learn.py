@@ -209,6 +209,31 @@ def test_campaign_chunks_long_songs():
     assert progressed["goal"]["sing"]["done"] == 1
 
 
+def test_word_lesson_covers_every_word_in_dense_unit():
+    cues = []
+    for index in range(4):
+        cues.append(
+            {
+                "text": f"line{index}",
+                "zh": f"译{index}",
+                "start_ms": index * 1000,
+                "end_ms": index * 1000 + 900,
+                "tokens": [
+                    {"text": f"w{index}a", "zh": f"a{index}"},
+                    {"text": f"w{index}b", "zh": f"b{index}"},
+                    {"text": f"w{index}c", "zh": f"c{index}"},
+                ],
+            }
+        )
+    lesson = build_lesson({"cues": cues}, {"id": "dense"}, "u0", "word")
+    keys = {
+        item.get("knowledge", {}).get("key")
+        for item in lesson["items"]
+        if item.get("kind") == "word"
+    }
+    assert keys == {f"w{index}{suffix}" for index in range(4) for suffix in "abc"}
+
+
 def test_quiz_is_deterministic():
     song = {"id": "s1", "title": "群青"}
     a = build_learn_quiz(JA_TIMELINE, song)
@@ -500,3 +525,39 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
         assert done.status_code == 200
         empty = client.get(f"/api/songs/{song['id']}/learn/mistakes")
         assert empty.json()["total"] == 0
+
+
+def test_learn_submit_rejects_empty_score_and_locked_unit(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv import main
+    from lovktv.core import config
+    from lovktv.storage import store
+
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    config.MEDIA_DIR = store.MEDIA_DIR
+    store.init_db()
+    song = store.create_song("dense", "", "ja")
+    store.update_song(song["id"], status="ready")
+    folder = store.MEDIA_DIR / song["id"]
+    cues = [
+        {
+            "text": f"line{i}",
+            "zh": f"译{i}",
+            "start_ms": i * 1000,
+            "end_ms": i * 1000 + 900,
+            "tokens": [{"text": f"w{i}", "zh": f"词{i}"}],
+        }
+        for i in range(4)
+    ]
+    (folder / "lyrics.json").write_text(json.dumps({"cues": cues}), encoding="utf8")
+    with TestClient(main.app) as client:
+        empty = client.post(
+            f"/api/songs/{song['id']}/learn/lesson",
+            json={"unit_id": "u0", "skill": "word", "pct": 100, "answers": []},
+        )
+        assert empty.status_code == 400
+        locked = client.get(
+            f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=sentence"
+        )
+        assert locked.status_code == 403

@@ -111,6 +111,13 @@
 
 主键 `(guest_key, day)`。有用户名或微信的账号不限。游客免费 5 首用完后按积分扣。
 
+### learn_progress / learn_mastery / learn_mistakes / learn_submissions
+
+游戏课程进度、知识点掌握、错题和提交幂等记录。进度主键为
+（owner, song_id, unit_id, skill），掌握主键为（owner, song_id, kind, item_key），
+错题主键为（owner, song_id, qkind, item_key），提交主键为
+（owner, song_id, attempt_id）。attempt_id 用于防止同一轮练习重复计入。
+
 ### point_wallets / point_ledger / ad_sessions / point_claims
 
 积分：点歌 −1，处理歌 −5，看满 30 秒广告 +1，注册 +10，下载 App +10。钱包 `owner` 为 `u:` 用户或 `m:` 机器号。广告 token 服务端计时，未满 30 秒不能领。

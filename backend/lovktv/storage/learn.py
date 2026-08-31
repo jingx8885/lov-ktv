@@ -33,6 +33,27 @@ def list_progress(owner: str, song_id: str) -> list[dict[str, Any]]:
     return _rows(rows)
 
 
+def claim_submission(owner: str, song_id: str, attempt_id: str) -> bool:
+    """Claim an attempt id exactly once; returns False for a duplicate."""
+    owner = str(owner or "").strip()
+    song_id = str(song_id or "").strip()
+    attempt_id = str(attempt_id or "").strip()
+    if not owner or not song_id or not attempt_id or len(attempt_id) > 96:
+        return False
+    with _LOCK, connect() as conn:
+        try:
+            execute(
+                conn,
+                "INSERT INTO learn_submissions (owner, song_id, attempt_id, created_at) VALUES (?,?,?,?)",
+                (owner, song_id, attempt_id, now_ms()),
+            )
+        except Exception:
+            # Primary-key conflicts are the expected duplicate path.  The
+            # endpoint treats an unclaimable id as a rejected submission.
+            return False
+    return True
+
+
 def upsert_progress(
     owner: str,
     song_id: str,

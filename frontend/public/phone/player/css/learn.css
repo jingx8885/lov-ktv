@@ -378,7 +378,8 @@ body.phone.learn-on #playerLearn {
     column-gap: 28px;
     row-gap: 14px;
     padding: 28px 0 0;
-    overflow: visible;
+    min-height: 0;
+    overflow: auto;
   }
 
   body.phone.learn-on #learnHome .learn-song {

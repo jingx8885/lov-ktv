@@ -196,6 +196,11 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at INTEGER NOT NULL DEFAULT 0,
   resolved_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
 );
+CREATE TABLE IF NOT EXISTS learn_submissions (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, attempt_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (owner, song_id, attempt_id)
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
@@ -330,6 +335,11 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at BIGINT NOT NULL DEFAULT 0,
   resolved_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
+);
+CREATE TABLE IF NOT EXISTS learn_submissions (
+  owner TEXT NOT NULL, song_id TEXT NOT NULL, attempt_id TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  PRIMARY KEY (owner, song_id, attempt_id)
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,

@@ -371,8 +371,14 @@ def _word_items(
         }
         _attach_line(item, lines[offset])
         items.append(item)
-    rng.shuffle(items)
-    return items[:LESSON_SIZE]
+    # Never truncate the per-word questions: campaign completion requires
+    # every knowledge word to be seen at least once.  Keep the optional blank
+    # drills bounded so a dense line does not multiply the lesson endlessly.
+    core = [item for item in items if item.get("kind") in {"match", "word"}]
+    extras = [item for item in items if item.get("kind") == "blank"]
+    rng.shuffle(core)
+    rng.shuffle(extras)
+    return core + extras[: max(0, LESSON_SIZE - len(core))]
 
 
 def _sentence_items(
@@ -429,8 +435,11 @@ def _sentence_items(
                 knowledge,
             )
             items.append(_attach_line(item, line))
+    # Keep at least one question for every sentence so sentence mastery is
+    # reachable even when the optional matching/reverse variants push the
+    # lesson over the nominal size.
     rng.shuffle(items)
-    return items[:LESSON_SIZE]
+    return items
 
 
 def _listen_items(
