@@ -812,6 +812,21 @@ def test_prepare_media_single_mix_still_needs_separation(tmp_path, monkeypatch):
     assert mapped == ["original.mp3"]
 
 
+def test_prepare_media_renames_mp3_to_canonical_original(tmp_path, monkeypatch):
+    src = tmp_path / "mugen.mp3"
+    payload = b"already-an-mp3" * 100
+    src.write_bytes(payload)
+    monkeypatch.setattr(mugen, "probe_streams", lambda path: [])
+
+    info = mugen.prepare_media(src, tmp_path)
+
+    assert info["file"] == "original.mp3"
+    assert info["source"] == "mugen"
+    assert info["needs_separate"] is True
+    assert (tmp_path / "original.mp3").read_bytes() == payload
+    assert not src.exists()
+
+
 GUNJOU_KARA = {
     "medias": [
         {

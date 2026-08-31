@@ -624,7 +624,11 @@ def prepare_media(src: Path, out_dir: Path) -> dict[str, Any]:
         source = "mugen-dual"
         needs_separate = False
     elif src.suffix.lower() == ".mp3":
-        shutil.copy2(src, original)
+        # MP3 is already in the canonical audio format.  Keep the downloaded
+        # file byte-for-byte and normalize its managed filename instead of
+        # decoding/re-encoding or retaining a second mugen.mp3 copy.
+        if src != original:
+            src.replace(original)
         source = "mugen"
         needs_separate = True
     else:
