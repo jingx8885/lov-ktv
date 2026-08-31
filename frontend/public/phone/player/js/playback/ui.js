@@ -2,13 +2,17 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
-import { applyPlayerVocalMix, refreshPlayIcon, seekPlayerRatio, togglePlayer } from "./controls.js";
+import { applyPlayerVocalMix, kickPlayerPaint, refreshPlayIcon, seekPlayerRatio, togglePlayer } from "./controls.js";
 import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
   $("playerPlay").onclick = () => togglePlayer();
   ["play", "pause", "ended"].forEach((name) => {
     $("playerAudio").addEventListener(name, refreshPlayIcon);
+  });
+  // 切歌后元数据和时间轴是异步到达的，主动唤醒绘制，避免沿用旧歌的进度/歌词画面。
+  ["loadedmetadata", "durationchange", "timeupdate", "progress", "canplay"].forEach((name) => {
+    $("playerAudio").addEventListener(name, kickPlayerPaint);
   });
   $("playerVocal").onclick = () => {
     state.playerVocal = state.playerVocal ? 0 : 1;
@@ -20,10 +24,18 @@ export function bindPlayback() {
     state.playerClockHoldAt = 0;
     applyPlayerVocalMix();
   };
-  $("playerSeek").addEventListener("input", () => {
-    const ratio = Number($("playerSeek").value) / 1000;
-    $("playerSeek").style.setProperty("--seek-p", `${ratio * 100}%`);
-    seekPlayerRatio(ratio);
+  ["playerSeek", "playerSeekDock"].forEach((id) => {
+    const seek = $(id);
+    if (!seek) return;
+    seek.addEventListener("input", () => {
+      const ratio = Number(seek.value) / 1000;
+      ["playerSeek", "playerSeekDock"].forEach((otherId) => {
+        const other = $(otherId);
+        if (other && other !== seek) other.value = seek.value;
+        if (other) other.style.setProperty("--seek-p", `${ratio * 100}%`);
+      });
+      seekPlayerRatio(ratio);
+    });
   });
   $("playerAudio").onended = () => {
     if (document.body.classList.contains("learn-on")) return;

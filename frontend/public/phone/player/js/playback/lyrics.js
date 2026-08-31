@@ -39,7 +39,9 @@ function paintPlayerScroll(cues, time, mode) {
   const list = $("playerLyricScroll");
   if (!list) return;
   const key = cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|");
+  let rebuilt = false;
   if (list.dataset.cuesKey !== key) {
+    rebuilt = true;
     list.textContent = "";
     list.dataset.cuesKey = key;
     list.dataset.activeIndex = "-1";
@@ -54,14 +56,39 @@ function paintPlayerScroll(cues, time, mode) {
   const active = cues.findIndex((cue) => time >= cue.start_ms && time < cue.end_ms);
   const upcoming = cues.findIndex((cue) => time < cue.start_ms);
   const index = active >= 0 ? active : upcoming >= 0 ? upcoming : cues.length - 1;
-  cues.forEach((cue, cueIndex) => {
-    const row = list.children[cueIndex];
-    if (!row) return;
-    const rowTime = cueIndex === active ? time : cueIndex < index ? 1e12 : -1;
-    paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
-    row.classList.toggle("is-current", cueIndex === index);
-  });
-  if (String(index) !== (list.dataset.activeIndex || "-1")) {
+  const previous = Number(list.dataset.activeIndex || -1);
+  if (rebuilt) {
+    cues.forEach((cue, cueIndex) => {
+      const row = list.children[cueIndex];
+      if (!row) return;
+      const rowTime = cueIndex === active ? time : cueIndex < index ? 1e12 : -1;
+      paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
+      row.classList.toggle("is-current", cueIndex === index);
+    });
+    list.dataset.activeIndex = String(index);
+    const current = list.children[index];
+    if (current) {
+      const target = Math.max(0, current.offsetTop - list.clientHeight * 0.62);
+      if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "auto" });
+      else list.scrollTop = target;
+    }
+  } else if (previous !== index) {
+    if (previous >= 0 && cues[previous] && list.children[previous]) {
+      paintLine(list.children[previous], cues[previous], 1e12, `scroll:${previous}`, state.lyricPaint.scroll, "", mode);
+      list.children[previous].classList.remove("is-current");
+    }
+    if (index >= 0 && cues[index] && list.children[index]) {
+      paintLine(
+        list.children[index],
+        cues[index],
+        index === active ? time : -1,
+        `scroll:${index}`,
+        state.lyricPaint.scroll,
+        "",
+        mode
+      );
+      list.children[index].classList.add("is-current");
+    }
     list.dataset.activeIndex = String(index);
     const current = list.children[index];
     if (current) {
@@ -69,6 +96,9 @@ function paintPlayerScroll(cues, time, mode) {
       if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "smooth" });
       else list.scrollTop = target;
     }
+  } else if (active >= 0 && list.children[active]) {
+    // Karaoke fill is the only part that changes every frame.
+    paintLine(list.children[active], cues[active], time, `scroll:${active}`, state.lyricPaint.scroll, "", mode);
   }
 }
 
@@ -121,15 +151,42 @@ export function paintPlayer() {
   drawPlayerBands(time);
   const durSec = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : state.playerHoldDur;
   const dur = (durSec || 0) * 1000;
-  $("playerNow").textContent = fmtClock(time);
-  $("playerLeft").textContent = dur ? `−${fmtClock(Math.max(0, dur - time))}` : "−0:00";
-  const seek = $("playerSeek");
-  if (seek) {
+  const nowText = fmtClock(time);
+  const leftText = dur ? `−${fmtClock(Math.max(0, dur - time))}` : "−0:00";
+  ["playerNow", "playerNowDock"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = nowText;
+  });
+  ["playerLeft", "playerLeftDock"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = leftText;
+  });
+  ["playerSeek", "playerSeekDock"].forEach((id) => {
+    const seek = $(id);
+    if (!seek) return;
     const ratio = durSec ? Math.max(0, Math.min(1, time / 1000 / durSec)) : 0;
     if (!seek.matches(":active") && durSec) seek.value = String(Math.round(ratio * 1000));
     seek.style.setProperty("--seek-p", `${(seek.matches(":active") ? Number(seek.value) / 1000 : ratio) * 100}%`);
-  }
+  });
+  const mtv = $("playerMtv");
   const art = $("playerArt");
+  if (mtv) {
+    const showMtv = document.body.classList.contains("display-mv") && !!mtv.src;
+    mtv.hidden = !showMtv;
+    if (art) art.classList.toggle("has-mtv", showMtv);
+    if (showMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
+      const drift = Math.abs((mtv.currentTime || 0) - (audio.currentTime || 0));
+      if (!audio.paused && mtv.paused) mtv.play().catch(() => {});
+      if (audio.paused && !mtv.paused) mtv.pause();
+      if (drift > 0.45 && !mtv.seeking) {
+        try {
+          mtv.currentTime = Math.min(audio.currentTime || 0, Math.max(0, mtv.duration - 0.05));
+        } catch (err) {}
+      }
+    } else if (!showMtv && !mtv.paused) {
+      mtv.pause();
+    }
+  }
   if (art)
     art.classList.toggle(
       "is-live",
@@ -165,20 +222,33 @@ export function resetPlayerFace() {
     scroll.dataset.activeIndex = "-1";
     scroll.scrollTop = 0;
   }
+  const mtv = $("playerMtv");
+  if (mtv) {
+    mtv.pause();
+    mtv.removeAttribute("src");
+    mtv.load();
+  }
+  const art = $("playerArt");
+  if (art) art.classList.remove("has-mtv");
   state.lyricPaint.align = "";
   ["playerPrev", "playerCur", "playerNext"].forEach((id) => {
     const el = $(id);
     if (el) el.textContent = "";
   });
-  const now = $("playerNow");
-  const left = $("playerLeft");
-  if (now) now.textContent = "0:00";
-  if (left) left.textContent = "−0:00";
-  const seek = $("playerSeek");
-  if (seek) {
+  ["playerNow", "playerNowDock"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = "0:00";
+  });
+  ["playerLeft", "playerLeftDock"].forEach((id) => {
+    const el = $(id);
+    if (el) el.textContent = "−0:00";
+  });
+  ["playerSeek", "playerSeekDock"].forEach((id) => {
+    const seek = $(id);
+    if (!seek) return;
     seek.value = "0";
     seek.style.setProperty("--seek-p", "0%");
-  }
+  });
   if (state.playerViz) state.playerViz.draw({ playing: false, playMs: 0, duration: 0, cues: [], selected: 0 });
 }
 

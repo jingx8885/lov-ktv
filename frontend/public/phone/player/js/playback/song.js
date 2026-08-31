@@ -25,8 +25,17 @@ export async function loadPlayerSong(songId, opts) {
   api.stopPreview();
   const audio = $("playerAudio");
   const guide = $("playerGuide");
+  const mtv = $("playerMtv");
   audio.pause();
   if (guide) guide.pause();
+  if (mtv) {
+    mtv.pause();
+    mtv.hidden = true;
+    mtv.onerror = null;
+    mtv.onloadeddata = null;
+    mtv.removeAttribute("src");
+    mtv.load();
+  }
   audio.onloadedmetadata = null;
   audio.onerror = null;
   if (guide) {
@@ -75,6 +84,23 @@ export async function loadPlayerSong(songId, opts) {
       guide.removeAttribute("src");
       guide.load();
     };
+  }
+  if (mtv) {
+    mtv.onerror = () => {
+      if (gen !== state.playerLoad) return;
+      mtv.hidden = true;
+      mtv.removeAttribute("src");
+      mtv.load();
+    };
+    mtv.onloadeddata = () => {
+      if (gen !== state.playerLoad) return;
+      mtv.hidden = !document.body.classList.contains("display-mv");
+      try {
+        mtv.currentTime = 0;
+      } catch (err) {}
+    };
+    mtv.src = mediaUrl(song.id, "mtv.mp4");
+    mtv.load();
   }
   api.ensureTimeline().setVoiceUrl(guideUrl);
   api.applyEditorTracks();
