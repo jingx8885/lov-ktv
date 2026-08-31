@@ -131,6 +131,14 @@ function formatSize(bytes) {
   return `${n} B`;
 }
 
+function versionedAppUrl(raw, item) {
+  const href = String(raw || "").trim();
+  if (!href) return "";
+  const version = String((item && (item.version || item.sha256)) || "").trim();
+  if (!version) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+}
+
 function paintAppDownloads(catalog) {
   const data = catalog && typeof catalog === "object" ? catalog : {};
   const ready = ["tv", "phone"].filter((name) => data[name] && data[name].url);
@@ -142,7 +150,7 @@ function paintAppDownloads(catalog) {
     const item = data[name];
     el.hidden = !item;
     if (!item) return;
-    if (item.url) el.setAttribute("href", item.url);
+    if (item.url) el.setAttribute("href", versionedAppUrl(item.url, item));
     const ver = el.querySelector(".ver");
     if (ver) ver.textContent = t("landing.apps.ver", { version: item.version || "", size: formatSize(item.size) });
   });

@@ -40,6 +40,14 @@ function absUrl(origin, path) {
   return base + (href.startsWith("/") ? href : "/" + href);
 }
 
+function versionedAppUrl(raw, item) {
+  const href = String(raw || "").trim();
+  if (!href) return "";
+  const version = String((item && (item.version || item.sha256)) || "").trim();
+  if (!version) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+}
+
 export async function paintPhoneAppQr() {
   const box = $("appQrBox");
   const link = $("appLink");
@@ -53,7 +61,7 @@ export async function paintPhoneAppQr() {
       box.hidden = true;
       return;
     }
-    href = absUrl(origin, phone.url) || href;
+    href = absUrl(origin, versionedAppUrl(phone.url, phone)) || href;
   } catch (err) {
     box.hidden = true;
     return;
