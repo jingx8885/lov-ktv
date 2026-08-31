@@ -118,6 +118,7 @@
         <div class="seg" role="tablist">
           <button type="button" class="seg-btn on" data-desk="queue"><span data-i18n="phone.desk.queue">已点</span><em id="queueCount"></em></button>
           <button type="button" class="seg-btn" data-desk="lib"><span data-i18n="phone.desk.lib">曲库</span><em id="libCount"></em></button>
+          <button type="button" class="seg-btn" data-desk="lyrics" data-i18n="phone.desk.lyrics">歌词</button>
         </div>
         <div class="desk-pane inset-list" id="queue">
           <div class="empty-state">
@@ -152,6 +153,17 @@
             <nav class="lib-index" id="libIndex" data-i18n-aria="phone.desk.letters"></nav>
           </div>
           <div class="lib-pager" id="libPager"></div>
+        </div>
+        <div class="desk-pane desk-lyrics" id="deskLyrics" hidden>
+          <div class="desk-lyrics-head">
+            <div>
+              <span class="kicker" data-i18n="phone.lyrics.current">正在播放</span>
+              <b id="deskLyricsTitle" data-i18n="phone.lyrics.noSong">还没选歌</b>
+            </div>
+            <button type="button" class="btn" id="deskStudyBook" data-i18n="phone.lyrics.studyBook">学习本</button>
+          </div>
+          <p class="tiny desk-lyrics-hint" data-i18n="phone.lyrics.tapHint">点击歌词里的词，收藏到学习本</p>
+          <div class="desk-lyrics-list inset-list" id="deskLyricsList"></div>
         </div>
       </div>
     </section>

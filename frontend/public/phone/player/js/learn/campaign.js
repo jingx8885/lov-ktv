@@ -3,6 +3,7 @@ import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
 import { showToast } from "../../../ui/js/toast.js";
+import { getStudyWords } from "../../../desk/lyrics.js";
 
 /** @type {LearnCampaign | null} */
 let campaign = null;
@@ -119,9 +120,10 @@ export function paintCampaign(data) {
       .join("");
   }
   const miss = Number(pack.mistakes || 0);
+  const savedWords = getStudyWords().length;
   if (bookBtn) {
-    bookBtn.hidden = miss <= 0;
-    if (bookMeta) bookMeta.textContent = t("learn.bookHint", { n: miss });
+    bookBtn.hidden = miss <= 0 && savedWords <= 0;
+    if (bookMeta) bookMeta.textContent = t("learn.bookSummary", { words: savedWords, mistakes: miss });
   }
 }
 

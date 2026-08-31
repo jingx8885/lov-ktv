@@ -30,7 +30,9 @@
   }
 
   body.phone .app {
-    width: min(1240px, 100%);
+    /* 桌面点歌台使用完整视口，给曲库留出真正的横向空间。 */
+    width: 100%;
+    max-width: none;
     min-height: 100vh;
     height: auto;
     max-height: none;
@@ -184,6 +186,14 @@
   body.phone .tabbar svg {
     width: 20px;
     height: 20px;
+  }
+
+  /* 登录提示跟在左栏控制项下面，避免被主面板的网格自动放置到右栏。 */
+  body.phone .page-desk .desk-login-cta {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: start;
+    margin: 0;
   }
 }
 /* —— 手机 App 壳 —— */

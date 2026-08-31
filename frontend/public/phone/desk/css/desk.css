@@ -13,7 +13,8 @@
   flex-direction: column;
 }
 .page-desk #queue,
-.page-desk .desk-lib {
+.page-desk .desk-lib,
+.page-desk .desk-lyrics {
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
@@ -202,6 +203,25 @@
 .desk-tabs { display: none; }
 .desk-pane[hidden] { display: none !important; }
 .desk-lib { display: flex; flex-direction: column; min-height: 0; }
+.desk-lyrics { display: flex; flex-direction: column; min-height: 0; gap: 6px; }
+.desk-lyrics[hidden] { display: none !important; }
+.desk-lyrics-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 0 0 auto; }
+.desk-lyrics-head > div { min-width: 0; display: grid; gap: 2px; }
+.desk-lyrics-head b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+.desk-lyrics-head .btn { min-height: 34px; padding: 0 14px; flex: 0 0 auto; }
+.desk-lyrics-hint { margin: 0 2px 2px; color: var(--muted); }
+.desk-lyrics-list { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px 4px 28px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.desk-lyric-line { margin: 0 0 20px; padding: 12px 8px; border-radius: 14px; color: var(--text); background: rgba(255,255,255,.045); text-align: center; }
+.desk-lyric-line .line-words { justify-content: center; flex-wrap: wrap; row-gap: .38em; }
+.desk-lyric-line .tok { cursor: pointer; border-radius: 8px; transition: background .15s ease, transform .15s ease; }
+.desk-lyric-line .tok:hover, .desk-lyric-line .tok:focus-visible { outline: none; background: rgba(245,193,108,.2); transform: translateY(-1px); }
+.desk-lyric-line .tok:active { transform: scale(.95); }
+.desk-lyric-line .lyric-zh { color: var(--muted); }
+.desk-lyric-line .rb-fill { color: var(--gold); -webkit-text-fill-color: var(--gold); }
+.learn-book-section { display: grid; gap: 8px; }
+.learn-book-section h3 { margin: 6px 2px 0; color: var(--gold); font-size: 13px; }
+.learn-book-item.is-word { border-left: 3px solid var(--gold); }
+.learn-book-empty { margin: 8px 2px; }
 .lib-search {
   display: flex;
   align-items: center;
@@ -436,12 +456,14 @@
 
   .page-desk .desk-pane,
   .page-desk #queue,
-  .page-desk .desk-lib {
+  .page-desk .desk-lib,
+  .page-desk .desk-lyrics {
     overflow: visible;
   }
 
   .page-desk #queue,
-  .page-desk .desk-lib {
+  .page-desk .desk-lib,
+  .page-desk .desk-lyrics {
     min-height: 340px;
   }
 
@@ -492,7 +514,7 @@
 @media (min-width: 900px) {
   body.phone .page-desk {
     display: grid;
-    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr);
     align-items: stretch;
     gap: 18px 24px;
@@ -540,9 +562,62 @@
     padding: 18px 20px 14px;
   }
 
+  body.phone .page-desk .desk-login-cta {
+    grid-column: 1;
+    grid-row: 4;
+    align-self: start;
+    margin: 0;
+  }
+
+  /* 曲库是桌面点歌台的主工作区：宽屏时自动展开为 3～4 列，
+     窄一些的桌面窗口也会回落到 2 列，不压缩歌曲标题和操作按钮。 */
+  body.phone .page-desk .desk-lib #songs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    align-content: start;
+    gap: 10px 12px;
+    padding: 4px 4px 20px;
+  }
+
+  body.phone .page-desk .desk-lib #songs > .desk-row {
+    min-width: 0;
+    min-height: 76px;
+    padding: 12px 10px 12px 14px;
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .035);
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  }
+
+  body.phone .page-desk .desk-lib #songs > .desk-row::before {
+    display: none;
+  }
+
+  body.phone .page-desk .desk-lib #songs > .desk-row:hover {
+    border-color: rgba(255, 55, 95, .36);
+    background: rgba(255, 55, 95, .075);
+    transform: translateY(-1px);
+  }
+
+  body.phone .page-desk .desk-lib #songs > .empty-state {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  body.phone .page-desk .desk-lib #songs .desk-copy b {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+
+  body.phone .page-desk .desk-lib #songs .desk-actions {
+    gap: 2px;
+    max-width: 96px;
+  }
+
   body.phone .page-desk .desk-pane,
   body.phone .page-desk #queue,
-  body.phone .page-desk .desk-lib {
+  body.phone .page-desk .desk-lib,
+  body.phone .page-desk .desk-lyrics {
     min-height: 0;
     overflow: hidden;
   }

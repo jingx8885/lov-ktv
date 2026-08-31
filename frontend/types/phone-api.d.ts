@@ -9,6 +9,7 @@ interface PhoneApi {
   loadWho(): Promise<void>;
   showPage(name: string, songId?: string | null, push?: boolean): void;
   showDeskPane(name: string): void;
+  paintDeskLyrics(): void;
   loadSongs(append?: boolean, force?: boolean): Promise<void>;
   loadRoom(opts?: { quiet?: boolean; room?: Room }): Promise<void>;
   runSearch(page: number, append?: boolean): Promise<void>;
@@ -50,6 +51,7 @@ interface PhoneApi {
   cueIndexAt(t: number): number;
   setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
   enterLearn(): Promise<void> | void;
+  openStudyBook(): Promise<void> | void;
   exitLearn(): void;
 }
 

@@ -16,13 +16,19 @@ function nearBottom(el) {
 }
 
 export function showDeskPane(name) {
-  const pane = name === "lib" ? "lib" : "queue";
+  const pane = name === "lib" || name === "lyrics" ? name : "queue";
   $("queue").hidden = pane !== "queue";
   $("libPane").hidden = pane !== "lib";
+  const lyricsPane = $("deskLyrics");
+  if (lyricsPane) lyricsPane.hidden = pane !== "lyrics";
   document.querySelectorAll("[data-desk]").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.desk === pane);
   });
   if (pane === "lib") loadSongs();
+  if (pane === "lyrics") {
+    api.paintDeskLyrics();
+    if (!state.playerSong && api.bootPlayer) Promise.resolve(api.bootPlayer()).then(() => api.paintDeskLyrics());
+  }
 }
 
 export function renderLibIndex(letters) {
@@ -131,7 +137,9 @@ function bindSongActions() {
           showToast(t("phone.desk.recalculateStarted"));
           await loadSongs(false, true);
           for (let attempt = 0; attempt < 360; attempt += 1) {
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            await new Promise((resolve) => {
+              setTimeout(resolve, 1500);
+            });
             const current = await fetchJson(`/api/songs/${btn.dataset.realign}`, { cache: "no-store" }).catch(
               () => null
             );

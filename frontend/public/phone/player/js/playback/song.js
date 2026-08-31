@@ -10,6 +10,7 @@ import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
 import { renderPlayerList } from "./queue.js";
+import { paintDeskLyrics } from "../../../desk/lyrics.js";
 
 export async function loadPlayerSong(songId, opts) {
   const wantPlay = !!(opts && opts.play);
@@ -43,6 +44,7 @@ export async function loadPlayerSong(songId, opts) {
   } catch (err) {}
   const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
   state.playerLyrics = lyrics.ok ? sanitizeLyrics(lyrics.data) : { cues: [] };
+  paintDeskLyrics();
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
   if (gen !== state.playerLoad) return;
   state.lyricsDirty = false;

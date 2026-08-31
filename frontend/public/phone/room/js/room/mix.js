@@ -62,6 +62,7 @@ export function paintLyricMode(mode, language) {
     btn.classList.toggle("on", key === next);
     btn.textContent = lyricModeLabel(key, script);
   });
+  if (api.paintDeskLyrics) api.paintDeskLyrics();
 }
 
 export function paintMix(room) {

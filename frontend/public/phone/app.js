@@ -9,6 +9,7 @@ import { bindOverlays } from "./ui/js/overlays.js";
 import { bindNav, showPage } from "./nav/js/pages.js";
 import { bindSearch, paintSearchHits } from "./search/js/hits.js";
 import { bindLibrary, loadSongs } from "./desk/js/library.js";
+import { bindDeskLyrics, paintDeskLyrics } from "./desk/lyrics.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin, paintBindBtns } from "./room/js/room/join.js";
 import { bindMix, paintVocalMix, paintLyricMode } from "./room/js/room/mix.js";
@@ -69,6 +70,7 @@ export function mount(root, deps = {}) {
           : t("phone.desk.libPh");
     loadWho();
     loadRoom();
+    paintDeskLyrics();
     loadSongs();
     if (!must("page-search").hidden) {
       if (state.searchHits.length) {
@@ -79,6 +81,7 @@ export function mount(root, deps = {}) {
     }
     paintVocalMix(must("vocalMix").classList.contains("on") ? 1 : 0);
     paintLyricMode(state.lyricMode, state.nowLanguage);
+    paintDeskLyrics();
     paintPhoneMic();
     updatePlayOrderBtns();
     syncPlayerSheetMeta();
@@ -105,6 +108,7 @@ export function mount(root, deps = {}) {
   bindNav();
   bindSearch();
   bindLibrary();
+  bindDeskLyrics();
   bindJoin();
   bindMix();
   paintLyricMode(state.lyricMode, state.nowLanguage);

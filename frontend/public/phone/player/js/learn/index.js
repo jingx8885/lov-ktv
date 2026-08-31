@@ -14,6 +14,7 @@ import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js
 import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
+import { getStudyWords } from "../../../desk/lyrics.js";
 
 /** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any }} */
 const ui = { mode: "", pack: null, vocalWas: 1, boot: 0, run: null, lesson: null };
@@ -257,41 +258,58 @@ async function startLessonRun(lesson) {
   if (score) showScore(score);
 }
 
-async function openBook() {
+export async function openStudyBook() {
   const song = state.playerSong;
-  if (!song) return;
-  const { ok, data } = await fetchJson(`/api/songs/${song.id}/learn/mistakes`);
-  if (!ok) {
-    showToast((data && data.detail) || t("learn.loadFail"));
-    return;
+  let data = { mistakes: [] };
+  if (song) {
+    const response = await fetchJson(`/api/songs/${song.id}/learn/mistakes`);
+    if (!response.ok) {
+      showToast((response.data && response.data.detail) || t("learn.loadFail"));
+      return;
+    }
+    data = response.data || data;
   }
   const list = $("learnBookList");
   const lead = $("learnBookLead");
   const rows = (data && data.mistakes) || [];
-  if (lead) lead.textContent = rows.length ? t("learn.bookHint", { n: rows.length }) : t("learn.bookEmpty");
+  const words = getStudyWords();
+  if (lead) lead.textContent = t("learn.bookSummary", { words: words.length, mistakes: rows.length });
   if (list) {
-    list.innerHTML = rows
-      .map((row) => {
-        const kind =
-          row.qkind === "listen"
-            ? t("learn.skill.listen")
-            : row.qkind === "meaning" || row.qkind === "reverse"
-              ? t("learn.skill.sentence")
-              : t("learn.skill.word");
-        return `
+    const wordHtml = words.length
+      ? `<section class="learn-book-section"><h3>${escapeHtml(t("learn.savedWords"))}</h3>${words
+          .map(
+            (word) =>
+              `<article class="learn-book-item is-word"><i>${escapeHtml(word.song || t("learn.savedFromLyrics"))}</i><b>${escapeHtml(word.text)}</b><span>${escapeHtml(word.zh || word.romaji || word.cue || "")}</span></article>`
+          )
+          .join("")}</section>`
+      : "";
+    const mistakeHtml = rows.length
+      ? `<section class="learn-book-section"><h3>${escapeHtml(t("learn.mistakes"))}</h3>${rows
+          .map((row) => {
+            const kind =
+              row.qkind === "listen"
+                ? t("learn.skill.listen")
+                : row.qkind === "meaning" || row.qkind === "reverse"
+                  ? t("learn.skill.sentence")
+                  : t("learn.skill.word");
+            return `
       <article class="learn-book-item">
         <i>${escapeHtml(kind)} · ${escapeHtml(t("learn.practice"))} ${row.correct_streak || 0}/2</i>
         <b>${escapeHtml(row.stem || row.item_key || "")}</b>
         <span>${escapeHtml(row.answer_text || row.prompt || "")}</span>
       </article>
     `;
-      })
-      .join("");
+          })
+          .join("")}</section>`
+      : `<p class="tiny learn-book-empty">${escapeHtml(t("learn.bookEmpty"))}</p>`;
+    list.innerHTML = wordHtml + mistakeHtml;
   }
   ui.mode = "";
   showPane("learnBook");
   $("learnTitle").textContent = t("learn.book");
   $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
+  const go = $("learnBookGo");
+  if (go) go.hidden = !rows.length;
 }
 
 async function startReview() {
@@ -355,7 +373,7 @@ export function bindLearn() {
   bindLesson();
   bindCampaign({
     onSkill: (unitId, skill) => startSkill(unitId, skill),
-    onBook: () => openBook()
+    onBook: () => openStudyBook()
   });
   const bookGo = $("learnBookGo");
   if (bookGo) bookGo.onclick = () => startReview();
@@ -369,7 +387,7 @@ export function bindLearn() {
   $("learnOther").onclick = () => {
     $("learnMix").pause();
     if (ui.run) {
-      if (ui.run.review) return openBook();
+      if (ui.run.review) return openStudyBook();
       return goHome();
     }
     startMode(nextMode(ui.mode));
