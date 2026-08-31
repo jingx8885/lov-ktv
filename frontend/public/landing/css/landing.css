@@ -308,6 +308,10 @@ select.lang-picker:focus {
   letter-spacing: -0.03em;
   line-height: 1.02;
 }
+.lp-hero h1 > span {
+  display: block;
+  white-space: nowrap;
+}
 .grad {
   background: linear-gradient(90deg, #7dd3fc, #a78bfa, #fb7185, #f5c16c, #7dd3fc);
   background-size: 280% 100%;
@@ -689,7 +693,7 @@ tbody th { width: 4.5em; color: var(--mute); font-weight: 600; }
   .lp-nav-end { gap: 8px; }
   .lp-nav-end .btn.sm { padding: 6px 10px; }
   .lp-wrap { width: min(80rem, calc(100% - 32px)); }
-  .lp-hero h1 { font-size: 40px; }
+  .lp-hero h1 { font-size: clamp(30px, 9.4vw, 40px); }
   .lp-hero-grid { padding: 56px 0 64px; }
   .lp-section h2, .lp-closer h2 { font-size: 28px; }
   .lp-section, .lp-closer { padding: 72px 0; }

@@ -468,8 +468,8 @@ export default {
   "admin.removeItem": "移出",
   "admin.roomMeta": "隊列 {n} · 而家唱 {title}",
 
-  "landing.title": "lov-ktv · 你嘅舞台，隨時開場",
-  "landing.desc": "你嘅舞台，隨時開場。電視一開就能唱，手機掃碼點歌，屋企人朋友隨時加入。",
+  "landing.title": "lov-ktv · 你嘅舞台，隨時開唱",
+  "landing.desc": "你嘅舞台，隨時開唱。電視一開就能唱，手機掃碼點歌，屋企人朋友隨時加入。",
   "landing.ogDesc": "電視開唱，手機點歌。屋企人朋友掃碼入房，想唱嘅歌一首接一首。",
   "landing.nav.ritual": "三步開場",
   "landing.nav.features": "你會得到咩",
@@ -479,7 +479,7 @@ export default {
   "landing.nav.tv": "打開電視房",
   "landing.hero.badge": "家庭 KTV · 隨時開唱",
   "landing.hero.h1a": "你嘅舞台，",
-  "landing.hero.h1b": "隨時開場。",
+  "landing.hero.h1b": "隨時開唱",
   "landing.hero.lead":
     "電視負責大屏開唱，手機負責輕鬆點歌。搵歌、排隊、轉歌、頂歌一部手機搞掂；屋企人朋友入嚟就識用。",
   "landing.hero.tv": "而家開唱",
@@ -578,7 +578,7 @@ export default {
   "landing.faq.7q": "一定要裝 App 嗎？",
   "landing.faq.7a": "唔使，瀏覽器就可以唱；想電視同手機更順手，亦可以各自裝返對應 App。",
   "landing.close.eye": "輪到你上場",
-  "landing.close.h": "你嘅舞台，隨時開場。",
+  "landing.close.h": "你嘅舞台，隨時開唱",
   "landing.close.p": "打開電視房，拎起手機掃一下碼。想唱嘅第一首歌，而家就開始。",
   "landing.foot.note": "僅供個人或家庭局域網。唔好公開發布曲庫。",
   "landing.foot.tv": "電視",

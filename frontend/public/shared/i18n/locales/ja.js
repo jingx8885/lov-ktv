@@ -472,7 +472,7 @@ export default {
   "admin.removeItem": "外す",
   "admin.roomMeta": "予約 {n} · 再生中 {title}",
 
-  "landing.title": "lov-ktv · あなたのステージ、いつでも開演",
+  "landing.title": "lov-ktv · あなたの舞台、いつでも歌える",
   "landing.desc":
     "テレビをつけて歌い、スマホで選曲。家族の集まり、友達との部屋、一人の練習にもすぐ使えます。",
   "landing.ogDesc":
@@ -484,8 +484,8 @@ export default {
   "landing.nav.phone": "選曲",
   "landing.nav.tv": "テレビを開く",
   "landing.hero.badge": "家庭カラオケ · いつでも開演",
-  "landing.hero.h1a": "あなたのステージ、",
-  "landing.hero.h1b": "いつでも開演。",
+  "landing.hero.h1a": "あなたの舞台、",
+  "landing.hero.h1b": "いつでも歌える",
   "landing.hero.lead":
     "テレビで大画面、スマホで選曲。検索、予約、曲送りまで一台で完了。家族や友達もすぐ使えます。",
   "landing.hero.tv": "今すぐ歌う",
@@ -589,7 +589,7 @@ export default {
   "landing.faq.7q": "アプリのインストールは必要ですか？",
   "landing.faq.7a": "不要です。ブラウザだけで使えます。より快適に使いたい場合はアプリも選べます。",
   "landing.close.eye": "あなたの出番",
-  "landing.close.h": "あなたのステージ、いつでも開演。",
+  "landing.close.h": "あなたの舞台、いつでも歌える",
   "landing.close.p": "テレビで部屋を開き、スマホでコードを読む。歌いたい1曲を今すぐ始めましょう。",
   "landing.foot.note": "個人または家庭LAN専用。曲庫を公開しないでください。",
   "landing.foot.tv": "テレビ",
