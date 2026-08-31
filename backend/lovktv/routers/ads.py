@@ -19,7 +19,9 @@ def api_points(request: Request) -> dict:
 @router.get("/api/ads")
 def api_ads(request: Request, placement: str = "splash") -> dict:
     ads = catalog(request)
-    picked = ads[0] if placement != "wait" else ads[min(1, len(ads) - 1)]
+    picked = None
+    if ads:
+        picked = ads[0] if placement != "wait" else ads[min(1, len(ads) - 1)]
     return {
         "placement": placement or "splash",
         "ad": public_ad(picked),

@@ -9,6 +9,7 @@ def _init(store, tmp_path):
 
 def test_register_bonus_ad_and_costs(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    monkeypatch.setenv("LOVKTV_ADS_JSON", '[{"id":"test-ad","title":"Test ad"}]')
     from lovktv.identity import ads as ads_mod
     from lovktv.routers import songs
     from lovktv.storage import store
@@ -65,6 +66,7 @@ def test_register_bonus_ad_and_costs(tmp_path, monkeypatch):
 
 def test_ads_open_returns_landing_url(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    monkeypatch.setenv("LOVKTV_ADS_JSON", '[{"id":"test-ad","title":"Test ad","url":"/go"}]')
     from lovktv.identity import ads as ads_mod
     from lovktv.storage import store
 
@@ -86,3 +88,23 @@ def test_ads_open_returns_landing_url(tmp_path, monkeypatch):
         assert click.status_code == 200
         assert click.json()["open"] is True
         assert "http" in click.json()["url"] or click.json()["url"].startswith("/")
+
+
+def test_ads_start_skips_when_catalog_is_empty(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    monkeypatch.delenv("LOVKTV_ADS_JSON", raising=False)
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    from lovktv.main import app
+
+    headers = {"X-LovKtv-Machine": "phone-no-ads"}
+    with TestClient(app) as client:
+        started = client.post("/api/ads/start", json={"placement": "splash"}, headers=headers)
+        assert started.status_code == 200
+        assert started.json()["ad"] is None
+        assert started.json()["token"] == ""
+        listed = client.get("/api/ads", headers=headers)
+        assert listed.status_code == 200
+        assert listed.json()["ad"] is None
+        assert listed.json()["ads"] == []
