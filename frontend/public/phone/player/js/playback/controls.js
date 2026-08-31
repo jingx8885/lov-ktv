@@ -7,6 +7,7 @@ import { showToast } from "../../../ui/js/toast.js";
 import { mediaAhead } from "./media.js";
 
 let paintPlayerCallback = null;
+let lastGuideSyncAt = 0;
 export function registerPaintPlayer(fn) {
   paintPlayerCallback = fn;
 }
@@ -127,10 +128,13 @@ export function syncGuide(forceTime) {
   const editing = document.body.classList.contains("edit-on");
   const want = !state.playerHeld && !!(audio && audio.src) && (editing ? state.voiceTrackOn : !!state.playerVocal);
   const clock = forceTime != null ? forceTime : audio.currentTime || 0;
-  if (guide.readyState >= 1 && !guide.seeking) {
+  const now = Date.now();
+  const shouldAlign = forceTime != null || now - lastGuideSyncAt >= 400;
+  if (shouldAlign) lastGuideSyncAt = now;
+  if (shouldAlign && guide.readyState >= 1 && !guide.seeking) {
     const drift = Math.abs((guide.currentTime || 0) - clock);
-    const slack = forceTime != null ? 0.05 : 0.12;
-    const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.05;
+    const slack = forceTime != null ? 0.05 : 0.35;
+    const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.2;
     if (drift > slack && targetReady) {
       try {
         guide.currentTime = clock;

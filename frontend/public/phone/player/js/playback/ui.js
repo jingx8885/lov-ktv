@@ -2,16 +2,14 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
-import { applyPlayerVocalMix, kickPlayerPaint, refreshPlayIcon, seekPlayerRatio, syncGuide, togglePlayer } from "./controls.js";
+import { applyPlayerVocalMix, kickPlayerPaint, refreshPlayIcon, seekPlayerRatio, togglePlayer } from "./controls.js";
 import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
   $("playerPlay").onclick = () => togglePlayer();
   ["play", "playing", "pause", "ended", "seeking", "timeupdate"].forEach((name) => {
     $("playerAudio").addEventListener(name, refreshPlayIcon);
-    $("playerAudio").addEventListener(name, () => syncGuide());
   });
-  ["loadedmetadata", "canplay", "playing"].forEach((name) => $("playerGuide").addEventListener(name, () => syncGuide()));
   // 切歌后元数据和时间轴是异步到达的，主动唤醒绘制，避免沿用旧歌的进度/歌词画面。
   ["loadedmetadata", "durationchange", "timeupdate", "progress", "canplay"].forEach((name) => {
     $("playerAudio").addEventListener(name, kickPlayerPaint);

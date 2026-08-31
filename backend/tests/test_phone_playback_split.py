@@ -43,3 +43,19 @@ def test_phone_playback_modules_parse_and_direct_imports():
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_phone_playback_keeps_lyrics_and_vocal_sync_on_a_bounded_cadence():
+    controls = (PLAYER / "controls.js").read_text(encoding="utf-8")
+    lyrics = (PLAYER / "lyrics.js").read_text(encoding="utf-8")
+    ui = (PLAYER / "ui.js").read_text(encoding="utf-8")
+    # Keep phone playback aligned with the TV runtime: rendering may continue
+    # on RAF, but layout-heavy lyric work and corrective seeks are bounded.
+    assert "lastGuideSyncAt" in controls
+    assert "now - lastGuideSyncAt >= 400" in controls
+    assert "const slack = forceTime != null ? 0.05 : 0.35" in controls
+    assert "const targetReady = forceTime != null || mediaAhead(guide, clock) > 0.2" in controls
+    assert "const frameNow = performance.now()" in lyrics
+    assert "frameNow - lastPaintAt < 33" in lyrics
+    # Event handlers only refresh UI/painting; guide correction has one owner.
+    assert '() => syncGuide()' not in ui

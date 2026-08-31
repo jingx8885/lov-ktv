@@ -5,6 +5,8 @@ import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 
+let lastPaintAt = 0;
+
 export function cueIndexAt(time) {
   return cueIndexAtCues(state.playerLyrics.cues || [], lyricClockMs(time));
 }
@@ -106,8 +108,15 @@ export function paintPlayer() {
   const page = $("page-player");
   if (page && page.hidden) {
     state.playerRaf = 0;
+    lastPaintAt = 0;
     return;
   }
+  const frameNow = performance.now();
+  if (frameNow - lastPaintAt < 33) {
+    state.playerRaf = requestAnimationFrame(paintPlayer);
+    return;
+  }
+  lastPaintAt = frameNow;
   const audio = $("playerAudio");
   const hold = state.playerClockHold;
   const time = Math.floor((hold != null ? hold : audio.currentTime || 0) * 1000);
@@ -208,6 +217,7 @@ export function kickPlayerPaint() {
 }
 
 export function resetPlayerFace() {
+  lastPaintAt = 0;
   state.playerClockHold = null;
   state.playerClockHoldAt = 0;
   state.playerHoldDur = 0;
