@@ -67,7 +67,7 @@ export function paintDeskLyrics() {
   list.innerHTML = cues
     .map(
       (cue, cueIndex) =>
-        `<article class="desk-lyric-line" data-cue-index="${cueIndex}">${renderCue(cue, 1e12, mode)}</article>`
+        `<article class="desk-lyric-line lyrics" data-cue-index="${cueIndex}">${renderCue(cue, 1e12, mode)}</article>`
     )
     .join("");
   list.querySelectorAll(".desk-lyric-line").forEach((line) => {
