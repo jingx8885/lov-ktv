@@ -23,7 +23,7 @@ export const playerState = guardState(
     playerClockHold: null,
     playerClockHoldAt: 0,
     playerHoldDur: 0,
-    lyricPaint: { prev: "", cur: "", next: "", align: "" },
+    lyricPaint: { prev: "", cur: "", next: "", align: "", scroll: { prev: "", cur: "", next: "" } },
     phoneMic: null,
     phoneMicSrc: null,
     phoneMicGain: null,

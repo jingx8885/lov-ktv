@@ -35,6 +35,43 @@ function playerIdleLyric() {
   return state.playerSong ? "" : t("phone.player.idle");
 }
 
+function paintPlayerScroll(cues, time, mode) {
+  const list = $("playerLyricScroll");
+  if (!list) return;
+  const key = cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|");
+  if (list.dataset.cuesKey !== key) {
+    list.textContent = "";
+    list.dataset.cuesKey = key;
+    list.dataset.activeIndex = "-1";
+    state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
+    cues.forEach((cue, index) => {
+      const row = document.createElement("div");
+      row.className = "player-lyric-scroll-line line";
+      row.dataset.cueIndex = String(index);
+      list.appendChild(row);
+    });
+  }
+  const active = cues.findIndex((cue) => time >= cue.start_ms && time < cue.end_ms);
+  const upcoming = cues.findIndex((cue) => time < cue.start_ms);
+  const index = active >= 0 ? active : upcoming >= 0 ? upcoming : cues.length - 1;
+  cues.forEach((cue, cueIndex) => {
+    const row = list.children[cueIndex];
+    if (!row) return;
+    const rowTime = cueIndex === active ? time : cueIndex < index ? 1e12 : -1;
+    paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
+    row.classList.toggle("is-current", cueIndex === index);
+  });
+  if (String(index) !== (list.dataset.activeIndex || "-1")) {
+    list.dataset.activeIndex = String(index);
+    const current = list.children[index];
+    if (current) {
+      const target = Math.max(0, current.offsetTop - list.clientHeight * 0.62);
+      if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "smooth" });
+      else list.scrollTop = target;
+    }
+  }
+}
+
 export function paintPlayer() {
   const page = $("page-player");
   if (page && page.hidden) {
@@ -46,13 +83,20 @@ export function paintPlayer() {
   const time = Math.floor((hold != null ? hold : audio.currentTime || 0) * 1000);
   const cues = state.playerLyrics.cues || [];
   const mode = applyLyricMode(document.body, state.lyricMode);
+  const lyricsOnly = document.body.classList.contains("display-lyrics");
+  const scroll = $("playerLyricScroll");
+  if (scroll) scroll.hidden = !lyricsOnly;
+  [$("playerPrev"), $("playerCur"), $("playerNext")].forEach((el) => {
+    if (el) el.hidden = lyricsOnly;
+  });
+  if (lyricsOnly) paintPlayerScroll(cues, time, mode);
   const idx = cues.findIndex((c) => time >= c.start_ms && time < c.end_ms);
   const upcomingIdx = cues.findIndex((c) => time < c.start_ms);
-  if (idx >= 0) {
+  if (!lyricsOnly && idx >= 0) {
     paintLine($("playerPrev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
     paintLine($("playerCur"), cues[idx], time, "cur", state.lyricPaint, "", mode);
     paintLine($("playerNext"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
-  } else if (upcomingIdx >= 0) {
+  } else if (!lyricsOnly && upcomingIdx >= 0) {
     const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
     paintLine(
       $("playerPrev"),
@@ -65,7 +109,7 @@ export function paintPlayer() {
     );
     paintLine($("playerCur"), held, held ? 1e12 : 0, "cur", state.lyricPaint, "", mode);
     paintLine($("playerNext"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
-  } else {
+  } else if (!lyricsOnly) {
     paintLine($("playerPrev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
     paintLine($("playerCur"), null, 0, "cur", state.lyricPaint, playerIdleLyric(), mode);
     paintLine($("playerNext"), null, 0, "next", state.lyricPaint, "", mode);
@@ -113,6 +157,14 @@ export function resetPlayerFace() {
   state.lyricPaint.prev = "";
   state.lyricPaint.cur = "";
   state.lyricPaint.next = "";
+  state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
+  const scroll = $("playerLyricScroll");
+  if (scroll) {
+    scroll.textContent = "";
+    scroll.dataset.cuesKey = "";
+    scroll.dataset.activeIndex = "-1";
+    scroll.scrollTop = 0;
+  }
   state.lyricPaint.align = "";
   ["playerPrev", "playerCur", "playerNext"].forEach((id) => {
     const el = $(id);
@@ -122,6 +174,11 @@ export function resetPlayerFace() {
   const left = $("playerLeft");
   if (now) now.textContent = "0:00";
   if (left) left.textContent = "−0:00";
+  const seek = $("playerSeek");
+  if (seek) {
+    seek.value = "0";
+    seek.style.setProperty("--seek-p", "0%");
+  }
   if (state.playerViz) state.playerViz.draw({ playing: false, playMs: 0, duration: 0, cues: [], selected: 0 });
 }
 

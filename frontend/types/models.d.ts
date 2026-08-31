@@ -165,6 +165,7 @@ interface LyricPaintSlots {
   cur: string;
   next: string;
   align?: string;
+  scroll?: LyricPaintSlots;
 }
 
 interface ActionSheetOpts {

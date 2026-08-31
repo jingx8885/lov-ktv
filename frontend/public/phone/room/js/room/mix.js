@@ -39,6 +39,8 @@ export function paintPaused(paused) {
 
 export function paintDisplayMode(mode) {
   const on = String(mode || "mv").toLowerCase() !== "lyrics";
+  document.body.classList.toggle("display-mv", on);
+  document.body.classList.toggle("display-lyrics", !on);
   const btn = $("playerDisplayMode");
   const label = $("playerDisplayModeLabel");
   if (btn) {

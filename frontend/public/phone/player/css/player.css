@@ -535,6 +535,42 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   padding: 0 4px;
   overflow: hidden;
 }
+.player-lyric-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 8px 4px 16px;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+.player-lyric-scroll[hidden] { display: none !important; }
+.player-lyric-scroll::-webkit-scrollbar { display: none; }
+.player-lyric-scroll-line {
+  flex: 0 0 auto;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  color: var(--muted);
+  opacity: .68;
+  transition: color .2s ease, opacity .2s ease, transform .2s ease;
+}
+.player-lyric-scroll-line.is-current {
+  color: var(--text);
+  opacity: 1;
+  transform: scale(1.02);
+}
+body.display-lyrics .page-player .player-lyrics {
+  display: block;
+  overflow: hidden;
+  padding: 0 12px 12px;
+}
+body.display-lyrics .page-player .player-lyrics .prev,
+body.display-lyrics .page-player .player-lyrics .line:not(.player-lyric-scroll-line),
+body.display-lyrics .page-player .player-lyrics .next { display: none; }
+body.display-mv .player-lyric-scroll { display: none; }
 .page-player .player-lyrics .prev,
 .page-player .player-lyrics .next {
   margin: 0;
