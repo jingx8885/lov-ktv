@@ -86,11 +86,9 @@ function renderLibTail(page, pages, total) {
     return;
   }
   if (page < pages) {
-    $("libPager").innerHTML = `<button type="button" class="lib-page-more" ${state.libLoading ? "disabled" : ""}>${
-      state.libLoading ? t("common.loading") : t("phone.desk.morePages", { page, pages })
-    }</button>`;
-    const more = $("libPager").querySelector(".lib-page-more");
-    if (more && !state.libLoading) more.onclick = () => loadSongs(true);
+    $("libPager").innerHTML = `<span class="lib-page-num ${state.libLoading ? "" : "is-more"}">${
+      state.libLoading ? t("common.loading") : t("common.loadMore")
+    }</span>`;
   } else {
     $("libPager").innerHTML = `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
   }

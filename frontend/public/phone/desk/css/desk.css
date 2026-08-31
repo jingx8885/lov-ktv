@@ -393,18 +393,7 @@ body.phone .page-desk > .lyric-seg { display: none; }
   padding: 8px 0 4px;
 }
 .lib-page-num { color: var(--muted); font-size: 13px; }
-.lib-page-more {
-  min-height: 32px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--accent);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-.lib-page-more:disabled { color: var(--muted); cursor: default; }
+.lib-page-num.is-more { color: var(--accent); }
 .desk-row {
   display: flex;
   align-items: center;
