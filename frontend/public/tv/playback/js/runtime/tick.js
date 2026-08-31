@@ -4,7 +4,15 @@ import { STATUS } from "../../../../shared/ui/js/status.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { roomCode } from "../../../auth/js/login.js";
-import { mediaRevFor, mediaUrl, prefetchQueue, applyMix, roomLine, syncVocal } from "../media/mix.js";
+import {
+  mediaRevFor,
+  mediaUrl,
+  prefetchQueue,
+  applyMix,
+  roomLine,
+  activeTrackName,
+  ensureActiveTrack
+} from "../media/mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
@@ -99,7 +107,7 @@ function recoverSameSrc(el) {
   );
 }
 
-function bindKaraokeFallback(karaoke, vocal, songId) {
+function bindKaraokeFallback(karaoke, songId) {
   karaoke.onerror = () => {
     const t = karaoke.currentTime || state.resumeAt || 0;
     if (t > 0.5) {
@@ -108,17 +116,12 @@ function bindKaraokeFallback(karaoke, vocal, songId) {
     }
     if (state.mediaFallback === songId) return;
     state.mediaFallback = songId;
-    karaoke.src = mediaUrl(songId, "original.mp3");
+    const fallback = activeTrackName() === "original.mp3" ? "karaoke.m4a" : "original.mp3";
+    karaoke.dataset.track = fallback;
+    karaoke.src = mediaUrl(songId, fallback);
     karaoke.onloadedmetadata = () => {
       restoreResume(karaoke);
-      syncVocal(karaoke.currentTime || 0);
     };
-  };
-  vocal.onerror = () => {
-    const t = vocal.currentTime || state.resumeAt || 0;
-    if (t > 0.5 || String(vocal.getAttribute("src") || "").includes("guide.m4a")) return;
-    vocal.src = mediaUrl(songId, "guide.m4a");
-    vocal.onloadedmetadata = () => restoreResume(vocal);
   };
 }
 
@@ -129,15 +132,16 @@ export function claimLeader() {
 }
 
 export function pauseAudio() {
-  ["karaoke", "vocal", "mtv"].forEach((id) => $(id).pause());
+  ["karaoke", "mtv"].forEach((id) => $(id).pause());
   pauseNativeMtv();
 }
 
 export function stopAudioOnly() {
-  ["karaoke", "vocal"].forEach((id) => {
+  ["karaoke"].forEach((id) => {
     const el = $(id);
     el.pause();
     el.removeAttribute("src");
+    delete el.dataset.track;
     el.load();
   });
   $("mtv").pause();
@@ -159,10 +163,11 @@ export function stopPlayback() {
   state.lyricPaint.prev = "";
   state.lyricPaint.cur = "";
   state.lyricPaint.next = "";
-  ["karaoke", "vocal", "mtv"].forEach((id) => {
+  ["karaoke", "mtv"].forEach((id) => {
     const el = $(id);
     el.pause();
     el.removeAttribute("src");
+    delete el.dataset.track;
     el.load();
   });
   $("mtv").hidden = true;
@@ -259,7 +264,6 @@ export async function applyRoom(room) {
     state.lastLyricsAt = Date.now();
     state.lastFxCue = -1;
     state.lastMtvSeek = 0;
-    state.lastVocalSync = 0;
     state.boundMtvSong = "";
     syncNativeMv();
     state.hookLines = nativeMv()
@@ -317,8 +321,9 @@ export function startPlayback() {
   const songId = state.room && state.room.now_playing && state.room.now_playing.song_id;
   if (!songId) return;
   const karaoke = $("karaoke");
-  const vocal = $("vocal");
   bindStallGuard(karaoke);
+  bindKaraokeFallback(karaoke, songId);
+  ensureActiveTrack(songId);
   if (srcHasSong(karaoke, songId)) {
     applyMix();
     silenceMtv($("mtv"));
@@ -338,9 +343,6 @@ export function startPlayback() {
     } else if (!karaoke.paused) {
       $("gate").hidden = true;
     }
-    if (!karaoke.paused && !state.mediaStall && vocal.paused && !isMediaStalled(vocal)) {
-      api.playEl(vocal).catch(() => {});
-    }
     const mtv = $("mtv");
     if (
       mtv &&
@@ -359,10 +361,9 @@ export function startPlayback() {
   state.mediaFallback = "";
   state.mediaStall = 0;
   karaoke.preload = "auto";
-  vocal.preload = "auto";
-  karaoke.src = mediaUrl(songId, "karaoke.m4a");
-  vocal.src = mediaUrl(songId, "original.mp3");
-  bindKaraokeFallback(karaoke, vocal, songId);
+  karaoke.src = mediaUrl(songId, activeTrackName());
+  karaoke.dataset.track = activeTrackName();
+  bindKaraokeFallback(karaoke, songId);
   applyMix();
   silenceMtv($("mtv"));
   if (state.audioUnlocked) api.hookAudio();
@@ -370,16 +371,10 @@ export function startPlayback() {
     const fx = ensureStageFx();
     if (fx && state.lastFxCue < 0) fx.spawn();
   }
-  const ready = () => {
-    syncVocal(karaoke.currentTime || 0);
-  };
-  karaoke.onloadedmetadata = ready;
-  vocal.onloadedmetadata = ready;
   api
     .playEl(karaoke)
     .then(() => {
       $("gate").hidden = true;
-      return api.playEl(vocal).catch(() => {});
     })
     .catch(() => {
       if (state.audioUnlocked) api.schedulePlayRetries();

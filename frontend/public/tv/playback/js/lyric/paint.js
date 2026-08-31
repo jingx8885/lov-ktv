@@ -2,7 +2,6 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { applyLyricMode, paintLine } from "../../../../shared/lyrics/js/paint.js";
 import { state } from "../../../state.js";
 import { nativeMv, silenceMtv } from "../media/mtv.js";
-import { syncVocal } from "../media/mix.js";
 import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./clock.js";
 import {
   nativeMtvAvailable,
@@ -123,7 +122,6 @@ export function paint() {
     const karaoke = $("karaoke");
     const mtv = $("mtv");
     const t = lyricClockMs((karaoke.currentTime || 0) * 1000, state.lyrics);
-    syncVocal();
     if (nativeMtvAvailable()) {
       if (mtv) {
         mtv.hidden = true;

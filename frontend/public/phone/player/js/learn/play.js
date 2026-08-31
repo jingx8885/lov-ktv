@@ -1,7 +1,13 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
-import { applyPlayerVocalMix, hookPlayerAudio, pausePlayerTracks, syncGuide } from "../playback/controls.js";
+import {
+  applyPlayerVocalMix,
+  hookPlayerAudio,
+  pausePlayerTracks,
+  switchPlayerTrack,
+  syncGuide
+} from "../playback/controls.js";
 
 /** @param {string | HTMLElement | null | undefined} id */
 function node(id) {
@@ -97,7 +103,7 @@ export function playCueWindow(startMs, endMs, opts) {
   if (!audio) return Promise.resolve(false);
   if (opts && opts.vocal != null) {
     state.playerVocal = opts.vocal ? 1 : 0;
-    applyPlayerVocalMix();
+    switchPlayerTrack(state.playerVocal);
   }
   return new Promise((resolve) => {
     const start = Math.max(0, Number(startMs) || 0) / 1000;

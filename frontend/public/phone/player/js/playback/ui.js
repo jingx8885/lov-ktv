@@ -2,7 +2,14 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
-import { applyPlayerVocalMix, kickPlayerPaint, refreshPlayIcon, seekPlayerRatio, togglePlayer } from "./controls.js";
+import {
+  applyPlayerVocalMix,
+  kickPlayerPaint,
+  refreshPlayIcon,
+  seekPlayerRatio,
+  switchPlayerTrack,
+  togglePlayer
+} from "./controls.js";
 import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
@@ -22,7 +29,7 @@ export function bindPlayback() {
     $("playerVocal").setAttribute("aria-label", state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
     state.playerClockHold = null;
     state.playerClockHoldAt = 0;
-    applyPlayerVocalMix();
+    switchPlayerTrack(state.playerVocal).then(() => applyPlayerVocalMix());
   };
   ["playerSeek", "playerSeekDock"].forEach((id) => {
     const seek = $(id);

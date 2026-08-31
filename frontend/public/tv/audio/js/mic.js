@@ -31,7 +31,6 @@ export async function bindLiveMic(stream) {
     if (ctx && ctx.state === "suspended") await ctx.resume();
     const ok = await LovAec.attach(stream, {
       karaoke: $("karaoke"),
-      vocal: $("vocal"),
       hook: state.audioHook,
       gain: micGainValue()
     });

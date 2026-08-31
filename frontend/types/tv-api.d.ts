@@ -22,7 +22,6 @@ interface TvApi {
   mediaUrl(songId: string, name: string): string;
   prefetchQueue(snap: Room): void;
   applyMix(): void;
-  syncVocal(forceTime?: number): void;
   roomLine(snap: Room): string;
   ensureStageFx(): StageFxHandle | null;
   lyricsFingerprint(data: LyricsDoc | null): string;
@@ -55,7 +54,6 @@ interface TvState {
   hookLines: Set<string>;
   roomRtc: LovMicSession | null;
   lastMtvSeek: number;
-  lastVocalSync: number;
   boundMtvSong: string;
   skeleton: MtvSkeleton | null;
   loginTicket: string;

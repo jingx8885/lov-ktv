@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -17,9 +18,10 @@ from lovktv.agents.translate import (
     is_chinese_lang,
     translate_lines,
 )
+from lovktv.catalog.audio import extract_mv_mp3
 from lovktv.catalog.importer import import_song
 from lovktv.catalog.lyrics import parse_lrc
-from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal
+from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal, prepare_media
 from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.audio import extract_envelope, probe_duration_ms
 from lovktv.pipeline.bounds import pack_tokens_to_singing
@@ -199,6 +201,46 @@ def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
             return "off-vocal+vocal"
     separate_vocals(original if original.exists() else src, out_dir)
     return "onnx"
+
+
+def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
+    """Rebuild canonical playback tracks, extracting original audio from MVs."""
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
+    original = out_dir / "original.mp3"
+    native_mtv = out_dir / "mtv.mp4"
+
+    # Karaoke Mugen dual-track files keep their video without audio. Rebuild
+    # the full original by mixing the official instrumental and vocal tracks.
+    mugen_src = next(
+        (path for path in (out_dir / "mugen.mp4", out_dir / "mugen.webm") if path.exists()),
+        None,
+    )
+    if (
+        mugen_src
+        and source.get("provider") == "karaoke-mugen"
+        and (audio.get("dual_audio") or audio.get("source") == "mugen-dual")
+    ):
+        refreshed = prepare_media(mugen_src, out_dir)
+        skeleton["audio"] = {**audio, **refreshed}
+        skeleton["has_video"] = bool(refreshed.get("has_video"))
+        (out_dir / "skeleton.json").write_text(
+            json.dumps(skeleton, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    elif _has_native_mtv(out_dir) and native_mtv.exists():
+        if extract_mv_mp3(native_mtv, original):
+            audio["mv_audio_extracted"] = True
+            skeleton["audio"] = audio
+            (out_dir / "skeleton.json").write_text(
+                json.dumps(skeleton, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+
+    if not original.exists():
+        raise RuntimeError("MV 原曲提取失败，没有 original.mp3")
+    separate_vocals(original, out_dir)
+    return original
 
 
 def process_import(
@@ -604,6 +646,12 @@ def process_realign(
     try:
         if not src.exists():
             raise RuntimeError("没有可对齐的音频")
+        if force:
+            skeleton_path = out_dir / "skeleton.json"
+            skeleton = {}
+            if skeleton_path.exists():
+                skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
+            src = _refresh_audio_tracks(out_dir, skeleton)
         if (out_dir / "lyrics.manual.lrc").exists():
             apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
             return

@@ -58,7 +58,10 @@ def test_tv_does_not_restart_on_network_stall():
     ).read_text(encoding="utf-8")
     assert "kind is ApiKind.RoomSkip" in handler
     assert "RoomQueue || kind is ApiKind.RoomPlay || kind is ApiKind.RoomSkip" in handler
-    assert 'karaoke.src = mediaUrl(songId, "original.mp3")' in tick
+    assert "ensureActiveTrack(songId)" in tick
+    assert "activeTrackName()" in tick
+    assert 'const vocal = $("vocal")' not in tick
+    assert "api.playEl(vocal)" not in tick
     assert "if (srcHasSong(karaoke, songId))" in tick
     assert "wantsResume(karaoke)" in tick
     assert "wantsResume(karaoke)" in keep
@@ -220,6 +223,7 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     mix = (ROOT / "tv" / "playback" / "js" / "media" / "mix.js").read_text(
         encoding="utf-8"
     )
+    html = (ROOT / "tv.html").read_text(encoding="utf-8")
 
     # Cold start is explicitly armed by the same button in browser and APK WebView.
     assert 'must("start").onclick' in app
@@ -244,10 +248,11 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     # canplay may fire before playback actually resumes; only playing should
     # clear the stall guard so the vocal cannot restart during that gap.
     assert 'el.addEventListener("canplay"' not in tick
-    # The vocal track must not keep seeking back to a stalled karaoke clock;
-    # doing so produces an audible short loop while the master buffers.
-    assert "if (state.mediaStall)" in mix
-    assert "if (!vocal.paused) vocal.pause();" in mix
+    # TV playback has one audio element; changing original/backing replaces
+    # its source instead of running a second track and synchronising it.
+    assert "export function ensureActiveTrack" in mix
+    assert 'audio.src = url' in mix
+    assert 'id="vocal"' not in html
     assert "if (stamp === state.lastRoomStamp) return;" in tick
     assert "karaoke.readyState >= 3" in tick
     assert "!state.mediaStall" in tick

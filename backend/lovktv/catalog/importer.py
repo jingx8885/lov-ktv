@@ -16,6 +16,7 @@ from lovktv.catalog.mugen import (
 
 from .audio import (
     _ytdlp_download,
+    extract_mv_mp3,
     peek_audio_source,
     pick_bilibili_mv,
     try_bilibili_download,
@@ -262,7 +263,11 @@ def import_song(
         ok, got_title = try_ytdlp_search(ytdlp_query, mp3_path, "youtube")
         if ok:
             audio_file, audio_source, audio_title = "original.mp3", "youtube", got_title
+    mv_audio_extracted = False
     if has_video:
+        # Prefer the MV's own full mix. The downloaded audio remains the
+        # fallback for video-only sources.
+        mv_audio_extracted = extract_mv_mp3(mtv_path, mp3_path)
         sync_video_to_audio(mtv_path, mp3_path)
         lp = out_dir / "lyrics.json"
         if lp.exists():
@@ -298,7 +303,12 @@ def import_song(
             "kugou_id": str((kugou or {}).get("candidate", {}).get("id") or ""),
             "bvid": audio_bvid,
         },
-        "audio": {"file": audio_file, "source": audio_source, "title": audio_title},
+        "audio": {
+            "file": audio_file,
+            "source": audio_source,
+            "title": audio_title,
+            "mv_audio_extracted": mv_audio_extracted,
+        },
         "cover": cover_file,
         "has_video": has_video,
         "sentences": [

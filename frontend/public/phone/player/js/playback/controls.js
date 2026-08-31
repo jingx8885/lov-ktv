@@ -4,7 +4,7 @@ import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { ICO } from "../../../ui/js/icons.js";
 import { showToast } from "../../../ui/js/toast.js";
-import { mediaAhead } from "./media.js";
+import { mediaAhead, mediaUrl, mediaPath } from "./media.js";
 
 let paintPlayerCallback = null;
 let lastGuideSyncAt = 0;
@@ -49,8 +49,37 @@ export function unlockPlayerGesture() {
   if (!audio) return;
   hookPlayerAudio();
   audio.play().catch(() => {});
-  const guide = $("playerGuide");
-  if (guide && guide.getAttribute("src") && state.playerVocal) guide.play().catch(() => {});
+}
+
+export function playerTrackName(vocal = state.playerVocal) {
+  return vocal ? "original.mp3" : "karaoke.m4a";
+}
+
+/** Switch the single normal-playback track without mixing two full songs. */
+export function switchPlayerTrack(vocal = state.playerVocal, preserveTime = true) {
+  const audio = $("playerAudio");
+  const song = state.playerSong;
+  if (!audio || !song || !song.id) return Promise.resolve(false);
+  const url = mediaUrl(song.id, playerTrackName(vocal));
+  if (mediaPath(audio.currentSrc || audio.src) === mediaPath(url)) return Promise.resolve(true);
+  const time = preserveTime ? Number(audio.currentTime) || 0 : 0;
+  const wasPlaying = !audio.paused && !audio.ended;
+  audio.pause();
+  audio.src = url;
+  audio.load();
+  return new Promise((resolve) => {
+    const done = () => {
+      if (time > 0) {
+        try {
+          audio.currentTime = time;
+        } catch (err) {}
+      }
+      if (wasPlaying) audio.play().catch(() => {});
+      resolve(true);
+    };
+    audio.addEventListener("loadedmetadata", done, { once: true });
+    audio.addEventListener("error", () => resolve(false), { once: true });
+  });
 }
 
 export function togglePlayer() {
@@ -126,7 +155,12 @@ export function syncGuide(forceTime) {
   const guide = $("playerGuide");
   if (!guide || !guide.getAttribute("src")) return;
   const editing = document.body.classList.contains("edit-on");
-  const want = !state.playerHeld && !!(audio && audio.src) && (editing ? state.voiceTrackOn : !!state.playerVocal);
+  if (!editing) {
+    guide.pause();
+    guide.muted = true;
+    return;
+  }
+  const want = !state.playerHeld && !!(audio && audio.src) && state.voiceTrackOn;
   const clock = forceTime != null ? forceTime : audio.currentTime || 0;
   const now = Date.now();
   const shouldAlign = forceTime != null || now - lastGuideSyncAt >= 400;

@@ -564,16 +564,19 @@ def _to_mp3(src: Path, dest: Path) -> bool:
     return dest.exists() and dest.stat().st_size > 50_000
 
 
-def _to_mtv(src: Path, dest: Path) -> bool:
+def _to_mtv(src: Path, dest: Path, audio: Path | None = None) -> bool:
+    audio_args = ["-i", str(audio)] if audio is not None and audio.exists() else []
+    audio_map = ["-map", "1:a:0", "-c:a", "aac", "-b:a", "192k"] if audio_args else ["-an"]
     if (
         _ffmpeg(
             "-i",
             str(src),
+            *audio_args,
             "-map",
             "0:v:0",
+            *audio_map,
             "-c:v",
             "copy",
-            "-an",
             "-movflags",
             "+faststart",
             str(dest),
@@ -588,8 +591,10 @@ def _to_mtv(src: Path, dest: Path) -> bool:
         _ffmpeg(
             "-i",
             str(src),
+            *audio_args,
             "-map",
             "0:v:0",
+            *audio_map,
             "-c:v",
             "libx264",
             "-pix_fmt",
@@ -629,7 +634,7 @@ def download_mv(bvid: str, mp3_path: Path, video_path: Path | None = None) -> bo
             video_tmp = video_path.with_suffix(".bili.m4s")
             try:
                 if _curl_download(video_url, video_tmp, timeout=300):
-                    _to_mtv(video_tmp, video_path)
+                    _to_mtv(video_tmp, video_path, audio_tmp)
             finally:
                 if video_tmp.exists():
                     video_tmp.unlink()

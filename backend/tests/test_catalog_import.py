@@ -34,6 +34,24 @@ def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     assert video.read_bytes() == b"synced-video" * 200
 
 
+def test_extract_mv_mp3_maps_only_the_mv_audio_stream(tmp_path, monkeypatch):
+    video = tmp_path / "mtv.mp4"
+    original = tmp_path / "original.mp3"
+    video.write_bytes(b"video")
+    monkeypatch.setattr(audio.shutil, "which", lambda name: "/usr/bin/ffmpeg")
+
+    def fake_run(cmd, **kwargs):
+        from pathlib import Path
+        from types import SimpleNamespace
+
+        Path(cmd[-1]).write_bytes(b"extracted" * 100)
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(audio.subprocess, "run", fake_run)
+    assert audio.extract_mv_mp3(video, original)
+    assert original.exists()
+
+
 def test_complete_mugen_audio_syncs_existing_media_fast_path(tmp_path, monkeypatch):
     mp3 = tmp_path / "original.mp3"
     mtv = tmp_path / "mtv.mp4"

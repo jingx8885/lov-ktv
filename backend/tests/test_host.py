@@ -34,7 +34,7 @@ def test_host_info_uses_request_origin(tmp_path, monkeypatch):
     assert data["agent"]["model"] == ""
 
 
-def test_phone_player_overlays_guide_on_karaoke():
+def test_phone_player_switches_between_original_and_karaoke():
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2] / "frontend" / "public"
@@ -58,8 +58,11 @@ def test_phone_player_overlays_guide_on_karaoke():
         "function applyPlayerVocalMix", 1
     )[0]
     assert 'mediaUrl(song.id, "guide.m4a")' in player
-    assert "0.32" in sync
-    assert "playerVocal" in sync
+    assert "if (!editing)" in sync
+    assert "guide.pause()" in sync
+    assert "playerVocal" in player
+    assert "function switchPlayerTrack" in player
+    assert 'const selected = mediaUrl(song.id, playerTrackName())' in player
     assert "function mediaAhead" in player
 
 

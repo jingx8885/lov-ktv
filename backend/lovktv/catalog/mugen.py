@@ -604,13 +604,23 @@ def prepare_media(src: Path, out_dir: Path) -> dict[str, Any]:
         item.get("codec_type") == "video" for item in streams
     ) or src.suffix.lower() in {".mp4", ".mkv", ".webm"}
     if dual:
+        from lovktv.pipeline.loudness import loudnorm_args
+
         extract_audio(src, out_dir / "karaoke.m4a", dual["karaoke"])
-        extract_audio(src, original, dual["vocal"])
+        extract_audio(src, out_dir / "vocals.wav", dual["vocal"])
         extract_audio(src, out_dir / "guide.m4a", dual["vocal"])
         try:
-            extract_audio(src, out_dir / "vocals.wav", dual["vocal"])
+            _ffmpeg(
+                "-i", str(out_dir / "karaoke.m4a"),
+                "-i", str(out_dir / "vocals.wav"),
+                "-filter_complex",
+                "[0:a][1:a]amix=inputs=2:duration=longest:normalize=1[mix]",
+                "-map", "[mix]", *loudnorm_args(),
+                "-c:a", "libmp3lame", "-q:a", "2", str(original),
+            )
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
-            pass
+            # Keep unusual dual-track imports usable if mixing fails.
+            extract_audio(src, original, dual["vocal"])
         source = "mugen-dual"
         needs_separate = False
     elif src.suffix.lower() == ".mp3":

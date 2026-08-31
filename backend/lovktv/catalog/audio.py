@@ -185,6 +185,33 @@ def try_bilibili_download(
     return bilibili.download_mv(bvid, mp3_path, video_path)
 
 
+def extract_mv_mp3(video_path: Path, out_path: Path) -> bool:
+    """Extract the MV's full mix as the canonical original track."""
+    if not video_path.exists() or not video_path.is_file() or not shutil.which("ffmpeg"):
+        return False
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = out_path.with_suffix(out_path.suffix + ".mv.part")
+    try:
+        result = subprocess.run(
+            [
+                "ffmpeg", "-y", "-i", str(video_path),
+                "-map", "0:a:0", "-vn", "-c:a", "libmp3lame", "-q:a", "2",
+                str(tmp),
+            ],
+            check=False,
+            capture_output=True,
+            timeout=300,
+        )
+        if result.returncode != 0 or not tmp.exists() or tmp.stat().st_size <= 200:
+            return False
+        tmp.replace(out_path)
+        return True
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
 def sync_video_to_audio(video_path: Path, audio_path: Path) -> bool:
     """Replace video audio and make the video exactly as long as the MP3.
 

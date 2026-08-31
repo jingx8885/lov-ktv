@@ -5,7 +5,14 @@ import { t } from "../../../../shared/i18n/js/i18n.js";
 import { paintLyricMode } from "../../../room/js/room/mix.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
-import { applyPlayerVocalMix, hookPlayerAudio, setPlayIcon, syncGuide, unlockPlayerGesture } from "./controls.js";
+import {
+  applyPlayerVocalMix,
+  hookPlayerAudio,
+  playerTrackName,
+  setPlayIcon,
+  syncGuide,
+  unlockPlayerGesture
+} from "./controls.js";
 import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
@@ -66,12 +73,13 @@ export async function loadPlayerSong(songId, opts) {
   state.songMediaRev = song.media_rev || "";
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
-  audio.src = karaoke;
+  const selected = mediaUrl(song.id, playerTrackName());
+  audio.src = selected;
   audio.load();
   audio.onerror = () => {
     if (gen !== state.playerLoad) return;
-    if (!String(audio.currentSrc || audio.src).includes("original.mp3")) {
-      audio.src = original;
+    if (String(audio.currentSrc || audio.src).includes("original.mp3")) {
+      audio.src = karaoke;
       audio.load();
     }
   };
@@ -107,7 +115,7 @@ export async function loadPlayerSong(songId, opts) {
   api.renderAlignList();
   if (opts?.refreshPlayerCatalog === false) markCurrentPlayerPick(song.id);
   else renderPlayerList();
-  const ready = await waitMedia(audio, gen, karaoke);
+  const ready = await waitMedia(audio, gen, selected);
   if (gen !== state.playerLoad) return;
   try {
     audio.currentTime = 0;

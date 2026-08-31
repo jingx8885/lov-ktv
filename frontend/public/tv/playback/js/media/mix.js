@@ -65,6 +65,40 @@ export function prefetchQueue(snap) {
   urls.slice(0, 12).forEach(prefetchUrl);
 }
 
+export function activeTrackName() {
+  const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
+  return Number(mix) > 0.5 ? "original.mp3" : "karaoke.m4a";
+}
+
+/** Load exactly one playback track and keep the clock when toggling. */
+export function ensureActiveTrack(songId, preserveTime = true) {
+  const audio = $("karaoke");
+  if (!audio || !songId) return false;
+  const name = activeTrackName();
+  const url = mediaUrl(songId, name);
+  if (audio.getAttribute("src") === url) return false;
+  const time = preserveTime ? Number(audio.currentTime) || 0 : 0;
+  const wasPlaying = !audio.paused && !audio.ended;
+  audio.pause();
+  state.mediaFallback = "";
+  audio.dataset.track = name;
+  audio.src = url;
+  audio.load();
+  audio.addEventListener(
+    "loadedmetadata",
+    () => {
+      if (time > 0) {
+        try {
+          audio.currentTime = time;
+        } catch (err) {}
+      }
+      if (wasPlaying) audio.play().catch(() => {});
+    },
+    { once: true }
+  );
+  return true;
+}
+
 export function roomLine(snap) {
   const mix = Math.round(((snap && snap.vocal_mix) || 0) * 100);
   const vol = snap && snap.volume != null ? snap.volume : 80;
@@ -74,17 +108,15 @@ export function roomLine(snap) {
 }
 
 export function applyMix() {
-  const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
   const hostMac = state.room && state.room.host_volume_kind === "mac";
   const vol = hostMac ? 1 : ((state.room && state.room.volume) != null ? state.room.volume : 80) / 100;
   const micGain = ((state.room && state.room.mic_gain) != null ? state.room.mic_gain : 80) / 100;
   const karaoke = $("karaoke");
-  const vocal = $("vocal");
   const live = $("liveMic");
-  karaoke.muted = mix >= 0.99;
-  vocal.muted = mix <= 0.01;
-  karaoke.volume = karaoke.muted ? 0 : vol * (1 - mix);
-  vocal.volume = vocal.muted ? 0 : vol * mix;
+  const now = state.room && state.room.now_playing;
+  if (now && now.status === "ready") ensureActiveTrack(now.song_id);
+  karaoke.muted = false;
+  karaoke.volume = vol;
   const g = Math.max(0, Math.min(1, vol * micGain));
   const filtered = !!(window.LovAec && LovAec.isActive());
   if (filtered) LovAec.setGain(g);
@@ -95,37 +127,4 @@ export function applyMix() {
   }
   $("micLive").hidden = !(state.room && state.room.mic_on) && !state.pendingMic;
   $("qinfo").textContent = roomLine(state.room);
-}
-
-export function syncVocal(forceTime) {
-  const karaoke = $("karaoke");
-  const vocal = $("vocal");
-  const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
-  if (!vocal || !vocal.getAttribute("src")) return;
-  // Karaoke is the master clock.  While it is buffering, its currentTime can
-  // remain parked at the last buffered second while the vocal track keeps
-  // running.  Re-syncing on every paint frame then seeks the vocal backwards
-  // repeatedly (an audible one-second loop).  Hold the vocal until the master
-  // audio has resumed instead of fighting the media pipeline.
-  if (state.mediaStall) {
-    if (!vocal.paused) vocal.pause();
-    return;
-  }
-  if (mix <= 0.01 && forceTime == null) {
-    if (!vocal.paused) vocal.pause();
-    return;
-  }
-  if (vocal.readyState < 1) return;
-  const t = forceTime != null ? forceTime : karaoke.currentTime || 0;
-  const now = Date.now();
-  if (forceTime == null && now - state.lastVocalSync < 400) return;
-  state.lastVocalSync = now;
-  try {
-    if (Math.abs((vocal.currentTime || 0) - t) > 0.35) vocal.currentTime = t;
-  } catch (err) {}
-  if (karaoke && !karaoke.paused && karaoke.src) {
-    vocal.play().catch(() => {});
-  } else {
-    vocal.pause();
-  }
 }
