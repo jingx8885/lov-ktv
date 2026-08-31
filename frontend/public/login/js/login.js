@@ -16,6 +16,7 @@ let meUser = null;
 let meQuota = null;
 let scanLead = false;
 let errorRaw = "";
+let authMode = "login";
 
 function deviceId() {
   let id = localStorage.getItem(deviceKey);
@@ -72,8 +73,26 @@ function paintLead() {
     return;
   }
   $("heading").textContent = t("login.heading");
-  $("lead").textContent = scanLead ? t("login.leadScan") : t("login.lead");
+  $("panelKicker").textContent = t(authMode === "register" ? "login.registerKicker" : "login.panelKicker");
+  $("lead").textContent = scanLead ? t("login.leadScan") : t(authMode === "register" ? "login.registerLead" : "login.lead");
   paintQuota();
+}
+
+function setAuthMode(mode) {
+  authMode = mode === "register" ? "register" : "login";
+  const register = authMode === "register";
+  $("authMode").value = authMode;
+  $("authLoginTab").classList.toggle("active", !register);
+  $("authRegisterTab").classList.toggle("active", register);
+  $("authLoginTab").setAttribute("aria-selected", String(!register));
+  $("authRegisterTab").setAttribute("aria-selected", String(register));
+  $("passRegister").innerHTML = register
+    ? `<span data-i18n="login.hasAccount">已有账号？</span> <span class="switch-link" data-i18n="login.loginNow">立即登录</span>`
+    : `<span data-i18n="login.noAccount">还没有账号？</span> <span class="switch-link" data-i18n="login.register">立即注册</span>`;
+  $("password").setAttribute("autocomplete", register ? "new-password" : "current-password");
+  applyDom($("passBox"));
+  $("passLogin").textContent = t(register ? "login.registerAction" : "login.enter");
+  paintLead();
 }
 
 function renderUser(user, quota) {
@@ -166,6 +185,7 @@ $("logout").onclick = async () => {
   renderUser(null, meQuota);
   $("passBox").hidden = false;
   $("loginBox").hidden = false;
+  setAuthMode("login");
   paintLead();
 };
 
@@ -178,9 +198,18 @@ $("deviceLogin").onclick = async () => {
 
 $("passBox").addEventListener("submit", (event) => {
   event.preventDefault();
-  runPass("login");
+  runPass(authMode);
 });
-$("passRegister").onclick = () => runPass("register");
+$("authLoginTab").onclick = () => setAuthMode("login");
+$("authRegisterTab").onclick = () => setAuthMode("register");
+$("passRegister").onclick = () => setAuthMode(authMode === "register" ? "login" : "register");
+$("togglePassword").onclick = () => {
+  const input = $("password");
+  const visible = input.type === "text";
+  input.type = visible ? "password" : "text";
+  $("togglePassword").textContent = t(visible ? "login.showPassword" : "login.hidePassword");
+  $("togglePassword").setAttribute("aria-label", t(visible ? "login.showPassword" : "login.hidePassword"));
+};
 
 (async function boot() {
   errorRaw = params.get("error") || "";
@@ -210,6 +239,7 @@ $("passRegister").onclick = () => runPass("register");
   }
   $("passBox").hidden = false;
   $("loginBox").hidden = false;
+  setAuthMode("login");
   $("deviceLogin").hidden = wechatOn;
   if (wechatOn && !inWechat && ticket) {
     scanLead = true;
