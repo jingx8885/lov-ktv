@@ -211,6 +211,28 @@ def test_resume_stuck_align_keeps_bilibili_mv(monkeypatch, tmp_path):
     assert spawned[0] == ("process_realign", ("b1", "zh", False))
 
 
+def test_forced_realign_reimports_when_local_media_is_missing(monkeypatch, tmp_path):
+    song = {
+        "id": "m1",
+        "title": "Get along · 林原めぐみ",
+        "artist": "林原めぐみ",
+        "language": "ja",
+        "netease_id": "22689487",
+    }
+    calls = []
+    monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(jobs, "get_song", lambda song_id: song)
+    monkeypatch.setattr(
+        jobs,
+        "process_import",
+        lambda *args: calls.append(args),
+    )
+
+    jobs.process_realign("m1", "ja", force=True)
+
+    assert calls == [("m1", "Get along 林原めぐみ", "22689487", "ja")]
+
+
 def test_finish_ready_lyrics_keeps_bilibili_mv_even_when_rebuild(tmp_path, monkeypatch):
     out_dir = tmp_path / "s1"
     out_dir.mkdir()

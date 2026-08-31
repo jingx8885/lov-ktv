@@ -645,6 +645,23 @@ def process_realign(
         src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
     try:
         if not src.exists():
+            if force:
+                # A forced media refresh must also recover songs whose local
+                # volume was removed after it had been published to OSS.  In
+                # that case there is no clock to realign; re-import the
+                # pinned source first so the normal import pipeline rebuilds
+                # original/vocals/karaoke and lyrics together.
+                song = get_song(song_id) or {}
+                query = retry_query(song)
+                if not query:
+                    raise RuntimeError("没有可重新导入的歌曲信息")
+                process_import(
+                    song_id,
+                    query,
+                    str(song.get("netease_id") or ""),
+                    language or song.get("language"),
+                )
+                return
             raise RuntimeError("没有可对齐的音频")
         if force:
             skeleton_path = out_dir / "skeleton.json"
