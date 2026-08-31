@@ -330,6 +330,8 @@ def test_search_songs_marks_exact_duration_hits_first(monkeypatch):
     result = search.search_songs("Exact", count=10, page=1)
     assert result["hits"][0]["duration_match"] == "exact"
     assert result["hits"][0]["duration_match_score"] == 3
+    assert result["hits"][0]["lyrics_match"] == "exact"
+    assert result["hits"][0]["lyrics_match_score"] == 100
 
 
 def test_search_songs_queries_channels_together(monkeypatch):

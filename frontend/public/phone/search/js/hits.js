@@ -64,7 +64,16 @@ export function searchCard(hit) {
   const duration = Number(hit.duration || 0);
   const durationText =
     duration > 0 ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, "0")}` : "";
-  const match =
+  const lyricScore = Number(hit.lyrics_match_score);
+  const lyricLabel = Number.isFinite(lyricScore)
+    ? t("phone.search.lyricsMatch", { n: Math.round(lyricScore) })
+    : hit.lyrics_match === "available"
+      ? t("phone.search.lyricsAvailable")
+      : hit.lyrics_match === "none"
+        ? t("phone.search.lyricsNone")
+        : t("phone.search.lyricsUnknown");
+  const lyricMatch = `<span class="lyrics-match">${escapeHtml(lyricLabel)}</span>`;
+  const timingMatch =
     hit.duration_match === "exact"
       ? t("phone.search.durationExact")
       : hit.duration_match === "close"
@@ -74,7 +83,8 @@ export function searchCard(hit) {
     escapeHtml(hit.artist || t("common.unknownArtist")),
     isMv ? "MV" : t("phone.search.song"),
     durationText,
-    match
+    lyricMatch,
+    timingMatch
   ].filter(Boolean);
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">

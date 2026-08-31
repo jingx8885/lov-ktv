@@ -33,13 +33,24 @@ def test_complete_mugen_audio_syncs_existing_media_fast_path(tmp_path, monkeypat
 
 
 def test_duration_match_classifies_and_scores():
-    assert search.annotate_duration_match({"duration": 180, "lyrics_duration": 180})["duration_match"] == "exact"
+    exact = search.annotate_duration_match({"duration": 180, "lyrics_duration": 180})
+    assert exact["duration_match"] == "exact"
+    assert exact["lyrics_match"] == "exact"
+    assert exact["lyrics_match_score"] == 100
     close = search.annotate_duration_match({"duration": 180, "lyrics_duration": 174})
     assert close["duration_match"] == "close"
     assert close["duration_match_score"] == 1
+    assert close["lyrics_match_score"] == 97
     mismatch = search.annotate_duration_match({"duration": 180, "lyrics_duration": 120})
     assert mismatch["duration_match"] == "mismatch"
     assert mismatch["duration_match_score"] == -1
+    assert mismatch["lyrics_match_score"] == 67
+
+
+def test_lyric_match_status_is_explicit_when_duration_is_unknown():
+    assert search.annotate_duration_match({"lyrics_ready": True})["lyrics_match"] == "available"
+    assert search.annotate_duration_match({"lyrics_ready": False})["lyrics_match"] == "none"
+    assert search.annotate_duration_match({})["lyrics_match"] == "unknown"
 
 
 def test_search_ranks_late_exact_hit_before_unknowns(monkeypatch):

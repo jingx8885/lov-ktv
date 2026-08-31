@@ -83,6 +83,7 @@
 .search-upload:active { opacity: .45; }
 .search-upload:disabled { opacity: .35; }
 .hits { margin-top: 4px; }
+.lyrics-match { color: var(--accent); font-weight: 650; }
 .search-empty { margin: 28px 8px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
 
 @media (min-width: 700px) {

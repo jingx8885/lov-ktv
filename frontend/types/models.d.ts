@@ -19,6 +19,9 @@ interface SearchHit {
   lyrics_duration_ms?: number;
   duration_match?: "exact" | "close" | "mismatch" | "unknown" | string;
   duration_match_score?: number;
+  lyrics_ready?: boolean;
+  lyrics_match?: "exact" | "close" | "mismatch" | "available" | "none" | "unknown" | string;
+  lyrics_match_score?: number | null;
 }
 
 interface Song {

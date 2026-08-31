@@ -102,12 +102,31 @@ def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
     if song_ms is None or lyric_ms is None:
         hit.setdefault("duration_match", "unknown")
         hit.setdefault("duration_match_score", 0)
+        # Keep the public field explicit even when a provider does not expose
+        # both durations.  ``available`` means lyrics are present but cannot
+        # be compared to the audio length yet; ``unknown`` means the provider
+        # did not tell us whether lyrics exist.
+        if hit.get("lyrics_ready") is True:
+            hit.setdefault("lyrics_match", "available")
+        elif hit.get("lyrics_ready") is False:
+            hit.setdefault("lyrics_match", "none")
+        else:
+            hit.setdefault("lyrics_match", "unknown")
+        hit.setdefault("lyrics_match_score", None)
         return hit
     diff = abs(song_ms - lyric_ms)
     ratio = diff / max(song_ms, lyric_ms)
     hit["duration_diff_ms"] = diff
     hit["duration_match"] = "exact" if diff <= 1500 else ("close" if ratio <= 0.08 else "mismatch")
     hit["duration_match_score"] = 3 if diff <= 1500 else (2 if ratio <= 0.03 else (1 if ratio <= 0.08 else -1))
+    # A human-readable score for the search card.  Clamp to zero so a very
+    # different lyric track is never presented as a negative percentage.
+    hit["lyrics_match"] = hit["duration_match"]
+    hit["lyrics_match_score"] = (
+        100
+        if hit["duration_match"] == "exact"
+        else max(0, min(100, int(round((1 - ratio) * 100))))
+    )
     return hit
 
 
