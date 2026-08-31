@@ -81,7 +81,7 @@ export function mount(root, deps = {}) {
     }
     paintVocalMix(must("vocalMix").classList.contains("on") ? 1 : 0);
     paintLyricMode(state.lyricMode, state.nowLanguage);
-    paintDisplayMode(document.querySelector("#playerDisplayMode")?.classList.contains("on") ? "mv" : "lyrics");
+    paintDisplayMode();
     paintDeskLyrics();
     paintPhoneMic();
     updatePlayOrderBtns();

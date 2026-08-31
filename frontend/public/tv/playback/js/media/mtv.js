@@ -45,7 +45,6 @@ export function silenceMtv(mtv) {
 }
 
 export function nativeMv() {
-  if (state.room && state.room.display_mode === "lyrics") return false;
   return !!(
     (state.skeleton && state.skeleton.has_video) ||
     (state.lyrics && state.lyrics.native_video === true) ||
@@ -87,15 +86,6 @@ export function syncNativeMv() {
 export function bindMtv(songId) {
   const mtv = $("mtv");
   if (!songId) return;
-  if (state.room && state.room.display_mode === "lyrics") {
-    killHtmlMtv(mtv);
-    document.body.classList.remove("has-mtv", "has-native-mv", "has-native-player");
-    document.body.classList.remove("has-mtv-cover");
-    glassStage(false);
-    syncNativeMv();
-    api.ensureStageFx();
-    return;
-  }
   const htmlSrc = mediaUrl(songId, "mtv.mp4");
   const abs = (location.origin || "") + htmlSrc;
   if (nativePlayer()) {

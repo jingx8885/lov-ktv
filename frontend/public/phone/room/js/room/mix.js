@@ -9,6 +9,22 @@ import { showToast } from "../../../ui/js/toast.js";
 import { closeOverlay } from "../../../ui/js/overlays.js";
 import { nativeMicState, setNativeGain } from "../../../platform.js";
 
+const DISPLAY_MODE_KEY = "lovktv.phone.displayMode";
+
+function localDisplayMode() {
+  try {
+    return localStorage.getItem(DISPLAY_MODE_KEY) === "lyrics" ? "lyrics" : "mv";
+  } catch (err) {
+    return "mv";
+  }
+}
+
+function saveDisplayMode(mode) {
+  try {
+    localStorage.setItem(DISPLAY_MODE_KEY, mode === "lyrics" ? "lyrics" : "mv");
+  } catch (err) {}
+}
+
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
 }
@@ -38,6 +54,7 @@ export function paintPaused(paused) {
 }
 
 export function paintDisplayMode(mode) {
+  if (mode == null) mode = localDisplayMode();
   const on = String(mode || "mv").toLowerCase() !== "lyrics";
   document.body.classList.toggle("display-mv", on);
   document.body.classList.toggle("display-lyrics", !on);
@@ -99,7 +116,7 @@ export function paintMix(room) {
   const micGainVal = $("micGainVal");
   if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
-  paintDisplayMode(room.display_mode);
+  paintDisplayMode(localDisplayMode());
   paintPaused(!!room.paused);
   const vol = room.host_volume != null ? room.host_volume : room.volume != null ? room.volume : 80;
   const gain = room.mic_gain != null ? room.mic_gain : 80;
@@ -162,7 +179,7 @@ export function bindMixSlider(id, key) {
 }
 
 export function bindMix() {
-  paintDisplayMode("mv");
+  paintDisplayMode(localDisplayMode());
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
@@ -189,8 +206,8 @@ export function bindMix() {
   if (displayMode) {
     displayMode.onclick = () => {
       const next = displayMode.classList.contains("on") ? "lyrics" : "mv";
+      saveDisplayMode(next);
       paintDisplayMode(next);
-      postMix({ display_mode: next });
     };
   }
   if ($("vocalMix"))

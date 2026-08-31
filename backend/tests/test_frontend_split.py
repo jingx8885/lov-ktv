@@ -91,6 +91,22 @@ def test_entry_html_stays_thin_and_uses_feature_folders():
     assert vocal[vocal.index("<svg") :] != iem[iem.index("<svg") :]
 
 
+def test_phone_display_mode_is_local_and_tv_does_not_follow_room_mode():
+    phone_mix = (ROOT / "phone" / "room" / "js" / "room" / "mix.js").read_text(
+        encoding="utf-8"
+    )
+    tv_mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
+        encoding="utf-8"
+    )
+    tv_tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'lovktv.phone.displayMode' in phone_mix
+    assert 'postMix({ display_mode: next })' not in phone_mix
+    assert 'display_mode === "lyrics"' not in tv_mtv
+    assert 'display_mode === "lyrics"' not in tv_tick
+
+
 def test_split_assets_are_served(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv import main
