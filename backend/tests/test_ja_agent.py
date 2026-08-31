@@ -102,6 +102,9 @@ def test_expand_keeps_new_agent_word_with_complete_reading():
     assert expand_units(
         [{"sing": "見つめて", "label": "みつめて", "romaji": "mitsumete"}]
     ) == [("見つめて", "みつめて")]
+    assert expand_units(
+        [{"sing": "きえる", "label": "消える", "romaji": "kieru"}]
+    ) == [("消える", "きえる")]
 
 
 def test_apply_keeps_romaji_with_new_agent_word_unit():

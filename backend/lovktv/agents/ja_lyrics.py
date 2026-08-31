@@ -26,6 +26,7 @@ _INDEX_UNIT = re.compile(r"^\d+\.$")
 _LATIN_PART = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
 _LATIN_WORD = re.compile(r"[A-Za-z]+")
 _HIRA = re.compile(r"[\u3040-\u309f]")
+_KANJI_RUN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff々]+")
 # The agent also supplies Chinese line/unit meanings. Bump the cache schema so
 # old literal glosses are regenerated after semantic-translation prompt changes.
 ANNOTATION_SCHEMA = "restore-ja-v3"
@@ -470,6 +471,18 @@ def expand_units(
                     specs.extend(leftover)
                 continue
         if kanji_only:
+            # Legacy responses may put a complete word such as
+            # ``きえる / 消える`` in one unit. When the source is romaji,
+            # preserve that one-to-one unit instead of letting pykakasi split
+            # the okurigana into ``消え`` + ``る`` and leaving the unit's
+            # ``kieru`` romaji on only the first piece.
+            if (
+                _HIRA.search(raw_label)
+                and len(_KANJI_RUN.findall(raw_label)) == 1
+                and not _KANJI.search(source)
+            ):
+                specs.append((raw_label, surface))
+                continue
             snippet = (
                 raw_label
                 if _HIRA.search(raw_label)
