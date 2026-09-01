@@ -174,6 +174,8 @@ export default {
   "phone.lyric.all": "すべて",
   "phone.player.songLearn": "この曲",
   "phone.player.displayMode": "再生モード",
+  "phone.player.fullscreen": "MVを全画面",
+  "phone.player.exitFullscreen": "全画面を終了",
   "phone.player.mvMode": "MV",
   "phone.player.lyricsOnly": "歌詞",
   "phone.player.back": "選曲台に戻る",

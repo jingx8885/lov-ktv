@@ -103,6 +103,8 @@ export async function loadPlayerSong(songId, opts) {
     mtv.onloadeddata = () => {
       if (gen !== state.playerLoad) return;
       mtv.hidden = !document.body.classList.contains("display-mv");
+      const fullscreen = $("playerFullscreen");
+      if (fullscreen) fullscreen.hidden = !document.body.classList.contains("display-mv");
       try {
         mtv.currentTime = 0;
       } catch (err) {}

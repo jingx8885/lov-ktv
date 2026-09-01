@@ -201,6 +201,11 @@
             <video id="playerMtv" class="player-mtv" muted playsinline preload="auto" hidden></video>
             <img class="player-cover" id="playerCover" alt="" hidden />
             <div class="player-art-shade"></div>
+            <button class="player-fullscreen-btn" id="playerFullscreen" type="button" hidden data-i18n-aria="phone.player.fullscreen">
+              <svg class="fullscreen-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v2H6v4H4V4zm10 0h6v6h-2V6h-4V4zM4 14h2v4h4v2H4v-6zm14 0h2v6h-6v-2h4v-4z"/></svg>
+              <svg class="fullscreen-close" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h2v4h4v2H8V4zm6 10h2v6h-2v-6zM4 14h6v2H6v4H4v-6zm10-10h6v6h-2V6h-4V4z"/></svg>
+              <span class="vh" id="playerFullscreenLabel" data-i18n="phone.player.fullscreen">全屏MV</span>
+            </button>
           </div>
           <div class="player-clock">
             <b id="playerNow">0:00</b>

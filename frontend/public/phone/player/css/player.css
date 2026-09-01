@@ -430,6 +430,30 @@ button.tl-head {
   border-radius: inherit;
   background: #070a14;
 }
+.player-fullscreen-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  background: rgba(0, 0, 0, .52);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+.player-fullscreen-btn[hidden] { display: none !important; }
+.player-fullscreen-btn svg { width: 21px; height: 21px; fill: currentColor; }
+.player-fullscreen-btn .fullscreen-close { display: none; }
+.player-fullscreen-btn.is-active .fullscreen-open { display: none; }
+.player-fullscreen-btn.is-active .fullscreen-close { display: block; }
 .player-art-shade {
   position: absolute;
   inset: 0;
@@ -1421,5 +1445,94 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
      the video pixels, otherwise it still occupies and blocks the lyric area. */
   body.phone[data-page="player"].display-lyrics .player-stage {
     display: none;
+  }
+}
+
+/* Fullscreen MV follows the native video convention: landscape canvas,
+   contained video, and a compact subtitle rail underneath. */
+@media (max-width: 699px) {
+  body.phone.player-fullscreen {
+    overflow: hidden;
+  }
+  body.phone.player-fullscreen .page-player {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    width: 100%;
+    height: 100dvh;
+    max-height: none;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  body.phone.player-fullscreen .player-main,
+  body.phone.player-fullscreen .player-main:fullscreen {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    min-height: 0;
+    gap: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  body.phone.player-fullscreen .player-head,
+  body.phone.player-fullscreen .player-sheet,
+  body.phone.player-fullscreen .player-sheet-scrim,
+  body.phone.player-fullscreen .player-dock {
+    display: none !important;
+  }
+  body.phone.player-fullscreen .player-stage {
+    position: relative;
+    inset: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    display: block;
+    margin: 0;
+  }
+  body.phone.player-fullscreen .player-art {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+  }
+  body.phone.player-fullscreen .player-mtv {
+    object-fit: contain;
+    border-radius: 0;
+  }
+  body.phone.player-fullscreen .player-lyric-stack {
+    position: relative;
+    inset: auto;
+    flex: 0 0 clamp(76px, 20dvh, 150px);
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, .92);
+  }
+  body.phone.player-fullscreen .player-lyrics {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 8px 16px 12px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, .95);
+  }
+  body.phone.player-fullscreen .player-lyrics .line {
+    font-size: clamp(18px, 4.8vw, 34px);
+  }
+  body.phone.player-fullscreen .player-lyrics .prev,
+  body.phone.player-fullscreen .player-lyrics .next {
+    font-size: clamp(11px, 2.8vw, 17px);
+  }
+  body.phone.player-fullscreen .player-fullscreen-btn {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
   }
 }

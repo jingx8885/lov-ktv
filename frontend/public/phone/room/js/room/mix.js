@@ -25,6 +25,62 @@ function saveDisplayMode(mode) {
   } catch (err) {}
 }
 
+function fullscreenTarget() {
+  return $("playerMain") || $("page-player");
+}
+
+function fullscreenActive() {
+  return !!(
+    document.fullscreenElement ||
+    document.webkitFullscreenElement ||
+    document.body.classList.contains("player-fullscreen")
+  );
+}
+
+function paintPlayerFullscreen() {
+  const btn = $("playerFullscreen");
+  if (!btn) return;
+  const active = fullscreenActive();
+  const canShow = !!$("playerMtv")?.src && document.body.classList.contains("display-mv");
+  btn.hidden = !canShow;
+  btn.classList.toggle("is-active", active);
+  btn.setAttribute("aria-label", active ? t("phone.player.exitFullscreen") : t("phone.player.fullscreen"));
+  const label = $("playerFullscreenLabel");
+  if (label) label.textContent = active ? t("phone.player.exitFullscreen") : t("phone.player.fullscreen");
+}
+
+async function exitPlayerFullscreen() {
+  document.body.classList.remove("player-fullscreen");
+  try {
+    if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
+    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+  } catch (err) {}
+  try {
+    if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+  } catch (err) {}
+  paintPlayerFullscreen();
+}
+
+async function enterPlayerFullscreen() {
+  if (!document.body.classList.contains("display-mv") || !$("playerMtv")?.src) return;
+  const target = fullscreenTarget();
+  if (!target) return;
+  document.body.classList.add("player-fullscreen");
+  try {
+    if (target.requestFullscreen) await target.requestFullscreen({ navigationUI: "hide" });
+    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+  } catch (err) {}
+  try {
+    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
+  } catch (err) {}
+  paintPlayerFullscreen();
+}
+
+async function togglePlayerFullscreen() {
+  if (fullscreenActive()) await exitPlayerFullscreen();
+  else await enterPlayerFullscreen();
+}
+
 export function mixEditing() {
   return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
 }
@@ -65,6 +121,7 @@ export function paintDisplayMode(mode) {
   if (mtv) mtv.hidden = !(on && !!mtv.src);
   if (!on && mtv && !mtv.paused) mtv.pause();
   if (art) art.classList.toggle("has-mtv", on && !!mtv?.src);
+  paintPlayerFullscreen();
   const btn = $("playerDisplayMode");
   const label = $("playerDisplayModeLabel");
   if (btn) {
@@ -187,6 +244,10 @@ export function bindMixSlider(id, key) {
 
 export function bindMix() {
   paintDisplayMode(localDisplayMode());
+  const fullscreenBtn = $("playerFullscreen");
+  if (fullscreenBtn) fullscreenBtn.onclick = () => togglePlayerFullscreen();
+  document.addEventListener("fullscreenchange", paintPlayerFullscreen);
+  document.addEventListener("webkitfullscreenchange", paintPlayerFullscreen);
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
