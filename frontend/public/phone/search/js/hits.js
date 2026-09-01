@@ -105,10 +105,12 @@ export function paintSearchHits(q, hasMore) {
     state.searchHits.map(searchCard).join("") ||
     `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.none")}</p><span class="tiny">${t("phone.search.noneHint")}</span></div>`;
   const tail = hasMore
-    ? `<div class="list-more list-sentinel" data-page="${state.searchPage + 1}">${t("common.loading")}</div>`
+    ? `<button type="button" class="list-more list-sentinel" data-page="${state.searchPage + 1}">${t("common.loadMore")}</button>`
     : "";
   $("hits").innerHTML = cards + tail;
   bindSearchHits(q);
+  const more = $("hits").querySelector(".list-more");
+  if (more) more.onclick = () => runSearch(Number(more.dataset.page) || state.searchPage + 1, true);
   if (state.previewId) {
     const live = $("hits").querySelector(`[data-preview="${state.previewId}"]`);
     if (live) {
@@ -133,6 +135,7 @@ export async function runSearch(page, append = false) {
     $("hits").innerHTML = `<div class="empty-state"><p>${t("common.searching")}</p></div>`;
   } else if (moreBtn) {
     moreBtn.textContent = t("common.loading");
+    moreBtn.disabled = true;
   }
   /** @type {{ ok: boolean, data: SearchPage } | null} */
   const loaded = await fetchJson(`/api/search?q=${encodeURIComponent(q)}&page=${state.searchPage}&count=10`).catch(
@@ -142,6 +145,7 @@ export async function runSearch(page, append = false) {
   if (!loaded) {
     if (append && moreBtn) {
       moreBtn.textContent = t("common.loadMore");
+      moreBtn.disabled = false;
       showToast(t("common.loadFailed"));
       return;
     }
@@ -152,6 +156,7 @@ export async function runSearch(page, append = false) {
   if (!ok) {
     if (append && moreBtn) {
       moreBtn.textContent = t("common.loadMore");
+      moreBtn.disabled = false;
       showToast(data.detail || t("common.loadFailed"));
       return;
     }

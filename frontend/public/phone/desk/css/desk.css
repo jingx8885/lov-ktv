@@ -392,8 +392,19 @@ body.phone .page-desk > .lyric-seg { display: none; }
   gap: 8px;
   padding: 8px 0 4px;
 }
-.lib-page-num { color: var(--muted); font-size: 13px; }
+.lib-page-num {
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+}
+.lib-page-num.is-more { cursor: pointer; }
 .lib-page-num.is-more { color: var(--accent); }
+.lib-page-num.is-more:hover { background: rgba(255, 55, 95, .08); }
+.lib-page-num:disabled { cursor: default; opacity: .7; }
 .desk-row {
   display: flex;
   align-items: center;

@@ -616,9 +616,12 @@ body.phone .source-tag.youtube { background: #3a2020; color: #ff8a8a; }
   border-radius: 0;
   background: transparent;
   color: var(--accent);
+  cursor: pointer;
+  font: inherit;
   font-size: 15px;
   font-weight: 400;
 }
+.list-more:disabled { cursor: default; opacity: .7; }
 .empty-state {
   padding: 48px 20px 32px;
   text-align: center;
