@@ -42,8 +42,9 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 
 ## App 发版
 
-- 版本写在仓库根 `VERSION`（`name=` 给人看，`code=` 给 Android `versionCode`，必须递增）。
-- **每次发版先改 `VERSION`，提交后打 annotated tag `v{name}`，再推 tag。**
+- 版本写在仓库根 `VERSION`：`name=` 给人看，格式为 `YYYY.M.D.N`；其中 `N` 是当天的发版序号，每个自然日从 `1` 重新计数，不能沿用前一天的序号。`code=` 给 Android `versionCode`，格式为 `YYYYMMDDNN`，日期变化时每日序号归零但整体仍必须保持递增。
+- 同一天发版递增 `N`；跨自然日发版将 `N` 重置为 `1`。不要为了保持旧序号而继续累加到下一天。
+- **每次发版先按上述规则改 `VERSION`，提交后打 annotated tag `v{name}`，再推 tag。**
 
 ```bash
 python scripts/version.py          # 看当前 name/code/tag
