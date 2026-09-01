@@ -73,15 +73,13 @@ export async function loadPlayerSong(songId, opts) {
   state.songMediaRev = song.media_rev || "";
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
-  // Listen mode resolves playerTrackName to the karaoke clock source; the
-  // guide stem is preloaded alongside it for an instant original toggle.
   const selected = mediaUrl(song.id, playerTrackName());
   audio.src = selected;
   audio.load();
   audio.onerror = () => {
     if (gen !== state.playerLoad) return;
-    if (String(audio.currentSrc || audio.src).includes("karaoke.m4a")) {
-      audio.src = original;
+    if (String(audio.currentSrc || audio.src).includes("original.mp3")) {
+      audio.src = karaoke;
       audio.load();
     }
   };
