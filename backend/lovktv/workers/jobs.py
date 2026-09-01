@@ -663,15 +663,22 @@ def process_realign(
                 )
                 return
             raise RuntimeError("没有可对齐的音频")
-        if force:
-            skeleton_path = out_dir / "skeleton.json"
-            skeleton = {}
-            if skeleton_path.exists():
-                skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
-            src = _refresh_audio_tracks(out_dir, skeleton)
+        # Karaoke Mugen subtitles are authored against their own media clock;
+        # running Whisper/agent alignment over them only destroys trusted
+        # word timings. Keep the pre-timed timeline on manual realign too.
+        skeleton_path = out_dir / "skeleton.json"
+        skeleton = {}
+        if skeleton_path.exists():
+            skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
         if (out_dir / "lyrics.manual.lrc").exists():
             apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
             return
+        if _is_mugen_skeleton(skeleton) and (out_dir / "lyrics.json").exists():
+            _restore_mugen_timeline(out_dir, language or skeleton.get("language"))
+            _finish_ready_lyrics(song_id, out_dir, src, language, rebuild_mtv)
+            return
+        if force:
+            src = _refresh_audio_tracks(out_dir, skeleton)
         if force:
             # A user-requested recalculation must not silently reuse stale
             # Whisper or agent alignment caches from the previous run.
@@ -690,6 +697,24 @@ def process_realign(
         _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=rebuild_mtv)
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))
+
+
+def _restore_mugen_timeline(out_dir: Path, language: str | None = None) -> bool:
+    """Rebuild a trusted Mugen timeline from its untouched ASS source."""
+    ass_path = out_dir / "mugen.ass"
+    if not ass_path.exists():
+        return False
+    try:
+        from lovktv.catalog.mugen import timeline_from_ass
+
+        timeline = timeline_from_ass(
+            ass_path.read_text(encoding="utf-8", errors="replace"), language or "ja"
+        )
+        timeline["native_video"] = _has_native_mtv(out_dir)
+        write_subtitles(timeline, out_dir)
+        return True
+    except (OSError, UnicodeError, RuntimeError):
+        return False
 
 
 def _align_and_mtv(

@@ -191,6 +191,58 @@ def test_native_timed_requires_close_media_duration(tmp_path, monkeypatch):
     assert not jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
 
 
+def test_realign_keeps_karaoke_mugen_timeline(tmp_path, monkeypatch):
+    out = tmp_path / "m1"
+    out.mkdir()
+    (out / "original.mp3").write_bytes(b"audio")
+    (out / "lyrics.json").write_text(
+        '{"alignment_source":"karaoke-mugen","cues":[{"text":"hello","start_ms":100,"end_ms":500}]}',
+        encoding="utf-8",
+    )
+    (out / "skeleton.json").write_text(
+        '{"source":{"provider":"karaoke-mugen"},"audio":{"source":"mugen"}}',
+        encoding="utf-8",
+    )
+    called = []
+    monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(jobs, "update_song", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        jobs,
+        "_finish_ready_lyrics",
+        lambda *args, **kwargs: called.append((args, kwargs)),
+    )
+    monkeypatch.setattr(
+        jobs,
+        "_align_and_mtv",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("must keep Mugen timing")),
+    )
+    jobs.process_realign("m1", "ja", force=True)
+    assert called and called[0][0][0:2] == ("m1", out)
+
+
+def test_restore_mugen_timeline_uses_untouched_ass(tmp_path, monkeypatch):
+    out = tmp_path / "m1"
+    out.mkdir()
+    (out / "mugen.ass").write_text("original ass", encoding="utf-8")
+    seen = {}
+
+    def fake_timeline(raw, language):
+        seen["args"] = (raw, language)
+        return {
+            "language": language,
+            "alignment_source": "karaoke-mugen",
+            "cues": [{"text": "hello", "start_ms": 100, "end_ms": 500, "tokens": []}],
+        }
+
+    monkeypatch.setattr("lovktv.catalog.mugen.timeline_from_ass", fake_timeline)
+    monkeypatch.setattr(jobs, "write_subtitles", lambda timeline, out_dir: seen.update(timeline))
+    monkeypatch.setattr(jobs, "_has_native_mtv", lambda out_dir: True)
+    assert jobs._restore_mugen_timeline(out, "en") is True
+    assert seen["args"] == ("original ass", "en")
+    assert seen["alignment_source"] == "karaoke-mugen"
+    assert seen["native_video"] is True
+
+
 def test_resume_stuck_align_keeps_bilibili_mv(monkeypatch, tmp_path):
     out = tmp_path / "b1"
     out.mkdir()

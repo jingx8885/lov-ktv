@@ -1,6 +1,7 @@
 import json
 import sys
 import types
+import wave
 
 from lovktv.pipeline.transcribe import _parse_whisper_json, transcribe_words
 
@@ -137,3 +138,142 @@ def test_transcribe_uses_faster_whisper_when_cli_missing(monkeypatch, tmp_path):
     assert words == [
         {"text": "hello", "start_ms": 1250, "end_ms": 2500, "segment": 0}
     ]
+
+
+def test_transcribe_uses_fish_remote_with_interpolated_timestamps(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "fish-transcribe-1")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+
+    seen = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "duration": 1.0,
+                "language_code": "en",
+                "segments": [{"start": 0.0, "end": 1.0, "text": "hello world"}],
+                "text": "hello world",
+            }
+
+    def fake_post(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+
+    assert seen["url"] == "https://agent.example/v1/audio/transcriptions"
+    assert seen["headers"] == {"Authorization": "Bearer secret"}
+    assert seen["data"] == {
+        "model": "fish-transcribe-1",
+        "language": "en",
+        "ignore_timestamps": "false",
+    }
+    assert [word["text"] for word in words] == ["hello", "world"]
+    assert words[0]["start_ms"] == 0
+    assert words[-1]["end_ms"] == 1000
+    assert '"provider": "fish-audio"' in (tmp_path / "asr.json").read_text()
+
+
+def test_transcribe_uses_grok_verbose_word_timestamps(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example/v1")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+
+    seen = {}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "task": "transcribe",
+                "text": "Hello world",
+                "words": [
+                    {"start": 0.04, "end": 0.42, "text": "Hello,"},
+                    {"start": 0.9, "end": 1.25, "text": "world"},
+                ],
+            }
+
+    def fake_post(url, **kwargs):
+        seen["url"] = url
+        seen.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+
+    assert seen["url"] == "https://agent.example/v1/audio/transcriptions"
+    assert seen["data"] == {
+        "model": "grok-stt",
+        "language": "en",
+        "response_format": "verbose_json",
+        "timestamp_granularities[]": "word",
+    }
+    assert words == [
+        {"text": "Hello,", "start_ms": 40, "end_ms": 420, "segment": 0},
+        {"text": "world", "start_ms": 900, "end_ms": 1250, "segment": 1},
+    ]
+    assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
+
+
+def test_remote_model_does_not_reuse_legacy_whisper_cache(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    cache = tmp_path / "asr.json"
+    cache.write_text(
+        json.dumps({"language": "ja", "segments": [{"start": 0, "end": 1, "text": "旧缓存"}]}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"text": "new", "words": [{"start": 0, "end": 1, "text": "new"}]}
+
+    monkeypatch.setattr(transcribe.httpx, "post", lambda *_args, **_kwargs: Response())
+    words = transcribe.transcribe_words(audio, "en", cache_path=cache)
+    assert words[0]["text"] == "new"
+
+
+def test_remote_skips_silent_wav(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "silent.wav"
+    with wave.open(str(audio), "wb") as handle:
+        handle.setnchannels(1)
+        handle.setsampwidth(2)
+        handle.setframerate(16000)
+        handle.writeframes(b"\x00\x00" * 16000)
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "httpx", types.SimpleNamespace(post=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("silent chunk must be skipped"))))
+    assert transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json") == []

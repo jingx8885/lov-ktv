@@ -82,10 +82,14 @@ Windows PowerShell 可使用 `.venv\Scripts\python -m pip install -e backend`，
 | `WECHAT_APP_ID` / `WECHAT_APP_SECRET` | 微信开放平台登录 |
 | `WECHAT_MP_APP_ID` / `WECHAT_MP_APP_SECRET` | 微信公众号内快捷登录 |
 | `LOVKTV_DATABASE_URL` | PostgreSQL 连接串 |
+| `LOVKTV_AGENT_URL` / `LOVKTV_AGENT_KEY` | OpenAI 兼容 Agent 网关（日语注音、歌词对齐） |
+| `LOVKTV_ASR_MODEL` | 可选远程 ASR 模型（`fish-transcribe-1` / `grok-stt`）；调用同一 Agent 的 `/v1/audio/transcriptions`，失败时回退本地 faster-whisper |
 | `ALIYUN_OSS_*` | 阿里云 OSS 成品媒体存储 |
 | `LOVKTV_HTTPS_PROXY` | 仅供网易试听 / yt-dlp 下载链路使用的 HTTPS 代理 |
 
 不要提交 `.env`、密钥、`data/`、曲库或构建出的 APK。
+
+`fish-transcribe-1` 当前返回分段 `start` / `end` 时间戳，不返回词级时间戳；服务端会按分段文本插值生成词级候选时间。`grok-stt` 使用 `verbose_json` + `timestamp_granularities[]=word` 可返回原生词级时间戳。两者都适合作为远程兜底或对比实验，生产默认仍建议保留本地 faster-whisper 回退。
 
 本地验收：`scripts/accept.sh` 使用仓库根目录 `.venv` 和锁定的 `backend/uv.lock`。
 

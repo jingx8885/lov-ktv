@@ -3,18 +3,357 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import os
+import re
 import shutil
 import subprocess
+import tempfile
+import wave
 import time
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 from lovktv.core.config import WHISPER_DIR
 from lovktv.pipeline.language import whisper_language
 
 WHISPER_BIN = shutil.which("whisper")
+_FISH_MODEL = "fish-transcribe-1"
+_GROK_MODEL = "grok-stt"
+
+
+def _remote_asr_model() -> str:
+    """Return the explicitly configured remote ASR model, if any."""
+    from lovktv.storage import settings
+
+    configured = str(settings.get("asr_model") or "").strip()
+    if not configured:
+        configured = str(os.environ.get("LOVKTV_ASR_MODEL") or "").strip()
+    return configured
+
+
+def _cache_matches_model(path: Path, remote_model: str) -> bool:
+    """Do not reuse a cache produced by a different ASR backend."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    provider = str(data.get("provider") or "").strip().lower()
+    if remote_model not in {_FISH_MODEL, _GROK_MODEL}:
+        # Legacy local Whisper caches have no provider marker; remote caches do.
+        return provider not in {"fish-audio", "grok-stt"}
+    expected = "fish-audio" if remote_model == _FISH_MODEL else "grok-stt"
+    return provider == expected
+
+
+def _remote_asr_endpoint() -> tuple[str, str] | None:
+    from lovktv.storage import settings
+
+    base = str(settings.get("agent_url") or os.environ.get("LOVKTV_AGENT_URL") or os.environ.get("OPENAI_BASE_URL") or "").rstrip("/")
+    key = str(settings.get("agent_key") or os.environ.get("LOVKTV_AGENT_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+    if not base or not key:
+        return None
+    if not base.endswith("/v1"):
+        base += "/v1"
+    return f"{base}/audio/transcriptions", key
+
+
+def _fish_tokens(text: str) -> list[str]:
+    # Fish currently returns segment timestamps rather than word timestamps.
+    # Split CJK per character and Latin text per word so the existing lyric
+    # matcher can still use a useful (interpolated) clock.
+    return re.findall(r"[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)?|[\u3400-\u9fff\uf900-\ufaff]|[^\s]", text)
+
+
+def _parse_fish_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
+    words: list[dict[str, Any]] = []
+    for seg_i, segment in enumerate(data.get("segments") or []):
+        text = str(segment.get("text") or "").strip()
+        if not text:
+            continue
+        start = float(segment.get("start") or 0)
+        end = max(float(segment.get("end") or start), start + 0.04)
+        native_words = segment.get("words") or []
+        if native_words:
+            for item in native_words:
+                token = str(item.get("word") or item.get("text") or "").strip()
+                if not token:
+                    continue
+                token_start = float(item.get("start") or start)
+                token_end = max(float(item.get("end") or token_start), token_start + 0.04)
+                words.append({
+                    "text": token,
+                    "start_ms": int(round(token_start * 1000)),
+                    "end_ms": int(round(token_end * 1000)),
+                    "segment": seg_i,
+                })
+            if words and words[-1]["segment"] == seg_i:
+                continue
+        tokens = _fish_tokens(text) or [text]
+        weights = [max(1, len(token)) for token in tokens]
+        total = float(sum(weights))
+        cursor = start
+        for token, weight in zip(tokens, weights):
+            token_end = cursor + (end - start) * weight / total
+            words.append({
+                "text": token,
+                "start_ms": int(round(cursor * 1000)),
+                "end_ms": max(int(round(token_end * 1000)), int(round(cursor * 1000)) + 40),
+                "segment": seg_i,
+            })
+            cursor = token_end
+    return words
+
+
+def _parse_grok_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse Grok verbose_json word timestamps without degrading precision."""
+    words: list[dict[str, Any]] = []
+    native = data.get("words") or []
+    for index, item in enumerate(native):
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("word") or item.get("text") or "").strip()
+        if not text:
+            continue
+        start = float(item.get("start") or 0)
+        end = max(float(item.get("end") or start), start + 0.04)
+        segment_value = item.get("segment")
+        segment = int(segment_value) if segment_value is not None else index
+        words.append(
+            {
+                "text": text,
+                "start_ms": int(round(start * 1000)),
+                "end_ms": int(round(end * 1000)),
+                "segment": segment,
+            }
+        )
+    return words
+
+
+def _dedupe_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Remove duplicate tokens produced by the intentional chunk overlap."""
+    result: list[dict[str, Any]] = []
+    for word in sorted(words, key=lambda item: (item.get("start_ms", 0), item.get("end_ms", 0))):
+        if result and word.get("text") == result[-1].get("text") and abs(word.get("start_ms", 0) - result[-1].get("start_ms", 0)) <= 180:
+            continue
+        result.append(word)
+    return result
+
+
+def _audio_duration_seconds(path: Path) -> float:
+    try:
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
+            capture_output=True, text=True, timeout=20, check=False,
+        )
+        return max(0.0, float((result.stdout or "").strip()))
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return 0.0
+
+
+def _audio_has_voice(path: Path) -> bool:
+    """Cheap gate for chunks that are effectively silent.
+
+    Separation output is normally a PCM WAV.  Use 100 ms RMS windows and keep
+    a conservative floor so quiet singing is retained while pure silence (or
+    an accidentally empty chunk) never incurs a remote ASR request.
+    """
+    try:
+        with wave.open(str(path), "rb") as handle:
+            rate = handle.getframerate()
+            channels = handle.getnchannels()
+            width = handle.getsampwidth()
+            frames = handle.readframes(handle.getnframes())
+        if width != 2 or not frames:
+            return True  # unknown encoding: let the provider decide
+        import array, math
+
+        pcm = array.array("h")
+        pcm.frombytes(frames[: len(frames) - (len(frames) % 2)])
+        if channels > 1:
+            pcm = array.array("h", (int(sum(pcm[i : i + channels]) / channels) for i in range(0, len(pcm), channels)))
+        win = max(1, rate // 10)
+        rms_values = [
+            math.sqrt(sum(x * x for x in pcm[i : i + win]) / max(1, len(pcm[i : i + win])))
+            for i in range(0, len(pcm), win)
+        ]
+        if not rms_values:
+            return False
+        return max(rms_values) >= 400.0 and sum(rms_values) / len(rms_values) >= 120.0
+    except (OSError, EOFError, ValueError, wave.Error):
+        return True
+
+
+def _remote_chunks(path: Path, audio_format: str = "wav"):
+    """Yield (audio path, offset seconds), chunking long songs for remote ASR."""
+    duration = _audio_duration_seconds(path)
+    if duration <= 35 or not shutil.which("ffmpeg"):
+        yield path, 0.0
+        return
+    with tempfile.TemporaryDirectory(prefix="lovktv-asr-") as folder:
+        normalized = Path(folder) / "normalized.wav"
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(normalized)],
+            capture_output=True, timeout=180, check=False,
+        )
+        if result.returncode != 0 or not normalized.exists():
+            yield path, 0.0
+            return
+        # Find low-energy boundaries around each nominal 30s cut.  A 100ms
+        # RMS window is enough to avoid splitting a sung syllable while still
+        # keeping requests well below the provider's long-audio failure mode.
+        with wave.open(str(normalized), "rb") as handle:
+            rate = handle.getframerate()
+            samples = handle.readframes(handle.getnframes())
+        import array, math
+
+        pcm = array.array("h")
+        pcm.frombytes(samples[: len(samples) - (len(samples) % 2)])
+        win = max(1, rate // 10)
+        energy = [
+            math.sqrt(sum(x * x for x in pcm[i : i + win]) / max(1, len(pcm[i : i + win])))
+            for i in range(0, len(pcm), win)
+        ]
+        boundaries = [0.0]
+        cursor = 30.0
+        while cursor < duration - 8.0:
+            # Keep a little headroom before the detected minimum: a singer's
+            # consonant often starts while RMS is still low, so cutting on
+            # the minimum itself can clip the first syllable of the next line.
+            lo = max(0, int((cursor - 4.0) * 10))
+            hi = min(len(energy), int((cursor + 4.0) * 10))
+            # Never let a request exceed the provider's ~35s limit, even when
+            # the nearest quiet point is just beyond that limit.
+            # Leave room for the 1.5s overlap added when materializing the
+            # chunk, keeping the submitted duration safely below 35s.
+            hi = min(hi, int((boundaries[-1] + 33.0) * 10))
+            if hi > lo:
+                cut_i = min(range(lo, hi), key=lambda i: energy[i])
+                cut = cut_i / 10.0 - 0.8
+                if cut > boundaries[-1] + 8.0:
+                    boundaries.append(cut)
+            cursor += 30.0
+        boundaries.append(duration)
+        for index, (start, end) in enumerate(zip(boundaries, boundaries[1:])):
+            # Small overlap protects a syllable that begins just before a
+            # quiet boundary.  Returned timestamps are based on this actual
+            # start, so the caller can merge them back onto the full track.
+            audio_start = max(0.0, start - 1.5) if index else 0.0
+            suffix = ".mp3" if audio_format == "mp3" else ".wav"
+            chunk = Path(folder) / f"chunk-{index:04d}{suffix}"
+            if audio_format == "mp3":
+                encode_args = ["-codec:a", "libmp3lame", "-q:a", "2"]
+            else:
+                encode_args = ["-c:a", "copy"]
+            result = subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{audio_start:.3f}", "-t", f"{end - audio_start:.3f}", "-i", str(normalized), *encode_args, str(chunk)],
+                capture_output=True, timeout=120, check=False,
+            )
+            if result.returncode == 0 and chunk.exists():
+                yield chunk, audio_start
+
+
+def _transcribe_fish(
+    audio_path: Path,
+    language: str,
+    cache_path: Path | None,
+) -> list[dict[str, Any]]:
+    endpoint = _remote_asr_endpoint()
+    if endpoint is None:
+        return []
+    url, key = endpoint
+    all_words: list[dict[str, Any]] = []
+    all_segments: list[dict[str, Any]] = []
+    duration = _audio_duration_seconds(audio_path)
+    try:
+        for chunk, offset in _remote_chunks(audio_path):
+            if not _audio_has_voice(chunk):
+                continue
+            mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
+            with chunk.open("rb") as audio:
+                response = httpx.post(url, headers={"Authorization": f"Bearer {key}"}, data={"model": _FISH_MODEL, "language": language, "ignore_timestamps": "false"}, files={"file": (chunk.name, audio, mime)}, timeout=180.0)
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                continue
+            for segment in payload.get("segments") or []:
+                row = dict(segment)
+                row["start"] = float(row.get("start") or 0) + offset
+                row["end"] = float(row.get("end") or row["start"]) + offset
+                if duration > 0:
+                    row["start"] = min(row["start"], duration)
+                    row["end"] = min(max(row["end"], row["start"]), duration)
+                if duration <= 0 or row["start"] <= duration + 0.5:
+                    all_segments.append(row)
+            for word in _parse_fish_payload(payload):
+                word["start_ms"] += int(offset * 1000)
+                word["end_ms"] += int(offset * 1000)
+                # A few Fish responses contain hallucinated timestamps far
+                # beyond the submitted chunk; never let those corrupt the
+                # merged timeline.
+                if duration > 0:
+                    word["end_ms"] = min(word["end_ms"], int(round(duration * 1000)))
+                if duration <= 0 or word["start_ms"] / 1000.0 <= duration + 0.5:
+                    all_words.append(word)
+        all_words = _dedupe_words(all_words)
+        if cache_path and all_words:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps({"duration": _audio_duration_seconds(audio_path), "segments": all_segments, "provider": "fish-audio"}, ensure_ascii=False), encoding="utf-8")
+        return all_words
+    except Exception:  # noqa: BLE001 - remote ASR is an optional fallback
+        return []
+
+
+def _transcribe_grok(
+    audio_path: Path,
+    language: str,
+    cache_path: Path | None,
+) -> list[dict[str, Any]]:
+    endpoint = _remote_asr_endpoint()
+    if endpoint is None:
+        return []
+    url, key = endpoint
+    data = {
+        "model": _GROK_MODEL,
+        "language": language,
+        "response_format": "verbose_json",
+        "timestamp_granularities[]": "word",
+    }
+    try:
+        all_words: list[dict[str, Any]] = []
+        # Grok's upstream decoder is sensitive to isolated PCM WAV sections;
+        # MP3 chunks preserve the vocal signal and avoid valid-200/empty
+        # responses seen in the latter half of this song.
+        for chunk, offset in _remote_chunks(audio_path, audio_format="mp3"):
+            if not _audio_has_voice(chunk):
+                continue
+            mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
+            with chunk.open("rb") as audio:
+                response = httpx.post(
+                    url,
+                    headers={"Authorization": f"Bearer {key}"},
+                    data=data,
+                    files={"file": (chunk.name, audio, mime)},
+                    timeout=180.0,
+                )
+            response.raise_for_status()
+            payload = response.json()
+            if not isinstance(payload, dict):
+                continue
+            for word in _parse_grok_payload(payload):
+                word["start_ms"] += int(offset * 1000)
+                word["end_ms"] += int(offset * 1000)
+                all_words.append(word)
+        all_words = _dedupe_words(all_words)
+        if cache_path and all_words:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(json.dumps({"words": [{"text": w["text"], "start": w["start_ms"] / 1000, "end": w["end_ms"] / 1000} for w in all_words], "provider": "grok-stt", "duration": _audio_duration_seconds(audio_path)}, ensure_ascii=False), encoding="utf-8")
+        return all_words
+    except Exception:  # noqa: BLE001 - remote ASR is an optional fallback
+        return []
 
 
 @lru_cache(maxsize=2)
@@ -164,7 +503,8 @@ def transcribe_words(
     model: str = "small",
 ) -> list[dict[str, Any]]:
     """Return word/segment timestamps. Empty if whisper is missing or fails."""
-    if cache_path and cache_path.exists():
+    remote_model = _remote_asr_model().lower()
+    if cache_path and cache_path.exists() and _cache_matches_model(cache_path, remote_model):
         cached = _parse_whisper_json(cache_path)
         if cached:
             return cached
@@ -173,7 +513,7 @@ def transcribe_words(
         / "_asr"
         / f"{audio_path.stem}.json"
     )
-    if sibling.exists():
+    if sibling.exists() and _cache_matches_model(sibling, remote_model):
         cached = _parse_whisper_json(sibling)
         if cached:
             if cache_path:
@@ -201,6 +541,14 @@ def transcribe_words(
                 return waited
     if not audio_path.exists():
         return []
+
+    # Remote Fish ASR is opt-in.  Keep local Whisper as the normal path and as
+    # a fallback when the gateway or upstream model is unavailable.
+    if remote_model in {_FISH_MODEL, _GROK_MODEL}:
+        remote_fn = _transcribe_fish if remote_model == _FISH_MODEL else _transcribe_grok
+        remote = remote_fn(audio_path, whisper_language(language), cache_path)
+        if remote:
+            return remote
 
     out_dir = sibling.parent
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -263,6 +611,11 @@ def _parse_whisper_json(path: Path) -> list[dict[str, Any]]:
 
 
 def _parse_whisper_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
+    provider = str(data.get("provider") or "").strip().lower()
+    if provider == "fish-audio":
+        return _parse_fish_payload(data)
+    if provider == "grok-stt":
+        return _parse_grok_payload(data)
     words: list[dict[str, Any]] = []
     for seg_i, segment in enumerate(data.get("segments") or []):
         seg_text = str(segment.get("text") or "").strip()
