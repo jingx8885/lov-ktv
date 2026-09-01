@@ -1415,3 +1415,11 @@ body.phone.edit-on .tl { height: min(220px, calc(100% - 8px)); }
     padding: 8px 12px 12px;
   }
 }
+
+@media (max-width: 699px) {
+  /* Lyrics-only mode must remove the MV surface from layout, not merely hide
+     the video pixels, otherwise it still occupies and blocks the lyric area. */
+  body.phone[data-page="player"].display-lyrics .player-stage {
+    display: none;
+  }
+}

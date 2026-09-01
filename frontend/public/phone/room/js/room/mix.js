@@ -63,6 +63,7 @@ export function paintDisplayMode(mode) {
   const mtv = $("playerMtv");
   const art = $("playerArt");
   if (mtv) mtv.hidden = !(on && !!mtv.src);
+  if (!on && mtv && !mtv.paused) mtv.pause();
   if (art) art.classList.toggle("has-mtv", on && !!mtv?.src);
   const btn = $("playerDisplayMode");
   const label = $("playerDisplayModeLabel");
