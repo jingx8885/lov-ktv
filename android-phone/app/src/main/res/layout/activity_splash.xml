@@ -12,28 +12,4 @@
         android:scaleType="centerCrop"
         android:src="@drawable/splash_art" />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:background="#B8000000"
-        android:orientation="vertical"
-        android:padding="24dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/splash_title"
-            android:textColor="#FFFFFF"
-            android:textSize="28sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/splash_tagline"
-            android:textColor="#F5C16C"
-            android:textSize="14sp" />
-    </LinearLayout>
 </FrameLayout>

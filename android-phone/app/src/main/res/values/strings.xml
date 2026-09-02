@@ -10,9 +10,21 @@
     <string name="scan_joining">正在进房…</string>
     <string name="mic_channel">低延时麦</string>
     <string name="splash_desc">lov-ktv 开屏</string>
-    <string name="splash_title">lov-ktv</string>
-    <string name="splash_tagline">家庭 KTV · 随时开唱</string>
     <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码或填房间号。</string>
     <string name="tv_reconnecting">正在重连电视…</string>
     <string name="tv_reconnected">已重新连上电视</string>
+    <string name="notification_channel">播放控制</string>
+    <string name="notification_channel_desc">在通知栏快速控制点歌和听歌</string>
+    <string name="notification_karaoke">点歌 · 正在唱</string>
+    <string name="notification_listening">听歌 · 正在播放</string>
+    <string name="notification_idle_karaoke">还没在唱</string>
+    <string name="notification_idle_listen">还没选歌</string>
+    <string name="notification_search">搜歌</string>
+    <string name="notification_to_karaoke">点歌台</string>
+    <string name="notification_play">播放</string>
+    <string name="notification_pause">暂停</string>
+    <string name="notification_skip">切歌</string>
+    <string name="notification_next">下一首</string>
+    <string name="notification_mic">开麦</string>
+    <string name="notification_vocal">原唱/伴奏</string>
 </resources>
