@@ -233,6 +233,7 @@ _EN_FUNCTION_GLOSSES = {
     "from": "从",
     "in": "在",
     "is": "是",
+    "it's": "这是",
     "it": "它",
     "of": "的",
     "on": "在",
@@ -243,6 +244,8 @@ _EN_FUNCTION_GLOSSES = {
     "was": "是",
     "were": "是",
     "with": "和",
+    "'cause": "因为",
+    "’cause": "因为",
 }
 
 

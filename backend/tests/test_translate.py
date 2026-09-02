@@ -181,6 +181,39 @@ def test_apply_zh_translation_falls_back_for_untranslated_english_function_word(
     assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == ["这", "光"]
 
 
+def test_apply_zh_translation_falls_back_for_english_contractions():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "IT'S ONLY LOVE",
+                "tokens": [{"text": "IT'S"}, {"text": "ONLY"}, {"text": "LOVE"}],
+            }
+        ],
+    }
+    apply_zh_translation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "IT'S ONLY LOVE",
+                    "zh": "这只是爱",
+                    "units": [
+                        {"sing": "IT'S", "zh": ""},
+                        {"sing": "ONLY", "zh": "只是"},
+                        {"sing": "LOVE", "zh": "爱"},
+                    ],
+                }
+            ]
+        },
+    )
+    assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == [
+        "这是",
+        "只是",
+        "爱",
+    ]
+
+
 def test_apply_zh_translation_maps_each_english_word_in_japanese_line():
     timeline = {
         "language": "ja",
