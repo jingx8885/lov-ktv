@@ -257,6 +257,7 @@ def _attach_line(item: dict[str, Any], line: dict[str, Any]) -> dict[str, Any]:
     item["start_ms"] = line["start_ms"]
     item["end_ms"] = line["end_ms"]
     item["romaji"] = line.get("romaji") or ""
+    item["translation"] = line.get("translation") or line.get("zh") or ""
     return item
 
 
@@ -281,9 +282,9 @@ def _mc(
 
 def _word_script_variant(token: dict[str, Any], japanese: bool) -> tuple[str, str]:
     """Return (shown stem, expected choice) using persisted lyric metadata."""
-    text = _norm(token.get("text"))
+    text = _norm(token.get("surface") or token.get("text"))
     if not japanese:
-        return _norm(token.get("zh")) or text, text
+        return _norm(token.get("translation") or token.get("zh")) or text, text
     # `reading` is produced by the lyrics pipeline for kanji. Never convert it
     # here: script choice is part of the persisted lyric data and must stay
     # faithful to the song.

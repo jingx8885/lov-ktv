@@ -1,0 +1,5 @@
+- generic [active] [ref=e1]:
+  - link "Scan · 329D48" [ref=e2] [cursor=pointer]:
+    - /url: http://127.0.0.1:8791/m.html?room=329D48&v=queue3
+  - button "Tap to start" [ref=e8] [cursor=pointer]
+  - contentinfo [ref=e10]

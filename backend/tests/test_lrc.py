@@ -165,6 +165,17 @@ def test_language_and_tokens():
     ]
 
 
+def test_mixed_cjk_line_keeps_embedded_english_words_whole():
+    assert tokenize("我嘅 My jealous 心情", "yue") == [
+        "我",
+        "嘅",
+        "My",
+        "jealous",
+        "心",
+        "情",
+    ]
+
+
 def test_timeline_char_then_word():
     ja = timeline_from_lrc(
         [{"ms": 0, "text": "こんにちは"}, {"ms": 1000, "text": "世界"}],

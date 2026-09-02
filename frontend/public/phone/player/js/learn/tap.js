@@ -101,7 +101,7 @@ function paintHint(line) {
     zh: "learnTapZh",
     text: line ? line.text : "",
     romaji: line ? line.romaji : "",
-    zhText: (line && line.zh) || ""
+    zhText: (line && (line.translation || line.zh)) || ""
   });
 }
 

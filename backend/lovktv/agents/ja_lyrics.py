@@ -16,6 +16,8 @@ from typing import Any
 
 import httpx
 
+from lovktv.domain.timeline import LyricToken
+
 _KATAKANA = re.compile(r"[\u30a0-\u30ff]")
 _KANJI = re.compile(r"[\u3400-\u9fff\uf900-\ufaff々]")
 _KANA = re.compile(r"[\u3040-\u30ff]")
@@ -29,11 +31,11 @@ _HIRA = re.compile(r"[\u3040-\u309f]")
 _KANJI_RUN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff々]+")
 # The agent also supplies Chinese line/unit meanings. Bump the cache schema so
 # old literal glosses are regenerated after semantic-translation prompt changes.
-ANNOTATION_SCHEMA = "restore-ja-v3"
+ANNOTATION_SCHEMA = "restore-ja-v4"
 
 SYSTEM = """You restore Japanese karaoke lyrics and annotate them.
 Return JSON only:
-{"lines":[{"source":"<exact original line>","units":[{"sing":"...","label":"...","romaji":"..."}]}]}
+{"lines":[{"source":"<exact original line>","translation":"...","units":[{"surface":"...","reading":"...","pronunciation":{"system":"romaji","value":"..."},"translation":"..."}]}]}
 
 Rules:
 1. `source` must equal the input line exactly, even when the input is romaji.
@@ -43,7 +45,10 @@ Rules:
 5. Katakana loanwords (メモリー, コーヒー, ダンサー): `sing` is katakana; `label` is the original English/French word (memory, coffee, dancer); `romaji` is empty. Never write memorii or koohii.
 6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
 7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
-8. Already-English words in the lyric (Give a reason, Here we go): keep them in `sing`; `label` and `romaji` empty.
+8. Already-English words in the lyric (Give a reason, Here we go): keep them in
+   `sing`, one English word per unit (never ``Give a reason`` as one unit);
+   `label` and `romaji` are empty. Every unit's romaji, when present, belongs
+   to that unit only.
 9. Every line MUST include `zh`: a faithful, clear Simplified Chinese translation of the whole sung line. Keep close to the source wording and structure; use the complete line, surrounding input lines, song title, and artist to resolve meaning. Make only the smallest adjustment needed for understandable Chinese—do not freely paraphrase or add poetic information. Preserve agency, negation, tense/aspect, modality, and emotional tone. No notes, no brackets.
 10. Every unit MUST include the `zh` key. Its value is a short *contextual contribution* (usually 1–6 Chinese characters), not a dictionary definition. If a Japanese word/compound is written in Hanzi that modern Chinese can directly understand, prefer copying that same Hanzi into `zh`, converting Japanese/traditional forms to Simplified Chinese as needed (for example, 電光石火 → 电光石火, not “转瞬即逝”). Only change it when it is a Japanese false friend or would mislead in this line.
 11. Resolve remaining ambiguity from grammar and lyric context (for example, 君 can be “你” or “君”; miss can be “想念” or “错过”). Keep the closest understandable meaning, without freer poetic paraphrase.
@@ -159,23 +164,43 @@ def _parse_payload(raw: str) -> dict[str, Any]:
         for unit in item.get("units") or []:
             if not isinstance(unit, dict):
                 continue
-            sing = lyric_source_key(str(unit.get("sing") or "").strip())
+            try:
+                unit_model = LyricToken.model_validate(unit)
+            except Exception:
+                continue
+            sing = lyric_source_key(unit_model.surface)
             if not sing or _INDEX_UNIT.fullmatch(sing):
                 continue
+            pronunciation = unit_model.pronunciation
+            pronunciation_value = (
+                str(pronunciation.value or "").strip()
+                if hasattr(pronunciation, "value")
+                else str(pronunciation.get("value") or "").strip()
+                if isinstance(pronunciation, dict)
+                else ""
+            )
+            reading = unit_model.reading or str(unit.get("label") or "").strip()
+            romaji = unit_model.romaji or pronunciation_value
+            translation = unit_model.translation
             units.append(
                 {
                     "sing": sing,
-                    "label": str(unit.get("label") or "").strip(),
-                    "romaji": str(unit.get("romaji") or "").strip(),
-                    "zh": str(unit.get("zh") or "").strip(),
+                    "surface": sing,
+                    "label": reading,
+                    "reading": reading,
+                    "romaji": romaji,
+                    "pronunciation": {"system": "romaji", "value": romaji} if romaji else {},
+                    "zh": translation,
+                    "translation": translation,
                 }
             )
-        line_zh = str(item.get("zh") or "").strip()
+        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
         if source and (units or line_zh):
             cleaned.append(
                 {
                     "source": source,
                     "zh": line_zh,
+                    "translation": line_zh,
                     "units": units,
                 }
             )
@@ -515,13 +540,33 @@ def expand_units(
     return specs
 
 
+def _romaji_for_piece(piece: str, fallback: str, index: int, total: int) -> str:
+    """Return romaji belonging to one rendered token when the note is split.
+
+    A Japanese semantic word can legitimately render as several kana/kanji
+    pieces (for example an okurigana split).  Preserve its whole-word romaji
+    on the first piece; only distribute it when the agent explicitly supplied
+    separate whitespace-delimited readings.
+    """
+    if total <= 1:
+        return fallback
+    parts = [part for part in re.split(r"\s+", fallback.strip()) if part]
+    if len(parts) == total:
+        return parts[index]
+    return fallback if index == 0 else ""
+
+
 def apply_ja_annotation(
     timeline: dict[str, Any], notes: dict[str, Any]
 ) -> dict[str, Any]:
     by_source: dict[str, dict[str, Any]] = {}
     for item in notes.get("lines") or []:
         source = lyric_source_key(item.get("source") or "")
-        units = [unit for unit in item.get("units") or [] if unit.get("sing")]
+        units = [
+            unit
+            for unit in item.get("units") or []
+            if isinstance(unit, dict) and (unit.get("surface") or unit.get("sing"))
+        ]
         if source and units:
             by_source[source] = item
     for cue in timeline.get("cues") or []:
@@ -530,27 +575,49 @@ def apply_ja_annotation(
         item = by_source.get(original) or by_source.get(text)
         if not item:
             continue
-        units = [unit for unit in item.get("units") or [] if unit.get("sing")]
-        line_zh = str(item.get("zh") or "").strip()
+        units = [
+            unit
+            for unit in item.get("units") or []
+            if isinstance(unit, dict) and (unit.get("surface") or unit.get("sing"))
+        ]
+        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
         if line_zh:
             cue["zh"] = line_zh
+            cue["translation"] = line_zh
         specs: list[tuple[str, str, str, str]] = []
         for unit in units:
-            roma = str(unit.get("romaji") or "").strip()
-            gloss = str(unit.get("zh") or "").strip()
-            pieces = expand_units([unit], source=original)
+            pronunciation = unit.get("pronunciation")
+            pron_value = (
+                str(pronunciation.get("value") or "").strip()
+                if isinstance(pronunciation, dict)
+                else ""
+            )
+            roma = str(unit.get("romaji") or pron_value).strip()
+            gloss = str(unit.get("translation") or unit.get("zh") or "").strip()
+            normalized_unit = {
+                **unit,
+                "sing": unit.get("surface") or unit.get("sing") or "",
+                "label": unit.get("reading") or unit.get("label") or "",
+            }
+            pieces = expand_units([normalized_unit], source=original)
             for index, (piece, label) in enumerate(pieces):
+                piece_romaji = _romaji_for_piece(piece, roma, index, len(pieces))
                 specs.append(
                     (
                         piece,
                         label,
-                        roma if index == 0 else "",
+                        piece_romaji,
                         gloss if index == 0 else "",
                     )
                 )
         if not specs:
             continue
-        japanese = japanese_from_units(units)
+        japanese = japanese_from_units(
+            [
+                {**unit, "sing": unit.get("surface") or unit.get("sing") or ""}
+                for unit in units
+            ]
+        )
         displayed = _join_surfaces([piece for piece, _label, _roma, _gloss in specs])
         current = lyric_source_key(cue.get("text") or "")
         if line_is_romaji(original) and not _units_cover_romaji(units, original):
@@ -572,13 +639,17 @@ def apply_ja_annotation(
             token_end = end_ms if index == len(specs) - 1 else int(cursor + unit_ms)
             token = {
                 "text": piece,
+                "surface": piece,
                 "start_ms": int(cursor),
                 "end_ms": int(max(cursor + 40, token_end)),
                 "reading": label,
                 "romaji": roma,
+                "translation": gloss,
             }
             if gloss:
                 token["zh"] = gloss
+            if roma:
+                token["pronunciation"] = {"system": "romaji", "value": roma}
             tokens.append(token)
             cursor = token_end
         tokens[-1]["end_ms"] = end_ms

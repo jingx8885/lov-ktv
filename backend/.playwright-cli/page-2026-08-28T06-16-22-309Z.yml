@@ -1,0 +1,5 @@
+- generic [active] [ref=e1]:
+  - link "掃碼 · 0B626C" [ref=e2] [cursor=pointer]:
+    - /url: http://127.0.0.1:8791/m.html?room=0B626C&v=queue3
+  - button "撳一下開唱" [ref=e8] [cursor=pointer]
+  - contentinfo [ref=e10]

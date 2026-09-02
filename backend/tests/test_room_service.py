@@ -53,6 +53,9 @@ def test_timeline_contract_clamps_and_orders_cues_and_tokens():
     assert [cue["text"] for cue in doc["cues"]] == ["second", "first"]
     assert doc["cues"][0]["start_ms"] == 0
     assert doc["cues"][0]["tokens"][0]["end_ms"] == 10
+    assert doc["schema"] == "lovktv-lyrics-v2"
+    assert doc["cues"][0]["surface"] == "second"
+    assert doc["cues"][0]["tokens"][0]["surface"] == "x"
 
 
 def test_playback_event_requires_target_for_jump_commands():

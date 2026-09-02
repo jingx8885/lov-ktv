@@ -82,7 +82,7 @@ function paintEchoLine() {
     zh: "learnEchoZh",
     text: line ? line.text : "",
     romaji: line ? line.romaji : "",
-    zhText: line ? line.zh : ""
+    zhText: line ? line.translation || line.zh : ""
   });
   const bar = $("learnEchoBar");
   if (bar) bar.style.width = total ? `${Math.round((session.index / total) * 100)}%` : "0";

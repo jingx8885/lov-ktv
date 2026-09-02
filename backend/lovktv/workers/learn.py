@@ -111,12 +111,15 @@ def cue_text(cue: dict[str, Any]) -> str:
 
 
 def cue_zh(cue: dict[str, Any]) -> str:
-    return _norm(cue.get("zh"))
+    return _norm(cue.get("translation") or cue.get("zh"))
 
 
 def cue_romaji(cue: dict[str, Any]) -> str:
     bits = [
-        _norm(tok.get("romaji"))
+        _norm(
+            tok.get("romaji")
+            or ((tok.get("pronunciation") or {}).get("value") if isinstance(tok.get("pronunciation"), dict) else "")
+        )
         for tok in cue.get("tokens") or []
         if isinstance(tok, dict)
     ]
@@ -135,14 +138,24 @@ def tap_words(cue: dict[str, Any]) -> list[dict[str, str]]:
     for token in cue.get("tokens") or []:
         if not isinstance(token, dict):
             continue
-        text = _norm(token.get("text"))
+        text = _norm(token.get("surface") or token.get("text"))
         if not text or _PUNCT.match(text):
             continue
+        translation = _norm(token.get("translation") or token.get("zh"))
+        romaji = _norm(
+            token.get("romaji")
+            or (
+                (token.get("pronunciation") or {}).get("value")
+                if isinstance(token.get("pronunciation"), dict)
+                else ""
+            )
+        )
         words.append(
             {
                 "text": text,
-                "romaji": _norm(token.get("romaji")),
-                "zh": _norm(token.get("zh")),
+                "romaji": romaji,
+                "translation": translation,
+                "zh": translation,
             }
         )
     if words:
@@ -170,8 +183,8 @@ def content_tokens(
     for token in cue.get("tokens") or []:
         if not isinstance(token, dict):
             continue
-        text = _norm(token.get("text"))
-        zh = _norm(token.get("zh"))
+        text = _norm(token.get("surface") or token.get("text"))
+        zh = _norm(token.get("translation") or token.get("zh"))
         if not text or not zh or zh == text:
             continue
         if not include_function and text.lower() in _FUNCTION:

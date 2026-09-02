@@ -1,0 +1,52 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "Join" [ref=e4] [cursor=pointer]
+    - heading "Queue" [level=1] [ref=e5]
+    - button "Me" [ref=e6] [cursor=pointer]
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: ♪
+        - generic [ref=e14]:
+          - generic [ref=e15]: Nothing playing
+          - paragraph [ref=e16]: Pick one from the library
+      - button "Volume" [ref=e17] [cursor=pointer]
+    - generic [ref=e20]:
+      - button "Skip" [ref=e21] [cursor=pointer]
+      - button "Karaoke on — tap for original" [ref=e25] [cursor=pointer]:
+        - emphasis [ref=e28]: Karaoke
+      - button "Mic" [ref=e29] [cursor=pointer]:
+        - emphasis [ref=e32]: Mic
+    - tablist "Lyric display" [ref=e33]:
+      - button "JP" [ref=e34] [cursor=pointer]
+      - button "Trans" [ref=e35] [cursor=pointer]
+      - button "Roma" [ref=e36] [cursor=pointer]
+      - button "All" [ref=e37] [cursor=pointer]
+    - generic [ref=e38]:
+      - tablist [ref=e39]:
+        - button "Queued" [ref=e40] [cursor=pointer]:
+          - text: Queued
+          - emphasis
+        - button "Library" [ref=e41] [cursor=pointer]:
+          - text: Library
+          - emphasis
+      - generic [ref=e43]:
+        - paragraph [ref=e45]: Nothing queued yet
+        - button "Add from library" [ref=e46] [cursor=pointer]
+  - navigation [ref=e47]:
+    - button "Queue" [ref=e48]
+    - button "Search" [ref=e52]
+    - button "Listen" [ref=e56]
+    - button "Learn" [ref=e60]
+  - generic [ref=e65]:
+    - button "Close" [ref=e66]
+    - dialog [ref=e67]:
+      - heading "Join room" [level=2] [ref=e69]
+      - generic [ref=e70]:
+        - generic [ref=e71]: Room code
+        - textbox "Room code" [ref=e72]:
+          - /placeholder: TV 6-digit code, or blank to create
+      - button "Join room" [ref=e73] [cursor=pointer]
+      - link "Open TV" [ref=e74] [cursor=pointer]:
+        - /url: /tv.html
+      - paragraph [ref=e75]: After joining, sing on the TV and queue on the phone.

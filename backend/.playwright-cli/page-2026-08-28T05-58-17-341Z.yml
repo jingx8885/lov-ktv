@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "lov-ktv." [ref=e4] [cursor=pointer]:
+        - /url: "#opening"
+      - navigation [ref=e5]:
+        - link "怎么唱" [ref=e6] [cursor=pointer]:
+          - /url: "#ritual"
+        - link "能力" [ref=e7] [cursor=pointer]:
+          - /url: "#features"
+        - link "问答" [ref=e8] [cursor=pointer]:
+          - /url: "#notes"
+      - generic [ref=e9]:
+        - group "语言" [ref=e10]:
+          - button "中文" [ref=e11]
+          - button "粵語" [ref=e12]
+          - button "English" [ref=e13]
+          - button "日本語" [ref=e14]
+        - link "点歌" [ref=e15] [cursor=pointer]:
+          - /url: /m.html
+        - link "开电视" [ref=e16] [cursor=pointer]:
+          - /url: /tv.html
+  - generic [ref=e18]:
+    - generic [ref=e19]:
+      - paragraph [ref=e20]: 搜歌名 · 人声分离 · 扫色歌词
+      - heading "任意一首歌， 当场变成包厢。" [level=1] [ref=e21]
+      - paragraph [ref=e22]: 搜歌名入库，人声当场拆掉，歌词按字扫色。电视当舞台，手机扫码点歌。不用找文件，不用下 App，曲库留在自己家里。
+      - generic [ref=e23]:
+        - link "打开电视" [ref=e24] [cursor=pointer]:
+          - /url: /tv.html
+          - generic [ref=e26]: →
+        - link "手机点歌" [ref=e27] [cursor=pointer]:
+          - /url: /m.html
+      - paragraph [ref=e28]: 浏览器或 Android TV 都能开。先让电视出码，手机再进房。
+    - generic [ref=e29]:
+      - generic [ref=e30]:
+        - generic [ref=e31]: NOW SINGING
+        - strong [ref=e32]: 夜曲
+        - emphasis [ref=e33]: 周杰伦
+      - paragraph [ref=e34]: 一群嗜血的蚂蚁 被腐肉所吸引
+      - paragraph [ref=e35]: 我却得到你的纵容 神的原谅
+      - paragraph [ref=e36]: 而你 却沉默地转过身
+  - region "能力条" [ref=e46]:
+    - generic [ref=e47]:
+      - generic [ref=e48]: 网易外链
+      - generic [ref=e50]: SoundCloud
+      - generic [ref=e52]: YouTube
+      - generic [ref=e54]: UVR ONNX
+      - generic [ref=e56]: 官方 LRC
+      - generic [ref=e58]: 中日英扫色
+      - generic [ref=e60]: Android TV
+      - generic [ref=e62]: 自托管
+  - generic [ref=e64]:
+    - paragraph [ref=e65]: 舞台上真正用得到的
+    - heading "每一步都是按钮。房间自己把它们接上。" [level=2] [ref=e66]
+    - generic [ref=e67]:
+      - article [ref=e68]:
+        - paragraph [ref=e69]: Search
+        - heading "主路是搜歌名，不是传文件" [level=3] [ref=e70]
+        - paragraph [ref=e71]: 歌名进曲库，网易外链、SoundCloud、YouTube 依次回落。上传只是后备。
+      - article [ref=e72]:
+        - paragraph [ref=e73]: Split
+        - heading "人声分离不背 Torch" [level=3] [ref=e74]
+        - paragraph [ref=e75]: onnxruntime 当场拆轨。处理完缓存在盒子上，处理端掉线也能唱。
+      - article [ref=e76]:
+        - paragraph [ref=e77]: Color
+        - heading "中日英，三种扫色语法" [level=3] [ref=e78]
+        - paragraph [ref=e79]: 当前句加下一句。日语注音贴在字头上。ASS / LRC / JSON 都留，字幕外挂不烧录。
+      - article [ref=e80]:
+        - paragraph [ref=e81]: Room
+        - heading "不用装 App，扫一下就进房" [level=3] [ref=e82]
+        - paragraph [ref=e83]: 电视出码，手机当点歌台。队列、顶歌、切歌，谁来谁点。
+      - article [ref=e84]:
+        - paragraph [ref=e85]: Box
+        - heading "Android TV 当局域网宿主" [level=3] [ref=e86]
+        - paragraph [ref=e87]: 盒子装上就开房。成品缓存在本地，客厅断网也能把今晚唱完。
+      - article [ref=e88]:
+        - paragraph [ref=e89]: Mic
+        - heading "手机麦可以混到电视" [level=3] [ref=e90]
+        - paragraph [ref=e91]: 音量滑条直接管现场。微信认号可选，没配也能先用本机身份唱。
+  - generic [ref=e93]:
+    - paragraph [ref=e94]: 三步开房
+    - heading "电视出码，手机搜歌，墙上开唱。" [level=2] [ref=e95]
+    - list [ref=e96]:
+      - listitem [ref=e97]:
+        - generic [ref=e98]: "01"
+        - strong [ref=e99]: 电视开房
+        - paragraph [ref=e100]: 盒子或浏览器打开电视页，墙上出现房间码和二维码。
+      - listitem [ref=e101]:
+        - generic [ref=e102]: "02"
+        - strong [ref=e103]: 手机搜歌
+        - paragraph [ref=e104]: 扫码进同一间房。先试听确认，再丢进曲库排队。
+      - listitem [ref=e105]:
+        - generic [ref=e106]: "03"
+        - strong [ref=e107]: 扫色开唱
+        - paragraph [ref=e108]: 伴奏、人声、歌词就位。原唱伴唱随时切，下一句已经等在灯里。
+  - generic [ref=e110]:
+    - paragraph [ref=e111]: 不是再下一个点歌 App
+    - heading "U 盘、会员曲库、网上伴奏，都是在找别人做好的卡拉 OK。" [level=2] [ref=e112]
+    - table [ref=e114]:
+      - rowgroup [ref=e115]:
+        - row [ref=e116]:
+          - columnheader [ref=e117]
+          - columnheader "自己找文件" [ref=e118]
+          - columnheader "在线 K 歌" [ref=e119]
+          - columnheader "lov-ktv" [ref=e120]
+      - rowgroup [ref=e121]:
+        - row [ref=e122]:
+          - rowheader "进曲" [ref=e123]
+          - cell "翻硬盘 / U 盘" [ref=e124]
+          - cell "平台曲库" [ref=e125]
+          - cell "搜歌名入库" [ref=e126]
+        - row [ref=e127]:
+          - rowheader "伴奏" [ref=e128]
+          - cell "碰运气" [ref=e129]
+          - cell "平台给什么唱什么" [ref=e130]
+          - cell "当场拆人声" [ref=e131]
+        - row [ref=e132]:
+          - rowheader "歌词" [ref=e133]
+          - cell "经常没有" [ref=e134]
+          - cell "有时会飘" [ref=e135]
+          - cell "官方轴按字扫色" [ref=e136]
+        - row [ref=e137]:
+          - rowheader "数据" [ref=e138]
+          - cell "散落各处" [ref=e139]
+          - cell "上云" [ref=e140]
+          - cell "自托管，断网也能唱" [ref=e141]
+  - generic [ref=e143]:
+    - paragraph [ref=e144]: 谁会把灯打开
+    - heading "家里来人，朋友包厢，自己练一句。" [level=2] [ref=e145]
+    - generic [ref=e146]:
+      - article [ref=e147]:
+        - strong [ref=e148]: 家里来人
+        - paragraph [ref=e149]: 电视当舞台，沙发当卡座。不用再把手机凑到蓝牙音箱前轮流点。
+      - article [ref=e150]:
+        - strong [ref=e151]: 朋友包厢
+        - paragraph [ref=e152]: 局域网扫码进房。谁来谁点，队列在电视上，麦声也可以从手机混进去。
+      - article [ref=e153]:
+        - strong [ref=e154]: 自己练
+        - paragraph [ref=e155]: 日语假名、英文词级扫色，练完一句再下一句。已处理的歌，断网也在。
+  - generic [ref=e157]:
+    - paragraph [ref=e158]: 上场前会问的
+    - heading "先把最容易卡壳的说清楚。" [level=2] [ref=e159]
+    - generic [ref=e160]:
+      - generic [ref=e161]:
+        - term [ref=e162]: 一定要 Android 电视吗？
+        - definition [ref=e163]: 不用。浏览器打开电视页就能唱。Android TV 是把宿主和缓存装进盒子里。
+      - generic [ref=e164]:
+        - term [ref=e165]: 歌从哪来？
+        - definition [ref=e166]: 按歌名搜：网易外链，再到 SoundCloud、YouTube。只给自己的房间用，不二次分发。
+      - generic [ref=e167]:
+        - term [ref=e168]: 没有官方歌词怎么办？
+        - definition [ref=e169]: 可以粘贴歌词。再没有就走转写。有官方 LRC 时，以官方轴为准。
+      - generic [ref=e170]:
+        - term [ref=e171]: 要不要本机装 Torch？
+        - definition [ref=e172]: 不要。人声分离是 ONNX。镜像里已经烤好模型。
+      - generic [ref=e173]:
+        - term [ref=e174]: 断网能唱吗？
+        - definition [ref=e175]: 已经处理好并缓存在盒子上的歌可以。新歌还是要处理端在线。
+      - generic [ref=e176]:
+        - term [ref=e177]: 能当公开曲库网站吗？
+        - definition [ref=e178]: 不能。这是家庭 / 包厢自托管。不要公开发布媒体文件。
+  - generic [ref=e180]:
+    - paragraph [ref=e181]: 今晚就有歌
+    - heading "第一首歌进队列，客厅就不是客厅了。" [level=2] [ref=e182]
+    - paragraph [ref=e183]: 先把电视打开，再让手机进房。搜一首今晚想唱的，伴奏和歌词会自己就位。
+    - generic [ref=e184]:
+      - link "打开电视" [ref=e185] [cursor=pointer]:
+        - /url: /tv.html
+        - generic [ref=e187]: →
+      - link "手机点歌" [ref=e188] [cursor=pointer]:
+        - /url: /m.html
+  - contentinfo [ref=e189]:
+    - generic [ref=e190]:
+      - paragraph [ref=e191]: lov-ktv · 仅供个人或家庭局域网。不要公开发布曲库。
+      - paragraph [ref=e192]:
+        - link "电视" [ref=e193] [cursor=pointer]:
+          - /url: /tv.html
+        - link "点歌" [ref=e194] [cursor=pointer]:
+          - /url: /m.html
+        - link "认号" [ref=e195] [cursor=pointer]:
+          - /url: /login.html

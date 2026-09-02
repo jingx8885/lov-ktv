@@ -21,6 +21,13 @@ _JA_CHUNK = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
 _LATIN_WORD_TOKEN = re.compile(
     r"[^\W_]+(?:['’][^\W_]+)*(?:[-‐‑‒–—][^\W_]+(?:['’][^\W_]+)*)*"
 )
+# In a Han/Latin mixed line ``[^\W_]`` would also consume the Han characters
+# (for example ``My你``). Keep the Latin run deliberately narrow here so
+# embedded English remains one visual/timing token instead of being split into
+# individual letters or fused with the surrounding Chinese text.
+_MIXED_LATIN_WORD = re.compile(
+    r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*(?:[-‐‑‒–—][A-Za-zÀ-ÖØ-öø-ÿ0-9]+(?:['’][A-Za-zÀ-ÖØ-öø-ÿ0-9]+)*)*"
+)
 _META_LINE = re.compile(r"^\[(ti|ar|al|by|offset):", re.I)
 _converter = None
 
@@ -261,6 +268,29 @@ def _latin_words(text: str) -> list[str]:
     return parts
 
 
+def _mixed_script_tokens(text: str) -> list[str]:
+    """Tokenize embedded Latin words while retaining CJK characters/punctuation.
+
+    Chinese and Cantonese lyrics are otherwise intentionally tokenized per
+    Han character for karaoke timing.  A mixed line needs the exception that
+    an English run (including contractions and hyphenated words) is kept as a
+    whole word, otherwise ``My jealous`` renders as ``M y j e a l o u s``.
+    """
+    out: list[str] = []
+    cursor = 0
+    while cursor < len(text):
+        match = _MIXED_LATIN_WORD.match(text, cursor)
+        if match:
+            out.append(match.group(0))
+            cursor = match.end()
+            continue
+        char = text[cursor]
+        if not char.isspace():
+            out.append(char)
+        cursor += 1
+    return out
+
+
 def tokenize(text: str, language: str) -> list[str]:
     if language == "ja":
         return [piece for piece, _label in ja_token_specs(text)]
@@ -268,6 +298,8 @@ def tokenize(text: str, language: str) -> list[str]:
         _LATIN_LETTER.search(text) and not _HAN.search(text) and not _KANA.search(text)
     ):
         return _latin_words(text)
+    if _LATIN_LETTER.search(text):
+        return _mixed_script_tokens(text)
     return [char for char in text if not char.isspace()]
 
 
@@ -356,16 +388,22 @@ def build_cue(
         token_rows.append(
             {
                 "text": token,
+                "surface": token,
                 "start_ms": int(token_start),
                 "end_ms": int(max(token_start + 40, token_end)),
                 "reading": label,
+                "romaji": "",
+                "translation": "",
             }
         )
     token_rows[-1]["end_ms"] = end_ms
     return {
         "text": text,
+        "surface": text,
         "start_ms": start_ms,
         "end_ms": end_ms,
+        "translation": "",
+        "zh": "",
         "tokens": token_rows,
     }
 
@@ -556,32 +594,49 @@ def validate_timeline(payload: dict[str, Any]) -> dict[str, Any]:
             tokens.append(
                 {
                     "text": tok_text,
+                    "surface": tok_text,
                     "start_ms": int(token.get("start_ms") or start_ms),
                     "end_ms": int(token.get("end_ms") or end_ms),
                     "reading": str(token.get("reading") or ""),
+                    "romaji": str(token.get("romaji") or ""),
+                    "translation": str(token.get("translation") or token.get("zh") or ""),
+                    "zh": str(token.get("translation") or token.get("zh") or ""),
                 }
             )
         cues.append(
             {
                 "text": text,
+                "surface": text,
                 "start_ms": start_ms,
                 "end_ms": end_ms,
+                "translation": str(item.get("translation") or item.get("zh") or ""),
+                "zh": str(item.get("translation") or item.get("zh") or ""),
                 "tokens": tokens,
             }
         )
     if not cues:
         raise ValueError("没有歌词")
     repair_cue_order(cues)
-    return {
+    from lovktv.domain.timeline import LYRICS_SCHEMA, normalize_timeline
+
+    return normalize_timeline({
         "language": str(payload.get("language") or "zh"),
         "alignment": str(payload.get("alignment") or "manual"),
         "alignment_source": "manual",
         "cues": cues,
-    }
+    })
 
 
 def write_subtitles(timeline: dict[str, Any], out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
+    from lovktv.domain.timeline import LYRICS_SCHEMA, normalize_timeline
+
+    if timeline.get("cues"):
+        normalized = normalize_timeline(timeline)
+        timeline.clear()
+        timeline.update(normalized)
+    else:
+        timeline["schema"] = LYRICS_SCHEMA
     (out_dir / "lyrics.json").write_text(
         json.dumps(timeline, ensure_ascii=False, indent=2),
         encoding="utf-8",

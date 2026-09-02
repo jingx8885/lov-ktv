@@ -1,0 +1,5 @@
+- generic [active] [ref=e1]:
+  - link "扫码 · 70B850" [ref=e3] [cursor=pointer]:
+    - /url: http://127.0.0.1:8787/m.html?room=70B850&v=queue3
+  - button "点击开唱" [ref=e9] [cursor=pointer]
+  - contentinfo [ref=e11]

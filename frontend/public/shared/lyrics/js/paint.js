@@ -71,12 +71,30 @@ export function sanitizeLyricCues(cues) {
     if (stampOnlyLyric(raw)) continue;
     const text = stripLyricStamps(raw);
     if (!text || stampOnlyLyric(text)) continue;
-    if (text === raw.trim()) {
-      out.push(cue);
-      continue;
-    }
-    const next = Object.assign({}, cue, { text, tokens: [] });
-    if (next.zh) next.zh = stripLyricStamps(next.zh);
+    const next = Object.assign({}, cue, {
+      text,
+      surface: String(cue.surface || text),
+      translation: String(cue.translation || cue.zh || ""),
+      tokens: (cue.tokens || []).map((token) => {
+        const surface = String(token.surface || token.text || "");
+        const translation = String(token.translation || token.zh || "");
+        const pronunciation =
+          token.pronunciation && typeof token.pronunciation === "object"
+            ? token.pronunciation
+            : token.romaji
+              ? { system: "romaji", value: String(token.romaji) }
+              : {};
+        return Object.assign({}, token, {
+          text: surface,
+          surface,
+          translation,
+          zh: translation,
+          pronunciation
+        });
+      })
+    });
+    if (next.translation) next.translation = stripLyricStamps(next.translation);
+    next.zh = next.translation;
     out.push(next);
   }
   return out;
@@ -91,7 +109,7 @@ export function sanitizeLyrics(data) {
 
 /** @param {LyricCue | null | undefined} cue */
 export function cueKey(cue) {
-  return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}:${cue.zh || ""}` : "";
+  return cue ? `${cue.start_ms}:${cue.end_ms}:${cue.text}:${cue.translation || cue.zh || ""}` : "";
 }
 
 /** @param {LyricCue} cue */
@@ -99,15 +117,17 @@ export function cueLine(cue) {
   const text = String(cue.text || "");
   const tokens = cue.tokens || [];
   if (/\s/.test(text) || !tokens.length) return text;
-  if (tokens.every((tok) => /^[A-Za-z0-9']/.test(tok.text || ""))) {
-    return tokens.map((tok) => tok.text).join(" ");
+  if (tokens.every((tok) => /^[A-Za-z0-9']/.test(tok.surface || tok.text || ""))) {
+    return tokens.map((tok) => tok.surface || tok.text).join(" ");
   }
   return text;
 }
 
 /** @param {LyricCue} cue */
 export function cueRomaji(cue) {
-  const bits = (cue.tokens || []).map((tok) => String(tok.romaji || "").trim()).filter(Boolean);
+  const bits = (cue.tokens || [])
+    .map((tok) => String(tok.romaji || tok.pronunciation?.value || "").trim())
+    .filter(Boolean);
   return bits.join(" ") || String(cue.romaji || "").trim();
 }
 
@@ -120,7 +140,9 @@ function isKanjiText(value) {
 }
 
 function tokenHasAnno(tok) {
-  return !!(String(tok.romaji || "").trim() || String(tok.zh || "").trim());
+  return !!(
+    String(tok.romaji || tok.pronunciation?.value || "").trim() || String(tok.translation || tok.zh || "").trim()
+  );
 }
 
 /** Merge per-kana pieces so romaji / gloss sit under the whole sung word. */
@@ -245,8 +267,9 @@ function pageLyricScript() {
 function tokenRoma(tok) {
   const script = pageLyricScript();
   if (script && script !== "ja") return "";
-  const roma = String(tok.romaji || "").trim();
-  const text = String(tok.text || "");
+  const pronunciation = tok.pronunciation && tok.pronunciation.system === "romaji" ? tok.pronunciation.value : "";
+  const roma = String(tok.romaji || pronunciation || "").trim();
+  const text = String(tok.surface || tok.text || "");
   if (!roma || roma === text) return "";
   if (/^[A-Za-z0-9']/.test(text) && roma.toLowerCase() === text.toLowerCase()) return "";
   return roma;
@@ -270,7 +293,7 @@ function karaokeSpan(text, p) {
 /** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
 export function renderCue(cue, t, mode) {
   const view = normLyricMode(mode);
-  if (view === "zh") return escapeHtml(String(cue.zh || cueLine(cue)));
+  if (view === "zh") return escapeHtml(String(cue.translation || cue.zh || cueLine(cue)));
   if (view === "roma") return escapeHtml(cueRomaji(cue) || cueLine(cue));
   const tokens = clusterTokens(cue.tokens || []);
   const script = pageLyricScript();
@@ -284,19 +307,22 @@ export function renderCue(cue, t, mode) {
   const keepRt = (view === "ja" || showExtra) && (script === "ja" || !script);
   if (!tokens.length) {
     const body = karaokeSpan(cueLine(cue), Math.round(tokenProgress(cue, t)));
-    return keepZh ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>` : body;
+    const translation = cue.translation || cue.zh || "";
+    return keepZh ? `${body}<span class="lyric-zh">${escapeHtml(String(translation))}</span>` : body;
   }
   const html = `<span class="line-words">${tokens
     .map((tok, i) => {
       const p = Math.round(tokenProgress(tok, t));
-      const body = karaokeSpan(tok.text, p);
+      const surface = String(tok.surface || tok.text || "");
+      const body = karaokeSpan(surface, p);
       const roma = keepRoma ? tokenRoma(tok) : "";
       const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
-      const gloss = keepGloss && tok.zh ? String(tok.zh) : "";
+      const gloss = keepGloss ? String(tok.translation || tok.zh || "") : "";
       const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
-      const latin = /^[A-Za-z0-9']/.test(tok.text || "");
+      const latin = /^[A-Za-z0-9']/.test(surface);
       const next = tokens[i + 1];
-      const space = latin && next && !/^[.,!?;:'")\]]/.test(next.text || "") ? `<span class="tok-space"> </span>` : "";
+      const nextSurface = String(next?.surface || next?.text || "");
+      const space = latin && next && !/^[.,!?;:'")\]]/.test(nextSurface) ? `<span class="tok-space"> </span>` : "";
       return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
     })
     .join("")}</span>`;

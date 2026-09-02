@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "lov-ktv." [ref=e4] [cursor=pointer]:
+        - /url: "#opening"
+      - navigation [ref=e5]:
+        - link "How to sing" [ref=e6] [cursor=pointer]:
+          - /url: "#ritual"
+        - link "Features" [ref=e7] [cursor=pointer]:
+          - /url: "#features"
+        - link "FAQ" [ref=e8] [cursor=pointer]:
+          - /url: "#notes"
+      - generic [ref=e9]:
+        - combobox "Language" [ref=e10]:
+          - option "中文"
+          - option "粵語"
+          - option "English" [selected]
+          - option "日本語"
+        - link "Queue" [ref=e11] [cursor=pointer]:
+          - /url: /m.html
+        - link "TV" [ref=e12] [cursor=pointer]:
+          - /url: /tv.html
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - paragraph [ref=e16]: Search · vocal split · colored lyrics
+      - heading "Any song, a private room on the spot." [level=1] [ref=e17]
+      - paragraph [ref=e18]: Search a title into the library, split vocals on the spot, color lyrics by word. TV is the stage, phone scans in to queue. No files, no app — the library stays at home.
+      - generic [ref=e19]:
+        - link "Open TV" [ref=e20] [cursor=pointer]:
+          - /url: /tv.html
+          - generic [ref=e22]: →
+        - link "Queue on phone" [ref=e23] [cursor=pointer]:
+          - /url: /m.html
+      - paragraph [ref=e24]: Works in a browser or on Android TV. Let the TV show a code, then join on the phone.
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic [ref=e27]: NOW SINGING
+        - strong [ref=e28]: 夜曲
+        - emphasis [ref=e29]: 周杰伦
+      - paragraph [ref=e30]: 一群嗜血的蚂蚁 被腐肉所吸引
+      - paragraph [ref=e31]: 我却得到你的纵容 神的原谅
+      - paragraph [ref=e32]: 而你 却沉默地转过身
+  - region "Capabilities" [ref=e42]:
+    - generic [ref=e43]:
+      - generic [ref=e44]: NetEase links
+      - generic [ref=e46]: SoundCloud
+      - generic [ref=e48]: YouTube
+      - generic [ref=e50]: UVR ONNX
+      - generic [ref=e52]: Official LRC
+      - generic [ref=e54]: ZH / JA / EN color
+      - generic [ref=e56]: Android TV
+      - generic [ref=e58]: Self-hosted
+  - generic [ref=e60]:
+    - paragraph [ref=e61]: What you actually use on stage
+    - heading "Every step is a button. The room wires them together." [level=2] [ref=e62]
+    - generic [ref=e63]:
+      - article [ref=e64]:
+        - paragraph [ref=e65]: Search
+        - heading "Search a title — don’t upload first" [level=3] [ref=e66]
+        - paragraph [ref=e67]: Titles go into the library. NetEase links, then SoundCloud, then YouTube. Upload is only a fallback.
+      - article [ref=e68]:
+        - paragraph [ref=e69]: Split
+        - heading "Vocal split without Torch" [level=3] [ref=e70]
+        - paragraph [ref=e71]: onnxruntime splits the track on the spot. Results cache on the box, so you can still sing if the processor drops.
+      - article [ref=e72]:
+        - paragraph [ref=e73]: Color
+        - 'heading "Three color grammars: ZH, JA, EN" [level=3] [ref=e74]'
+        - paragraph [ref=e75]: Current line plus the next. Japanese readings sit on the characters. ASS / LRC / JSON stay as sidecar captions — not burned in.
+      - article [ref=e76]:
+        - paragraph [ref=e77]: Room
+        - heading "No app — scan in and you’re in the room" [level=3] [ref=e78]
+        - paragraph [ref=e79]: TV shows a code; the phone is the queue desk. Queue, bump, skip — whoever arrives can pick.
+      - article [ref=e80]:
+        - paragraph [ref=e81]: Box
+        - heading "Android TV hosts the LAN" [level=3] [ref=e82]
+        - paragraph [ref=e83]: Install on the box and open a room. Finished tracks cache locally so a living-room outage still finishes the night.
+      - article [ref=e84]:
+        - paragraph [ref=e85]: Mic
+        - heading "Phone mic can mix onto the TV" [level=3] [ref=e86]
+        - paragraph [ref=e87]: Volume sliders run the room. WeChat IDs are optional — sing with a device identity if it is not set up.
+  - generic [ref=e89]:
+    - paragraph [ref=e90]: Three steps to open a room
+    - heading "TV shows a code, phone searches, the wall starts singing." [level=2] [ref=e91]
+    - list [ref=e92]:
+      - listitem [ref=e93]:
+        - generic [ref=e94]: "01"
+        - strong [ref=e95]: Open a room on TV
+        - paragraph [ref=e96]: Open the TV page on a box or browser. A room code and QR appear on the wall.
+      - listitem [ref=e97]:
+        - generic [ref=e98]: "02"
+        - strong [ref=e99]: Search on the phone
+        - paragraph [ref=e100]: Scan into the same room. Preview first, then drop the song into the library queue.
+      - listitem [ref=e101]:
+        - generic [ref=e102]: "03"
+        - strong [ref=e103]: Color up and sing
+        - paragraph [ref=e104]: Backing, vocals, and lyrics are ready. Flip original and karaoke anytime — the next line is already lit.
+  - generic [ref=e106]:
+    - paragraph [ref=e107]: Not another karaoke app
+    - heading "USB sticks, membership catalogs, online instrumentals — all hunting someone else’s karaoke." [level=2] [ref=e108]
+    - table [ref=e110]:
+      - rowgroup [ref=e111]:
+        - row [ref=e112]:
+          - columnheader [ref=e113]
+          - columnheader "Find your own files" [ref=e114]
+          - columnheader "Online karaoke" [ref=e115]
+          - columnheader "lov-ktv" [ref=e116]
+      - rowgroup [ref=e117]:
+        - row [ref=e118]:
+          - rowheader "Getting songs" [ref=e119]
+          - cell "Hunt a disk / USB" [ref=e120]
+          - cell "Platform catalog" [ref=e121]
+          - cell "Search a title in" [ref=e122]
+        - row [ref=e123]:
+          - rowheader "Backing" [ref=e124]
+          - cell "Luck of the draw" [ref=e125]
+          - cell "Sing what they give you" [ref=e126]
+          - cell "Split vocals on the spot" [ref=e127]
+        - row [ref=e128]:
+          - rowheader "Lyrics" [ref=e129]
+          - cell "Often missing" [ref=e130]
+          - cell "Sometimes drift" [ref=e131]
+          - cell "Official timing, colored by word" [ref=e132]
+        - row [ref=e133]:
+          - rowheader "Data" [ref=e134]
+          - cell "Scattered" [ref=e135]
+          - cell "In the cloud" [ref=e136]
+          - cell "Self-hosted — sing offline" [ref=e137]
+  - generic [ref=e139]:
+    - paragraph [ref=e140]: Who turns the lights on
+    - heading "Guests at home, friends in a room, or one line of practice." [level=2] [ref=e141]
+    - generic [ref=e142]:
+      - article [ref=e143]:
+        - strong [ref=e144]: Guests at home
+        - paragraph [ref=e145]: TV is the stage, sofa is the booth. No more huddling phones at a Bluetooth speaker.
+      - article [ref=e146]:
+        - strong [ref=e147]: Friends in a room
+        - paragraph [ref=e148]: Scan in on the LAN. Whoever arrives can queue. The list is on the TV; the phone mic can mix in too.
+      - article [ref=e149]:
+        - strong [ref=e150]: Practice alone
+        - paragraph [ref=e151]: Japanese kana, English word-level color — finish a line, then the next. Processed songs stay offline.
+  - generic [ref=e153]:
+    - paragraph [ref=e154]: Questions before you go on
+    - heading "Clear the usual snags first." [level=2] [ref=e155]
+    - generic [ref=e156]:
+      - generic [ref=e157]:
+        - term [ref=e158]: Do I need an Android TV?
+        - definition [ref=e159]: No. Open the TV page in a browser and sing. Android TV just puts the host and cache in a box.
+      - generic [ref=e160]:
+        - term [ref=e161]: Where do songs come from?
+        - definition [ref=e162]: "Search by title: NetEase links, then SoundCloud, then YouTube. For your room only — no redistribution."
+      - generic [ref=e163]:
+        - term [ref=e164]: What if there is no official lyric?
+        - definition [ref=e165]: Paste lyrics. If still none, we transcribe. Official LRC wins when it exists.
+      - generic [ref=e166]:
+        - term [ref=e167]: Do I install Torch locally?
+        - definition [ref=e168]: No. Vocal split is ONNX. Models are already baked into the image.
+      - generic [ref=e169]:
+        - term [ref=e170]: Can I sing offline?
+        - definition [ref=e171]: Yes for songs already processed and cached on the box. New songs still need the processor online.
+      - generic [ref=e172]:
+        - term [ref=e173]: Can this be a public catalog site?
+        - definition [ref=e174]: No. This is home / private-room self-hosting. Do not publish media files.
+  - generic [ref=e176]:
+    - paragraph [ref=e177]: There can be a song tonight
+    - heading "The first song hits the queue, and the living room is no longer just a living room." [level=2] [ref=e178]
+    - paragraph [ref=e179]: Open the TV first, then join on the phone. Search what you want tonight — backing and lyrics take their places.
+    - generic [ref=e180]:
+      - link "Open TV" [ref=e181] [cursor=pointer]:
+        - /url: /tv.html
+        - generic [ref=e183]: →
+      - link "Queue on phone" [ref=e184] [cursor=pointer]:
+        - /url: /m.html
+  - contentinfo [ref=e185]:
+    - generic [ref=e186]:
+      - paragraph [ref=e187]: lov-ktv · Personal or home LAN only. Do not publish the library.
+      - paragraph [ref=e188]:
+        - link "TV" [ref=e189] [cursor=pointer]:
+          - /url: /tv.html
+        - link "Queue" [ref=e190] [cursor=pointer]:
+          - /url: /m.html
+        - link "Sign in" [ref=e191] [cursor=pointer]:
+          - /url: /login.html

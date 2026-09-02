@@ -76,26 +76,37 @@ interface RoomCommand {
   paused?: boolean | number | string;
 }
 
+interface LyricPronunciation {
+  system: string;
+  value: string;
+}
+
 interface LyricToken {
   text: string;
+  surface?: string;
   start_ms: number;
   end_ms: number;
   reading?: string;
   romaji?: string;
   zh?: string;
+  translation?: string;
+  pronunciation?: LyricPronunciation;
 }
 
 interface LyricCue {
   text: string;
+  surface?: string;
   start_ms: number;
   end_ms: number;
   tokens?: LyricToken[];
   zh?: string;
+  translation?: string;
   romaji?: string;
   source_text?: string;
 }
 
 interface LyricsDoc {
+  schema?: string;
   cues: LyricCue[];
   offset_ms?: number;
   lyric_offset_ms?: number;
@@ -201,6 +212,8 @@ interface LearnWord {
   text: string;
   romaji?: string;
   zh?: string;
+  translation?: string;
+  pronunciation?: LyricPronunciation;
 }
 
 interface LearnLine {
@@ -209,6 +222,7 @@ interface LearnLine {
   end_ms: number;
   text: string;
   zh?: string;
+  translation?: string;
   romaji?: string;
   words?: LearnWord[];
   questions: LearnQuestion[];

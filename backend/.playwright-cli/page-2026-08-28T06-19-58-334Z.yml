@@ -1,0 +1,52 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "入室" [ref=e4] [cursor=pointer]
+    - heading "選曲" [level=1] [ref=e5]
+    - button "マイページ" [ref=e6] [cursor=pointer]
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: ♪
+        - generic [ref=e14]:
+          - generic [ref=e15]: まだ歌っていません
+          - paragraph [ref=e16]: 曲庫から1曲選ぶ
+      - button "音量" [ref=e17] [cursor=pointer]
+    - generic [ref=e20]:
+      - button "曲送り" [ref=e21] [cursor=pointer]
+      - button "いま伴奏。タップで原曲へ" [ref=e25] [cursor=pointer]:
+        - emphasis [ref=e28]: 伴奏
+      - button "マイク" [ref=e29] [cursor=pointer]:
+        - emphasis [ref=e32]: マイク
+    - tablist "歌詞表示" [ref=e33]:
+      - button "日本語" [ref=e34] [cursor=pointer]
+      - button "翻訳" [ref=e35] [cursor=pointer]
+      - button "ローマ" [ref=e36] [cursor=pointer]
+      - button "すべて" [ref=e37] [cursor=pointer]
+    - generic [ref=e38]:
+      - tablist [ref=e39]:
+        - button "予約" [ref=e40] [cursor=pointer]:
+          - text: 予約
+          - emphasis
+        - button "曲庫" [ref=e41] [cursor=pointer]:
+          - text: 曲庫
+          - emphasis
+      - generic [ref=e43]:
+        - paragraph [ref=e45]: まだ予約がありません
+        - button "曲庫から追加" [ref=e46] [cursor=pointer]
+  - navigation [ref=e47]:
+    - button "選曲" [ref=e48]
+    - button "検索" [ref=e52]
+    - button "再生" [ref=e56]
+    - button "学習" [ref=e60]
+  - generic [ref=e65]:
+    - button "閉じる" [ref=e66]
+    - dialog [ref=e67]:
+      - heading "部屋に入る" [level=2] [ref=e69]
+      - generic [ref=e70]:
+        - generic [ref=e71]: 部屋コード
+        - textbox "部屋コード" [ref=e72]:
+          - /placeholder: テレビの6桁コード。空欄なら新規作成
+      - button "入室する" [ref=e73] [cursor=pointer]
+      - link "テレビを開く" [ref=e74] [cursor=pointer]:
+        - /url: /tv.html
+      - paragraph [ref=e75]: 入室後はテレビで歌い、スマホで選曲。

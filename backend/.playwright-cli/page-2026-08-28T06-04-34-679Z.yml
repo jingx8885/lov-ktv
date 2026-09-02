@@ -1,0 +1,133 @@
+- generic [ref=f1e2]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]:
+        - button "Back to queue" [ref=f1e7] [cursor=pointer]
+        - generic [ref=f1e10]:
+          - generic [ref=f1e11]: No song selected
+          - paragraph [ref=f1e12]: Play one from the queue
+        - button "Landscape align" [ref=f1e14] [cursor=pointer]
+      - generic [ref=f1e18]:
+        - generic [ref=f1e19]: 0:00
+        - slider "Scrub" [ref=f1e20]: "0"
+        - emphasis [ref=f1e21]: −0:00
+      - tablist "Lyric display" [ref=f1e23]:
+        - button "JP" [ref=f1e24] [cursor=pointer]
+        - button "Trans" [ref=f1e25] [cursor=pointer]
+        - button "Roma" [ref=f1e26] [cursor=pointer]
+        - button "All" [ref=f1e27] [cursor=pointer]
+      - generic [ref=f1e29]:
+        - button "Open library" [ref=f1e30] [cursor=pointer]:
+          - generic [ref=f1e32]:
+            - generic [ref=f1e33]: Library
+            - emphasis [ref=f1e34]: 14 songs
+        - generic [ref=f1e37]:
+          - generic [ref=f1e38]:
+            - button "Beautiful World · Hikaru Utada Hikaru Utada" [ref=f1e39]:
+              - generic [ref=f1e40]:
+                - generic [ref=f1e41]: Beautiful World · Hikaru Utada
+                - generic [ref=f1e42]: Hikaru Utada
+            - button "【𝐇𝐢-𝐑𝐞𝐬无损音质】｜《晴天》- 周杰伦 -‘故事的小黄花’ VV音乐局 · VV音乐局" [ref=f1e43]:
+              - generic [ref=f1e44]:
+                - generic [ref=f1e45]: 【𝐇𝐢-𝐑𝐞𝐬无损音质】｜《晴天》- 周杰伦 -‘故事的小黄花’ VV音乐局 ·
+                - generic [ref=f1e46]: VV音乐局
+            - button "Get along · Megumi Hayashibara / Masami Okui Megumi Hayashibara / Masami Okui" [ref=f1e47]:
+              - generic [ref=f1e48]:
+                - generic [ref=f1e49]: Get along · Megumi Hayashibara / Masami Okui
+                - generic [ref=f1e50]: Megumi Hayashibara / Masami Okui
+            - button "群青 · YOASOBI YOASOBI" [ref=f1e51]:
+              - generic [ref=f1e52]:
+                - generic [ref=f1e53]: 群青 · YOASOBI
+                - generic [ref=f1e54]: YOASOBI
+            - button "NIGHT DANCER · imase imase" [ref=f1e55]:
+              - generic [ref=f1e56]:
+                - generic [ref=f1e57]: NIGHT DANCER · imase
+                - generic [ref=f1e58]: imase
+            - button "Beautiful World · Hikaru Utada Hikaru Utada" [ref=f1e59]:
+              - generic [ref=f1e60]:
+                - generic [ref=f1e61]: Beautiful World · Hikaru Utada
+                - generic [ref=f1e62]: Hikaru Utada
+            - button "One Last Kiss · Hikaru Utada Hikaru Utada" [ref=f1e63]:
+              - generic [ref=f1e64]:
+                - generic [ref=f1e65]: One Last Kiss · Hikaru Utada
+                - generic [ref=f1e66]: Hikaru Utada
+            - button "NIGHT DANCER · ReGLOSS / Ao Hiodoshi / Hajime Todoroki ReGLOSS / Ao Hiodoshi / Hajime Todoroki" [ref=f1e67]:
+              - generic [ref=f1e68]:
+                - generic [ref=f1e69]: NIGHT DANCER · ReGLOSS / Ao Hiodoshi / Hajime Todoroki
+                - generic [ref=f1e70]: ReGLOSS / Ao Hiodoshi / Hajime Todoroki
+            - button "真夜中のドア〜stay with me 2024 · 松原みき 松原みき" [ref=f1e71]:
+              - generic [ref=f1e72]:
+                - generic [ref=f1e73]: 真夜中のドア〜stay with me 2024 · 松原みき
+                - generic [ref=f1e74]: 松原みき
+            - button "A million dreams · Gigi González Gigi González" [ref=f1e75]:
+              - generic [ref=f1e76]:
+                - generic [ref=f1e77]: A million dreams · Gigi González
+                - generic [ref=f1e78]: Gigi González
+            - button "From Now On · Hugh Jackman,The Greatest Showman Ensemble Hugh Jackman,The Greatest Showman Ensemble" [ref=f1e79]:
+              - generic [ref=f1e80]:
+                - generic [ref=f1e81]: From Now On · Hugh Jackman,The Greatest Showman Ensemble
+                - generic [ref=f1e82]: Hugh Jackman,The Greatest Showman Ensemble
+            - button "Beautiful World（动画电影《新世纪福音战士新剧场版:序》片尾曲）（翻自 宇多田光） · AUZ AUZ" [ref=f1e83]:
+              - generic [ref=f1e84]:
+                - generic [ref=f1e85]: Beautiful World（动画电影《新世纪福音战士新剧场版:序》片尾曲）（翻自 宇多田光） · AUZ
+                - generic [ref=f1e86]: AUZ
+            - button "So Sick · Ne-Yo Ne-Yo" [ref=f1e87]:
+              - generic [ref=f1e88]:
+                - generic [ref=f1e89]: So Sick · Ne-Yo
+                - generic [ref=f1e90]: Ne-Yo
+            - button "Give a reason · Megumi Hayashibara Megumi Hayashibara" [ref=f1e91]:
+              - generic [ref=f1e92]:
+                - generic [ref=f1e93]: Give a reason · Megumi Hayashibara
+                - generic [ref=f1e94]: Megumi Hayashibara
+          - navigation "Letter index" [ref=f1e95]:
+            - button "A" [ref=f1e96] [cursor=pointer]
+            - button "B" [ref=f1e97] [cursor=pointer]
+            - button "C" [disabled] [ref=f1e98]
+            - button "D" [disabled] [ref=f1e99]
+            - button "E" [disabled] [ref=f1e100]
+            - button "F" [ref=f1e101] [cursor=pointer]
+            - button "G" [ref=f1e102] [cursor=pointer]
+            - button "H" [ref=f1e103] [cursor=pointer]
+            - button "I" [disabled] [ref=f1e104]
+            - button "J" [disabled] [ref=f1e105]
+            - button "K" [disabled] [ref=f1e106]
+            - button "L" [disabled] [ref=f1e107]
+            - button "M" [disabled] [ref=f1e108]
+            - button "N" [ref=f1e109] [cursor=pointer]
+            - button "O" [ref=f1e110] [cursor=pointer]
+            - button "P" [disabled] [ref=f1e111]
+            - button "Q" [ref=f1e112] [cursor=pointer]
+            - button "R" [disabled] [ref=f1e113]
+            - button "S" [ref=f1e114] [cursor=pointer]
+            - button "T" [disabled] [ref=f1e115]
+            - button "U" [disabled] [ref=f1e116]
+            - button "V" [disabled] [ref=f1e117]
+            - button "W" [disabled] [ref=f1e118]
+            - button "X" [disabled] [ref=f1e119]
+            - button "Y" [disabled] [ref=f1e120]
+            - button "Z" [ref=f1e121] [cursor=pointer]
+            - button "#" [disabled] [ref=f1e122]
+    - generic [ref=f1e124]:
+      - button "Sing with mic" [ref=f1e125] [cursor=pointer]:
+        - emphasis [ref=f1e128]: Mic
+      - button "Headphone monitor" [pressed] [ref=f1e129] [cursor=pointer]
+      - button "Original on — tap for karaoke" [ref=f1e132] [cursor=pointer]:
+        - emphasis [ref=f1e135]: Original
+      - button "Play" [ref=f1e136] [cursor=pointer]
+      - button "Next" [ref=f1e139] [cursor=pointer]
+      - button "Play in order" [ref=f1e142] [cursor=pointer]:
+        - emphasis [ref=f1e145]: Order
+      - button "Learn" [ref=f1e146] [cursor=pointer]:
+        - emphasis [ref=f1e149]: Learn
+  - generic [ref=f1e150]:
+    - button "Close" [ref=f1e151]
+    - dialog [ref=f1e152]:
+      - heading "Join room" [level=2] [ref=f1e154]
+      - generic [ref=f1e155]:
+        - generic [ref=f1e156]: Room code
+        - textbox "Room code" [ref=f1e157]:
+          - /placeholder: 6-digit code on the TV — leave blank to create one
+      - button "Join room" [ref=f1e158] [cursor=pointer]
+      - link "Open TV" [ref=f1e159] [cursor=pointer]:
+        - /url: /tv.html
+      - paragraph [ref=f1e160]: After joining, sing on the TV and queue on the phone.

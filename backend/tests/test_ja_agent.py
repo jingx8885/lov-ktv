@@ -152,6 +152,43 @@ def test_apply_keeps_romaji_with_new_agent_word_unit():
     ] == [("ただ", "tada"), ("もう一度", "mou ichido"), ("会いたい", "aitai")]
 
 
+def test_apply_splits_romaji_with_expanded_japanese_tokens():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "はしりつづける",
+                "start_ms": 0,
+                "end_ms": 1200,
+                "tokens": [],
+            }
+        ],
+    }
+    apply_ja_annotation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "はしりつづける",
+                    "units": [
+                        {
+                            "sing": "はしりつづける",
+                            "label": "走り続ける",
+                            "romaji": "hashiri tsuzuke ru",
+                        }
+                    ],
+                }
+            ]
+        },
+    )
+    tokens = timeline["cues"][0]["tokens"]
+    assert [(token["text"], token["romaji"]) for token in tokens] == [
+        ("走り", "hashiri"),
+        ("続け", "tsuzuke"),
+        ("る", "ru"),
+    ]
+
+
 def test_latin_words_stay_whole_in_japanese_line():
     specs = ja_token_specs("未来の自分へと Give a reason for life 届けたい")
     sung = [piece for piece, _label in specs]
@@ -432,6 +469,20 @@ def test_parse_payload_keeps_romaji():
         '{"lines":[{"source":"kimi","units":[{"sing":"きみ","label":"君","romaji":"kimi"}]}]}'
     )
     assert notes["lines"][0]["units"][0]["romaji"] == "kimi"
+
+
+def test_parse_payload_accepts_canonical_lyrics_units():
+    notes = _parse_payload(
+        '{"lines":[{"source":"君","translation":"你","units":['
+        '{"surface":"君","reading":"きみ",'
+        '"pronunciation":{"system":"romaji","value":"kimi"},'
+        '"translation":"你"}]}]}'
+    )
+    unit = notes["lines"][0]["units"][0]
+    assert unit["sing"] == unit["surface"] == "君"
+    assert unit["label"] == unit["reading"] == "きみ"
+    assert unit["romaji"] == "kimi"
+    assert unit["zh"] == unit["translation"] == "你"
 
 
 def test_apply_annotation_keeps_line_and_word_zh():

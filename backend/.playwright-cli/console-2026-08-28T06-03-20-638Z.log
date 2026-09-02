@@ -1,0 +1,3 @@
+[     588ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://127.0.0.1:8787/favicon.ico:0
+[   45496ms] TypeError: t is not a function
+    at paintPlayer (http://127.0.0.1:8787/phone/player/js/playback.js:317:89)

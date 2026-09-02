@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +23,9 @@ from lovktv.pipeline.lyrics import tokenize
 
 # Bump this whenever the semantic-translation instructions change.  Existing
 # notes contain per-word glosses and must not silently survive a prompt change.
-TRANSLATE_SCHEMA = "lovjpn-zh-v5"
+# Mixed Japanese/Chinese lines now require one gloss per embedded English
+# word. Bump the cache schema so existing grouped notes are regenerated.
+TRANSLATE_SCHEMA = "lovjpn-zh-v6"
 CHINESE_LANGS = {"zh", "zh-cn", "zh-hans", "zh-hant", "yue", "cmn", "chinese"}
 
 SYSTEM = """You translate karaoke lyrics for Chinese singers. Aim for a faithful,
@@ -34,7 +37,7 @@ when a literal rendering would be ungrammatical, ambiguous, or misleading. Do
 not beautify, paraphrase freely, or add information. The line translation is
 the source of truth; word glosses explain how words contribute to that line.
 Return JSON only:
-{"lines":[{"source":"<exact original line>","zh":"<faithful, clear Simplified Chinese>","units":[{"sing":"<surface>","zh":"<short contextual gloss>"}]}]}
+{"lines":[{"source":"<exact original line>","translation":"<faithful, clear Simplified Chinese>","units":[{"surface":"<surface>","translation":"<short contextual gloss>"}]}]}
 
 Rules:
 1. `source` must equal the input line exactly.
@@ -49,11 +52,13 @@ Rules:
    like the/of/to); use the relation that fits this line rather than leaving a
    blank. Do not force units for punctuation.
 7. For English lines, return exactly one unit for every sung word (the same
-   words produced by normal English tokenization). Keep contractions and
-   hyphenated words whole, and omit punctuation-only units. Never group
-   multiple English words into one unit. For Japanese/other languages, units
-   may be grouped at natural sung-word boundaries while keeping source
-   coverage and order.
+   words produced by normal English tokenization). The same one-unit-per-word
+   rule applies to every contiguous English run inside a Japanese, Chinese,
+   or Cantonese line (for example, ``Give a reason`` becomes three units).
+   Keep contractions and hyphenated words whole, and omit punctuation-only
+   units. Never group multiple English words into one unit. Japanese/other
+   native-language pieces may still be grouped at natural sung-word
+   boundaries while keeping source coverage and order.
 8. Already-Chinese lines: copy the line into `zh` and leave unit glosses empty.
 9. Return every requested line, including repeated lines. Keep each `source` exact.
 10. Before returning, compare every unit gloss with the completed `zh` line. Remove or revise any gloss that is a literal dictionary substitute but does not express that unit's role in this line.
@@ -110,7 +115,7 @@ def translate_lines(
         user = (
             f"Song: {title} / {artist}\n"
             f"Language: {lang}\n"
-            "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses. For English, units must be one-for-one with sung words; do not group words.\n\n"
+            "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses. Units must follow words; every contiguous English run, including one embedded in a mixed-language line, is one unit per word. Do not group English words.\n\n"
             f"{numbered}"
         )
         payload = complete_json(
@@ -148,6 +153,14 @@ def _surface_key(value: str, language: str) -> str:
     return text
 
 
+def _unit_surface(unit: dict[str, Any]) -> str:
+    return str(unit.get("surface") or unit.get("sing") or "").strip()
+
+
+def _unit_translation(unit: dict[str, Any]) -> str:
+    return str(unit.get("translation") or unit.get("zh") or "").strip()
+
+
 def _english_unit_map(
     tokens: list[dict[str, Any]], units: list[dict[str, Any]]
 ) -> dict[int, str]:
@@ -162,8 +175,8 @@ def _english_unit_map(
     out: dict[int, str] = {}
     cursor = 0
     for unit in units:
-        sing = str(unit.get("sing") or "").strip()
-        gloss = str(unit.get("zh") or "").strip()
+        sing = _unit_surface(unit)
+        gloss = _unit_translation(unit)
         if not sing:
             continue
         wanted = [
@@ -247,25 +260,63 @@ def apply_zh_translation(
         item = by_source.get(original) or by_source.get(text)
         if not item:
             continue
-        line_zh = str(item.get("zh") or "").strip()
+        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
         if line_zh and (overwrite or not str(cue.get("zh") or "").strip()):
             cue["zh"] = line_zh
+            cue["translation"] = line_zh
         units = [unit for unit in item.get("units") or [] if isinstance(unit, dict)]
-        glosses = [str(unit.get("zh") or "").strip() for unit in units]
+        glosses = [_unit_translation(unit) for unit in units]
         tokens = list(cue.get("tokens") or [])
         if not tokens or not glosses:
             continue
-        if str(timeline.get("language") or "").lower().startswith("en"):
-            projected = _english_unit_map(tokens, units)
+        # English runs can occur inside Japanese/Chinese/Cantonese lines too.
+        # Project them first, and allow a fresh per-word translation to replace
+        # the Japanese annotator's old grouped gloss on the first word.  Keep
+        # the legacy grouped-note fallback for non-English timelines: without
+        # one gloss per source word there is no faithful way to split a phrase.
+        language_key = str(timeline.get("language") or "").lower()
+        english_units = [
+            unit
+            for unit in units
+            if re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", _unit_surface(unit))
+        ]
+        wordwise = all(
+            len(tokenize(_unit_surface(unit), "en")) == 1
+            for unit in english_units
+        )
+        projected = (
+            _english_unit_map(tokens, units)
+            if language_key.startswith("en") or wordwise
+            else {}
+        )
+        for index, token in enumerate(tokens):
+            if index not in projected:
+                continue
+            existing = str(token.get("zh") or "").strip()
+            is_latin = bool(
+                re.match(
+                    r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]", str(token.get("text") or "")
+                )
+            )
+            if overwrite or not existing or is_latin:
+                token["zh"] = projected[index]
+                token["translation"] = projected[index]
+
+        if language_key.startswith("en") or wordwise:
             for index, token in enumerate(tokens):
-                if index in projected and (overwrite or not str(token.get("zh") or "").strip()):
-                    token["zh"] = projected[index]
-                elif not str(token.get("zh") or "").strip():
+                token_text = str(token.get("text") or "")
+                if (
+                    index not in projected
+                    and re.match(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]", token_text)
+                    and not str(token.get("zh") or "").strip()
+                ):
                     fallback = _EN_FUNCTION_GLOSSES.get(
-                        _surface_key(str(token.get("text") or ""), "en")
+                        _surface_key(token_text, "en")
                     )
                     if fallback:
                         token["zh"] = fallback
+                        token["translation"] = fallback
+        if language_key.startswith("en"):
             continue
         missing = [token for token in tokens if not str(token.get("zh") or "").strip()]
         if not missing:
@@ -274,6 +325,7 @@ def apply_zh_translation(
             for token, gloss in zip(tokens, glosses):
                 if gloss:
                     token["zh"] = gloss
+                    token["translation"] = gloss
             continue
         used: set[int] = set()
         for token in missing:
@@ -282,12 +334,13 @@ def apply_zh_translation(
             for index, unit in enumerate(units):
                 if index in used:
                     continue
-                if lyric_source_key(unit.get("sing") or "") == sing and unit.get("zh"):
-                    gloss = str(unit.get("zh")).strip()
+                if lyric_source_key(_unit_surface(unit)) == sing and _unit_translation(unit):
+                    gloss = _unit_translation(unit)
                     used.add(index)
                     break
             if gloss:
                 token["zh"] = gloss
+                token["translation"] = gloss
     timeline["translation"] = "lovjpn-zh"
     timeline["translation_model"] = str(notes.get("model") or agent_model())
     return timeline

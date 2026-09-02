@@ -1,0 +1,68 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "返回点歌台" [ref=e7] [cursor=pointer]
+      - generic [ref=e10]:
+        - generic [ref=e11]: 还没选歌
+        - paragraph [ref=e12]: 从点歌台听一首
+      - button "横屏对齐" [ref=e14] [cursor=pointer]
+    - generic [ref=e18]:
+      - generic [ref=e19]: 0:00
+      - slider "进度" [ref=e20]: "0"
+      - emphasis [ref=e21]: −0:00
+    - generic [ref=e22]:
+      - tablist "歌词显示" [ref=e23]:
+        - button "日语" [ref=e24] [cursor=pointer]
+        - button "翻译" [ref=e25] [cursor=pointer]
+        - button "罗马音" [ref=e26] [cursor=pointer]
+        - button "全部" [ref=e27] [cursor=pointer]
+      - generic [ref=e28]: 还没选歌
+    - generic [ref=e30]:
+      - button "打开曲库" [ref=e31] [cursor=pointer]:
+        - generic [ref=e33]:
+          - generic [ref=e34]: 曲库
+          - emphasis [ref=e35]: 还没有可播的歌
+      - generic [ref=e38]:
+        - paragraph [ref=e41]: 曲库还没有可播的歌
+        - navigation "字母索引" [ref=e42]:
+          - button "A" [disabled] [ref=e43]
+          - button "B" [disabled] [ref=e44]
+          - button "C" [disabled] [ref=e45]
+          - button "D" [disabled] [ref=e46]
+          - button "E" [disabled] [ref=e47]
+          - button "F" [disabled] [ref=e48]
+          - button "G" [disabled] [ref=e49]
+          - button "H" [disabled] [ref=e50]
+          - button "I" [disabled] [ref=e51]
+          - button "J" [disabled] [ref=e52]
+          - button "K" [disabled] [ref=e53]
+          - button "L" [disabled] [ref=e54]
+          - button "M" [disabled] [ref=e55]
+          - button "N" [disabled] [ref=e56]
+          - button "O" [disabled] [ref=e57]
+          - button "P" [disabled] [ref=e58]
+          - button "Q" [disabled] [ref=e59]
+          - button "R" [disabled] [ref=e60]
+          - button "S" [disabled] [ref=e61]
+          - button "T" [disabled] [ref=e62]
+          - button "U" [disabled] [ref=e63]
+          - button "V" [disabled] [ref=e64]
+          - button "W" [disabled] [ref=e65]
+          - button "X" [disabled] [ref=e66]
+          - button "Y" [disabled] [ref=e67]
+          - button "Z" [disabled] [ref=e68]
+          - button "#" [disabled] [ref=e69]
+  - generic [ref=e70]:
+    - paragraph [ref=e97]: 戴上耳机，并允许使用麦克风
+    - generic [ref=e71]:
+      - button "开麦唱歌" [active] [ref=e72] [cursor=pointer]:
+        - emphasis [ref=e75]: 开麦
+      - button "耳机耳返" [pressed] [ref=e76] [cursor=pointer]
+      - button "当前原唱，点按切到伴奏" [ref=e79] [cursor=pointer]:
+        - emphasis [ref=e82]: 原唱
+      - button "播放" [ref=e83] [cursor=pointer]
+      - button "下一首" [ref=e86] [cursor=pointer]
+      - button "顺序播放" [ref=e89] [cursor=pointer]:
+        - emphasis [ref=e92]: 顺序
+      - button "游戏" [ref=e93] [cursor=pointer]:
+        - emphasis [ref=e96]: 游戏

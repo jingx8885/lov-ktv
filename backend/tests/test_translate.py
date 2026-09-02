@@ -181,6 +181,46 @@ def test_apply_zh_translation_falls_back_for_untranslated_english_function_word(
     assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == ["这", "光"]
 
 
+def test_apply_zh_translation_maps_each_english_word_in_japanese_line():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "Give a reason まよなか",
+                "tokens": [
+                    {"text": "Give"},
+                    {"text": "a"},
+                    {"text": "reason"},
+                    {"text": "まよなか"},
+                ],
+            }
+        ],
+    }
+    apply_zh_translation(
+        timeline,
+        {
+            "lines": [
+                {
+                    "source": "Give a reason まよなか",
+                    "zh": "给个理由 深夜",
+                    "units": [
+                        {"sing": "Give", "zh": "给"},
+                        {"sing": "a", "zh": "一个"},
+                        {"sing": "reason", "zh": "理由"},
+                        {"sing": "まよなか", "zh": "深夜"},
+                    ],
+                }
+            ]
+        },
+    )
+    assert [tok.get("zh") for tok in timeline["cues"][0]["tokens"]] == [
+        "给",
+        "一个",
+        "理由",
+        "深夜",
+    ]
+
+
 def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv.storage import room_store, store

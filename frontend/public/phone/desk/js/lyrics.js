@@ -19,7 +19,7 @@ export function getStudyWords() {
 }
 
 export function saveStudyWord(word, cue) {
-  const text = String(word?.text || "").trim();
+  const text = String(word?.surface || word?.text || "").trim();
   if (!text) return false;
   const words = getStudyWords();
   const key = `${state.playerSong?.id || "song"}:${text}:${word?.start_ms || 0}`;
@@ -30,8 +30,8 @@ export function saveStudyWord(word, cue) {
   const entry = {
     key,
     text,
-    zh: String(word?.zh || "").trim(),
-    romaji: String(word?.romaji || "").trim(),
+    zh: String(word?.translation || word?.zh || "").trim(),
+    romaji: String(word?.romaji || word?.pronunciation?.value || "").trim(),
     cue: String(cue?.text || "").trim(),
     song: String(state.playerSong?.title || "").trim(),
     song_id: state.playerSong?.id || "",
@@ -104,7 +104,9 @@ export function paintDeskLyrics() {
       node.classList.add("desk-lyric-word");
       node.setAttribute("role", "button");
       node.setAttribute("tabindex", "0");
-      node.setAttribute("aria-label", `${token.text}${token.zh ? ` · ${token.zh}` : ""}`);
+      const tokenText = token.surface || token.text;
+      const tokenTranslation = token.translation || token.zh;
+      node.setAttribute("aria-label", `${tokenText}${tokenTranslation ? ` · ${tokenTranslation}` : ""}`);
       const save = () => saveStudyWord(token, cue);
       node.addEventListener("click", save);
       node.addEventListener("keydown", (event) => {

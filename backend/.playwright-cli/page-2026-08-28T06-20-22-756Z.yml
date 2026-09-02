@@ -1,0 +1,182 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "lov-ktv." [ref=e4] [cursor=pointer]:
+        - /url: "#opening"
+      - navigation [ref=e5]:
+        - link "歌い方" [ref=e6] [cursor=pointer]:
+          - /url: "#ritual"
+        - link "できること" [ref=e7] [cursor=pointer]:
+          - /url: "#features"
+        - link "Q&A" [ref=e8] [cursor=pointer]:
+          - /url: "#notes"
+      - generic [ref=e9]:
+        - combobox "言語" [ref=e10]:
+          - option "中文"
+          - option "粵語"
+          - option "English"
+          - option "日本語" [selected]
+        - link "選曲" [ref=e11] [cursor=pointer]:
+          - /url: /m.html
+        - link "テレビ" [ref=e12] [cursor=pointer]:
+          - /url: /tv.html
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - paragraph [ref=e16]: 曲名検索 · ボーカル分離 · 色つき歌詞
+      - heading "どの曲でも、 その場で個室になる。" [level=1] [ref=e17]
+      - paragraph [ref=e18]: 曲名で曲庫へ入れ、ボーカルはその場で分離、歌詞は文字単位で色が走る。テレビがステージ、スマホはスキャンして選曲。ファイルもアプリも不要。曲庫は自宅に残る。
+      - generic [ref=e19]:
+        - link "テレビを開く" [ref=e20] [cursor=pointer]:
+          - /url: /tv.html
+          - generic [ref=e22]: →
+        - link "スマホで選曲" [ref=e23] [cursor=pointer]:
+          - /url: /m.html
+      - paragraph [ref=e24]: ブラウザでも Android TV でも開けます。先にテレビでコードを出し、スマホで入室。
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic [ref=e27]: NOW SINGING
+        - strong [ref=e28]: 夜曲
+        - emphasis [ref=e29]: 周杰伦
+      - paragraph [ref=e30]: 一群嗜血的蚂蚁 被腐肉所吸引
+      - paragraph [ref=e31]: 我却得到你的纵容 神的原谅
+      - paragraph [ref=e32]: 而你 却沉默地转过身
+  - region "できること" [ref=e42]:
+    - generic [ref=e43]:
+      - generic [ref=e44]: NetEase外リンク
+      - generic [ref=e46]: SoundCloud
+      - generic [ref=e48]: YouTube
+      - generic [ref=e50]: UVR ONNX
+      - generic [ref=e52]: 公式LRC
+      - generic [ref=e54]: 中日英の色つけ
+      - generic [ref=e56]: Android TV
+      - generic [ref=e58]: 自ホスト
+  - generic [ref=e60]:
+    - paragraph [ref=e61]: ステージで本当に使うもの
+    - heading "一歩ずつがボタン。部屋がそれらをつなぐ。" [level=2] [ref=e62]
+    - generic [ref=e63]:
+      - article [ref=e64]:
+        - paragraph [ref=e65]: Search
+        - heading "本線は曲名検索。ファイル送信ではない" [level=3] [ref=e66]
+        - paragraph [ref=e67]: 曲名が曲庫へ。NetEase外リンク、SoundCloud、YouTubeの順に落ちる。アップロードは予備。
+      - article [ref=e68]:
+        - paragraph [ref=e69]: Split
+        - heading "ボーカル分離にTorchは不要" [level=3] [ref=e70]
+        - paragraph [ref=e71]: onnxruntimeがその場でトラックを分ける。処理後はボックスにキャッシュ。処理端が落ちても歌える。
+      - article [ref=e72]:
+        - paragraph [ref=e73]: Color
+        - heading "中日英、3つの色つけ文法" [level=3] [ref=e74]
+        - paragraph [ref=e75]: 今の行と次の行。日本語の読みは字の上。ASS / LRC / JSONは残し、字幕は焼き込まない。
+      - article [ref=e76]:
+        - paragraph [ref=e77]: Room
+        - heading "アプリ不要。スキャンすれば入室" [level=3] [ref=e78]
+        - paragraph [ref=e79]: テレビがコードを出し、スマホが選曲台。予約、トップ、曲送り。来た人が選ぶ。
+      - article [ref=e80]:
+        - paragraph [ref=e81]: Box
+        - heading "Android TVがLANホスト" [level=3] [ref=e82]
+        - paragraph [ref=e83]: ボックスに入れて開室。完成ファイルはローカルキャッシュ。リビングが切れても今夜は歌い切れる。
+      - article [ref=e84]:
+        - paragraph [ref=e85]: Mic
+        - heading "スマホマイクをテレビに混ぜられる" [level=3] [ref=e86]
+        - paragraph [ref=e87]: 音量スライダーが現場を直接操る。WeChatのIDは任意。未設定でも端末IDで歌える。
+  - generic [ref=e89]:
+    - paragraph [ref=e90]: 3ステップで開室
+    - heading "テレビがコードを出し、スマホが曲を探し、壁で歌い始める。" [level=2] [ref=e91]
+    - list [ref=e92]:
+      - listitem [ref=e93]:
+        - generic [ref=e94]: "01"
+        - strong [ref=e95]: テレビで開室
+        - paragraph [ref=e96]: ボックスかブラウザでテレビページを開くと、壁に部屋コードとQRが出る。
+      - listitem [ref=e97]:
+        - generic [ref=e98]: "02"
+        - strong [ref=e99]: スマホで曲を探す
+        - paragraph [ref=e100]: スキャンして同じ部屋へ。先に試聴して確認し、曲庫に入れて予約。
+      - listitem [ref=e101]:
+        - generic [ref=e102]: "03"
+        - strong [ref=e103]: 色が走ったら歌う
+        - paragraph [ref=e104]: 伴奏、ボーカル、歌詞が揃う。原曲と伴奏はいつでも切替。次の行はすでに灯っている。
+  - generic [ref=e106]:
+    - paragraph [ref=e107]: また一つの選曲アプリではない
+    - heading "USB、会員曲庫、ネットの伴奏は、どれも他人の完成カラオケを探している。" [level=2] [ref=e108]
+    - table [ref=e110]:
+      - rowgroup [ref=e111]:
+        - row [ref=e112]:
+          - columnheader [ref=e113]
+          - columnheader "自分でファイルを探す" [ref=e114]
+          - columnheader "オンラインカラオケ" [ref=e115]
+          - columnheader "lov-ktv" [ref=e116]
+      - rowgroup [ref=e117]:
+        - row [ref=e118]:
+          - rowheader "曲の入れ方" [ref=e119]
+          - cell "ディスク / USBを漁る" [ref=e120]
+          - cell "プラットフォーム曲庫" [ref=e121]
+          - cell "曲名で取り込む" [ref=e122]
+        - row [ref=e123]:
+          - rowheader "伴奏" [ref=e124]
+          - cell "運任せ" [ref=e125]
+          - cell "プラットフォームが出すものを歌う" [ref=e126]
+          - cell "その場でボーカル分離" [ref=e127]
+        - row [ref=e128]:
+          - rowheader "歌詞" [ref=e129]
+          - cell "しばしば無い" [ref=e130]
+          - cell "ときどきズレる" [ref=e131]
+          - cell "公式軸で文字単位に色" [ref=e132]
+        - row [ref=e133]:
+          - rowheader "データ" [ref=e134]
+          - cell "あちこちに散らばる" [ref=e135]
+          - cell "クラウドへ" [ref=e136]
+          - cell "自ホスト。オフラインでも歌える" [ref=e137]
+  - generic [ref=e139]:
+    - paragraph [ref=e140]: 誰が灯を入れるか
+    - heading "家に人が来る。友達の個室。一人で1行練習。" [level=2] [ref=e141]
+    - generic [ref=e142]:
+      - article [ref=e143]:
+        - strong [ref=e144]: 家に人が来る
+        - paragraph [ref=e145]: テレビがステージ、ソファがボックス。Bluetoothスピーカーの前でスマホを回さなくていい。
+      - article [ref=e146]:
+        - strong [ref=e147]: 友達の個室
+        - paragraph [ref=e148]: LANでスキャンして入室。来た人が選曲。予約はテレビに。マイクもスマホから混ぜられる。
+      - article [ref=e149]:
+        - strong [ref=e150]: 一人練習
+        - paragraph [ref=e151]: 日本語の仮名、英語の単語単位の色。1行終えたら次へ。処理済みの曲はオフラインでも残る。
+  - generic [ref=e153]:
+    - paragraph [ref=e154]: 本番前に聞きたくなること
+    - heading "つまずきやすいところを先に。" [level=2] [ref=e155]
+    - generic [ref=e156]:
+      - generic [ref=e157]:
+        - term [ref=e158]: Androidテレビ必須ですか？
+        - definition [ref=e159]: いいえ。ブラウザでテレビページを開けば歌えます。Android TVはホストとキャッシュをボックスに入れるだけ。
+      - generic [ref=e160]:
+        - term [ref=e161]: 曲はどこから？
+        - definition [ref=e162]: 曲名検索：NetEase外リンク、次にSoundCloud、YouTube。自分の部屋専用。再配布しない。
+      - generic [ref=e163]:
+        - term [ref=e164]: 公式歌詞が無いときは？
+        - definition [ref=e165]: 歌詞を貼れます。それでも無ければ書き起こし。公式LRCがあるときは公式軸が優先。
+      - generic [ref=e166]:
+        - term [ref=e167]: この端末にTorchを入れますか？
+        - definition [ref=e168]: いいえ。ボーカル分離はONNX。イメージにモデルは焼き込み済み。
+      - generic [ref=e169]:
+        - term [ref=e170]: オフラインで歌えますか？
+        - definition [ref=e171]: 処理済みでボックスにキャッシュされた曲は可。新曲は処理端がオンラインである必要あり。
+      - generic [ref=e172]:
+        - term [ref=e173]: 公開曲庫サイトにできますか？
+        - definition [ref=e174]: できません。家庭 / 個室の自ホストです。メディアファイルを公開しないでください。
+  - generic [ref=e176]:
+    - paragraph [ref=e177]: 今夜、曲がある
+    - heading "1曲目が予約に入った瞬間、リビングはもうリビングではない。" [level=2] [ref=e178]
+    - paragraph [ref=e179]: 先にテレビを開き、スマホで入室。今夜歌いたい1曲を探す。伴奏と歌詞は自分で揃う。
+    - generic [ref=e180]:
+      - link "テレビを開く" [ref=e181] [cursor=pointer]:
+        - /url: /tv.html
+        - generic [ref=e183]: →
+      - link "スマホで選曲" [ref=e184] [cursor=pointer]:
+        - /url: /m.html
+  - contentinfo [ref=e185]:
+    - generic [ref=e186]:
+      - paragraph [ref=e187]: lov-ktv · 個人または家庭LAN専用。曲庫を公開しないでください。
+      - paragraph [ref=e188]:
+        - link "テレビ" [ref=e189] [cursor=pointer]:
+          - /url: /tv.html
+        - link "選曲" [ref=e190] [cursor=pointer]:
+          - /url: /m.html
+        - link "ID取得" [ref=e191] [cursor=pointer]:
+          - /url: /login.html

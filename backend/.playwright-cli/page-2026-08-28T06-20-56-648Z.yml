@@ -1,0 +1,20 @@
+- generic [ref=e2]:
+  - paragraph [ref=e3]: lov-ktv
+  - combobox "言語" [ref=e4]:
+    - option "中文"
+    - option "粵語"
+    - option "English"
+    - option "日本語" [selected]
+  - heading "ID取得済み" [level=1] [ref=e5]
+  - paragraph [ref=e6]: このIDは次回スキャンしてもあなたです。
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - paragraph [ref=e9]: あなたのID
+      - paragraph [ref=e10]: A83C7E
+      - paragraph [ref=e11]: この端末
+    - button "ログアウト" [ref=e12] [cursor=pointer]
+  - paragraph [ref=e13]:
+    - link "選曲へ" [ref=e14] [cursor=pointer]:
+      - /url: /m.html
+    - link "テレビを開く" [ref=e15] [cursor=pointer]:
+      - /url: /tv.html

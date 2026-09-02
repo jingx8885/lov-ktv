@@ -1,0 +1,52 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - button "入房" [ref=e4] [cursor=pointer]
+    - heading "點歌" [level=1] [ref=e5]
+    - button "我嘅" [ref=e6] [cursor=pointer]
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: ♪
+        - generic [ref=e14]:
+          - generic [ref=e15]: 而家未唱
+          - paragraph [ref=e16]: 由曲庫點一首
+      - button "音量" [ref=e17] [cursor=pointer]
+    - generic [ref=e20]:
+      - button "切歌" [ref=e21] [cursor=pointer]
+      - button "而家伴奏，撳一下切到原唱" [ref=e25] [cursor=pointer]:
+        - emphasis [ref=e28]: 伴奏
+      - button "開咪" [ref=e29] [cursor=pointer]:
+        - emphasis [ref=e32]: 開咪
+    - tablist "歌詞顯示" [ref=e33]:
+      - button "日語" [ref=e34] [cursor=pointer]
+      - button "翻譯" [ref=e35] [cursor=pointer]
+      - button "羅馬音" [ref=e36] [cursor=pointer]
+      - button "全部" [ref=e37] [cursor=pointer]
+    - generic [ref=e38]:
+      - tablist [ref=e39]:
+        - button "已點" [ref=e40] [cursor=pointer]:
+          - text: 已點
+          - emphasis
+        - button "曲庫" [ref=e41] [cursor=pointer]:
+          - text: 曲庫
+          - emphasis
+      - generic [ref=e43]:
+        - paragraph [ref=e45]: 仲未點歌
+        - button "去曲庫加點" [ref=e46] [cursor=pointer]
+  - navigation [ref=e47]:
+    - button "點歌" [ref=e48]
+    - button "搵歌" [ref=e52]
+    - button "聽歌" [ref=e56]
+    - button "學習" [ref=e60]
+  - generic [ref=e65]:
+    - button "關閉" [ref=e66]
+    - dialog [ref=e67]:
+      - heading "進入房間" [level=2] [ref=e69]
+      - generic [ref=e70]:
+        - generic [ref=e71]: 房間碼
+        - textbox "房間碼" [ref=e72]:
+          - /placeholder: 電視上嘅 6 位碼，空住會新建
+      - button "進入房間" [ref=e73] [cursor=pointer]
+      - link "開電視" [ref=e74] [cursor=pointer]:
+        - /url: /tv.html
+      - paragraph [ref=e75]: 入房之後電視唱，手機點歌。

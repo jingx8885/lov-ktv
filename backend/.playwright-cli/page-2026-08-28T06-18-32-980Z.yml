@@ -1,0 +1,20 @@
+- generic [ref=e2]:
+  - paragraph [ref=e3]: lov-ktv
+  - combobox "Language" [ref=e4]:
+    - option "中文"
+    - option "粵語"
+    - option "English" [selected]
+    - option "日本語"
+  - heading "ID claimed" [level=1] [ref=e5]
+  - paragraph [ref=e6]: This ID stays yours next time you scan.
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - paragraph [ref=e9]: Your ID
+      - paragraph [ref=e10]: 0CB5EE
+      - paragraph [ref=e11]: This device
+    - button "Sign out" [ref=e12] [cursor=pointer]
+  - paragraph [ref=e13]:
+    - link "Go queue songs" [ref=e14] [cursor=pointer]:
+      - /url: /m.html
+    - link "Open TV" [ref=e15] [cursor=pointer]:
+      - /url: /tv.html
