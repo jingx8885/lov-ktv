@@ -268,6 +268,47 @@ def _align_reordered_lines(
     # logic.  Require a genuine order inversion before switching clocks.
     if not reordered or len(rows) < 3:
         return None
+    # Fill lyric rows that the ASR could not confidently spell.  Interpolate
+    # their clock between the nearest matched lyric indices; this preserves a
+    # complete karaoke track while keeping the matched Grok word timestamps
+    # authoritative.  The interpolation is especially useful when a short
+    # edit omits a few words from one remote chunk.
+    matched_by_index = {
+        int(match["lyric"]) - 1: row
+        for match, row in zip(matches, rows)
+        if isinstance(match, dict) and "lyric" in match
+    }
+    # Rebuild the map from validated rows (the zip above is unsafe when the
+    # agent returned an invalid/overlapping row that was skipped).
+    matched_by_index = {}
+    for match in matches:
+        try:
+            idx = int(match["lyric"]) - 1
+            start = int(words[int(match["from"]) - 1].get("start_ms") or 0)
+            end = max(start + 40, int(words[int(match["to"]) - 1].get("end_ms") or start + 40))
+        except (KeyError, TypeError, ValueError, IndexError):
+            continue
+        if idx in seen_lyrics:
+            matched_by_index[idx] = {"text": str(kept[idx].get("text") or ""), "start_ms": start, "end_ms": end, "from_asr": True}
+    for index, item in enumerate(kept):
+        if index in matched_by_index:
+            continue
+        lower = max((key for key in matched_by_index if key < index), default=None)
+        upper = min((key for key in matched_by_index if key > index), default=None)
+        if lower is not None and upper is not None:
+            left = matched_by_index[lower]["start_ms"]
+            right = matched_by_index[upper]["start_ms"]
+            ratio = (index - lower) / max(1, upper - lower)
+            start = int(round(left + ratio * (right - left)))
+        elif lower is not None:
+            start = int(matched_by_index[lower]["end_ms"]) + max(120, (index - lower) * 700)
+        elif upper is not None:
+            start = max(0, int(matched_by_index[upper]["start_ms"]) - max(120, (upper - index) * 700))
+        else:
+            continue
+        matched_by_index[index] = {"text": str(item.get("text") or ""), "start_ms": start, "end_ms": start + 500, "from_asr": False}
+        rows.append(matched_by_index[index])
+    rows = list(matched_by_index.values())
     rows.sort(key=lambda row: (int(row["start_ms"]), int(row["end_ms"])))
     bounds: list[dict[str, Any]] = []
     for row in rows:
