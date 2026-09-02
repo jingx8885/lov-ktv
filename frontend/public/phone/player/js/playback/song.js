@@ -35,6 +35,7 @@ export async function loadPlayerSong(songId, opts) {
   const audio = $("playerAudio");
   const guide = $("playerGuide");
   const mtv = $("playerMtv");
+  const art = $("playerArt");
   audio.pause();
   if (guide) guide.pause();
   if (mtv) {
@@ -105,12 +106,14 @@ export async function loadPlayerSong(songId, opts) {
     mtv.onerror = () => {
       if (gen !== state.playerLoad) return;
       mtv.hidden = true;
+      if (art) art.classList.remove("has-mtv");
       mtv.removeAttribute("src");
       mtv.load();
     };
     mtv.onloadeddata = () => {
       if (gen !== state.playerLoad) return;
       mtv.hidden = !document.body.classList.contains("display-mv");
+      if (art) art.classList.toggle("has-mtv", document.body.classList.contains("display-mv"));
       const fullscreen = $("playerFullscreen");
       if (fullscreen) fullscreen.hidden = !document.body.classList.contains("display-mv");
       try {
@@ -118,6 +121,10 @@ export async function loadPlayerSong(songId, opts) {
       } catch (err) {}
     };
     mtv.src = mediaUrl(song.id, "mtv.mp4");
+    // Reserve the shared MV/lyrics grid as soon as a new video source is
+    // selected, instead of briefly rendering the compact progress-row layout
+    // while the first frame is decoding.
+    if (art) art.classList.toggle("has-mtv", document.body.classList.contains("display-mv"));
     mtv.load();
   }
   api.ensureTimeline().setVoiceUrl(guideUrl);
