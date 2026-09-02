@@ -258,6 +258,13 @@ def _align_reordered_lines(
         seen_words.update(range(start_index, end_index + 1))
         start_ms = int(words[start_index].get("start_ms") or 0)
         end_ms = max(start_ms + 40, int(words[end_index].get("end_ms") or start_ms + 40))
+        # A single line landing tens of seconds away from its LRC stamp is a
+        # strong signal of an edited/reordered video even when the model still
+        # returns lyric numbers monotonically (it may simply skip the moved
+        # block).  Small global offsets remain on the existing clock paths.
+        official_ms = kept[lyric_index].get("ms")
+        if official_ms is not None and abs(start_ms - int(official_ms)) >= 40_000:
+            reordered = True
         rows.append({
             "text": str(kept[lyric_index].get("text") or ""),
             "start_ms": start_ms,
