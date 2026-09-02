@@ -291,6 +291,11 @@ def _align_reordered_lines(
     # logic.  Require a genuine order inversion before switching clocks.
     if not reordered or len(rows) < 3:
         return None
+    # A sparse match set is not reliable evidence of an edited/reordered
+    # recording. Falling back keeps every LRC row (including repeated chorus
+    # lines) on the official clock instead of dropping ambiguous rows here.
+    if len(seen_lyrics) / max(1, len(kept)) < 0.8:
+        return None
     # Fill lyric rows that the ASR could not confidently spell.  Interpolate
     # their clock between the nearest matched lyric indices; this preserves a
     # complete karaoke track while keeping the matched Grok word timestamps

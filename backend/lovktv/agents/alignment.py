@@ -23,7 +23,8 @@ from lovktv.agents.ja_lyrics import (
 from lovktv.pipeline.lyrics import drop_credit_lines
 from lovktv.pipeline.matching import _usable_asr_words
 
-ALIGN_SCHEMA = "lovktv-align-v1"
+# v2 tightens repeated-line handling; old sparse matches are regenerated.
+ALIGN_SCHEMA = "lovktv-align-v2"
 _JSON_BLOCK = re.compile(r"\{.*\}", re.S)
 
 SYSTEM = """You match known karaoke lyric lines to a Whisper word transcript.
@@ -38,6 +39,9 @@ Rules:
    non-monotonic. Return matches in ASR time order (ascending `from`).
 3. Repeated lines must use the matching words at their actual occurrence in the
    transcript, including occurrences that appear before an earlier LRC line.
+   Return every occurrence that is plausibly sung, including short repeated
+   chorus tags. Use the LRC clock and nearby context to disambiguate identical
+   text; do not skip a line merely because another line looks similar.
 4. Whisper may mis-hear CJK, kana, accents, or punctuation. Use nearby context,
    word order, and the original lyric to choose the best span.
 5. Every ASR word includes an authoritative `[start_ms-end_ms]` timestamp. Use
@@ -45,7 +49,8 @@ Rules:
    invent, average, or shift word times while choosing `from`/`to`.
 6. Bracketed lyric times are the source LRC clock, not ground truth. Compare
    them with ASR times and correct obvious offsets or version drift.
-7. Omit a lyric only when no plausible sung counterpart exists; never invent
+7. Omit a lyric only when no plausible sung counterpart exists in the ASR
+   transcript (for example, an actual cut or spoken-only line); never invent
    ASR indices. Do not return timestamps or rewritten lyric text.
 """
 
