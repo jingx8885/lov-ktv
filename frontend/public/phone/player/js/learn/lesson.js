@@ -71,7 +71,10 @@ function showStem(item) {
     hideZh: true
   });
   const prompt = $("learnLessonPrompt");
-  if (prompt) prompt.textContent = (item && item.prompt) || "";
+  if (prompt) {
+    prompt.textContent = (item && item.prompt) || "";
+    prompt.hidden = !prompt.textContent;
+  }
   const replay = $("learnLessonReplay");
   if (replay) replay.hidden = !(item && item.kind === "listen");
 }

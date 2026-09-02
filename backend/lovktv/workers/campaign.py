@@ -34,6 +34,10 @@ MASTERY_STREAK = 2
 _SKILL_PLAY = {"read": "tap", "sing": "echo"}
 
 
+def _has_kanji(text: str) -> bool:
+    return any("\u3400" <= char <= "\u9fff" for char in str(text or ""))
+
+
 def singable_cues(timeline: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         cue
@@ -275,6 +279,21 @@ def _mc(
     return item
 
 
+def _word_script_variant(token: dict[str, Any], japanese: bool) -> tuple[str, str]:
+    """Return (shown stem, expected choice) using persisted lyric metadata."""
+    text = _norm(token.get("text"))
+    if not japanese:
+        return _norm(token.get("zh")) or text, text
+    # `reading` is produced by the lyrics pipeline for kanji. Never convert it
+    # here: script choice is part of the persisted lyric data and must stay
+    # faithful to the song.
+    reading = _norm(token.get("reading"))
+    # For kanji, the persisted reading is the expected hiragana answer. For
+    # kana words the persisted `text` already carries the canonical script;
+    # never convert it or substitute a derived reading.
+    return text, reading if _has_kanji(text) and reading else text
+
+
 def _match_item(
     qid: str,
     prompt: str,
@@ -307,78 +326,87 @@ def _word_items(
     pools: dict[str, list[str]],
     rng: Any,
     lang: str,
+    language: str = "",
 ) -> list[dict[str, Any]]:
+    """Build word-recognition drills without leaking the target word.
+
+    Sentence dictation belongs to the separate ``listen`` skill.  Here the
+    learner sees a gloss and picks the matching lyric token, so the prompt
+    never contains the answer itself.
+    """
     items: list[dict[str, Any]] = []
     words = knowledge_words(cues)
-    if len(words) >= 3:
-        picked = words[:4]
-        items.append(
-            _match_item(
-                f"{unit_id}:match:0",
-                translate(lang, "api.learn_match"),
-                [
-                    {
-                        "left": word["text"],
-                        "right": word["zh"],
-                        "key": word["key"],
-                    }
-                    for word in picked
-                ],
-                _knowledge("word", picked[0]["key"], picked[0]["text"], picked[0]["zh"]),
-            )
-        )
+    japanese = language == "ja"
+    token_rows = [
+        token
+        for cue in cues
+        for token in (cue.get("tokens") or [])
+        if isinstance(token, dict) and _norm(token.get("text"))
+    ]
+    variants = {
+        _norm(token.get("text")): _word_script_variant(token, japanese)
+        for token in token_rows
+    }
+    variant_pool = _unique(
+        [variant[1] for variant in variants.values()]
+        + ([] if japanese else list(pools.get("word_text") or []))
+    )
+    # `pools` is built from the whole song, so reverse questions still have
+    # meaningful Chinese distractors when a unit contains only a few words.
+    gloss_pool = _unique(pools.get("zh") or [word["zh"] for word in words if word.get("zh")])
     for offset, word in enumerate(words):
-        choices = _choices(word["zh"], pools["word"], rng)
+        stem, answer = variants.get(word["text"], (word["text"], word["text"]))
+        has_script_pair = bool(
+            japanese
+            and word.get("zh")
+        )
+        meaning_to_kana = False
+        if has_script_pair:
+            # Alternate the direction deterministically per lesson: meaning →
+            # kana and kana → meaning are both useful, and neither prompt
+            # contains the answer.
+            if rng.random() < 0.5:
+                meaning_to_kana = True
+                choice_answer = answer
+                choice_pool = variant_pool
+                question_stem = word["zh"]
+            else:
+                choice_answer = word["zh"]
+                choice_pool = gloss_pool
+                question_stem = answer
+        else:
+            choice_answer = answer
+            choice_pool = variant_pool
+            question_stem = stem
+        # Do not offer the other script of the same token as a competing
+        # answer; it is a useful distractor only for a different token.
+        own_forms = {answer}
+        item_pool = [value for value in choice_pool if value not in own_forms]
+        fallback = ("あ", "カ", "ア") if meaning_to_kana else ("其他", "某物", "—")
         item = _mc(
             f"{unit_id}:word:{offset}",
             "word",
-            translate(lang, "api.learn_word", word=word["text"]),
-            word["text"],
-            choices,
+            "",
+            question_stem,
+            _choices(choice_answer, item_pool, rng, fallback=fallback),
             _knowledge("word", word["key"], word["text"], word["zh"]),
         )
         host = next(
-            (line for line in lines if any(tok.get("text") == word["text"] for tok in line.get("words") or [])),
+            (
+                line
+                for line in lines
+                if any(tok.get("text") == word["text"] for tok in line.get("words") or [])
+            ),
             lines[0] if lines else None,
         )
         if host:
             _attach_line(item, host)
+            # The full-line romaji would reveal the answer before the learner
+            # chooses a script variant, so keep this drill visual.
+            item["romaji"] = ""
         items.append(item)
-    word_pool = _unique([word["text"] for word in words] + pools["text"])
-    for offset, cue in enumerate(cues):
-        tokens = content_tokens(cue, include_function=False) or content_tokens(
-            cue, include_function=True
-        )
-        if not tokens:
-            continue
-        target = tokens[0]
-        text = cue_text(cue)
-        gap = text.replace(target["text"], "____", 1)
-        if gap == text:
-            continue
-        item = _mc(
-            f"{unit_id}:blank:{offset}",
-            "blank",
-            translate(lang, "api.learn_blank"),
-            gap,
-            _choices(target["text"], word_pool, rng),
-            _knowledge("word", _norm(target["text"]), target["text"], target["zh"]),
-        )
-        item["blank"] = {
-            "before": text.split(target["text"], 1)[0],
-            "gap": target["text"],
-            "after": text.split(target["text"], 1)[1] if target["text"] in text else "",
-        }
-        _attach_line(item, lines[offset])
-        items.append(item)
-    # Never truncate the per-word questions: campaign completion requires
-    # every knowledge word to be seen at least once.  Keep the optional blank
-    # drills bounded so a dense line does not multiply the lesson endlessly.
-    core = [item for item in items if item.get("kind") in {"match", "word"}]
-    extras = [item for item in items if item.get("kind") == "blank"]
-    rng.shuffle(core)
-    rng.shuffle(extras)
-    return core + extras[: max(0, LESSON_SIZE - len(core))]
+    rng.shuffle(items)
+    return items
 
 
 def _sentence_items(
@@ -502,7 +530,8 @@ def build_lesson(
     play_mode = _SKILL_PLAY.get(skill)
     items: list[dict[str, Any]] = []
     if skill == "word":
-        items = _word_items(unit_id, lines, chunk, pools, rng, lang)
+        language = _norm(song.get("language") or timeline.get("language"))
+        items = _word_items(unit_id, lines, chunk, pools, rng, lang, language)
         if not items:
             items = _listen_items(unit_id, lines, chunk, pools, rng, lang)
     elif skill == "sentence":

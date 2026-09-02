@@ -234,6 +234,32 @@ def test_word_lesson_covers_every_word_in_dense_unit():
     assert keys == {f"w{index}{suffix}" for index in range(4) for suffix in "abc"}
 
 
+def test_japanese_word_lesson_drills_kana_not_chinese_gloss():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": "走る きみ メモリー",
+                "start_ms": 0,
+                "end_ms": 1200,
+                "tokens": [
+                    {"text": "走る", "zh": "奔跑", "reading": "はしる"},
+                    {"text": "きみ", "zh": "你"},
+                    {"text": "メモリー", "zh": "记忆", "reading": "めもりー"},
+                ],
+            }
+        ],
+    }
+    lesson = build_lesson(timeline, {"id": "kana", "language": "ja"}, "u0", "word")
+    answers = {item["answer_text"] for item in lesson["items"]}
+    assert answers & {"はしる", "奔跑"}
+    assert answers & {"きみ", "你"}
+    assert answers & {"メモリー", "记忆"}
+    for item in lesson["items"]:
+        assert item["prompt"] == ""
+        assert item["answer_text"] not in item["prompt"]
+
+
 def test_quiz_is_deterministic():
     song = {"id": "s1", "title": "群青"}
     a = build_learn_quiz(JA_TIMELINE, song)

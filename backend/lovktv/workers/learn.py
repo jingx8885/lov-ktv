@@ -197,12 +197,20 @@ def _unique(values: list[str]) -> list[str]:
 
 
 def _choices(
-    correct: str, pool: list[str], rng: random.Random, extra: tuple[str, ...] = ()
+    correct: str,
+    pool: list[str],
+    rng: random.Random,
+    extra: tuple[str, ...] = (),
+    fallback: tuple[str, ...] | None = None,
 ) -> list[dict[str, Any]]:
     answer = _norm(correct)
     distractors: list[str] = []
     seen = {answer}
-    for item in pool + list(extra) + list(_FALLBACK_ZH):
+    fallback_pool = list(_FALLBACK_ZH if fallback is None else fallback)
+    # Prefer real distractors from the same semantic pool.  Fallback labels
+    # should only fill a genuinely tiny pool; mixing "—/…" into a normal word
+    # question makes the exercise look like a broken multiple-choice item.
+    for item in pool + list(extra):
         text = _norm(item)
         if not text or text in seen:
             continue
@@ -210,10 +218,19 @@ def _choices(
         distractors.append(text)
         if len(distractors) >= 8:
             break
+    if len(distractors) < 3:
+        for item in fallback_pool:
+            text = _norm(item)
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            distractors.append(text)
+            if len(distractors) >= 3:
+                break
     rng.shuffle(distractors)
     picked = distractors[:3]
     while len(picked) < 3:
-        filler = _FALLBACK_ZH[len(picked) % len(_FALLBACK_ZH)]
+        filler = fallback_pool[len(picked) % len(fallback_pool)] if fallback_pool else "…"
         if filler != answer and filler not in picked:
             picked.append(filler)
         else:
@@ -253,6 +270,13 @@ def _line_pools(cues: list[dict[str, Any]]) -> dict[str, list[str]]:
         "word": _unique(
             [
                 token["zh"]
+                for cue in cues
+                for token in content_tokens(cue, include_function=True)
+            ]
+        ),
+        "word_text": _unique(
+            [
+                token["text"]
                 for cue in cues
                 for token in content_tokens(cue, include_function=True)
             ]
