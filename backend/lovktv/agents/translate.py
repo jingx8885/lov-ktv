@@ -149,7 +149,8 @@ def _surface_key(value: str, language: str) -> str:
         # Keep apostrophes/hyphens inside a word but ignore surrounding lyric
         # punctuation (``love,`` vs ``love``).
         text = text.replace("’", "'").replace("‐", "-").replace("‑", "-")
-        return "".join(ch for ch in text if ch.isalnum() or ch in "'-")
+        text = "".join(ch for ch in text if ch.isalnum() or ch in "'-")
+        return text.strip("'")
     return text
 
 
