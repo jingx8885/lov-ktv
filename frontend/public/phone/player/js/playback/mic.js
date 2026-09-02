@@ -308,7 +308,11 @@ export function bindPhoneMic() {
     if (btn.classList.contains("busy")) return;
     btn.classList.add("busy");
     try {
-      if (state.phoneMic) {
+      // Native Android microphones don't create a MediaStream, so
+      // `state.phoneMic` stays null while the mic is live.  Use the native
+      // live flag as part of the toggle state; otherwise tapping the button
+      // a second time starts/restarts the mic instead of stopping it.
+      if (state.phoneMic || state.phoneNativeLive) {
         stopPhoneMic();
         holdMicHint(false, phoneMicHintIdle());
         showToast(t("common.micOff"));
