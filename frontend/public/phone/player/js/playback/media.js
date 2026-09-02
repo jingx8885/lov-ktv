@@ -47,7 +47,7 @@ export function setPlayerCover(song) {
   cover.src = mediaUrl(song.id, "cover.jpg");
 }
 
-/** Wait until an audio element has metadata for the requested source. */
+/** Wait until an audio element can actually start the requested source. */
 export function waitMedia(el, gen, wantSrc) {
   return new Promise((resolve) => {
     if (!el || !el.getAttribute("src")) {
@@ -55,18 +55,20 @@ export function waitMedia(el, gen, wantSrc) {
       return;
     }
     const want = mediaPath(wantSrc || el.getAttribute("src"));
-    const isNew = () => el.readyState >= 1 && mediaPath(el.currentSrc || el.src) === want;
+    const isNew = () => el.readyState >= 3 && mediaPath(el.currentSrc || el.src) === want;
     if (isNew()) {
       resolve(true);
       return;
     }
     const finish = (ok) => {
+      el.removeEventListener("canplay", onOk);
       el.removeEventListener("loadedmetadata", onOk);
       el.removeEventListener("error", onErr);
       resolve(ok);
     };
     const onOk = () => finish(gen === state.playerLoad && isNew());
     const onErr = () => finish(false);
+    el.addEventListener("canplay", onOk, { once: true });
     el.addEventListener("loadedmetadata", onOk);
     el.addEventListener("error", onErr, { once: true });
     if (isNew()) finish(true);

@@ -299,6 +299,7 @@ interface LearnFxRing {
 interface PhoneIcons {
   play: string;
   pause: string;
+  loading: string;
   listen: string;
   plus: string;
   trash: string;

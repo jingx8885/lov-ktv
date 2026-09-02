@@ -11,6 +11,7 @@ import {
   hookPlayerAudio,
   playerTrackName,
   setPlayIcon,
+  setPlayerLoading,
   syncGuide,
   unlockPlayerGesture
 } from "./controls.js";
@@ -24,11 +25,20 @@ import { syncPlayerSheetMeta } from "./sheet.js";
 export async function loadPlayerSong(songId, opts) {
   const wantPlay = !!(opts && opts.play);
   const gen = ++state.playerLoad;
-  /** @type {{ data: Song }} */
-  const { data: song } = await fetchJson("/api/songs/" + songId);
+  setPlayerLoading(true);
+  /** @type {Song} */
+  let song;
+  try {
+    const result = await fetchJson("/api/songs/" + songId);
+    song = result.data;
+  } catch (err) {
+    if (gen === state.playerLoad) setPlayerLoading(false);
+    return;
+  }
   if (gen !== state.playerLoad) return;
   if (!song.id || song.status !== "ready") {
     $("playerMeta").textContent = t("phone.player.notReady");
+    setPlayerLoading(false);
     return;
   }
   api.stopPreview();
@@ -66,20 +76,15 @@ export async function loadPlayerSong(songId, opts) {
   try {
     if (guide) guide.currentTime = 0;
   } catch (err) {}
-  const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
-  state.playerLyrics = lyrics.ok ? sanitizeLyrics(lyrics.data) : { cues: [] };
-  paintDeskLyrics();
-  paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
-  if (gen !== state.playerLoad) return;
-  state.lyricsDirty = false;
-  resetPlayerFace();
+  state.songMediaRev = song.media_rev || "";
+  // Start the lyrics request in parallel; it should not block audio startup.
+  const lyricsPromise = fetchJson(mediaUrl(song.id, "lyrics.json")).catch(() => ({ ok: false, data: null }));
   $("playerTitle").textContent = songTitle(song);
   $("playerMeta").textContent = songArtist(song);
   syncPlayerSheetMeta();
   setPlayerCover(song);
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
   $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
-  state.songMediaRev = song.media_rev || "";
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
   const selected = mediaUrl(song.id, playerTrackName());
@@ -130,7 +135,10 @@ export async function loadPlayerSong(songId, opts) {
   api.ensureTimeline().setVoiceUrl(guideUrl);
   api.applyEditorTracks();
   api.renderAlignList();
-  if (opts?.refreshPlayerCatalog === false) markCurrentPlayerPick(song.id);
+  // Selecting a song from the already-rendered catalog only needs to move the
+  // highlight. Rebuilding hundreds of rows here makes a manual track switch
+  // feel sluggish on mobile WebViews.
+  if (opts?.refreshPlayerCatalog === false || state.playerCatalog.length) markCurrentPlayerPick(song.id);
   else renderPlayerList();
   const ready = await waitMedia(audio, gen, selected);
   if (gen !== state.playerLoad) return;
@@ -146,18 +154,31 @@ export async function loadPlayerSong(songId, opts) {
     state.playerHeld = false;
     try {
       await audio.play();
+      setPlayerLoading(false);
       setPlayIcon(true);
       syncGuide(0);
       applyPlayerVocalMix();
     } catch (err) {
+      setPlayerLoading(false);
       state.playerHeld = true;
       setPlayIcon(false);
     }
   } else {
+    setPlayerLoading(false);
     state.playerHeld = true;
     setPlayIcon(false);
     applyPlayerVocalMix();
   }
+  kickPlayerPaint();
+
+  // Lyrics can arrive after playback has started without delaying the first beat.
+  const lyrics = await lyricsPromise;
+  if (gen !== state.playerLoad) return;
+  state.playerLyrics = lyrics.ok ? sanitizeLyrics(lyrics.data) : { cues: [] };
+  state.lyricsDirty = false;
+  paintDeskLyrics();
+  paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
+  resetPlayerFace();
   kickPlayerPaint();
 }
 

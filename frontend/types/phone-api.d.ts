@@ -87,6 +87,7 @@ interface PhoneState {
   playOrder: PlayOrder;
   playerCatalog: Song[];
   playerLoad: number;
+  playerLoading: boolean;
   playerClockHold: number | null;
   playerClockHoldAt: number;
   playerHoldDur: number;

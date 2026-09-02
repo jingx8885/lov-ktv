@@ -20,6 +20,7 @@ export const playerState = guardState(
     playOrder: localStorage.getItem("playOrder") === "shuffle" ? "shuffle" : "seq",
     playerCatalog: [],
     playerLoad: 0,
+    playerLoading: false,
     playerClockHold: null,
     playerClockHoldAt: 0,
     playerHoldDur: 0,

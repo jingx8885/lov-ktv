@@ -12,6 +12,8 @@ export const ICO = {
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.2v11.6L18.8 12z"/></svg>',
   bump: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l6.5 6.5-1.4 1.4L12 7.8 6.9 12.9 5.5 11.5 12 5zm0 6.2l6.5 6.5-1.4 1.4L12 14l-5.1 5.1-1.4-1.4L12 11.2z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v14H5zm9 0h5v14h-5z"/></svg>',
+  loading:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4a8 8 0 108 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
   listen:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12a7 7 0 0114 0v6a2 2 0 01-2 2h-2v-7h3a6 6 0 00-12 0h3v7H7a2 2 0 01-2-2v-6z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>',

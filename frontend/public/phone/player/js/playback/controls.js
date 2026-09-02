@@ -8,20 +8,30 @@ import { mediaAhead, mediaUrl, mediaPath } from "./media.js";
 
 let paintPlayerCallback = null;
 let lastGuideSyncAt = 0;
+let trackSwitchGen = 0;
 export function registerPaintPlayer(fn) {
   paintPlayerCallback = fn;
 }
 
 export function setPlayIcon(playing) {
-  const icon = playing ? ICO.pause : ICO.play;
-  const label = playing ? t("common.pause") : t("common.play");
+  const loading = !!state.playerLoading;
+  const icon = loading ? ICO.loading : playing ? ICO.pause : ICO.play;
+  const label = loading ? t("common.loading") : playing ? t("common.pause") : t("common.play");
   ["playerPlay", "editPlay"].forEach((id) => {
     const btn = $(id);
     if (!btn) return;
     if (btn.getAttribute("aria-label") !== label) btn.innerHTML = icon;
     btn.setAttribute("aria-label", label);
     btn.classList.toggle("is-playing", !!playing);
+    btn.classList.toggle("is-loading", loading);
+    btn.disabled = loading;
   });
+}
+
+/** Show the loading indicator while a new source is being prepared. */
+export function setPlayerLoading(loading) {
+  state.playerLoading = !!loading;
+  setPlayIcon(playerIsPlaying());
 }
 
 export function playerIsPlaying() {
@@ -62,28 +72,53 @@ export function switchPlayerTrack(vocal = state.playerVocal, preserveTime = true
   if (!audio || !song || !song.id) return Promise.resolve(false);
   const url = mediaUrl(song.id, playerTrackName(vocal));
   if (mediaPath(audio.currentSrc || audio.src) === mediaPath(url)) return Promise.resolve(true);
+  const switchGen = ++trackSwitchGen;
+  setPlayerLoading(true);
   const time = preserveTime ? Number(audio.currentTime) || 0 : 0;
   const wasPlaying = !audio.paused && !audio.ended;
   audio.pause();
   audio.src = url;
   audio.load();
   return new Promise((resolve) => {
+    const cleanup = () => {
+      audio.removeEventListener("canplay", done);
+      audio.removeEventListener("error", fail);
+    };
     const done = () => {
+      cleanup();
+      if (switchGen !== trackSwitchGen) {
+        resolve(false);
+        return;
+      }
       if (time > 0) {
         try {
           audio.currentTime = time;
         } catch (err) {}
       }
-      if (wasPlaying) audio.play().catch(() => {});
+      if (wasPlaying) {
+        const play = audio.play();
+        if (play && typeof play.then === "function")
+          play.then(() => setPlayerLoading(false)).catch(() => setPlayerLoading(false));
+        else setPlayerLoading(false);
+      } else setPlayerLoading(false);
       resolve(true);
     };
-    audio.addEventListener("loadedmetadata", done, { once: true });
-    audio.addEventListener("error", () => resolve(false), { once: true });
+    const fail = () => {
+      cleanup();
+      if (switchGen === trackSwitchGen) setPlayerLoading(false);
+      resolve(false);
+    };
+    if (audio.readyState >= 3) done();
+    else {
+      audio.addEventListener("canplay", done, { once: true });
+      audio.addEventListener("error", fail, { once: true });
+    }
   });
 }
 
 export function togglePlayer() {
   if (!state.playerSong) return showToast(t("phone.player.needSong"));
+  if (state.playerLoading) return;
   const audio = $("playerAudio");
   hookPlayerAudio();
   if (playerIsPlaying()) {
@@ -92,15 +127,17 @@ export function togglePlayer() {
     return;
   }
   state.playerHeld = false;
-  setPlayIcon(true);
+  setPlayerLoading(true);
   kickPlayerPaint();
   audio
     .play()
     .then(() => {
+      setPlayerLoading(false);
       applyPlayerVocalMix();
       refreshPlayIcon();
     })
     .catch(() => {
+      setPlayerLoading(false);
       pausePlayerTracks();
       showToast(t("phone.player.needTap"));
     });
@@ -116,13 +153,18 @@ export function playFromMs(ms) {
     } catch (err) {}
     syncGuide(Math.max(0, ms) / 1000);
     state.playerHeld = false;
+    setPlayerLoading(true);
     audio
       .play()
       .then(() => {
+        setPlayerLoading(false);
         applyPlayerVocalMix();
         refreshPlayIcon();
       })
-      .catch(() => refreshPlayIcon());
+      .catch(() => {
+        setPlayerLoading(false);
+        refreshPlayIcon();
+      });
     kickPlayerPaint();
   };
   if (audio.readyState >= 1) start();
