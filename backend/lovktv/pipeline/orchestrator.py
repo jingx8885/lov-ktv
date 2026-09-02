@@ -81,11 +81,6 @@ def align_lyrics(
         used_asr_clock = False
         used_drift_clock = False
         used_reordered_clock = False
-        # An agent can only align a transcript to the supplied LRC; it cannot
-        # repair an LRC whose *words* belong to another recording.  In that
-        # case interpolation would display the stale LRC text over the real
-        # singing (the common failure mode in cover/MV uploads).  Prefer the
-        # timestamped ASR transcript until a matching lyric source is supplied.
         if _looks_like_wrong_lyric_version(lines, asr_words, agent_matches, lang):
             transcript = _timeline_from_asr_words(
                 asr_words, lang, duration_ms, lines=lines, matches=agent_matches
@@ -236,7 +231,6 @@ def align_lyrics(
     timeline["alignment_source"] = ""
     return timeline
 
-
 def _looks_like_wrong_lyric_version(
     lines: list[dict[str, Any]],
     asr_words: list[dict[str, Any]],
@@ -277,6 +271,10 @@ def _looks_like_wrong_lyric_version(
         if score < 0.45:
             low_times.append(int(words[start].get("start_ms") or 0))
     if len(scores) < 3:
+        return False
+    if language in {"zh", "yue"}:
+        return False
+    if len(scores) / max(1, len(kept)) < 0.75:
         return False
     low = len(low_times)
     # Two or more low-confidence spans spread through the recording are
@@ -396,6 +394,7 @@ def _timeline_from_asr_words(
         "alignment_source": "whisper-transcript-fallback",
         "cues": cues,
     }
+
 
 
 def _align_reordered_lines(
@@ -532,6 +531,7 @@ def _align_reordered_lines(
             end_ms = min(int(duration_ms), max(start_ms + 40, end_ms))
         bounds.append({"text": row["text"], "start_ms": start_ms, "end_ms": end_ms, "from_asr": True})
     return bounds or None
+
 
 
 def _apply_agent_matches(
