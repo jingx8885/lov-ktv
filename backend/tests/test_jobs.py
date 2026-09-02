@@ -90,6 +90,37 @@ def test_song_repository_is_replaceable(monkeypatch):
     assert jobs.retry_query({}) == "fake query"
 
 
+def test_translate_foreign_timeline_handles_embedded_english_in_cjk(monkeypatch, tmp_path):
+    timeline = {
+        "language": "yue",
+        "cues": [
+            {
+                "text": "我嘅 My jealous 心情",
+                "start_ms": 0,
+                "end_ms": 1000,
+                "tokens": [
+                    {"text": "我", "start_ms": 0, "end_ms": 200},
+                    {"text": "嘅", "start_ms": 200, "end_ms": 300},
+                    {"text": "My", "start_ms": 300, "end_ms": 500},
+                    {"text": "jealous", "start_ms": 500, "end_ms": 800},
+                    {"text": "心", "start_ms": 800, "end_ms": 900},
+                    {"text": "情", "start_ms": 900, "end_ms": 1000},
+                ],
+            }
+        ],
+    }
+    called = {}
+
+    def fake_translate(lines, **kwargs):
+        called["lines"] = lines
+        return {"model": "test", "lines": []}
+
+    monkeypatch.setattr(jobs, "translate_lines", fake_translate)
+    monkeypatch.setattr(jobs, "apply_zh_translation", lambda *args, **kwargs: None)
+    assert jobs._translate_foreign_timeline("s1", tmp_path / "s1", timeline, "yue") is True
+    assert called["lines"] == ["我嘅 My jealous 心情"]
+
+
 def test_job_recovery_accepts_repository_and_submitter(tmp_path):
     queued = []
 

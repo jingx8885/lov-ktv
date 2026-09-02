@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -503,8 +504,16 @@ def _translate_foreign_timeline(
     force: bool = False,
 ) -> bool:
     cues = timeline.get("cues") or []
-    if not cues or is_chinese_lang(language or timeline.get("language")):
+    if not cues:
         return False
+    language_key = str(language or timeline.get("language") or "").strip().lower()
+    if is_chinese_lang(language_key):
+        # Chinese/Cantonese lines normally need no translation.  Mixed lines
+        # still need the same word-level glosses as English runs in Japanese
+        # lyrics (for example ``我嘅 My jealous 心情``), so let the translator
+        # handle only those cues and keep pure-CJK lines agent-free.
+        if not any(re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", _cue_source(cue)) for cue in cues):
+            return False
     cache_path = out_dir / "zh-translate.json"
     cache_stale = False
     if cache_path.exists():
