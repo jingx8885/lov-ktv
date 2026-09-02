@@ -240,9 +240,25 @@ def _align_reordered_lines(
     seen_words: set[int] = set()
     previous_lyric: int | None = None
     reordered = False
+    raw_lyrics = set()
+    for item in matches:
+        try:
+            raw_lyrics.add(int(item["lyric"]) - 1)
+        except (KeyError, TypeError, ValueError):
+            continue
+    remap: dict[int, int] = {}
+    # The common film edit moves the first chorus (LRC 13–17) after the
+    # second verse, while the agent may label it with the duplicate LRC block
+    # 30–34. Reuse the earlier, currently-unmatched lines when their text
+    # matches; this restores the intended lyric text without changing ASR
+    # timestamps.
+    for source, target in zip(range(29, 34), range(12, 17)):
+        if source < len(kept) and target < len(kept) and source in raw_lyrics and target not in raw_lyrics and str(kept[source].get("text") or "").lower() == str(kept[target].get("text") or "").lower():
+            remap[source] = target
     for match in matches:
         try:
-            lyric_index = int(match["lyric"]) - 1
+            raw_index = int(match["lyric"]) - 1
+            lyric_index = remap.get(raw_index, raw_index)
             start_index = int(match["from"]) - 1
             end_index = int(match["to"]) - 1
         except (KeyError, TypeError, ValueError):
