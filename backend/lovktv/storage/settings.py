@@ -39,6 +39,7 @@ SETTINGS: dict[str, dict[str, Any]] = {
     "agent_key": {"env": "LOVKTV_AGENT_KEY", "default": "", "type": "text", "label": "Agent Key", "secret": True},
     "agent_model": {"env": "LOVKTV_AGENT_MODEL", "default": "", "type": "text", "label": "Agent 模型"},
     "asr_model": {"env": "LOVKTV_ASR_MODEL", "default": "", "type": "text", "label": "语音识别模型"},
+    "asr_debug": {"env": "LOVKTV_ASR_DEBUG", "default": False, "type": "bool", "label": "ASR 调试记录"},
     "whisper_model": {"env": "LOVKTV_WHISPER_MODEL", "default": "small", "type": "text", "label": "Whisper 模型"},
     "whisper_compute_type": {"env": "LOVKTV_WHISPER_COMPUTE_TYPE", "default": "int8", "type": "text", "label": "Whisper 精度"},
     "https_proxy": {"env": "LOVKTV_HTTPS_PROXY", "default": "", "type": "text", "label": "外部 HTTPS 代理"},

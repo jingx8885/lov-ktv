@@ -214,6 +214,7 @@ def test_transcribe_uses_grok_verbose_word_timestamps(monkeypatch, tmp_path):
     audio = tmp_path / "vocals.wav"
     audio.write_bytes(b"fake audio")
     monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_ASR_DEBUG", "1")
     monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example/v1")
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
     monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
@@ -255,6 +256,13 @@ def test_transcribe_uses_grok_verbose_word_timestamps(monkeypatch, tmp_path):
         {"text": "world", "start_ms": 900, "end_ms": 1250, "segment": 1},
     ]
     assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
+    traces = list((tmp_path / "_asr-debug").glob("grok-*.json"))
+    assert len(traces) == 1
+    trace = json.loads(traces[0].read_text())
+    assert trace["schema"] == "lovktv-grok-debug-v1"
+    assert trace["status"] == "ok"
+    assert trace["chunks"][0]["attempts"][0]["response"]["text"] == "Hello world"
+    assert "secret" not in traces[0].read_text()
 
 
 def test_grok_keeps_successful_chunks_when_a_later_chunk_fails(monkeypatch, tmp_path):

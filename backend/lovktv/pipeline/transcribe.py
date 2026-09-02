@@ -25,6 +25,54 @@ _FISH_MODEL = "fish-transcribe-1"
 _GROK_MODEL = "grok-stt"
 
 
+def _grok_debug_enabled() -> bool:
+    """Whether to persist non-secret Grok request/response diagnostics."""
+    try:
+        from lovktv.storage import settings
+
+        return bool(settings.get("asr_debug"))
+    except Exception:  # noqa: BLE001 - diagnostics must never break ASR
+        return str(os.environ.get("LOVKTV_ASR_DEBUG") or "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+
+def _new_grok_debug_trace(cache_path: Path | None, audio_path: Path, language: str) -> tuple[dict[str, Any], Path] | None:
+    if not _grok_debug_enabled():
+        return None
+    directory = (cache_path.parent if cache_path else audio_path.parent) / "_asr-debug"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        stamp = f"{time.strftime('%Y%m%dT%H%M%S')}-{time.time_ns() % 1_000_000_000:09d}"
+        path = directory / f"grok-{stamp}.json"
+        trace: dict[str, Any] = {
+            "schema": "lovktv-grok-debug-v1",
+            "provider": _GROK_MODEL,
+            "language": language,
+            "audio": audio_path.name,
+            "started_at": time.time(),
+            "chunks": [],
+            "status": "running",
+        }
+        return trace, path
+    except OSError:
+        return None
+
+
+def _write_grok_debug_trace(trace: dict[str, Any], path: Path) -> None:
+    """Best-effort atomic-ish debug write; tracing must not fail transcription."""
+    try:
+        payload = json.dumps(trace, ensure_ascii=False, indent=2, default=str)
+        path.write_text(payload, encoding="utf-8")
+        latest = path.parent / "latest.json"
+        latest.write_text(payload, encoding="utf-8")
+    except (OSError, TypeError, ValueError):
+        pass
+
+
 def _remote_asr_model() -> str:
     """Return the explicitly configured remote ASR model, if any."""
     from lovktv.storage import settings
@@ -332,6 +380,13 @@ def _transcribe_grok(
     if endpoint is None:
         return []
     url, key = endpoint
+    debug = _new_grok_debug_trace(cache_path, audio_path, language)
+    debug_trace, debug_path = debug or (None, None)
+
+    def persist_debug() -> None:
+        if debug_trace is not None and debug_path is not None:
+            _write_grok_debug_trace(debug_trace, debug_path)
+
     data = {
         "model": _GROK_MODEL,
         "language": language,
@@ -343,16 +398,46 @@ def _transcribe_grok(
         # Grok's upstream decoder is sensitive to isolated PCM WAV sections;
         # MP3 chunks preserve the vocal signal and avoid valid-200/empty
         # responses seen in the latter half of this song.
-        for chunk, offset in _remote_chunks(audio_path, audio_format="mp3"):
+        for chunk_index, (chunk, offset) in enumerate(
+            _remote_chunks(audio_path, audio_format="mp3")
+        ):
             if not _audio_has_voice(chunk):
+                if debug_trace is not None:
+                    debug_trace["chunks"].append(
+                        {
+                            "index": chunk_index,
+                            "offset_seconds": offset,
+                            "file": chunk.name,
+                            "skipped": "silence",
+                        }
+                    )
+                    persist_debug()
                 continue
-            def request_chunk(request_path: Path) -> list[dict[str, Any]]:
+
+            chunk_debug: dict[str, Any] = {
+                "index": chunk_index,
+                "offset_seconds": offset,
+                "file": chunk.name,
+                "attempts": [],
+            }
+            if debug_trace is not None:
+                debug_trace["chunks"].append(chunk_debug)
+
+            def request_chunk(request_path: Path, phase: str) -> list[dict[str, Any]]:
                 words: list[dict[str, Any]] = []
                 # Keep the initial request plus three retries.  Empty 200
                 # responses are treated like transient upstream failures.
                 for attempt in range(4):
+                    attempt_debug: dict[str, Any] = {
+                        "phase": phase,
+                        "attempt": attempt + 1,
+                        "file": request_path.name,
+                    }
+                    if debug_trace is not None:
+                        chunk_debug["attempts"].append(attempt_debug)
                     try:
                         mime = mimetypes.guess_type(request_path.name)[0] or "application/octet-stream"
+                        attempt_debug["mime"] = mime
                         with request_path.open("rb") as audio:
                             response = httpx.post(
                                 url,
@@ -361,19 +446,27 @@ def _transcribe_grok(
                                 files={"file": (request_path.name, audio, mime)},
                                 timeout=180.0,
                             )
+                        attempt_debug["status_code"] = getattr(response, "status_code", None)
                         response.raise_for_status()
                         payload = response.json()
+                        if debug_trace is not None:
+                            attempt_debug["response"] = payload
                         if isinstance(payload, dict):
                             words = _parse_grok_payload(payload)
+                        attempt_debug["parsed_words"] = len(words)
                         if words:
+                            attempt_debug["result"] = "ok"
+                            persist_debug()
                             return words
-                    except Exception:  # noqa: BLE001 - retry transient upstream failures
-                        pass
+                        attempt_debug["result"] = "empty"
+                    except Exception as exc:  # noqa: BLE001 - retry transient upstream failures
+                        attempt_debug["error"] = f"{type(exc).__name__}: {exc}"
+                    persist_debug()
                     if attempt < 3:
                         time.sleep(0.5)
                 return words
 
-            chunk_words = request_chunk(chunk)
+            chunk_words = request_chunk(chunk, "mp3")
             if not chunk_words:
                 # Some upstream paths reject MP3 frames while accepting the
                 # equivalent PCM WAV.  Re-encode only this failed slice so
@@ -390,15 +483,23 @@ def _transcribe_grok(
                         check=False,
                     )
                     if converted.returncode == 0 and wav_chunk.exists():
-                        chunk_words = request_chunk(wav_chunk)
-                except (OSError, subprocess.TimeoutExpired):
-                    pass
+                        chunk_debug["wav_reencode"] = "ok"
+                        chunk_words = request_chunk(wav_chunk, "wav")
+                    elif debug_trace is not None:
+                        chunk_debug["wav_reencode"] = "failed"
+                except (OSError, subprocess.TimeoutExpired) as exc:
+                    if debug_trace is not None:
+                        chunk_debug["wav_reencode"] = f"error: {type(exc).__name__}: {exc}"
+                persist_debug()
             if not chunk_words:
                 # Grok occasionally returns a valid 200 with an empty body for
                 # sung material.  Keep the configured Grok-first path, but
                 # recover only this failed slice with the local no-Torch
                 # Whisper runtime instead of losing the whole song.
+                chunk_debug["fallback"] = "faster-whisper"
                 chunk_words = _transcribe_faster_whisper(chunk, language, None, "")
+                chunk_debug["fallback_words"] = len(chunk_words)
+                persist_debug()
             for word in chunk_words:
                 word["start_ms"] += int(offset * 1000)
                 word["end_ms"] += int(offset * 1000)
@@ -407,8 +508,18 @@ def _transcribe_grok(
         if cache_path and all_words:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
             cache_path.write_text(json.dumps({"words": [{"text": w["text"], "start": w["start_ms"] / 1000, "end": w["end_ms"] / 1000, "segment": w.get("segment")} for w in all_words], "provider": "grok-stt", "duration": _audio_duration_seconds(audio_path)}, ensure_ascii=False), encoding="utf-8")
+        if debug_trace is not None:
+            debug_trace["status"] = "ok"
+            debug_trace["word_count"] = len(all_words)
+            debug_trace["finished_at"] = time.time()
+            persist_debug()
         return all_words
-    except Exception:  # noqa: BLE001 - remote ASR is an optional fallback
+    except Exception as exc:  # noqa: BLE001 - remote ASR is an optional fallback
+        if debug_trace is not None:
+            debug_trace["status"] = "error"
+            debug_trace["error"] = f"{type(exc).__name__}: {exc}"
+            debug_trace["finished_at"] = time.time()
+            persist_debug()
         return []
 
 
