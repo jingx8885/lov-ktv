@@ -8,63 +8,9 @@ import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 let lastPaintAt = 0;
 // Keep the expensive source fingerprint out of the playback hot path:
 // playerLyrics.cues is replaced when a song/lyrics document changes, but is
-// otherwise stable while the song is playing. Active scroll motion gets its
-// own RAF below, so the rest of the player can keep its bounded cadence.
+// otherwise stable while the song is playing.
 let scrollCuesRef = null;
 let scrollCuesKey = "";
-let scrollMotion = null;
-let scrollMotionRaf = 0;
-
-const SCROLL_MOTION_MS = 360;
-
-function resetScrollMotion() {
-  scrollMotion = null;
-  if (scrollMotionRaf) {
-    cancelAnimationFrame(scrollMotionRaf);
-    scrollMotionRaf = 0;
-  }
-}
-
-function scrollTarget(list, current) {
-  return Math.max(0, current.offsetTop - list.clientHeight * 0.62);
-}
-
-function moveScroll(list, current, immediate) {
-  const target = scrollTarget(list, current);
-  if (immediate) {
-    list.scrollTop = target;
-    resetScrollMotion();
-    return;
-  }
-  scrollMotion = {
-    from: list.scrollTop,
-    to: target,
-    startedAt: performance.now()
-  };
-  if (!scrollMotionRaf) scrollMotionRaf = requestAnimationFrame(tickScrollMotion);
-}
-
-function advanceScroll(list) {
-  if (!scrollMotion) return;
-  const elapsed = performance.now() - scrollMotion.startedAt;
-  const progress = Math.min(1, Math.max(0, elapsed / SCROLL_MOTION_MS));
-  // Ease out so the line settles gently instead of stopping abruptly.
-  const eased = 1 - Math.pow(1 - progress, 3);
-  const next = scrollMotion.from + (scrollMotion.to - scrollMotion.from) * eased;
-  if (Math.abs(list.scrollTop - next) > 0.25) list.scrollTop = next;
-  if (progress >= 1) {
-    list.scrollTop = scrollMotion.to;
-    resetScrollMotion();
-  }
-}
-
-function tickScrollMotion() {
-  scrollMotionRaf = 0;
-  const list = $("playerLyricScroll");
-  if (!scrollMotion || !list || list.hidden || !document.body.classList.contains("display-lyrics")) return;
-  advanceScroll(list);
-  if (scrollMotion) scrollMotionRaf = requestAnimationFrame(tickScrollMotion);
-}
 
 export function cueIndexAt(time) {
   return cueIndexAtCues(state.playerLyrics.cues || [], lyricClockMs(time));
@@ -100,80 +46,36 @@ function paintPlayerScroll(cues, time, mode) {
     scrollCuesRef = cues;
     scrollCuesKey = cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|");
   }
-  const key = scrollCuesKey;
-  const modeChanged = list.dataset.lyricMode !== mode;
-  let rebuilt = false;
-  if (list.dataset.cuesKey !== key) {
-    rebuilt = true;
-    list.textContent = "";
-    list.dataset.cuesKey = key;
-    list.dataset.activeIndex = "-1";
-    const fragment = document.createDocumentFragment();
-    cues.forEach((cue, index) => {
-      const row = document.createElement("div");
-      row.className = "player-lyric-scroll-line line";
-      row.dataset.cueIndex = String(index);
-      row.textContent = mode === "zh" ? String(cue.zh || cue.text || "") : String(cue.text || "");
-      fragment.appendChild(row);
-    });
-    list.appendChild(fragment);
-  } else if (modeChanged) {
-    // Changing ja/zh/roma/all should not throw away hundreds of rows.  Reset
-    // their lightweight text placeholders; only the visible/active rows are
-    // expanded by paintLine below.
-    for (let index = 0; index < cues.length; index += 1) {
-      const row = list.children[index];
-      if (row)
-        row.textContent =
-          mode === "zh" ? String(cues[index].zh || cues[index].text || "") : String(cues[index].text || "");
-    }
-  }
-  list.dataset.lyricMode = mode;
-  if (rebuilt || modeChanged) state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
   const lyricTime = lyricClockMs(time);
   const active = cues.findIndex((cue) => lyricTime >= cue.start_ms && lyricTime < cue.end_ms);
   const upcoming = cues.findIndex((cue) => lyricTime < cue.start_ms);
   const index = active >= 0 ? active : upcoming >= 0 ? upcoming : cues.length - 1;
-  const previous = Number(list.dataset.activeIndex || -1);
-  if (rebuilt || modeChanged) {
-    cues.forEach((cue, cueIndex) => {
-      if (cueIndex !== index && Math.abs(cueIndex - index) > 10) return;
-      const row = list.children[cueIndex];
-      if (!row) return;
-      const rowTime = cueIndex === active ? lyricTime : cueIndex < index ? 1e12 : -1;
-      paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
-      row.classList.toggle("is-current", cueIndex === index);
-    });
-    list.dataset.activeIndex = String(index);
-    const current = list.children[index];
-    if (current && (rebuilt || previous !== index)) {
-      moveScroll(list, current, true);
+  // Keep only the previous, current, and next two cues in the DOM. Rendering
+  // the complete lyric document here made long songs expensive in WebView.
+  const start = index >= 0 ? Math.max(0, index - 1) : 0;
+  const end = index >= 0 ? Math.min(cues.length, index + 3) : 0;
+  const windowKey = `${scrollCuesKey}:${start}:${end}:${mode}`;
+  if (list.dataset.windowKey !== windowKey) {
+    list.textContent = "";
+    list.dataset.windowKey = windowKey;
+    state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
+    const fragment = document.createDocumentFragment();
+    for (let cueIndex = start; cueIndex < end; cueIndex += 1) {
+      const row = document.createElement("div");
+      row.className = "player-lyric-scroll-line line";
+      row.dataset.cueIndex = String(cueIndex);
+      fragment.appendChild(row);
     }
-  } else if (previous !== index) {
-    if (previous >= 0 && cues[previous] && list.children[previous]) {
-      paintLine(list.children[previous], cues[previous], 1e12, `scroll:${previous}`, state.lyricPaint.scroll, "", mode);
-      list.children[previous].classList.remove("is-current");
-    }
-    if (index >= 0 && cues[index] && list.children[index]) {
-      paintLine(
-        list.children[index],
-        cues[index],
-        index === active ? lyricTime : -1,
-        `scroll:${index}`,
-        state.lyricPaint.scroll,
-        "",
-        mode
-      );
-      list.children[index].classList.add("is-current");
-    }
-    list.dataset.activeIndex = String(index);
-    const current = list.children[index];
-    if (current) moveScroll(list, current, false);
-  } else if (active >= 0 && list.children[active]) {
-    // Karaoke fill is the only part that changes every frame.
-    paintLine(list.children[active], cues[active], lyricTime, `scroll:${active}`, state.lyricPaint.scroll, "", mode);
+    list.appendChild(fragment);
+    list.scrollTop = 0;
   }
-  advanceScroll(list);
+  Array.from(list.children).forEach((row) => {
+    const cueIndex = Number(row.dataset.cueIndex);
+    const cue = cues[cueIndex];
+    const rowTime = cueIndex === active ? lyricTime : cueIndex < index ? 1e12 : -1;
+    paintLine(row, cue, rowTime, `scroll:${cueIndex}`, state.lyricPaint.scroll, "", mode);
+    row.classList.toggle("is-current", cueIndex === index);
+  });
 }
 
 export function paintPlayer() {
@@ -181,7 +83,6 @@ export function paintPlayer() {
   if (page && page.hidden) {
     state.playerRaf = 0;
     lastPaintAt = 0;
-    resetScrollMotion();
     return;
   }
   const frameNow = performance.now();
@@ -198,7 +99,6 @@ export function paintPlayer() {
   const lyricsOnly = document.body.classList.contains("display-lyrics");
   const scroll = $("playerLyricScroll");
   if (scroll) scroll.hidden = !lyricsOnly;
-  if (!lyricsOnly) resetScrollMotion();
   [$("playerPrev"), $("playerCur"), $("playerNext")].forEach((el) => {
     if (el) el.hidden = lyricsOnly;
   });
@@ -293,7 +193,6 @@ export function kickPlayerPaint() {
 
 export function resetPlayerFace() {
   lastPaintAt = 0;
-  resetScrollMotion();
   state.playerClockHold = null;
   state.playerClockHoldAt = 0;
   state.playerHoldDur = 0;
@@ -305,8 +204,7 @@ export function resetPlayerFace() {
   const scroll = $("playerLyricScroll");
   if (scroll) {
     scroll.textContent = "";
-    scroll.dataset.cuesKey = "";
-    scroll.dataset.activeIndex = "-1";
+    scroll.dataset.windowKey = "";
     scroll.scrollTop = 0;
   }
   const mtv = $("playerMtv");
