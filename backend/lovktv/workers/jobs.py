@@ -526,8 +526,22 @@ def _translate_foreign_timeline(
         except (OSError, ValueError, TypeError):
             cache_stale = True
     force = force or cache_stale
-    if all(str(cue.get("zh") or "").strip() for cue in cues) and not force:
-        return False
+    if not force and all(str(cue.get("zh") or "").strip() for cue in cues):
+        # A cached line translation can coexist with an untranslated English
+        # token (most commonly a contraction such as ``'Cause``/``it's``).
+        # Re-enter the lightweight translation pass so token-level fallbacks
+        # are applied; credit lines are metadata, not lyric words.
+        missing_word = any(
+            not re.search(r"[:：]", str(cue.get("text") or _cue_source(cue)))
+            and any(
+                re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", str(token.get("text") or ""))
+                and not str(token.get("zh") or token.get("translation") or "").strip()
+                for token in (cue.get("tokens") or [])
+            )
+            for cue in cues
+        )
+        if not missing_word:
+            return False
     song = get_song(song_id) or {}
     lines = [str(cue.get("text") or _cue_source(cue)) for cue in cues]
     try:

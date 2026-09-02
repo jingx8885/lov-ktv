@@ -121,6 +121,34 @@ def test_translate_foreign_timeline_handles_embedded_english_in_cjk(monkeypatch,
     assert called["lines"] == ["我嘅 My jealous 心情"]
 
 
+def test_translate_foreign_timeline_rechecks_missing_english_token(monkeypatch, tmp_path):
+    timeline = {
+        "language": "en",
+        "cues": [
+            {
+                "text": "'Cause I know",
+                "zh": "因为我知道",
+                "tokens": [
+                    {"text": "'Cause", "zh": ""},
+                    {"text": "I", "zh": "我"},
+                    {"text": "know", "zh": "知道"},
+                ],
+            }
+        ],
+    }
+    called = {}
+
+    def fake_translate(lines, **kwargs):
+        called["lines"] = lines
+        return {"model": "test", "lines": []}
+
+    monkeypatch.setattr(jobs, "get_song", lambda _song_id: {})
+    monkeypatch.setattr(jobs, "translate_lines", fake_translate)
+    monkeypatch.setattr(jobs, "apply_zh_translation", lambda *args, **kwargs: None)
+    assert jobs._translate_foreign_timeline("s1", tmp_path / "s1", timeline, "en") is True
+    assert called["lines"] == ["'Cause I know"]
+
+
 def test_job_recovery_accepts_repository_and_submitter(tmp_path):
     queued = []
 
