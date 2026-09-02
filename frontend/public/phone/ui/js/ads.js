@@ -158,10 +158,6 @@ export function bindAds() {
 export function bootAds() {
   bindAds();
   claimDownloadIfNative();
-  if (!hasNativePhone() && !sessionStorage.getItem("lovktv_splash")) {
-    sessionStorage.setItem("lovktv_splash", "1");
-    showAd("splash");
-  }
 }
 
 export function handlePointError(status, detail) {
