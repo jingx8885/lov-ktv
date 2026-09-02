@@ -140,9 +140,17 @@ def align_lyrics(
                     hop_ms,
                 )
         if bounds:
-            agent_count = 0 if (used_drift_clock or used_reordered_clock) else _apply_agent_matches(
-                bounds, lines, asr_words, agent_matches, lang
-            )
+            # Sparse agent anchors are useful for diagnostics but unsafe to
+            # overlay on the official clock: one late repeated-line match can
+            # push every intervening cue forward. Only apply them when the
+            # agent covered most lyric rows; reordered/drift paths already
+            # perform their own coverage checks.
+            coverage = len(agent_matches or []) / max(1, len(lines))
+            agent_count = 0
+            if not used_drift_clock and not used_reordered_clock and coverage >= 0.8:
+                agent_count = _apply_agent_matches(
+                    bounds, lines, asr_words, agent_matches, lang
+                )
             if used_drift_clock or used_reordered_clock:
                 agent_count = 1
             cues = []
@@ -548,6 +556,8 @@ def _apply_agent_matches(
         return 0
     applied = 0
     previous_line_index = -1
+    previous_asr_start: int | None = None
+    official_starts = [int(item.get("ms") or 0) for item in kept]
     for match in matches:
         try:
             line_index = int(match["lyric"]) - 1
@@ -566,6 +576,14 @@ def _apply_agent_matches(
             continue
         start_ms = int(words[start_index].get("start_ms") or 0)
         end_ms = int(words[end_index].get("end_ms") or start_ms + 40)
+        if previous_line_index >= 0 and line_index > previous_line_index + 1:
+            official_gap = official_starts[line_index] - official_starts[previous_line_index]
+            asr_gap = start_ms - int(previous_asr_start or start_ms)
+            # A large LRC section compressed into a tiny ASR gap usually means
+            # those duplicate lines are absent from this edit. Do not let the
+            # later anchor shift every intervening official cue together.
+            if official_gap > 5_000 and asr_gap < int(official_gap * 0.55):
+                continue
         if line_index and start_ms < int(bounds[line_index - 1]["start_ms"]):
             continue
         if end_ms <= start_ms:
@@ -574,6 +592,7 @@ def _apply_agent_matches(
         bounds[line_index]["end_ms"] = max(start_ms + 40, end_ms)
         bounds[line_index]["from_asr"] = True
         previous_line_index = line_index
+        previous_asr_start = start_ms
         applied += 1
     if applied:
         for index in range(1, len(bounds)):
