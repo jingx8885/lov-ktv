@@ -173,6 +173,13 @@ def _is_mugen_dual(skeleton: dict) -> bool:
     return bool(audio.get("dual_audio")) or audio.get("source") == "mugen-dual"
 
 
+def _is_mugen_off_vocal(skeleton: dict) -> bool:
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    return _is_mugen_skeleton(skeleton) and is_off_vocal(
+        str(source.get("songname") or ""), str(skeleton.get("title") or "")
+    )
+
+
 def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
     """Make 伴奏 karaoke.m4a and 原唱 original.mp3 after a Karaoke Mugen MP4.
 
@@ -215,9 +222,7 @@ def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
     original = out_dir / "original.mp3"
     native_mtv = out_dir / "mtv.mp4"
     mugen_song = source.get("provider") == "karaoke-mugen"
-    mugen_off_vocal = mugen_song and is_off_vocal(
-        str(source.get("songname") or ""), str(skeleton.get("title") or "")
-    )
+    mugen_off_vocal = _is_mugen_off_vocal(skeleton)
 
     # Karaoke Mugen dual-track files keep their video without audio. Rebuild
     # the full original by mixing the official instrumental and vocal tracks.
@@ -690,6 +695,13 @@ def process_realign(
         skeleton = {}
         if skeleton_path.exists():
             skeleton = json.loads(skeleton_path.read_text(encoding="utf-8"))
+        # A Mugen off-vocal MV is intentionally the karaoke stem.  On a
+        # forced refresh restore its recorded vocal sibling before the trusted
+        # Mugen timeline fast path returns; otherwise the old MV extraction
+        # would leave both published tracks as accompaniment.
+        mugen_off_vocal = _is_mugen_off_vocal(skeleton)
+        if force and mugen_off_vocal:
+            src = _refresh_audio_tracks(out_dir, skeleton)
         if (out_dir / "lyrics.manual.lrc").exists():
             apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
             return
@@ -697,7 +709,7 @@ def process_realign(
             _restore_mugen_timeline(out_dir, language or skeleton.get("language"))
             _finish_ready_lyrics(song_id, out_dir, src, language, rebuild_mtv)
             return
-        if force:
+        if force and not mugen_off_vocal:
             src = _refresh_audio_tracks(out_dir, skeleton)
         if force:
             # A user-requested recalculation must not silently reuse stale
