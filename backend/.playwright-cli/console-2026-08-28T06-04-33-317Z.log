@@ -1,2 +1,0 @@
-[     407ms] ReferenceError: Cannot access 't' before initialization
-    at paintPlayer (http://127.0.0.1:8787/phone/player/js/playback.js:301:40)

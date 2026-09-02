@@ -1,5 +1,0 @@
-- generic [active] [ref=f1e1]:
-  - link "扫码 ·" [ref=f1e3] [cursor=pointer]:
-    - /url: "#"
-  - button "点击开唱" [ref=f1e6] [cursor=pointer]
-  - contentinfo [ref=f1e8]

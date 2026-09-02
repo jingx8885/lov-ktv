@@ -1,5 +1,0 @@
-- generic [active] [ref=e1]:
-  - link "スキャン · 354BE4" [ref=e2] [cursor=pointer]:
-    - /url: http://127.0.0.1:8791/m.html?room=354BE4&v=queue3
-  - button "タップして歌い始める" [ref=e8] [cursor=pointer]
-  - contentinfo [ref=e10]

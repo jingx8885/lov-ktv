@@ -1,5 +1,0 @@
-- generic [active] [ref=e1]:
-  - link "扫码 · B7EAD6" [ref=e2] [cursor=pointer]:
-    - /url: http://127.0.0.1:8791/m.html?room=B7EAD6&v=queue3
-  - button "点击开唱" [ref=e8] [cursor=pointer]
-  - contentinfo [ref=e10]
