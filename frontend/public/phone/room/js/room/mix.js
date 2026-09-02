@@ -176,6 +176,8 @@ function lyricModeLabel(key, script) {
 }
 
 export function paintLyricMode(mode, language) {
+  const previousMode = state.lyricMode;
+  const previousScript = lyricScript(state.nowLanguage);
   if (language != null) state.nowLanguage = String(language || "");
   const script = lyricScript(state.nowLanguage);
   const next = lyricModeForScript(mode, script);
@@ -200,7 +202,10 @@ export function paintLyricMode(mode, language) {
     select.value = next;
     select.setAttribute("aria-label", t("phone.lyric.mode"));
   });
-  if (api.paintDeskLyrics) api.paintDeskLyrics();
+  // Room polling calls paintMix every two seconds. Rebuilding the whole desk
+  // lyric list on every unchanged snapshot is especially expensive in the
+  // Android WebView; repaint it only when the effective mode/script changed.
+  if ((previousMode !== next || previousScript !== script) && api.paintDeskLyrics) api.paintDeskLyrics();
 }
 
 export function paintMix(room) {

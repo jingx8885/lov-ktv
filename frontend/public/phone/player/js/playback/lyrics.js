@@ -6,6 +6,12 @@ import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 
 let lastPaintAt = 0;
+// The scroll view is painted on every animation frame while lyrics-only mode
+// is active.  Keep the expensive source fingerprint out of that hot path:
+// playerLyrics.cues is replaced when a song/lyrics document changes, but is
+// otherwise stable while the song is playing.
+let scrollCuesRef = null;
+let scrollCuesKey = "";
 
 export function cueIndexAt(time) {
   return cueIndexAtCues(state.playerLyrics.cues || [], lyricClockMs(time));
@@ -37,28 +43,46 @@ function videoClockSec(audio, video) {
 function paintPlayerScroll(cues, time, mode) {
   const list = $("playerLyricScroll");
   if (!list) return;
-  const key = `${mode}|${cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|")}`;
+  if (cues !== scrollCuesRef) {
+    scrollCuesRef = cues;
+    scrollCuesKey = cues.map((cue) => `${cue.start_ms}:${cue.end_ms}:${cue.text || ""}`).join("|");
+  }
+  const key = scrollCuesKey;
+  const modeChanged = list.dataset.lyricMode !== mode;
   let rebuilt = false;
   if (list.dataset.cuesKey !== key) {
     rebuilt = true;
     list.textContent = "";
     list.dataset.cuesKey = key;
     list.dataset.activeIndex = "-1";
-    state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
+    const fragment = document.createDocumentFragment();
     cues.forEach((cue, index) => {
       const row = document.createElement("div");
       row.className = "player-lyric-scroll-line line";
       row.dataset.cueIndex = String(index);
       row.textContent = mode === "zh" ? String(cue.zh || cue.text || "") : String(cue.text || "");
-      list.appendChild(row);
+      fragment.appendChild(row);
     });
+    list.appendChild(fragment);
+  } else if (modeChanged) {
+    // Changing ja/zh/roma/all should not throw away hundreds of rows.  Reset
+    // their lightweight text placeholders; only the visible/active rows are
+    // expanded by paintLine below.
+    for (let index = 0; index < cues.length; index += 1) {
+      const row = list.children[index];
+      if (row)
+        row.textContent =
+          mode === "zh" ? String(cues[index].zh || cues[index].text || "") : String(cues[index].text || "");
+    }
   }
+  list.dataset.lyricMode = mode;
+  if (rebuilt || modeChanged) state.lyricPaint.scroll = { prev: "", cur: "", next: "" };
   const lyricTime = lyricClockMs(time);
   const active = cues.findIndex((cue) => lyricTime >= cue.start_ms && lyricTime < cue.end_ms);
   const upcoming = cues.findIndex((cue) => lyricTime < cue.start_ms);
   const index = active >= 0 ? active : upcoming >= 0 ? upcoming : cues.length - 1;
   const previous = Number(list.dataset.activeIndex || -1);
-  if (rebuilt) {
+  if (rebuilt || modeChanged) {
     cues.forEach((cue, cueIndex) => {
       if (cueIndex !== index && Math.abs(cueIndex - index) > 10) return;
       const row = list.children[cueIndex];
@@ -69,7 +93,7 @@ function paintPlayerScroll(cues, time, mode) {
     });
     list.dataset.activeIndex = String(index);
     const current = list.children[index];
-    if (current) {
+    if (current && (rebuilt || previous !== index)) {
       const target = Math.max(0, current.offsetTop - list.clientHeight * 0.62);
       if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "auto" });
       else list.scrollTop = target;
