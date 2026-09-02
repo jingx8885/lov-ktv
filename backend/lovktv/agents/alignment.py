@@ -24,7 +24,7 @@ from lovktv.pipeline.lyrics import drop_credit_lines
 from lovktv.pipeline.matching import _usable_asr_words
 
 # v2 tightens repeated-line handling; old sparse matches are regenerated.
-ALIGN_SCHEMA = "lovktv-align-v2"
+ALIGN_SCHEMA = "lovktv-align-v3"
 _JSON_BLOCK = re.compile(r"\{.*\}", re.S)
 
 SYSTEM = """You match known karaoke lyric lines to a Whisper word transcript.
@@ -41,7 +41,11 @@ Rules:
    transcript, including occurrences that appear before an earlier LRC line.
    Return every occurrence that is plausibly sung, including short repeated
    chorus tags. Use the LRC clock and nearby context to disambiguate identical
-   text; do not skip a line merely because another line looks similar.
+   text; do not skip a line merely because another line looks similar. When
+   identical text occurs more than once, prefer the lyric occurrence whose
+   neighboring lyric numbers and surrounding words continue the same section.
+   Do not jump backward to an earlier duplicate after matching later lyric
+   lines unless the transcript clearly sings that earlier section next.
 4. Whisper may mis-hear CJK, kana, accents, or punctuation. Use nearby context,
    word order, and the original lyric to choose the best span.
 5. Every ASR word includes an authoritative `[start_ms-end_ms]` timestamp. Use

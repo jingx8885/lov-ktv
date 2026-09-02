@@ -37,6 +37,7 @@ from lovktv.pipeline.lyrics import (
 from lovktv.pipeline.matching import (
     asr_token_spans as _asr_token_spans,
 )
+from lovktv.pipeline.matching import line_match_score as _line_match_score
 from lovktv.pipeline.matching import _usable_asr_words
 from lovktv.pipeline.matching import (
     estimate_lrc_offset as _estimate_lrc_offset,
@@ -80,6 +81,17 @@ def align_lyrics(
         used_asr_clock = False
         used_drift_clock = False
         used_reordered_clock = False
+        # An agent can only align a transcript to the supplied LRC; it cannot
+        # repair an LRC whose *words* belong to another recording.  In that
+        # case interpolation would display the stale LRC text over the real
+        # singing (the common failure mode in cover/MV uploads).  Prefer the
+        # timestamped ASR transcript until a matching lyric source is supplied.
+        if _looks_like_wrong_lyric_version(lines, asr_words, agent_matches, lang):
+            transcript = _timeline_from_asr_words(
+                asr_words, lang, duration_ms, lines=lines, matches=agent_matches
+            )
+            if transcript:
+                return transcript
         reordered = _align_reordered_lines(lines, asr_words, lang, agent_matches, duration_ms)
         if reordered is not None:
             bounds = reordered
@@ -215,6 +227,167 @@ def align_lyrics(
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
     return timeline
+
+
+def _looks_like_wrong_lyric_version(
+    lines: list[dict[str, Any]],
+    asr_words: list[dict[str, Any]],
+    matches: list[dict[str, int]] | None,
+    language: str,
+) -> bool:
+    """Detect an LRC whose content is from a different vocal version.
+
+    Reordered media still has good lexical matches (only the order changes),
+    whereas a different cover/translation produces several agent spans whose
+    words do not resemble their selected LRC lines.  The latter must not enter
+    the synthetic interpolation path, which preserves the wrong lyric text.
+    """
+    if not matches or not asr_words:
+        return False
+    kept = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
+    words = _usable_asr_words(asr_words)
+    if not kept or not words:
+        return False
+    scores: list[float] = []
+    low_times: list[int] = []
+    for match in matches:
+        try:
+            lyric = int(match["lyric"]) - 1
+            start = int(match["from"]) - 1
+            end = int(match["to"]) - 1
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (0 <= lyric < len(kept) and 0 <= start <= end < len(words)):
+            continue
+        heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
+        score = _line_match_score(str(kept[lyric].get("text") or ""), heard, language)
+        scores.append(score)
+        if score < 0.45:
+            low_times.append(int(words[start].get("start_ms") or 0))
+    if len(scores) < 3:
+        return False
+    low = len(low_times)
+    # Two or more low-confidence spans spread through the recording are
+    # enough evidence; a single Whisper miss should still use the LRC clock.
+    spread = bool(low_times) and max(low_times) - min(low_times) >= 15_000
+    return low >= 2 and (low / len(scores) >= 0.2) and spread
+
+
+def _join_asr_words(words: list[dict[str, Any]], language: str) -> str:
+    """Join ASR tokens into readable fallback lyric text."""
+    out = ""
+    for item in words:
+        token = str(item.get("text") or "").strip()
+        if not token:
+            continue
+        if not out:
+            out = token
+            continue
+        prev = out[-1]
+        latin = bool(prev.isascii() and prev.isalnum())
+        first = token[0]
+        token_latin = bool(first.isascii() and first.isalnum())
+        if latin and token_latin:
+            out += " "
+        out += token
+    return out.strip()
+
+
+def _timeline_from_asr_words(
+    asr_words: list[dict[str, Any]],
+    language: str,
+    duration_ms: int | None,
+    *,
+    lines: list[dict[str, Any]] | None = None,
+    matches: list[dict[str, int]] | None = None,
+) -> dict[str, Any] | None:
+    """Build cues directly from ASR when the supplied LRC is another version."""
+    words = _usable_asr_words(asr_words)
+    if not words:
+        return None
+    # Keep high-confidence known LRC rows (they have better spelling than
+    # Whisper) and use ASR text only for words that cannot be mapped to them.
+    known_rows: list[tuple[str, list[dict[str, Any]]]] = []
+    used_indices: set[int] = set()
+    if lines and matches:
+        kept = [
+            item
+            for item in drop_credit_lines(lines, language)
+            if str(item.get("text") or "").strip()
+        ]
+        for match in matches:
+            try:
+                lyric = int(match["lyric"]) - 1
+                start = int(match["from"]) - 1
+                end = int(match["to"]) - 1
+            except (KeyError, TypeError, ValueError):
+                continue
+            if not (0 <= lyric < len(kept) and 0 <= start <= end < len(words)):
+                continue
+            if any(index in used_indices for index in range(start, end + 1)):
+                continue
+            heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
+            if _line_match_score(str(kept[lyric].get("text") or ""), heard, language) < 0.6:
+                continue
+            used_indices.update(range(start, end + 1))
+            known_rows.append((str(kept[lyric].get("text") or ""), words[start : end + 1]))
+
+    remaining = [word for index, word in enumerate(words) if index not in used_indices]
+    groups: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    segment_values = [word.get("segment") for word in remaining]
+    use_segments = (
+        any(value is not None for value in segment_values)
+        and len({value for value in segment_values if value is not None})
+        < len(remaining) * 0.8
+    )
+    for word in remaining:
+        start = int(word.get("start_ms") or 0)
+        end = max(start + 40, int(word.get("end_ms") or start + 40))
+        if current:
+            prev_end = int(current[-1].get("end_ms") or 0)
+            # Keep phrase-sized cues while splitting instrumental/speech gaps.
+            segment_break = (
+                use_segments
+                and word.get("segment") is not None
+                and current[-1].get("segment") != word.get("segment")
+            )
+            if segment_break or start - prev_end > 650 or start - int(current[0].get("start_ms") or start) >= 7_000:
+                groups.append(current)
+                current = []
+        current.append({**word, "start_ms": start, "end_ms": end})
+    if current:
+        groups.append(current)
+    cues: list[dict[str, Any]] = []
+    all_groups: list[tuple[str, list[dict[str, Any]]]] = known_rows + [
+        (_join_asr_words(group, language), group) for group in groups
+    ]
+    all_groups.sort(key=lambda item: int(item[1][0].get("start_ms") or 0))
+    for text, group in all_groups:
+        if not text or not any(ch.isalnum() or "\u3400" <= ch <= "\u9fff" for ch in text):
+            continue
+        start_ms = int(group[0]["start_ms"])
+        end_ms = max(start_ms + 200, int(group[-1]["end_ms"]))
+        if duration_ms:
+            start_ms = min(start_ms, max(0, int(duration_ms) - 200))
+            end_ms = min(int(duration_ms), max(start_ms + 200, end_ms))
+        pieces = tokenize(text, language)
+        spans = _asr_token_spans(pieces, start_ms, end_ms, words, language)
+        cue = build_cue(text, start_ms, end_ms, language, spans)
+        if cue:
+            cues.append(cue)
+    if not cues:
+        return None
+    return {
+        "language": language,
+        "alignment": "asr-transcript",
+        "alignment_source": "whisper-transcript-fallback",
+        "cues": cues,
+    }
 
 
 def _align_reordered_lines(
@@ -374,6 +547,7 @@ def _apply_agent_matches(
     if len(kept) != len(bounds) or not words:
         return 0
     applied = 0
+    previous_line_index = -1
     for match in matches:
         try:
             line_index = int(match["lyric"]) - 1
@@ -382,6 +556,13 @@ def _apply_agent_matches(
         except (KeyError, TypeError, ValueError):
             continue
         if not (0 <= line_index < len(bounds) and 0 <= start_index <= end_index < len(words)):
+            continue
+        # This path preserves the official lyric order. A backwards lyric
+        # jump means the agent chose an earlier duplicate for a later chorus;
+        # applying it here would push every intervening cue onto one timestamp.
+        # Genuine edited-media order is handled separately by
+        # ``_align_reordered_lines`` when coverage is strong enough.
+        if line_index <= previous_line_index:
             continue
         start_ms = int(words[start_index].get("start_ms") or 0)
         end_ms = int(words[end_index].get("end_ms") or start_ms + 40)
@@ -392,6 +573,7 @@ def _apply_agent_matches(
         bounds[line_index]["start_ms"] = max(0, start_ms)
         bounds[line_index]["end_ms"] = max(start_ms + 40, end_ms)
         bounds[line_index]["from_asr"] = True
+        previous_line_index = line_index
         applied += 1
     if applied:
         for index in range(1, len(bounds)):
@@ -472,6 +654,11 @@ def _align_version_drift(
     # official clock belongs to this recording.  Do not replace good timing
     # merely because the file has a long tail, intro, or credits difference.
     coverage = len(anchors) / max(1, len(kept))
+    # Piecewise drift needs enough anchors to describe the whole recording.
+    # With a sparse result, interpolation can collapse many repeated lines
+    # onto one ASR cluster; keep the official LRC clock instead.
+    if coverage < 0.6:
+        return None
     if coverage >= 0.8:
         return None
 
