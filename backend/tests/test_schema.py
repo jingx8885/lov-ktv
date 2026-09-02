@@ -19,6 +19,8 @@ def test_schema_covers_current_tables():
         "learn_progress",
         "learn_mastery",
         "learn_mistakes",
+        "learn_cards",
+        "learn_recite_days",
     }
     assert TABLES["songs"] == (
         "id",

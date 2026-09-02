@@ -1,6 +1,7 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { renderCue, clusterTokens, normLyricMode } from "../../../shared/lyrics/js/paint.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
+import { fetchJson } from "../../../shared/ui/js/http.js";
 import { state } from "../../state.js";
 import { showToast } from "../../ui/js/toast.js";
 import { api } from "../../api.js";
@@ -26,7 +27,7 @@ export function saveStudyWord(word, cue) {
     showToast(t("phone.lyrics.wordSaved"));
     return false;
   }
-  words.unshift({
+  const entry = {
     key,
     text,
     zh: String(word?.zh || "").trim(),
@@ -34,11 +35,32 @@ export function saveStudyWord(word, cue) {
     cue: String(cue?.text || "").trim(),
     song: String(state.playerSong?.title || "").trim(),
     song_id: state.playerSong?.id || "",
+    // 背诵牌组的详情卡和听音题要靠这三个字段，本地这份也一起留着。
+    start_ms: Number(word?.start_ms || 0),
+    end_ms: Number(word?.end_ms || 0),
+    line_text: String(cue?.text || "").trim(),
     created_at: Date.now()
-  });
+  };
+  words.unshift(entry);
   try {
     localStorage.setItem(WORDS_KEY, JSON.stringify(words.slice(0, 300)));
   } catch (_) {}
+  // 服务端建卡失败不该拦住收藏——下次进背诵页的批量导入会把它补上。
+  fetchJson("/api/learn/cards", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      song_id: entry.song_id,
+      song_title: entry.song,
+      item_key: entry.key,
+      text: entry.text,
+      zh: entry.zh,
+      romaji: entry.romaji,
+      line_text: entry.line_text,
+      start_ms: entry.start_ms,
+      end_ms: entry.end_ms
+    })
+  }).catch(() => {});
   showToast(t("phone.lyrics.wordAdded", { word: text }));
   return true;
 }

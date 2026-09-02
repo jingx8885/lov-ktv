@@ -15,7 +15,10 @@ import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js
 import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
+import { RECITE_PANES, bindRecite, openRecite, reciteBack, stopRecite } from "./recite.js";
 import { getStudyWords } from "../../../desk/js/lyrics.js";
+
+export { openRecite } from "./recite.js";
 
 /** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any }} */
 const ui = {
@@ -46,8 +49,17 @@ const PANES = [
   "learnEcho",
   "learnScore",
   "learnLesson",
-  "learnBook"
+  "learnBook",
+  ...RECITE_PANES
 ];
+/** Panes that own the whole screen — the lyric strip has nothing to show under them. */
+const NO_LYRIC_PANES = new Set([
+  "learnLibrary",
+  "learnHome",
+  "learnScore",
+  "learnBook",
+  ...RECITE_PANES
+]);
 
 function showPane(id) {
   PANES.forEach((name) => {
@@ -55,7 +67,7 @@ function showPane(id) {
     if (el) el.hidden = name !== id;
   });
   const lyric = $("learnLyricMode");
-  if (lyric) lyric.hidden = id === "learnLibrary" || id === "learnHome" || id === "learnScore" || id === "learnBook";
+  if (lyric) lyric.hidden = NO_LYRIC_PANES.has(id);
   const shell = $("playerLearn");
   if (shell) shell.classList.toggle("is-library", id === "learnLibrary");
 }
@@ -99,6 +111,7 @@ function stopModes() {
   cancelCountdown();
   Object.values(MODES).forEach((mode) => mode.stop());
   stopLesson();
+  stopRecite();
   cancelCueWindow();
 }
 
@@ -542,6 +555,13 @@ export function bindLearn() {
     };
   });
   $("learnBack").onclick = () => {
+    // 背诵牌组自己消化一层返回：卡片流 / 结算 → 牌组首页。
+    if (reciteBack()) return;
+    if ($("learnRecite") && !$("learnRecite").hidden) {
+      stopRecite();
+      showLearnLibrary();
+      return;
+    }
     if ($("learnLibrary").hidden && $("learnHome").hidden) {
       if (!state.playerSong) {
         showLearnLibrary();
@@ -577,6 +597,13 @@ export function bindLearn() {
     onSkill: (unitId, skill) => startSkill(unitId, skill),
     onBook: () => openStudyBook()
   });
+  bindRecite({
+    showPane,
+    setHead: (title, meta) => {
+      $("learnTitle").textContent = title;
+      $("learnMeta").textContent = meta || "";
+    }
+  });
   const songSearch = $("learnSongSearch");
   const songSearchClear = $("learnSongSearchClear");
   if (songSearch) {
@@ -605,27 +632,9 @@ export function bindLearn() {
   }
   const mistakesBtn = $("learnMistakesBtn");
   const wordsBtn = $("learnWordsBtn");
-  const openBookFromLibrary = async () => {
-    if (state.playerSong && state.playerSong.status === "ready") return openStudyBook("mistakes");
-    const response = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => null);
-    const song =
-      response && response.ok && response.data && (response.data.songs || []).find((item) => item.status === "ready");
-    if (!song) return showToast(t("learn.noAddedSongs"));
-    await selectLearnSong(song.id);
-    if (state.playerSong && state.playerSong.id === song.id) openStudyBook("mistakes");
-  };
-  if (mistakesBtn) mistakesBtn.onclick = openBookFromLibrary;
-  if (wordsBtn)
-    wordsBtn.onclick = async () => {
-      if (state.playerSong && state.playerSong.status === "ready") return openStudyBook("words");
-      if (getStudyWords().length) return openStudyBook("words");
-      const response = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => null);
-      const song =
-        response && response.ok && response.data && (response.data.songs || []).find((item) => item.status === "ready");
-      if (!song) return showToast(t("learn.noAddedSongs"));
-      await selectLearnSong(song.id);
-      if (state.playerSong && state.playerSong.id === song.id) openStudyBook("words");
-    };
+  // 牌组是跨歌的，不该再逼用户先挑一首歌。
+  if (mistakesBtn) mistakesBtn.onclick = () => openRecite("mistake");
+  if (wordsBtn) wordsBtn.onclick = () => openRecite("word");
   const bookGo = $("learnBookGo");
   if (bookGo) bookGo.onclick = () => startReview();
   const saveRetry = $("learnSaveRetry");

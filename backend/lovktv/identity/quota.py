@@ -42,6 +42,14 @@ def guest_key(request, user: dict | None = None) -> str:
     return "g:" + digest
 
 
+def learn_owner(request, user: dict | None = None) -> str:
+    """Who owns a learning row. Accounts follow the user across devices."""
+    user = user if user is not None else current_user(request)
+    if user and user.get("id"):
+        return "u:" + str(user["id"])
+    return guest_key(request, user)
+
+
 def quota_payload(request, user: dict | None = None) -> dict:
     user = user if user is not None else current_user(request)
     if is_account(user):

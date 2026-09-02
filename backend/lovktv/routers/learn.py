@@ -9,10 +9,10 @@ from fastapi import APIRouter, Body
 from starlette.requests import Request
 
 from lovktv.domain.timeline import normalize_timeline
-from lovktv.identity.quota import guest_key
+from lovktv.identity.quota import learn_owner
 from lovktv.locale.i18n import request_lang
 from lovktv.platform.runtime import media_root
-from lovktv.services.http import current_user, fail
+from lovktv.services.http import fail
 from lovktv.storage import learn as learn_store
 from lovktv.storage.store import get_song
 from lovktv.workers.campaign import (
@@ -27,13 +27,6 @@ from lovktv.workers.campaign import (
 from lovktv.workers.learn import build_learn_quiz
 
 router = APIRouter()
-
-
-def learn_owner(request: Request) -> str:
-    user = current_user(request)
-    if user and user.get("id"):
-        return "u:" + str(user["id"])
-    return guest_key(request, user)
 
 
 def load_song_timeline(request: Request, song_id: str) -> tuple[dict[str, Any], dict[str, Any]]:

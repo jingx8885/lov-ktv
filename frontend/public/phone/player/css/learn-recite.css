@@ -1,0 +1,305 @@
+/* 背诵牌组：首页概览、卡片流、详情卡（记忆锚点）、结算。
+   卡片本体沿用 learn-quiz.css 的 .learn-choices / .learn-choice，
+   这里只加牌组特有的部分。 */
+
+.recite-home {
+  gap: 10px;
+}
+
+/* 概览四格：待背 / 新词 / 在背 / 已掌握。待背是唯一要点的数字，给它金色。 */
+.recite-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.recite-stat {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 12px 4px 10px;
+  border-radius: var(--r-l);
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.recite-stat b {
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.recite-stat small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.recite-stat.is-due b {
+  color: var(--gold);
+}
+.recite-stat.is-zero b {
+  color: var(--muted);
+}
+
+.recite-streak {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  color: #fff6df;
+  background: linear-gradient(135deg, rgba(245, 193, 108, .24), rgba(255, 55, 95, .16));
+  font-weight: 800;
+  font-size: 13px;
+}
+
+/* 每轮张数：10 / 20 / 30 */
+.recite-sizes {
+  display: grid;
+  grid-auto-flow: column;
+  gap: 8px;
+  margin: 2px 0;
+}
+.recite-sizes button {
+  appearance: none;
+  min-height: 40px;
+  border: 0;
+  border-radius: var(--r-m);
+  background: rgba(18, 16, 28, .62);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.recite-sizes button.on {
+  color: var(--text);
+  background: rgba(245, 193, 108, .18);
+  box-shadow: inset 0 0 0 1.5px rgba(245, 193, 108, .5);
+}
+
+.recite-start {
+  width: 100%;
+  min-height: 52px;
+}
+.recite-start:disabled {
+  opacity: .5;
+}
+
+.recite-empty {
+  display: grid;
+  gap: 4px;
+  padding: 22px 14px;
+  text-align: center;
+  border-radius: var(--r-l);
+  background: rgba(18, 16, 28, .42);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.recite-empty b {
+  font-size: 15px;
+}
+.recite-empty p {
+  margin: 0;
+  color: var(--muted);
+}
+
+/* 牌组列表：一行一张卡，右侧盒号，左滑不做，直接给一个移出按钮。 */
+.recite-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+.recite-list-h {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 800;
+}
+.recite-list-h span {
+  color: var(--muted);
+  font-weight: 600;
+}
+.recite-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-m);
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.recite-item-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.recite-item-copy b {
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recite-item-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recite-box {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .06);
+}
+.recite-box.is-new {
+  color: #cfe9ff;
+  background: rgba(110, 200, 255, .18);
+}
+.recite-box.is-due {
+  color: #fff6df;
+  background: rgba(245, 193, 108, .22);
+}
+.recite-box.is-mastered {
+  color: #cdf3d6;
+  background: rgba(48, 176, 80, .22);
+}
+.recite-drop {
+  appearance: none;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .06);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* 卡片流 */
+.recite-run {
+  position: relative;
+}
+.recite-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recite-card .learn-src {
+  font-size: clamp(30px, 9vw, 44px);
+}
+/* 填空题把整句放出来，字号要收，不然一行放不下。 */
+.recite-card.is-blank .learn-src {
+  font-size: clamp(20px, 5.4vw, 28px);
+}
+.recite-gap {
+  color: var(--gold);
+  letter-spacing: 0.08em;
+}
+.recite-unknown {
+  appearance: none;
+  align-self: center;
+  margin-top: 6px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.recite-shake {
+  animation: recite-shake 340ms ease;
+}
+@keyframes recite-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  45% { transform: translateX(6px); }
+  70% { transform: translateX(-3px); }
+}
+
+/* 详情卡 = 百词斩的配图位。我们没有图库，用「出自哪首歌的哪一句 + 原唱片段」替代。 */
+.recite-detail {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 18px;
+  text-align: center;
+}
+.recite-detail-word {
+  font-size: clamp(32px, 10vw, 48px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.recite-detail-roma {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+.recite-detail-zh {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--gold);
+}
+.recite-anchor {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  margin: 16px 0 auto;
+  padding: 16px 14px;
+  border-radius: var(--r-l);
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.recite-anchor i {
+  font-style: normal;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.recite-anchor p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+}
+.recite-anchor em {
+  font-style: normal;
+  color: var(--gold);
+  font-weight: 750;
+}
+.recite-anchor-play {
+  min-height: 40px;
+  padding: 0 18px;
+}
+.recite-anchor-play.is-playing {
+  color: var(--gold);
+}
+
+.recite-done .learn-score-num {
+  margin-top: 34px;
+}
+.recite-done .learn-dock {
+  margin-top: auto;
+}
+
+@media (min-width: 700px) {
+  .recite-stats {
+    max-width: 560px;
+  }
+  .recite-start {
+    max-width: 320px;
+  }
+}

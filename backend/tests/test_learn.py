@@ -447,6 +447,26 @@ def test_phone_learn_shell_is_wired():
     assert "pausePlayer" not in fx
     assert "applyKaraokeGain" not in fx
     assert "bus.connect(ctx.destination)" in fx
+    # 背诵牌组：三个 pane + 独立的音频元素。片段播放不能借 #playerAudio,
+    # 牌组是跨歌的，那个元素只装着当前这首歌。
+    assert "learn-recite.css" in html
+    assert 'id="learnRecite"' in html
+    assert 'id="learnReciteRun"' in html
+    assert 'id="learnReciteDone"' in html
+    assert 'id="reciteAudio"' in html
+    recite = (root / "phone" / "player" / "js" / "learn" / "recite.js").read_text(
+        encoding="utf-8"
+    )
+    assert "reciteAudio" in recite
+    # 片段自己播：不能 import playCueWindow,那个只认当前载入的那首歌。
+    assert "import { playCueWindow" not in recite
+    assert "playCueWindow(" not in recite.replace("`playCueWindow()`", "")
+    assert "mediaUrl" in recite
+    assert "bindRecite" in shell
+    assert 'openRecite("word")' in shell
+    assert 'openRecite("mistake")' in shell
+    assert '"learn.recite.unknown"' in zh
+    assert '"learn.recite.playAudio"' in zh
 
 
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):

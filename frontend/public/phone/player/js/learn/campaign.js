@@ -192,7 +192,6 @@ export function paintCampaign(data) {
   const goals = $("learnGoals");
   const path = $("learnPath");
   const bookBtn = $("learnBookBtn");
-  const bookMeta = $("learnBookMeta");
   if (!pack) {
     if (goals) goals.hidden = true;
     if (path) path.innerHTML = "";
@@ -219,12 +218,30 @@ export function paintCampaign(data) {
       `</div>`;
   }
   if (path) path.innerHTML = pathView(pack);
-  const miss = Number(pack.mistakes || 0);
-  const savedWords = getStudyWords().length;
-  if (bookBtn) {
-    bookBtn.hidden = miss <= 0 && savedWords <= 0;
-    if (bookMeta) bookMeta.textContent = t("learn.bookSummary", { words: savedWords, mistakes: miss });
-  }
+  paintBookMeta(Number(pack.mistakes || 0));
+}
+
+/** 收藏词已经搬到服务端牌组了，本地那份只当离线兜底。先用手上的数画一遍，
+    再异步拿服务端总数补一次，免得进关卡要等一个请求。 */
+let deckWords = -1;
+
+function paintBookMeta(miss, refresh = true) {
+  const bookBtn = $("learnBookBtn");
+  if (!bookBtn) return;
+  const bookMeta = $("learnBookMeta");
+  const words = deckWords >= 0 ? deckWords : getStudyWords().length;
+  bookBtn.hidden = miss <= 0 && words <= 0;
+  if (bookMeta) bookMeta.textContent = t("learn.bookSummary", { words, mistakes: miss });
+  if (!refresh) return;
+  fetchJson("/api/learn/deck?deck=word&cards=0")
+    .then(({ ok, data }) => {
+      if (!ok || !data) return;
+      const total = Number(data.total || 0);
+      if (total === deckWords) return;
+      deckWords = total;
+      paintBookMeta(miss, false);
+    })
+    .catch(() => {});
 }
 
 export function bindCampaign(handlers) {

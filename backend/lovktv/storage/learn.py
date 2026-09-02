@@ -8,6 +8,7 @@ from typing import Any
 
 from lovktv.core.db import execute
 from lovktv.storage.store import connect, now_ms
+from lovktv.workers import srs
 
 MASTERY_STREAK = 2
 _LOCK = threading.Lock()
@@ -254,10 +255,14 @@ def record_mistake(
         prev = _row(row)
         wrong_count = int(prev["wrong_count"]) + 1 if prev else 1
         if prev:
+            # A repeat miss is a lapse: drop the box and make the card due now
+            # so the mistake deck surfaces it in the very next session.
+            plan = srs.schedule(int(prev.get("stage") or 0), False, now)
             execute(
                 conn,
                 "UPDATE learn_mistakes SET prompt=?, stem=?, answer_text=?, payload=?, "
-                "wrong_count=?, correct_streak=0, last_wrong_at=?, resolved_at=0 "
+                "wrong_count=?, correct_streak=0, last_wrong_at=?, resolved_at=0, "
+                "stage=?, lapses=?, due_at=? "
                 "WHERE owner=? AND song_id=? AND qkind=? AND item_key=?",
                 (
                     prompt or prev.get("prompt") or "",
@@ -265,6 +270,9 @@ def record_mistake(
                     answer_text or prev.get("answer_text") or "",
                     blob or prev.get("payload") or "",
                     wrong_count,
+                    now,
+                    plan["stage"],
+                    int(prev.get("lapses") or 0) + 1,
                     now,
                     owner,
                     song_id,
@@ -277,8 +285,9 @@ def record_mistake(
                 conn,
                 "INSERT INTO learn_mistakes "
                 "(owner, song_id, qkind, item_key, prompt, stem, answer_text, payload, "
-                "wrong_count, correct_streak, last_wrong_at, resolved_at) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,0)",
+                "wrong_count, correct_streak, last_wrong_at, resolved_at, "
+                "stage, reps, lapses, due_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,0,0,0,0,?)",
                 (
                     owner,
                     song_id,
@@ -290,6 +299,7 @@ def record_mistake(
                     blob,
                     wrong_count,
                     0,
+                    now,
                     now,
                 ),
             )
@@ -325,6 +335,118 @@ def note_correct(
             "UPDATE learn_mistakes SET correct_streak=?, resolved_at=? "
             "WHERE owner=? AND song_id=? AND qkind=? AND item_key=?",
             (streak, resolved, owner, song_id, qkind, key),
+        )
+        saved = execute(
+            conn,
+            "SELECT * FROM learn_mistakes WHERE owner=? AND song_id=? AND qkind=? AND item_key=?",
+            (owner, song_id, qkind, key),
+        ).fetchone()
+    return _row(saved)
+
+
+def _decode(row: dict[str, Any]) -> dict[str, Any]:
+    payload = row.get("payload") or ""
+    if isinstance(payload, str) and payload.startswith("{"):
+        try:
+            row["item"] = json.loads(payload)
+        except json.JSONDecodeError:
+            row["item"] = {}
+    else:
+        row["item"] = {}
+    return row
+
+
+def count_open_mistakes(owner: str) -> int:
+    """Open mistakes across every song — the mistake deck's total."""
+    if not owner:
+        return 0
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT COUNT(*) AS n FROM learn_mistakes WHERE owner=? AND resolved_at=0",
+            (owner,),
+        ).fetchone()
+    return int(dict(row).get("n") or 0) if row else 0
+
+
+def list_open_mistakes(owner: str, limit: int = 500) -> list[dict[str, Any]]:
+    if not owner:
+        return []
+    with connect() as conn:
+        rows = execute(
+            conn,
+            "SELECT * FROM learn_mistakes WHERE owner=? AND resolved_at=0 "
+            "ORDER BY last_wrong_at DESC LIMIT ?",
+            (owner, max(1, min(2000, int(limit or 500)))),
+        ).fetchall()
+    return [_decode(row) for row in _rows(rows)]
+
+
+def list_due_mistakes(
+    owner: str, limit: int, now: int | None = None
+) -> list[dict[str, Any]]:
+    """Mistakes due today, across songs. Drives the mistake deck's session."""
+    if not owner:
+        return []
+    cutoff = srs.end_of_day(now)
+    with connect() as conn:
+        rows = execute(
+            conn,
+            "SELECT * FROM learn_mistakes WHERE owner=? AND resolved_at=0 AND due_at<=? "
+            "ORDER BY due_at, last_wrong_at DESC LIMIT ?",
+            (owner, cutoff, max(1, int(limit or 10))),
+        ).fetchall()
+    return [_decode(row) for row in _rows(rows)]
+
+
+def bump_mistake(
+    owner: str,
+    song_id: str,
+    qkind: str,
+    item_key: str,
+    ok: bool,
+    now: int | None = None,
+) -> dict[str, Any] | None:
+    """Apply one deck answer's schedule. Clearing the last box resolves the row.
+
+    Distinct from `note_correct()`, which the in-song review path uses with its
+    own two-in-a-row rule; both write the same row, neither resets the other.
+    """
+    key = str(item_key or "").strip()
+    qkind = str(qkind or "").strip()
+    if not owner or not song_id or not qkind or not key:
+        return None
+    moment = int(now if now is not None else now_ms())
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn,
+            "SELECT * FROM learn_mistakes WHERE owner=? AND song_id=? AND qkind=? AND item_key=?",
+            (owner, song_id, qkind, key),
+        ).fetchone()
+        prev = _row(row)
+        if not prev:
+            return None
+        plan = srs.schedule(int(prev.get("stage") or 0), bool(ok), moment)
+        # Retiring the card and closing the notebook entry are the same event:
+        # the song's campaign should stop counting it as an open mistake too.
+        resolved = plan["retired_at"] or int(prev.get("resolved_at") or 0)
+        execute(
+            conn,
+            "UPDATE learn_mistakes SET stage=?, reps=?, lapses=?, due_at=?, "
+            "correct_streak=?, resolved_at=? "
+            "WHERE owner=? AND song_id=? AND qkind=? AND item_key=?",
+            (
+                plan["stage"],
+                int(prev.get("reps") or 0) + 1,
+                int(prev.get("lapses") or 0) + (0 if ok else 1),
+                plan["due_at"],
+                int(prev.get("correct_streak") or 0) + 1 if ok else 0,
+                resolved,
+                owner,
+                song_id,
+                qkind,
+                key,
+            ),
         )
         saved = execute(
             conn,

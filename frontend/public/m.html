@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="/phone/player/css/learn-tap.css" />
     <link rel="stylesheet" href="/phone/player/css/learn-echo.css" />
     <link rel="stylesheet" href="/phone/player/css/learn-campaign.css" />
+    <link rel="stylesheet" href="/phone/player/css/learn-recite.css" />
     <link rel="stylesheet" href="/phone/sheets/css/sheets.css" />
     <link rel="stylesheet" href="/shared/ads/css/ads.css" />
   </head>
@@ -677,6 +678,62 @@
               <button class="btn primary" id="learnBookGo" type="button" data-i18n="learn.bookGo">练错题</button>
             </div>
           </div>
+          <div class="learn-body recite-home" id="learnRecite" hidden>
+            <p class="learn-lead" id="reciteLead"></p>
+            <div class="recite-stats" id="reciteStats"></div>
+            <div class="recite-empty" id="reciteEmpty" hidden>
+              <b id="reciteEmptyTitle"></b>
+              <p class="tiny" id="reciteEmptyHint"></p>
+            </div>
+            <div class="recite-sizes" id="reciteSizes" role="radiogroup" data-i18n-aria="learn.recite.size"></div>
+            <button class="btn primary recite-start" id="reciteStart" type="button"></button>
+            <div class="recite-list" id="reciteList"></div>
+          </div>
+          <div class="learn-body is-play recite-run" id="learnReciteRun" hidden>
+            <div class="learn-progress" aria-hidden="true"><i id="reciteBar"></i></div>
+            <p class="learn-combo" id="reciteCount"></p>
+            <div class="recite-card" id="reciteCard">
+              <p class="learn-prompt" id="recitePrompt"></p>
+              <div class="learn-line">
+                <p class="learn-src" id="reciteSrc"></p>
+                <p class="learn-roma" id="reciteRoma"></p>
+              </div>
+              <button class="learn-replay" id="reciteReplay" type="button" hidden data-i18n="learn.recite.playAudio">
+                听原唱
+              </button>
+              <div class="learn-qs" id="reciteQs"></div>
+              <button class="recite-unknown" id="reciteUnknown" type="button" data-i18n="learn.recite.unknown">
+                我不认识这个词
+              </button>
+            </div>
+            <div class="recite-detail" id="reciteDetail" hidden>
+              <b class="recite-detail-word" id="reciteDetailWord"></b>
+              <p class="recite-detail-roma" id="reciteDetailRoma"></p>
+              <p class="recite-detail-zh" id="reciteDetailZh"></p>
+              <div class="recite-anchor">
+                <i id="reciteDetailFrom"></i>
+                <p id="reciteDetailLine"></p>
+                <button class="btn ghost recite-anchor-play" id="reciteDetailPlay" type="button" hidden>
+                  <span data-i18n="learn.recite.playAudio">听原唱</span>
+                </button>
+              </div>
+              <div class="learn-dock">
+                <button class="btn primary" id="reciteDetailNext" type="button" data-i18n="learn.continue">继续</button>
+              </div>
+            </div>
+          </div>
+          <div class="learn-body recite-done" id="learnReciteDone" hidden>
+            <p class="learn-score-num" id="reciteDoneNum">0</p>
+            <p class="learn-score-sub" id="reciteDoneSub"></p>
+            <p class="tiny" id="reciteDoneDetail"></p>
+            <div class="learn-dock learn-dock-col">
+              <button class="btn primary" id="reciteDoneAgain" type="button" data-i18n="learn.recite.again">
+                再背一轮
+              </button>
+              <button class="btn" id="reciteDoneBack" type="button" data-i18n="learn.recite.back">回牌组</button>
+            </div>
+          </div>
+          <audio id="reciteAudio" preload="none" playsinline hidden></audio>
           <div class="learn-body is-play" id="learnQuiz" hidden>
             <div class="learn-progress" aria-hidden="true"><i id="learnQuizBar"></i></div>
             <p class="learn-combo" id="learnQuizCombo">COMBO 0</p>

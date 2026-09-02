@@ -52,6 +52,7 @@ interface PhoneApi {
   setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
   enterLearn(): Promise<void> | void;
   openStudyBook(kind?: "words" | "mistakes" | ""): Promise<void> | void;
+  openRecite(deck?: "word" | "mistake"): Promise<void> | void;
   exitLearn(): void;
 }
 

@@ -59,7 +59,9 @@ TABLES: dict[str, tuple[str, ...]] = {
     "point_claims": ("owner", "kind", "created_at"),
     "learn_progress": ("owner", "song_id", "unit_id", "skill", "status", "score", "attempts", "updated_at"),
     "learn_mastery": ("owner", "song_id", "kind", "item_key", "text", "zh", "correct", "wrong", "streak", "mastered", "updated_at"),
-    "learn_mistakes": ("owner", "song_id", "qkind", "item_key", "prompt", "stem", "answer_text", "payload", "wrong_count", "correct_streak", "last_wrong_at", "resolved_at"),
+    "learn_mistakes": ("owner", "song_id", "qkind", "item_key", "prompt", "stem", "answer_text", "payload", "wrong_count", "correct_streak", "last_wrong_at", "resolved_at", "stage", "reps", "lapses", "due_at"),
+    "learn_cards": ("owner", "card_id", "song_id", "song_title", "item_key", "text", "zh", "romaji", "line_text", "start_ms", "end_ms", "stage", "reps", "lapses", "due_at", "last_at", "created_at", "retired_at"),
+    "learn_recite_days": ("owner", "deck", "day", "done", "created_at"),
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
@@ -194,12 +196,32 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   prompt TEXT NOT NULL DEFAULT '', stem TEXT NOT NULL DEFAULT '', answer_text TEXT NOT NULL DEFAULT '',
   payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at INTEGER NOT NULL DEFAULT 0,
-  resolved_at INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
+  resolved_at INTEGER NOT NULL DEFAULT 0,
+  stage INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0, due_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, song_id, qkind, item_key)
 );
 CREATE TABLE IF NOT EXISTS learn_submissions (
   owner TEXT NOT NULL, song_id TEXT NOT NULL, attempt_id TEXT NOT NULL,
   created_at INTEGER NOT NULL,
   PRIMARY KEY (owner, song_id, attempt_id)
+);
+CREATE TABLE IF NOT EXISTS learn_cards (
+  owner TEXT NOT NULL, card_id TEXT NOT NULL, song_id TEXT NOT NULL DEFAULT '',
+  song_title TEXT NOT NULL DEFAULT '', item_key TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL DEFAULT '', zh TEXT NOT NULL DEFAULT '', romaji TEXT NOT NULL DEFAULT '',
+  line_text TEXT NOT NULL DEFAULT '', start_ms INTEGER NOT NULL DEFAULT 0,
+  end_ms INTEGER NOT NULL DEFAULT 0, stage INTEGER NOT NULL DEFAULT 0,
+  reps INTEGER NOT NULL DEFAULT 0, lapses INTEGER NOT NULL DEFAULT 0,
+  due_at INTEGER NOT NULL DEFAULT 0, last_at INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT 0, retired_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, card_id)
+);
+CREATE INDEX IF NOT EXISTS learn_cards_due ON learn_cards (owner, retired_at, due_at);
+CREATE TABLE IF NOT EXISTS learn_recite_days (
+  owner TEXT NOT NULL, deck TEXT NOT NULL, day TEXT NOT NULL,
+  done INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, deck, day)
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -334,12 +356,32 @@ CREATE TABLE IF NOT EXISTS learn_mistakes (
   prompt TEXT NOT NULL DEFAULT '', stem TEXT NOT NULL DEFAULT '', answer_text TEXT NOT NULL DEFAULT '',
   payload TEXT NOT NULL DEFAULT '', wrong_count INTEGER NOT NULL DEFAULT 0,
   correct_streak INTEGER NOT NULL DEFAULT 0, last_wrong_at BIGINT NOT NULL DEFAULT 0,
-  resolved_at BIGINT NOT NULL DEFAULT 0, PRIMARY KEY (owner, song_id, qkind, item_key)
+  resolved_at BIGINT NOT NULL DEFAULT 0,
+  stage INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0, due_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, song_id, qkind, item_key)
 );
 CREATE TABLE IF NOT EXISTS learn_submissions (
   owner TEXT NOT NULL, song_id TEXT NOT NULL, attempt_id TEXT NOT NULL,
   created_at BIGINT NOT NULL,
   PRIMARY KEY (owner, song_id, attempt_id)
+);
+CREATE TABLE IF NOT EXISTS learn_cards (
+  owner TEXT NOT NULL, card_id TEXT NOT NULL, song_id TEXT NOT NULL DEFAULT '',
+  song_title TEXT NOT NULL DEFAULT '', item_key TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL DEFAULT '', zh TEXT NOT NULL DEFAULT '', romaji TEXT NOT NULL DEFAULT '',
+  line_text TEXT NOT NULL DEFAULT '', start_ms BIGINT NOT NULL DEFAULT 0,
+  end_ms BIGINT NOT NULL DEFAULT 0, stage INTEGER NOT NULL DEFAULT 0,
+  reps INTEGER NOT NULL DEFAULT 0, lapses INTEGER NOT NULL DEFAULT 0,
+  due_at BIGINT NOT NULL DEFAULT 0, last_at BIGINT NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL DEFAULT 0, retired_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, card_id)
+);
+CREATE INDEX IF NOT EXISTS learn_cards_due ON learn_cards (owner, retired_at, due_at);
+CREATE TABLE IF NOT EXISTS learn_recite_days (
+  owner TEXT NOT NULL, deck TEXT NOT NULL, day TEXT NOT NULL,
+  done INTEGER NOT NULL DEFAULT 0, created_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, deck, day)
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
@@ -363,4 +405,14 @@ USER_MIGRATIONS = (
     ("username", "TEXT NOT NULL DEFAULT ''"),
     ("username_key", "TEXT NOT NULL DEFAULT ''"),
     ("password_hash", "TEXT NOT NULL DEFAULT ''"),
+)
+
+# The mistake notebook predates spaced repetition; the deck reads these columns
+# straight off `learn_mistakes` rather than mirroring rows into `learn_cards`,
+# so the in-song review path (`note_correct`) keeps writing the same row.
+MISTAKE_MIGRATIONS = (
+    ("stage", "INTEGER NOT NULL DEFAULT 0"),
+    ("reps", "INTEGER NOT NULL DEFAULT 0"),
+    ("lapses", "INTEGER NOT NULL DEFAULT 0"),
+    ("due_at", "BIGINT NOT NULL DEFAULT 0"),
 )
