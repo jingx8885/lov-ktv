@@ -878,7 +878,7 @@ def _align_and_mtv(
         _annotate_ja_timeline(song_id, out_dir, timeline)
         if keep_native:
             timeline["native_video"] = True
-    if timeline.get("cues") and not is_chinese_lang(lang):
+    if timeline.get("cues"):
         update_song(song_id, status="annotating")
         _translate_foreign_timeline(song_id, out_dir, timeline, lang)
         if keep_native:
