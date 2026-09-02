@@ -10,6 +10,7 @@ import { closeOverlay } from "../../../ui/js/overlays.js";
 import { nativeMicState, setNativeGain } from "../../../platform.js";
 
 const DISPLAY_MODE_KEY = "lovktv.phone.displayMode";
+let playerFullscreenFallback = false;
 
 function localDisplayMode() {
   try {
@@ -42,10 +43,16 @@ function fullscreenActive() {
   );
 }
 
-function paintPlayerFullscreen() {
+function paintPlayerFullscreen(syncNativeExit = false) {
   const btn = $("playerFullscreen");
   if (!btn) return;
-  const active = fullscreenActive();
+  const nativeActive = !!(document.fullscreenElement || doc().webkitFullscreenElement);
+  // Esc / browser UI exits native fullscreen without going through our exit
+  // button. Clear the CSS fallback state so the normal player layout returns.
+  if (syncNativeExit && !nativeActive && !playerFullscreenFallback) {
+    document.body.classList.remove("player-fullscreen");
+  }
+  const active = nativeActive || playerFullscreenFallback;
   const canShow = !!$("playerMtv")?.src && document.body.classList.contains("display-mv");
   btn.hidden = !canShow;
   btn.classList.toggle("is-active", active);
@@ -55,6 +62,7 @@ function paintPlayerFullscreen() {
 }
 
 async function exitPlayerFullscreen() {
+  playerFullscreenFallback = false;
   document.body.classList.remove("player-fullscreen");
   try {
     if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
@@ -70,11 +78,29 @@ async function enterPlayerFullscreen() {
   if (!document.body.classList.contains("display-mv") || !$("playerMtv")?.src) return;
   const target = fullscreenTarget();
   if (!target) return;
+  const mtv = $("playerMtv");
+  const stage = $("playerStage");
+  if (stage) stage.hidden = false;
+  if (mtv) mtv.hidden = false;
   document.body.classList.add("player-fullscreen");
+  playerFullscreenFallback = false;
+  const nativeApi = !!(target.requestFullscreen || target.webkitRequestFullscreen);
+  let enteredNative = false;
   try {
-    if (target.requestFullscreen) await target.requestFullscreen({ navigationUI: "hide" });
-    else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+    if (target.requestFullscreen) {
+      await target.requestFullscreen({ navigationUI: "hide" });
+      enteredNative = true;
+    } else if (target.webkitRequestFullscreen) {
+      await target.webkitRequestFullscreen();
+      enteredNative = true;
+    }
   } catch (err) {}
+  if (nativeApi && !enteredNative) {
+    document.body.classList.remove("player-fullscreen");
+    paintPlayerFullscreen();
+    return;
+  }
+  playerFullscreenFallback = !enteredNative;
   try {
     if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");
   } catch (err) {}
@@ -251,8 +277,8 @@ export function bindMix() {
   paintDisplayMode(localDisplayMode());
   const fullscreenBtn = $("playerFullscreen");
   if (fullscreenBtn) fullscreenBtn.onclick = () => togglePlayerFullscreen();
-  document.addEventListener("fullscreenchange", paintPlayerFullscreen);
-  document.addEventListener("webkitfullscreenchange", paintPlayerFullscreen);
+  document.addEventListener("fullscreenchange", () => paintPlayerFullscreen(true));
+  document.addEventListener("webkitfullscreenchange", () => paintPlayerFullscreen(true));
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {

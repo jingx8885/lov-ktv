@@ -518,6 +518,17 @@ button.tl-head {
   display: grid;
   gap: 4px;
 }
+.player-stage[hidden],
+.player-clock-dock[hidden] {
+  display: none !important;
+}
+/* 歌词模式只保留歌词区域，不留下 MV/封面及其进度带的空白舞台。 */
+body.phone[data-page="player"].display-lyrics .player-stage {
+  display: none !important;
+}
+body.phone[data-page="player"].display-lyrics .player-clock-dock {
+  display: none !important;
+}
 .player-art {
   position: relative;
   border-radius: 12px;
@@ -527,7 +538,7 @@ button.tl-head {
   height: 112px;
   max-height: 112px;
   margin: 0;
-  cursor: default;
+  cursor: pointer;
   user-select: none;
   background:
     radial-gradient(70% 90% at 18% 20%, rgba(255, 55, 95, 0.32), transparent 72%),
@@ -587,7 +598,7 @@ button.tl-head {
 }
 .player-fullscreen-btn {
   position: absolute;
-  top: 10px;
+  bottom: 10px;
   right: 10px;
   z-index: 4;
   width: 42px;
@@ -603,6 +614,19 @@ button.tl-head {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+.player-fullscreen-btn:hover {
+  background: rgba(0, 0, 0, 0.72);
+}
+.player-fullscreen-btn:active {
+  transform: scale(0.94);
+}
+.player-fullscreen-btn.is-active {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 50%;
+  background: rgba(30, 30, 36, 0.78);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.34);
 }
 .player-fullscreen-btn[hidden] {
   display: none !important;
@@ -1782,14 +1806,6 @@ body.phone.edit-on .tl {
   }
 }
 
-@media (max-width: 699px) {
-  /* Lyrics-only mode must remove the MV surface from layout, not merely hide
-     the video pixels, otherwise it still occupies and blocks the lyric area. */
-  body.phone[data-page="player"].display-lyrics .player-stage {
-    display: none;
-  }
-}
-
 /* Fullscreen MV follows the native video convention: landscape canvas,
    contained video, and a compact subtitle rail underneath. */
 @media (max-width: 699px) {
@@ -1832,20 +1848,34 @@ body.phone.edit-on .tl {
     width: 100%;
     height: auto;
     min-height: 0;
-    display: block;
+    display: flex;
+    flex-direction: column;
     margin: 0;
   }
   body.phone.player-fullscreen .player-art {
     position: relative;
     inset: auto;
+    flex: 1 1 auto;
     width: 100%;
-    height: 100%;
+    height: auto;
+    min-height: 0;
     max-height: none;
     aspect-ratio: auto;
     border-radius: 0;
     background: #000;
   }
+  body.phone.player-fullscreen .player-stage > .player-clock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    width: 100%;
+    padding: 4px 14px 6px;
+    background: rgba(9, 11, 18, 0.82);
+  }
   body.phone.player-fullscreen .player-mtv {
+    display: block !important;
     object-fit: contain;
     border-radius: 0;
   }
@@ -1874,7 +1904,205 @@ body.phone.edit-on .tl {
     font-size: clamp(11px, 2.8vw, 17px);
   }
   body.phone.player-fullscreen .player-fullscreen-btn {
-    top: max(10px, env(safe-area-inset-top));
+    top: auto;
+    bottom: max(10px, env(safe-area-inset-bottom));
     right: max(10px, env(safe-area-inset-right));
   }
+}
+
+/* 宽屏进入全屏时，播放器本身接管整个视口，不再保留右侧曲库和底部控制条。 */
+@media (min-width: 700px) {
+  body.phone.player-fullscreen .player-main,
+  body.phone.player-fullscreen .player-main:fullscreen {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
+    min-height: 0;
+    gap: 0;
+    overflow: hidden;
+    background: #000;
+  }
+
+  body.phone.player-fullscreen .player-head,
+  body.phone.player-fullscreen .player-sheet,
+  body.phone.player-fullscreen .player-sheet-scrim,
+  body.phone.player-fullscreen .player-dock {
+    display: none !important;
+  }
+
+  body.phone.player-fullscreen .player-stage {
+    position: relative;
+    inset: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    overflow: hidden;
+  }
+
+  body.phone.player-fullscreen .player-art {
+    position: relative;
+    inset: auto;
+    flex: 1 1 auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+    box-shadow: none;
+  }
+
+  body.phone.player-fullscreen .player-stage > .player-clock {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 4;
+    width: 100%;
+    min-height: 36px;
+    padding: 4px 14px 6px;
+    background: rgba(9, 11, 18, 0.82);
+  }
+
+  body.phone.player-fullscreen .player-mtv {
+    display: block !important;
+    object-fit: contain;
+    border-radius: 0;
+  }
+
+  body.phone.player-fullscreen .player-lyric-stack {
+    position: relative;
+    inset: auto;
+    flex: 0 0 clamp(76px, 20vh, 150px);
+    width: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.92);
+  }
+
+  body.phone.player-fullscreen .player-lyrics {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    padding: 8px 16px 12px;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
+  }
+
+  body.phone.player-fullscreen .player-lyrics .line {
+    font-size: clamp(18px, 4.8vw, 44px);
+  }
+
+  body.phone.player-fullscreen .player-lyrics .prev,
+  body.phone.player-fullscreen .player-lyrics .next {
+    font-size: clamp(11px, 2.8vw, 20px);
+  }
+}
+
+/* 全屏时字幕叠加在 MV 上，画面层铺满整个视口，不再额外占用底部栏位。 */
+body.phone.player-fullscreen .player-main {
+  position: relative;
+}
+
+body.phone.player-fullscreen .player-stage {
+  position: absolute;
+  inset: 0;
+  flex: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+body.phone.player-fullscreen .player-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  background: #000;
+  box-shadow: none;
+}
+
+body.phone.player-fullscreen .player-mtv {
+  display: block !important;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+body.phone.player-fullscreen .player-stage > .player-clock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 14px 6px;
+  background: rgba(9, 11, 18, 0.82);
+}
+
+body.phone.player-fullscreen .player-lyric-stack {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex: none;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+body.phone.player-fullscreen .player-lyrics {
+  display: grid;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 0 16px 18%;
+  background: transparent;
+  text-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.95),
+    0 1px 3px rgba(0, 0, 0, 0.95);
+}
+
+body.phone.player-fullscreen .player-lyrics .line {
+  color: #fff;
+  opacity: 1;
+  font-size: clamp(18px, 4.8vw, 44px);
+}
+
+body.phone.player-fullscreen .player-lyrics .prev,
+body.phone.player-fullscreen .player-lyrics .next {
+  color: rgba(255, 255, 255, 0.78);
+  opacity: 0.92;
+  font-size: clamp(11px, 2.8vw, 20px);
 }

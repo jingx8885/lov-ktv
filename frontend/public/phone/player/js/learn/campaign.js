@@ -90,7 +90,9 @@ function nodesView(unit, ready) {
       const label = escapeHtml(nodeLabel(skill.id));
       // aria-disabled rather than disabled: a real disabled button swallows the
       // click, so the "clear the earlier stages first" hint could never fire.
-      return `<div class="learn-step"><button type="button" class="learn-node is-${skill.status}${
+      // The step carries is-current too: the "start" pill floats above its node
+      // and needs headroom reserved that node spacing alone doesn't give.
+      return `<div class="learn-step${current ? " is-current" : ""}"><button type="button" class="learn-node is-${skill.status}${
         current ? " is-current" : ""
       }" data-unit="${escapeHtml(unit.id)}" data-skill="${escapeHtml(skill.id)}" data-status="${escapeHtml(
         skill.status

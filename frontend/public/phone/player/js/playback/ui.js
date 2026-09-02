@@ -14,6 +14,14 @@ import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
   $("playerPlay").onclick = () => togglePlayer();
+  const playerArt = $("playerArt");
+  if (playerArt) {
+    playerArt.addEventListener("click", (event) => {
+      // 画面上的全屏按钮等控件保留各自行为，不冒泡成播放切换。
+      if (event.target instanceof Element && event.target.closest("button, input, select, label, a")) return;
+      togglePlayer();
+    });
+  }
   ["play", "playing", "pause", "ended", "seeking", "timeupdate"].forEach((name) => {
     $("playerAudio").addEventListener(name, refreshPlayIcon);
   });

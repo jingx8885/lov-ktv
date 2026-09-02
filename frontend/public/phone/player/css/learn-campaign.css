@@ -240,14 +240,17 @@
 .learn-nodes {
   display: grid;
   justify-items: center;
-  gap: 12px;
-  padding: 42px 0 8px;
+  gap: 22px;
+  padding: 14px 0 8px;
 }
 .learn-step {
   display: grid;
   justify-items: center;
   gap: 7px;
 }
+/* The pill floats ~37px above its node, which would land on the previous
+   node's caption; the extra margin is the headroom it needs. */
+.learn-step.is-current { margin-top: 30px; }
 .learn-step:nth-child(2) { transform: translateX(56px); }
 .learn-step:nth-child(4) { transform: translateX(-56px); }
 .learn-node {
