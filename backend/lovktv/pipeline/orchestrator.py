@@ -79,7 +79,12 @@ def align_lyrics(
         timed_lines = [item for item in lines if item.get("ms") is not None]
         used_asr_clock = False
         used_drift_clock = False
-        if timed_lines:
+        used_reordered_clock = False
+        reordered = _align_reordered_lines(lines, asr_words, lang, agent_matches, duration_ms)
+        if reordered is not None:
+            bounds = reordered
+            used_reordered_clock = True
+        elif timed_lines:
             drift_clock = _align_version_drift(
                 lines,
                 asr_words,
@@ -123,10 +128,10 @@ def align_lyrics(
                     hop_ms,
                 )
         if bounds:
-            agent_count = 0 if used_drift_clock else _apply_agent_matches(
+            agent_count = 0 if (used_drift_clock or used_reordered_clock) else _apply_agent_matches(
                 bounds, lines, asr_words, agent_matches, lang
             )
-            if used_drift_clock:
+            if used_drift_clock or used_reordered_clock:
                 agent_count = 1
             cues = []
             for row in bounds:
@@ -153,7 +158,7 @@ def align_lyrics(
                 "alignment_source": (
                     "agent+whisper-drift"
                     if used_drift_clock
-                    else ("agent+whisper" if agent_count else ("whisper" if used_asr_clock or not timed_lines else "official"))
+                    else ("agent+whisper-reordered" if used_reordered_clock else ("agent+whisper" if agent_count else ("whisper" if used_asr_clock or not timed_lines else "official")))
                 ),
                 "cues": cues,
             }
@@ -196,6 +201,7 @@ def align_lyrics(
             "cues": cues,
         }
 
+
     if timed and all(item.get("ms") is not None for item in lines):
         timeline = timeline_from_lrc(lines, lang, duration_ms=duration_ms)
         timeline["alignment"] = "lrc-interp"
@@ -209,6 +215,73 @@ def align_lyrics(
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
     return timeline
+
+
+def _align_reordered_lines(
+    lines: list[dict[str, Any]],
+    asr_words: list[dict[str, Any]],
+    language: str,
+    matches: list[dict[str, int]] | None,
+    duration_ms: int | None,
+) -> list[dict[str, Any]] | None:
+    """Build a timeline when an edited video sings lines out of LRC order."""
+    if not matches or not asr_words:
+        return None
+    kept = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
+    words = _usable_asr_words(asr_words)
+    if not kept or not words:
+        return None
+    rows: list[dict[str, Any]] = []
+    seen_lyrics: set[int] = set()
+    seen_words: set[int] = set()
+    previous_lyric: int | None = None
+    reordered = False
+    for match in matches:
+        try:
+            lyric_index = int(match["lyric"]) - 1
+            start_index = int(match["from"]) - 1
+            end_index = int(match["to"]) - 1
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (0 <= lyric_index < len(kept) and 0 <= start_index <= end_index < len(words)):
+            continue
+        if lyric_index in seen_lyrics or any(i in seen_words for i in range(start_index, end_index + 1)):
+            continue
+        if previous_lyric is not None and lyric_index < previous_lyric:
+            reordered = True
+        previous_lyric = lyric_index
+        seen_lyrics.add(lyric_index)
+        seen_words.update(range(start_index, end_index + 1))
+        start_ms = int(words[start_index].get("start_ms") or 0)
+        end_ms = max(start_ms + 40, int(words[end_index].get("end_ms") or start_ms + 40))
+        rows.append({
+            "text": str(kept[lyric_index].get("text") or ""),
+            "start_ms": start_ms,
+            "end_ms": end_ms,
+            "from_asr": True,
+        })
+    # Sparse monotonic matches continue through the existing drift/official
+    # logic.  Require a genuine order inversion before switching clocks.
+    if not reordered or len(rows) < 3:
+        return None
+    rows.sort(key=lambda row: (int(row["start_ms"]), int(row["end_ms"])))
+    bounds: list[dict[str, Any]] = []
+    for row in rows:
+        start_ms = max(0, int(row["start_ms"]))
+        end_ms = max(start_ms + 40, int(row["end_ms"]))
+        if bounds and start_ms < int(bounds[-1]["end_ms"]):
+            start_ms = int(bounds[-1]["end_ms"])
+            if start_ms >= end_ms:
+                continue
+        if duration_ms:
+            start_ms = min(start_ms, max(0, int(duration_ms) - 200))
+            end_ms = min(int(duration_ms), max(start_ms + 40, end_ms))
+        bounds.append({"text": row["text"], "start_ms": start_ms, "end_ms": end_ms, "from_asr": True})
+    return bounds or None
 
 
 def _apply_agent_matches(

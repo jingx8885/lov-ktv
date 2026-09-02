@@ -32,14 +32,20 @@ Return JSON only: {\"matches\":[{\"lyric\":1,\"from\":3,\"to\":8}]}.
 Rules:
 1. `lyric` is the 1-based lyric line number, and `from`/`to` are 1-based ASR
    word numbers (inclusive).
-2. Match the sung words, not an intro/title/credits line. Keep lyric order and
-   never reuse an ASR word for two lines.
-3. Repeated lines must use the later matching words when the transcript repeats.
+2. Match the sung words, not an intro/title/credits line. Never reuse an ASR
+   word for two lines. The media may be an edited music video whose verse and
+   chorus order differs from the LRC; in that case lyric numbers may be
+   non-monotonic. Return matches in ASR time order (ascending `from`).
+3. Repeated lines must use the matching words at their actual occurrence in the
+   transcript, including occurrences that appear before an earlier LRC line.
 4. Whisper may mis-hear CJK, kana, accents, or punctuation. Use nearby context,
    word order, and the original lyric to choose the best span.
-5. Bracketed lyric times are the source LRC clock, not ground truth. Compare
+5. Every ASR word includes an authoritative `[start_ms-end_ms]` timestamp. Use
+   the numbered ASR spans (not the LRC clock) as the timing source; do not
+   invent, average, or shift word times while choosing `from`/`to`.
+6. Bracketed lyric times are the source LRC clock, not ground truth. Compare
    them with ASR times and correct obvious offsets or version drift.
-6. Omit a lyric only when no plausible sung counterpart exists; never invent
+7. Omit a lyric only when no plausible sung counterpart exists; never invent
    ASR indices. Do not return timestamps or rewritten lyric text.
 """
 
@@ -202,7 +208,7 @@ def align_lines_with_agent(
 
 def _validate(rows: Any, lyric_count: int, word_count: int) -> list[dict[str, int]]:
     seen_lyrics: set[int] = set()
-    previous_end = 0
+    used_words: set[int] = set()
     valid: list[dict[str, int]] = []
     for row in rows if isinstance(rows, list) else []:
         if not isinstance(row, dict):
@@ -213,9 +219,12 @@ def _validate(rows: Any, lyric_count: int, word_count: int) -> list[dict[str, in
             continue
         if not (1 <= lyric <= lyric_count and 1 <= start <= end <= word_count):
             continue
-        if lyric in seen_lyrics or start <= previous_end:
+        if lyric in seen_lyrics or any(index in used_words for index in range(start, end + 1)):
             continue
         seen_lyrics.add(lyric)
-        previous_end = end
+        used_words.update(range(start, end + 1))
         valid.append({"lyric": lyric, "from": start, "to": end})
-    return valid
+    # The orchestrator builds the timeline in media order. Sorting here also
+    # makes validation deterministic when the model returns valid rows in a
+    # different order.
+    return sorted(valid, key=lambda row: (row["from"], row["to"], row["lyric"]))

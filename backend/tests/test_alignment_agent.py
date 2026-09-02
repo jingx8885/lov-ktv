@@ -31,6 +31,24 @@ def test_agent_matches_are_validated_and_cached(tmp_path, monkeypatch):
     assert cached["schema"] == alignment.ALIGN_SCHEMA
 
 
+def test_agent_prompt_keeps_grok_word_level_times(monkeypatch):
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
+    seen = {}
+
+    def complete(messages):
+        seen["text"] = messages[1]["content"]
+        return [{"lyric": 1, "from": 1, "to": 1}]
+
+    monkeypatch.setattr(alignment, "_complete", complete)
+    alignment.align_lines_with_agent(
+        [{"ms": 12_000, "text": "hello"}],
+        [{"text": "hello", "start_ms": 12_340, "end_ms": 12_780}],
+        "en",
+    )
+    assert "[12340-12780] hello" in seen["text"]
+
+
 def test_orchestrator_uses_agent_word_times():
     timeline = align_lyrics(
         [{"ms": 0, "text": "hello world"}, {"ms": 3000, "text": "again"}],
@@ -150,3 +168,27 @@ def test_orchestrator_switches_to_consistent_asr_clock_for_version_drift():
     )
     assert timeline["alignment_source"] == "whisper"
     assert [cue["start_ms"] for cue in timeline["cues"]] == [1000, 5000, 9000]
+
+
+def test_orchestrator_reorders_edited_media_from_agent_matches():
+    timeline = align_lyrics(
+        [
+            {"ms": 0, "text": "first"},
+            {"ms": 1000, "text": "chorus"},
+            {"ms": 2000, "text": "second"},
+        ],
+        "en",
+        asr_words=[
+            {"text": "first", "start_ms": 100, "end_ms": 500},
+            {"text": "second", "start_ms": 700, "end_ms": 1100},
+            {"text": "chorus", "start_ms": 1500, "end_ms": 1900},
+        ],
+        agent_matches=[
+            {"lyric": 1, "from": 1, "to": 1},
+            {"lyric": 3, "from": 2, "to": 2},
+            {"lyric": 2, "from": 3, "to": 3},
+        ],
+    )
+    assert timeline["alignment_source"] == "agent+whisper-reordered"
+    assert [cue["text"] for cue in timeline["cues"]] == ["first", "second", "chorus"]
+    assert [cue["start_ms"] for cue in timeline["cues"]] == [100, 700, 1500]
