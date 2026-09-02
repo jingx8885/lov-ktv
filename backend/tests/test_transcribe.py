@@ -3,7 +3,29 @@ import sys
 import types
 import wave
 
-from lovktv.pipeline.transcribe import _parse_whisper_json, transcribe_words
+from lovktv.pipeline.transcribe import (
+    _parse_grok_payload,
+    _parse_whisper_json,
+    transcribe_words,
+)
+
+
+def test_parse_grok_recovers_segment_boundaries_from_ranges():
+    words = _parse_grok_payload(
+        {
+            "segments": [
+                {"start": 0.0, "end": 1.0, "text": "first line"},
+                {"start": 1.1, "end": 2.0, "text": "second line"},
+            ],
+            "words": [
+                {"word": "first", "start": 0.1, "end": 0.4},
+                {"word": "line", "start": 0.5, "end": 0.9},
+                {"word": "second", "start": 1.2, "end": 1.5},
+                {"word": "line", "start": 1.6, "end": 1.9},
+            ],
+        }
+    )
+    assert [word["segment"] for word in words] == [0, 0, 1, 1]
 
 
 def test_parse_whisper_prefers_word_timestamps(tmp_path):

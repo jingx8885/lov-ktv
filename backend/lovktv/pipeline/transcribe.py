@@ -112,6 +112,7 @@ def _parse_grok_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
     """Parse Grok verbose_json word timestamps without degrading precision."""
     words: list[dict[str, Any]] = []
     native = data.get("words") or []
+    segments = data.get("segments") or []
     for index, item in enumerate(native):
         if not isinstance(item, dict):
             continue
@@ -121,7 +122,22 @@ def _parse_grok_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
         start = float(item.get("start") or 0)
         end = max(float(item.get("end") or start), start + 0.04)
         segment_value = item.get("segment")
-        segment = int(segment_value) if segment_value is not None else index
+        if segment_value is not None:
+            segment = int(segment_value)
+        else:
+            # verbose_json commonly omits a segment id on each word while
+            # still returning segment time ranges.  Recover that grouping so
+            # transcript fallback can keep the provider's phrase boundaries.
+            segment = index
+            for seg_i, seg in enumerate(segments):
+                try:
+                    seg_start = float(seg.get("start") or 0)
+                    seg_end = float(seg.get("end") or seg_start)
+                except (TypeError, ValueError):
+                    continue
+                if seg_start - 0.05 <= start <= seg_end + 0.05:
+                    segment = seg_i
+                    break
         words.append(
             {
                 "text": text,
@@ -390,7 +406,7 @@ def _transcribe_grok(
         all_words = _dedupe_words(all_words)
         if cache_path and all_words:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps({"words": [{"text": w["text"], "start": w["start_ms"] / 1000, "end": w["end_ms"] / 1000} for w in all_words], "provider": "grok-stt", "duration": _audio_duration_seconds(audio_path)}, ensure_ascii=False), encoding="utf-8")
+            cache_path.write_text(json.dumps({"words": [{"text": w["text"], "start": w["start_ms"] / 1000, "end": w["end_ms"] / 1000, "segment": w.get("segment")} for w in all_words], "provider": "grok-stt", "duration": _audio_duration_seconds(audio_path)}, ensure_ascii=False), encoding="utf-8")
         return all_words
     except Exception:  # noqa: BLE001 - remote ASR is an optional fallback
         return []
