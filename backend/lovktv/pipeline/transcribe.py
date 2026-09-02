@@ -393,6 +393,11 @@ def _transcribe_grok(
         "response_format": "verbose_json",
         "timestamp_granularities[]": "word",
     }
+    if debug_trace is not None:
+        # Keep the exact non-secret form fields alongside each raw response;
+        # never include the Authorization header or endpoint key.
+        debug_trace["request"] = dict(data)
+        persist_debug()
     try:
         all_words: list[dict[str, Any]] = []
         # Grok's upstream decoder is sensitive to isolated PCM WAV sections;
