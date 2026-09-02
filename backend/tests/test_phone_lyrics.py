@@ -23,6 +23,9 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert "keepGloss" in paint
     assert "keepZh" in paint
     assert "keepRt" in paint
+    # The listen-page lyric view must retain the same furigana annotation as
+    # the TV subtitle view in both Japanese and complete modes.
+    assert 'const keepRt = (view === "ja" || showExtra)' in paint
     assert "export function sanitizeLyrics" in paint
     song = (ROOT / "phone" / "player" / "js" / "playback" / "song.js").read_text(
         encoding="utf-8"
@@ -38,6 +41,7 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert 'href="/phone/desk/css/desk.css"' in html
     assert 'from "./player/js/playback/mic.js"' in app
     css = (ROOT / "phone" / "player" / "css" / "player.css").read_text(encoding="utf-8")
+    assert 'body.phone[data-lyric-mode="all"] .page-player .player-lyrics .rt' not in css
     mic = (ROOT / "phone" / "player" / "js" / "playback" / "mic.js").read_text(
         encoding="utf-8"
     )

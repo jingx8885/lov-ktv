@@ -849,9 +849,6 @@ body.display-mv .player-lyric-scroll {
   font-size: clamp(12px, min(3.6cqi, 4.2cqh), 18px);
   opacity: 0.72;
 }
-body.phone[data-lyric-mode="all"] .page-player .player-lyrics .rt {
-  display: none;
-}
 .page-player .player-lyrics .prev .rt,
 .page-player .player-lyrics .next .rt,
 .page-player .player-lyrics .prev .roma,

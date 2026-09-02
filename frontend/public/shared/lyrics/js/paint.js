@@ -278,7 +278,10 @@ export function renderCue(cue, t, mode) {
   const keepRoma = showExtra && (script === "ja" || !script);
   const keepGloss = showExtra;
   const keepZh = showExtra;
-  const keepRt = showExtra && (script === "ja" || !script);
+  // Japanese mode keeps the source line readable with furigana, while the
+  // complete view mirrors the TV subtitle stack. Other scripts do not have
+  // Japanese readings to display.
+  const keepRt = (view === "ja" || showExtra) && (script === "ja" || !script);
   if (!tokens.length) {
     const body = karaokeSpan(cueLine(cue), Math.round(tokenProgress(cue, t)));
     return keepZh ? `${body}<span class="lyric-zh">${escapeHtml(String(cue.zh || ""))}</span>` : body;
