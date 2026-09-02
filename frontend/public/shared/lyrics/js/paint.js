@@ -152,11 +152,36 @@ function tvStage() {
 
 function fitLyricExtras(el) {
   if (tvStage()) return;
+  // On the phone player each token's gloss must keep the same optical size.
+  // Scaling a long gloss down to the source token width made neighboring
+  // words visibly jump between different font sizes. Let the annotation use
+  // its natural width instead; the lyric line's wrapping handles the result.
+  const keepPhoneExtraSize = !!(el.closest && el.closest(".player-lyrics"));
   el.querySelectorAll(".anno").forEach((anno) => {
     const rb = /** @type {HTMLElement | null} */ (anno.querySelector(".rb"));
     if (!rb) return;
     const box = /** @type {HTMLElement} */ (anno);
     box.style.width = "";
+    if (keepPhoneExtraSize) {
+      const extras = Array.from(box.querySelectorAll(".roma, .gloss"));
+      const sourceWidth = rb.getBoundingClientRect().width;
+      let naturalWidth = sourceWidth;
+      // Measure the unscaled text before restoring the annotation's minimum
+      // width. This gives the token enough room without changing its font.
+      extras.forEach((node) => {
+        const extra = /** @type {HTMLElement} */ (node);
+        extra.style.transform = "";
+        extra.style.transformOrigin = "";
+        extra.style.width = "max-content";
+        extra.style.minWidth = "0";
+        naturalWidth = Math.max(naturalWidth, textInkWidth(extra));
+      });
+      if (naturalWidth > 0) box.style.width = `${Math.ceil(naturalWidth)}px`;
+      extras.forEach((node) => {
+        /** @type {HTMLElement} */ (node).style.minWidth = "100%";
+      });
+      return;
+    }
     const cap = rb.getBoundingClientRect().width;
     if (cap > 0) box.style.width = `${Math.ceil(cap)}px`;
     box.querySelectorAll(".roma, .gloss").forEach((node) => {
