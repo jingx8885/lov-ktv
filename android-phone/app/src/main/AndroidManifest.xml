@@ -28,20 +28,15 @@
         android:usesCleartextTraffic="true">
 
         <activity
-            android:name=".feature.SplashActivity"
+            android:name=".feature.DeskActivity"
             android:exported="true"
-            android:theme="@style/Theme.LovKtvPhone.Splash">
+            android:keepScreenOn="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".feature.DeskActivity"
-            android:exported="false"
-            android:keepScreenOn="true"
-            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".feature.ScanActivity"

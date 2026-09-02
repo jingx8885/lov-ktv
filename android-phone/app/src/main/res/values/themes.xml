@@ -9,9 +9,4 @@
         <item name="android:textColorSecondary">#9AA3B5</item>
         <item name="android:editTextColor">#F4F1EA</item>
     </style>
-
-    <style name="Theme.LovKtvPhone.Splash" parent="Theme.LovKtvPhone">
-        <item name="android:windowBackground">@drawable/splash_window</item>
-        <item name="android:windowFullscreen">true</item>
-    </style>
 </resources>
