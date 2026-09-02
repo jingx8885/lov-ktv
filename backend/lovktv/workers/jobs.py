@@ -204,11 +204,20 @@ def ensure_karaoke_stems(out_dir: Path, src: Path, skeleton: dict) -> str:
 
 
 def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
-    """Rebuild canonical playback tracks, extracting original audio from MVs."""
+    """Rebuild canonical playback tracks without destroying an original vocal.
+
+    Karaoke Mugen off-vocal entries use the official MV as the backing track
+    and a separately linked sibling as the original vocal.  The MV therefore
+    must never be used to refresh ``original.mp3`` for those songs.
+    """
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
     audio = skeleton.get("audio") if isinstance(skeleton.get("audio"), dict) else {}
     original = out_dir / "original.mp3"
     native_mtv = out_dir / "mtv.mp4"
+    mugen_song = source.get("provider") == "karaoke-mugen"
+    mugen_off_vocal = mugen_song and is_off_vocal(
+        str(source.get("songname") or ""), str(skeleton.get("title") or "")
+    )
 
     # Karaoke Mugen dual-track files keep their video without audio. Rebuild
     # the full original by mixing the official instrumental and vocal tracks.
@@ -216,9 +225,15 @@ def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
         (path for path in (out_dir / "mugen.mp4", out_dir / "mugen.webm") if path.exists()),
         None,
     )
-    if (
+    if mugen_off_vocal:
+        # ``mtv.mp4`` is the off-vocal media. Restore the linked vocal sibling
+        # instead of extracting that accompaniment over the canonical master.
+        if not attach_vocal_audio(out_dir, skeleton):
+            raise RuntimeError("Mugen 原唱轨恢复失败")
+        original = out_dir / "original.mp3"
+    elif (
         mugen_src
-        and source.get("provider") == "karaoke-mugen"
+        and mugen_song
         and (audio.get("dual_audio") or audio.get("source") == "mugen-dual")
     ):
         refreshed = prepare_media(mugen_src, out_dir)
@@ -239,6 +254,11 @@ def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
 
     if not original.exists():
         raise RuntimeError("MV 原曲提取失败，没有 original.mp3")
+    if mugen_off_vocal:
+        # The official karaoke.m4a and guide.m4a were already produced from
+        # their respective Mugen siblings.  Running ONNX on the vocal master
+        # here would turn karaoke back into a near-silent accompaniment.
+        return original
     separate_vocals(original, out_dir)
     return original
 

@@ -739,9 +739,19 @@ def attach_vocal_audio(out_dir: Path, skeleton: dict[str, Any]) -> bool:
     query = str(source.get("query") or skeleton.get("title") or "")
     if not query:
         return False
-    hit = pick_vocal_hit(search_mugen(query, count=8).get("hits") or [])
-    kid = str((hit or {}).get("id") or "")
-    if not kid or kid == current or hit.get("off_vocal"):
+    # Keep using the exact sibling selected during the initial import when it
+    # is recorded in the skeleton.  Re-searching by title can pick the
+    # off-vocal entry again (Mugen has several near-duplicate versions), which
+    # would silently replace the original track with another accompaniment
+    # during a forced refresh.
+    stored_kid = str(source.get("vocal_kid") or "")
+    hit = None
+    if stored_kid and stored_kid != current:
+        kid = stored_kid
+    else:
+        hit = pick_vocal_hit(search_mugen(query, count=8).get("hits") or [])
+        kid = str((hit or {}).get("id") or "")
+    if not kid or kid == current or (hit and hit.get("off_vocal")):
         return False
     kara = fetch_kara(kid)
     media_name = str(kara.get("mediafile") or "")

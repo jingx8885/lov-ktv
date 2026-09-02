@@ -1,3 +1,4 @@
+import json
 import threading
 
 from lovktv.workers import jobs
@@ -218,6 +219,53 @@ def test_realign_keeps_karaoke_mugen_timeline(tmp_path, monkeypatch):
     )
     jobs.process_realign("m1", "ja", force=True)
     assert called and called[0][0][0:2] == ("m1", out)
+
+
+def test_refresh_mugen_off_vocal_restores_sibling_vocal_without_overwriting_karaoke(
+    tmp_path, monkeypatch
+):
+    out = tmp_path / "m1"
+    out.mkdir()
+    (out / "original.mp3").write_bytes(b"old-off-vocal")
+    (out / "karaoke.m4a").write_bytes(b"official-karaoke")
+    (out / "mtv.mp4").write_bytes(b"off-vocal-mv")
+    skeleton = {
+        "title": "群青 · YOASOBI",
+        "source": {
+            "provider": "karaoke-mugen",
+            "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers",
+            "vocal_kid": "vocal-kid",
+        },
+        "audio": {"source": "mugen", "has_original_vocal": True},
+    }
+    (out / "skeleton.json").write_text(json.dumps(skeleton), encoding="utf-8")
+    extracted = []
+
+    def restore_vocal(folder, value):
+        extracted.append(True)
+        (folder / "original.mp3").write_bytes(b"real-vocal")
+        return True
+
+    monkeypatch.setattr(jobs, "attach_vocal_audio", restore_vocal)
+    monkeypatch.setattr(
+        jobs,
+        "extract_mv_mp3",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("must not extract off-vocal MV into original")
+        ),
+    )
+    monkeypatch.setattr(
+        jobs,
+        "separate_vocals",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("must keep the official karaoke stem")
+        ),
+    )
+
+    result = jobs._refresh_audio_tracks(out, skeleton)
+    assert extracted == [True]
+    assert result.read_bytes() == b"real-vocal"
+    assert (out / "karaoke.m4a").read_bytes() == b"official-karaoke"
 
 
 def test_restore_mugen_timeline_uses_untouched_ass(tmp_path, monkeypatch):
