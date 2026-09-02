@@ -4,12 +4,18 @@ services:
       - "127.0.0.1:8790:8787"
     environment:
       LOVKTV_PUBLIC_URL: ${LOVKTV_PUBLIC_URL:-https://ktv.lovbrowser.com}
+      LOVKTV_AGENT_URL: ${LOVKTV_AGENT_URL:-http://new-api:3000}
+      LOVKTV_AGENT_MODEL: ${LOVKTV_AGENT_MODEL:-gpt-5.6-luna}
       LOVKTV_HTTPS_PROXY: ${LOVKTV_HTTPS_PROXY:-http://lov-stock-clash:7890}
     networks:
       - default
       - stock-proxy
+      - llm-proxy
 
 networks:
   stock-proxy:
     external: true
     name: lov-stock_default
+  llm-proxy:
+    external: true
+    name: new-api_new-api-network
