@@ -318,14 +318,6 @@ def _align_reordered_lines(
             continue
         lower = max((key for key in matched_by_index if key < index), default=None)
         upper = min((key for key in matched_by_index if key > index), default=None)
-        # When the upper anchor itself is a moved block (large ASR↔LRC
-        # discrepancy), interpolating preceding LRC rows would place them
-        # before the moved verse. Leave those rows unmatched until a later
-        # concrete occurrence is found instead of displaying them early.
-        if upper is not None:
-            upper_official = kept[upper].get("ms")
-            if upper_official is not None and abs(int(matched_by_index[upper]["start_ms"]) - int(upper_official)) >= 40_000 and index < upper:
-                continue
         if lower is not None and upper is not None:
             left = matched_by_index[lower]["start_ms"]
             right = matched_by_index[upper]["start_ms"]
