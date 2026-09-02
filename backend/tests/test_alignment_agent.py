@@ -192,3 +192,59 @@ def test_orchestrator_reorders_edited_media_from_agent_matches():
     assert timeline["alignment_source"] == "agent+whisper-reordered"
     assert [cue["text"] for cue in timeline["cues"]] == ["first", "second", "chorus"]
     assert [cue["start_ms"] for cue in timeline["cues"]] == [100, 700, 1500]
+
+
+def test_sparse_reorder_matches_fall_back_without_dropping_lyric_rows():
+    lines = [{"ms": i * 1000, "text": text} for i, text in enumerate(
+        ["one", "two", "three", "four", "five"]
+    )]
+    timeline = align_lyrics(
+        lines,
+        "en",
+        asr_words=[
+            {"text": "one", "start_ms": 100, "end_ms": 300},
+            {"text": "three", "start_ms": 700, "end_ms": 900},
+            {"text": "five", "start_ms": 1300, "end_ms": 1500},
+        ],
+        agent_matches=[
+            {"lyric": 1, "from": 1, "to": 1},
+            {"lyric": 3, "from": 2, "to": 2},
+            {"lyric": 5, "from": 3, "to": 3},
+        ],
+        duration_ms=2000,
+    )
+    assert len(timeline["cues"]) == len(lines)
+    assert [cue["text"] for cue in timeline["cues"]] == [x["text"] for x in lines]
+
+
+def test_wrong_lyric_version_uses_asr_text_instead_of_interpolating_stale_lrc():
+    timeline = align_lyrics(
+        [
+            {"ms": 0, "text": "opening line"},
+            {"ms": 20_000, "text": "old second line"},
+            {"ms": 40_000, "text": "old third line"},
+            {"ms": 60_000, "text": "old fourth line"},
+        ],
+        "en",
+        duration_ms=80_000,
+        asr_words=[
+            {"text": "opening", "start_ms": 0, "end_ms": 300},
+            {"text": "line", "start_ms": 300, "end_ms": 600},
+            {"text": "actual", "start_ms": 20_000, "end_ms": 20_300},
+            {"text": "verse", "start_ms": 20_300, "end_ms": 20_600},
+            {"text": "different", "start_ms": 40_000, "end_ms": 40_300},
+            {"text": "words", "start_ms": 40_300, "end_ms": 40_600},
+            {"text": "final", "start_ms": 60_000, "end_ms": 60_300},
+            {"text": "line", "start_ms": 60_300, "end_ms": 60_600},
+        ],
+        agent_matches=[
+            {"lyric": 1, "from": 1, "to": 2},
+            {"lyric": 2, "from": 3, "to": 4},
+            {"lyric": 3, "from": 5, "to": 6},
+            {"lyric": 4, "from": 7, "to": 8},
+        ],
+    )
+    assert timeline["alignment_source"] == "whisper-transcript-fallback"
+    text = " ".join(cue["text"] for cue in timeline["cues"])
+    assert "actual verse" in text
+    assert "old second line" not in text
