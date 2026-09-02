@@ -749,6 +749,54 @@ def test_attach_vocal_audio_downloads_sibling(tmp_path, monkeypatch):
     assert skeleton["source"]["vocal_kid"] == "88bbec95-58e2-4407-adf2-74d7c6e4ac1d"
 
 
+def test_attach_vocal_audio_retries_title_when_combined_query_has_no_hits(
+    tmp_path, monkeypatch
+):
+    skeleton = {
+        "title": "群青 · YOASOBI",
+        "source": {
+            "provider": "karaoke-mugen",
+            "kid": "off-kid",
+            "query": "群青 YOASOBI",
+            "songname": "JPN - YOASOBI - MV - Gunjô ~ Off Vocal Vers",
+        },
+        "audio": {},
+    }
+    calls = []
+
+    def fake_search(query, count=8, page=1):
+        calls.append(query)
+        if query == "群青 YOASOBI":
+            return {"hits": []}
+        return {
+            "hits": [
+                {"id": "other", "off_vocal": False, "songname": "JPN - Ado - MV - 群青"},
+                {
+                    "id": "vocal",
+                    "off_vocal": False,
+                    "songname": "JPN - YOASOBI - MV - Gunjô",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(mugen, "search_mugen", fake_search)
+    monkeypatch.setattr(mugen, "fetch_kara", lambda kid: {"mediafile": f"{kid}.mp4"})
+    monkeypatch.setattr(
+        mugen,
+        "download_file",
+        lambda url, dest, timeout=600, min_size=200: Path(dest).write_bytes(b"m" * 30000),
+    )
+    monkeypatch.setattr(
+        mugen,
+        "extract_audio",
+        lambda src, dest, stream_index=None: Path(dest).write_bytes(b"v" * 100),
+    )
+
+    assert mugen.attach_vocal_audio(tmp_path, skeleton) is True
+    assert calls == ["群青 YOASOBI", "群青"]
+    assert skeleton["source"]["vocal_kid"] == "vocal"
+
+
 def test_prepare_media_extracts_dual_tracks(tmp_path, monkeypatch):
     src = tmp_path / "song.mp4"
     src.write_bytes(b"x")

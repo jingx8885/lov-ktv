@@ -749,7 +749,29 @@ def attach_vocal_audio(out_dir: Path, skeleton: dict[str, Any]) -> bool:
     if stored_kid and stored_kid != current:
         kid = stored_kid
     else:
-        hit = pick_vocal_hit(search_mugen(query, count=8).get("hits") or [])
+        # The local index treats a multi-word query as an AND expression, so
+        # ``群青 YOASOBI`` can return nothing even though each term works on
+        # its own. Retry with the title and retain the artist from the Mugen
+        # songname to avoid selecting an unrelated “Gunjou” entry.
+        songname = str(source.get("songname") or "")
+        artist_hint = ""
+        parts = [part.strip() for part in songname.split(" - ")]
+        if len(parts) >= 2:
+            artist_hint = parts[1].casefold()
+        title_hint = query.split()[0] if query.split() else query
+        for search_query in dict.fromkeys((query, title_hint)):
+            hits = search_mugen(search_query, count=8).get("hits") or []
+            if artist_hint:
+                matching = [
+                    item
+                    for item in hits
+                    if artist_hint in str(item.get("songname") or "").casefold()
+                ]
+                hit = pick_vocal_hit(matching or hits)
+            else:
+                hit = pick_vocal_hit(hits)
+            if hit and not hit.get("off_vocal"):
+                break
         kid = str((hit or {}).get("id") or "")
     if not kid or kid == current or (hit and hit.get("off_vocal")):
         return False
