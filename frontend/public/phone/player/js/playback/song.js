@@ -178,7 +178,6 @@ export async function loadPlayerSong(songId, opts) {
   state.lyricsDirty = false;
   paintDeskLyrics();
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
-  resetPlayerFace();
   kickPlayerPaint();
 }
 

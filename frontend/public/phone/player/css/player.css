@@ -799,7 +799,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   max-height: 100%;
   overflow: hidden;
   padding: 8px 4px 16px;
-  scroll-behavior: smooth;
+  /* Scroll position is animated by the player paint loop. Native smooth
+     scrolling can be restarted on every cue change in mobile WebViews,
+     which makes the lyric list stutter. */
+  scroll-behavior: auto;
   scrollbar-width: none;
 }
 .player-lyric-scroll[hidden] {

@@ -6,12 +6,65 @@ import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
 
 let lastPaintAt = 0;
-// The scroll view is painted on every animation frame while lyrics-only mode
-// is active.  Keep the expensive source fingerprint out of that hot path:
+// Keep the expensive source fingerprint out of the playback hot path:
 // playerLyrics.cues is replaced when a song/lyrics document changes, but is
-// otherwise stable while the song is playing.
+// otherwise stable while the song is playing. Active scroll motion gets its
+// own RAF below, so the rest of the player can keep its bounded cadence.
 let scrollCuesRef = null;
 let scrollCuesKey = "";
+let scrollMotion = null;
+let scrollMotionRaf = 0;
+
+const SCROLL_MOTION_MS = 360;
+
+function resetScrollMotion() {
+  scrollMotion = null;
+  if (scrollMotionRaf) {
+    cancelAnimationFrame(scrollMotionRaf);
+    scrollMotionRaf = 0;
+  }
+}
+
+function scrollTarget(list, current) {
+  return Math.max(0, current.offsetTop - list.clientHeight * 0.62);
+}
+
+function moveScroll(list, current, immediate) {
+  const target = scrollTarget(list, current);
+  if (immediate) {
+    list.scrollTop = target;
+    resetScrollMotion();
+    return;
+  }
+  scrollMotion = {
+    from: list.scrollTop,
+    to: target,
+    startedAt: performance.now()
+  };
+  if (!scrollMotionRaf) scrollMotionRaf = requestAnimationFrame(tickScrollMotion);
+}
+
+function advanceScroll(list) {
+  if (!scrollMotion) return;
+  const elapsed = performance.now() - scrollMotion.startedAt;
+  const progress = Math.min(1, Math.max(0, elapsed / SCROLL_MOTION_MS));
+  // Ease out so the line settles gently instead of stopping abruptly.
+  const eased = 1 - Math.pow(1 - progress, 3);
+  const next = scrollMotion.from + (scrollMotion.to - scrollMotion.from) * eased;
+  if (Math.abs(list.scrollTop - next) > 0.25) list.scrollTop = next;
+  if (progress >= 1) {
+    list.scrollTop = scrollMotion.to;
+    resetScrollMotion();
+  }
+}
+
+function tickScrollMotion() {
+  scrollMotionRaf = 0;
+  const list = $("playerLyricScroll");
+  if (!scrollMotion || !list || list.hidden || !document.body.classList.contains("display-lyrics")) return;
+  advanceScroll(list);
+  if (scrollMotion) scrollMotionRaf = requestAnimationFrame(tickScrollMotion);
+}
 
 export function cueIndexAt(time) {
   return cueIndexAtCues(state.playerLyrics.cues || [], lyricClockMs(time));
@@ -94,9 +147,7 @@ function paintPlayerScroll(cues, time, mode) {
     list.dataset.activeIndex = String(index);
     const current = list.children[index];
     if (current && (rebuilt || previous !== index)) {
-      const target = Math.max(0, current.offsetTop - list.clientHeight * 0.62);
-      if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "auto" });
-      else list.scrollTop = target;
+      moveScroll(list, current, true);
     }
   } else if (previous !== index) {
     if (previous >= 0 && cues[previous] && list.children[previous]) {
@@ -117,15 +168,12 @@ function paintPlayerScroll(cues, time, mode) {
     }
     list.dataset.activeIndex = String(index);
     const current = list.children[index];
-    if (current) {
-      const target = Math.max(0, current.offsetTop - list.clientHeight * 0.62);
-      if (typeof list.scrollTo === "function") list.scrollTo({ top: target, behavior: "smooth" });
-      else list.scrollTop = target;
-    }
+    if (current) moveScroll(list, current, false);
   } else if (active >= 0 && list.children[active]) {
     // Karaoke fill is the only part that changes every frame.
     paintLine(list.children[active], cues[active], lyricTime, `scroll:${active}`, state.lyricPaint.scroll, "", mode);
   }
+  advanceScroll(list);
 }
 
 export function paintPlayer() {
@@ -133,6 +181,7 @@ export function paintPlayer() {
   if (page && page.hidden) {
     state.playerRaf = 0;
     lastPaintAt = 0;
+    resetScrollMotion();
     return;
   }
   const frameNow = performance.now();
@@ -149,6 +198,7 @@ export function paintPlayer() {
   const lyricsOnly = document.body.classList.contains("display-lyrics");
   const scroll = $("playerLyricScroll");
   if (scroll) scroll.hidden = !lyricsOnly;
+  if (!lyricsOnly) resetScrollMotion();
   [$("playerPrev"), $("playerCur"), $("playerNext")].forEach((el) => {
     if (el) el.hidden = lyricsOnly;
   });
@@ -243,6 +293,7 @@ export function kickPlayerPaint() {
 
 export function resetPlayerFace() {
   lastPaintAt = 0;
+  resetScrollMotion();
   state.playerClockHold = null;
   state.playerClockHoldAt = 0;
   state.playerHoldDur = 0;
