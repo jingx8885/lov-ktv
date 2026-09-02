@@ -330,26 +330,38 @@ def _transcribe_grok(
         for chunk, offset in _remote_chunks(audio_path, audio_format="mp3"):
             if not _audio_has_voice(chunk):
                 continue
-            try:
-                mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
-                with chunk.open("rb") as audio:
-                    response = httpx.post(
-                        url,
-                        headers={"Authorization": f"Bearer {key}"},
-                        data=data,
-                        files={"file": (chunk.name, audio, mime)},
-                        timeout=180.0,
-                    )
-                response.raise_for_status()
-                payload = response.json()
-                if not isinstance(payload, dict):
-                    continue
-                for word in _parse_grok_payload(payload):
-                    word["start_ms"] += int(offset * 1000)
-                    word["end_ms"] += int(offset * 1000)
-                    all_words.append(word)
-            except Exception:  # noqa: BLE001 - one bad chunk must not erase good chunks
-                continue
+            chunk_words: list[dict[str, Any]] = []
+            for attempt in range(2):
+                try:
+                    mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
+                    with chunk.open("rb") as audio:
+                        response = httpx.post(
+                            url,
+                            headers={"Authorization": f"Bearer {key}"},
+                            data=data,
+                            files={"file": (chunk.name, audio, mime)},
+                            timeout=180.0,
+                        )
+                    response.raise_for_status()
+                    payload = response.json()
+                    if isinstance(payload, dict):
+                        chunk_words = _parse_grok_payload(payload)
+                    if chunk_words:
+                        break
+                except Exception:  # noqa: BLE001 - retry transient upstream failures
+                    pass
+                if attempt == 0:
+                    time.sleep(0.5)
+            if not chunk_words:
+                # Grok occasionally returns a valid 200 with an empty body for
+                # sung material.  Keep the configured Grok-first path, but
+                # recover only this failed slice with the local no-Torch
+                # Whisper runtime instead of losing the whole song.
+                chunk_words = _transcribe_faster_whisper(chunk, language, None, "")
+            for word in chunk_words:
+                word["start_ms"] += int(offset * 1000)
+                word["end_ms"] += int(offset * 1000)
+                all_words.append(word)
         all_words = _dedupe_words(all_words)
         if cache_path and all_words:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
