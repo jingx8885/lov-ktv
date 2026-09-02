@@ -6,4 +6,5 @@
     <color name="text">#F4F1EA</color>
     <color name="muted">#9AA3B5</color>
     <color name="panel">#151B2E</color>
+    <color name="splash_bg">#05060C</color>
 </resources>
