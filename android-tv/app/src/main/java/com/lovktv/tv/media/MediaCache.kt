@@ -132,14 +132,20 @@ class MediaCache(private val root: File) {
 
     companion object {
         const val META = "song.json"
+        /**
+         * Pull order matters: a song becomes pickable as soon as it is singable,
+         * so both playback tracks must land before the multi-hundred-megabyte
+         * video. Fetching mtv.mp4 first left original.mp3 missing while the song
+         * was already on the remote, and the TV degraded to the backing track.
+         */
         val WANTED = listOf(
             "karaoke.m4a",
-            "guide.m4a",
-            "lyrics.json",
-            "mtv.mp4",
             "original.mp3",
+            "lyrics.json",
+            "guide.m4a",
             "skeleton.json",
             "cover.jpg",
+            "mtv.mp4",
         )
 
         fun parsePath(path: String): Pair<String, String>? {

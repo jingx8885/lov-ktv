@@ -401,7 +401,15 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnEchoNext"' in html
     zh = (root / "shared" / "i18n" / "locales" / "zh.js").read_text(encoding="utf-8")
     assert '"phone.player.learn": "游戏"' in zh
-    assert '"learn.title": "游戏"' in zh
+    # Campaign node labels and unit headers are built from dynamic keys
+    # ("learn.skill." + id, "learn.goal." + key). A missing entry renders the
+    # raw key on screen, so every skill and goal must stay translated.
+    for skill in ("word", "sentence", "listen", "read", "sing"):
+        assert f'"learn.skill.{skill}"' in zh
+    for goal in ("words", "sentences", "read", "sing"):
+        assert f'"learn.goal.{goal}"' in zh
+    assert '"learn.unit"' in zh
+    assert '"learn.unitLines"' in zh
     assert "通关要词句都认识" in zh
     assert '"learn.book": "错题本"' in zh
     assert '"learn.next": "下一句"' in zh

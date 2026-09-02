@@ -8,7 +8,6 @@ import os
 from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
-from lovktv.identity.auth import public_base
 from lovktv.locale.i18n import t as i18n_t
 
 ADMIN_COOKIE = "lovktv_admin"
@@ -42,7 +41,9 @@ def require_admin(request) -> None:
 
 
 def set_admin_cookie(response: JSONResponse, request, token: str) -> None:
-    secure = request.url.scheme == "https" or public_base().startswith("https")
+    from lovktv.services.http import request_secure
+
+    secure = request_secure(request)
     response.set_cookie(
         ADMIN_COOKIE,
         token,

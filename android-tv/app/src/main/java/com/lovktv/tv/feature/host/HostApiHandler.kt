@@ -170,7 +170,12 @@ class HostApiHandler(
                     for (index in 0 until response.headers.size) {
                         val name = response.headers.name(index)
                         if (HostGateway.isHopByHop(name) || name.equals(HttpHeaders.ContentType, ignoreCase = true)) continue
-                        append(name, response.headers.value(index))
+                        val raw = response.headers.value(index)
+                        if (name.equals(HttpHeaders.SetCookie, ignoreCase = true)) {
+                            append(name, HostGateway.relaySetCookie(raw))
+                            continue
+                        }
+                        append(name, raw)
                     }
                 }
                 override suspend fun writeTo(channel: ByteWriteChannel) {
@@ -193,7 +198,11 @@ class HostApiHandler(
     private fun copyHeaders(call: ApplicationCall, builder: Request.Builder) {
         for (name in call.request.headers.names()) {
             if (HostGateway.isHopByHop(name)) continue
-            if (name.equals("origin", true) || name.equals("referer", true) || name.equals("cookie", true) || name.equals("accept-encoding", true)) continue
+            // Cookie IS forwarded: this host is a reverse proxy for the same
+            // logical site, and dropping it meant the process server saw every
+            // request as anonymous, so login never stuck. Each client keeps its
+            // own cookie jar, so identities stay separate.
+            if (name.equals("origin", true) || name.equals("referer", true) || name.equals("accept-encoding", true)) continue
             for (value in call.request.headers.getAll(name).orEmpty()) builder.addHeader(name, value)
         }
         val lan = lanOrigin().removePrefix("http://").removePrefix("https://")

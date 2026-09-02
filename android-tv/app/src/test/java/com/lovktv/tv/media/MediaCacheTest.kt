@@ -34,10 +34,15 @@ class MediaCacheTest {
             "vocals.wav",
             "asr.json",
         )
+        // Both playback tracks precede the video: a song is pickable once it is
+        // singable, and original.mp3 must not still be queued behind mtv.mp4.
         assertEquals(
-            listOf("karaoke.m4a", "guide.m4a", "lyrics.json", "mtv.mp4", "original.mp3", "skeleton.json", "cover.jpg"),
+            listOf("karaoke.m4a", "original.mp3", "lyrics.json", "guide.m4a", "skeleton.json", "cover.jpg", "mtv.mp4"),
             MediaCache.wantedFiles(remote),
         )
+        val order = MediaCache.wantedFiles(remote)
+        assertTrue(order.indexOf("original.mp3") < order.indexOf("mtv.mp4"))
+        assertTrue(order.indexOf("original.mp3") < order.indexOf("lyrics.json"))
         assertTrue(MediaCache.isSingable(setOf("karaoke.m4a", "lyrics.json")))
         assertFalse(MediaCache.isSingable(setOf("karaoke.m4a")))
     }

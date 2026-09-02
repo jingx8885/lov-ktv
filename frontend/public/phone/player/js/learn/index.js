@@ -15,7 +15,7 @@ import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js
 import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
-import { getStudyWords } from "../playback/transcript.js";
+import { getStudyWords } from "../../../desk/js/lyrics.js";
 
 /** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any }} */
 const ui = {
@@ -130,10 +130,18 @@ function openLearnShell() {
   $("playerLearn").hidden = false;
   $("topTitle").textContent = t("learn.pageTitle");
   syncLearnNav(true);
-  $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
-  $("learnSong").textContent = state.playerSong ? songTitle(state.playerSong) : "";
+  paintSongHead();
   paintDiff();
+}
+
+/**
+ * The shell topbar already reads "学歌", so the in-page bar names the song
+ * instead of repeating the section title.
+ */
+function paintSongHead() {
+  const song = state.playerSong;
+  $("learnTitle").textContent = song ? songTitle(song) : t("learn.pageTitle");
+  $("learnMeta").textContent = song ? songArtist(song) : "";
 }
 
 function gradeLabel(pct) {
@@ -167,8 +175,7 @@ function goHome() {
   ui.attemptId = "";
   ui.pendingScore = null;
   showPane("learnHome");
-  $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
+  paintSongHead();
   paintDiff();
   loadCampaign(true).then((data) => {
     if (data) paintCampaign(data);
@@ -258,9 +265,7 @@ async function selectLearnSong(songId) {
     return;
   }
   showPane("learnHome");
-  $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = songTitle(state.playerSong);
-  $("learnSong").textContent = songTitle(state.playerSong);
+  paintSongHead();
   const data = await loadCampaign(true, true);
   if (data) paintCampaign(data);
   else paintCampaign(null);
@@ -579,8 +584,6 @@ export function bindLearn() {
     const run = () => {
       const query = songSearch.value.trim();
       if (songSearchClear) songSearchClear.hidden = !query;
-      const results = $("learnSearchResults");
-      if (results) results.hidden = true;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => loadLearnLibrary(query), query ? 180 : 0);
     };

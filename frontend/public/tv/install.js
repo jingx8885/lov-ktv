@@ -5,6 +5,7 @@ import { startKeepAlive, schedulePlayRetries } from "./audio/js/keepalive.js";
 import { hookAudio, unlockAudio, playEl, resumeCtxs, liveCtxs } from "./audio/js/unlock.js";
 import { mediaUrl, prefetchQueue, applyMix, roomLine } from "./playback/js/media/mix.js";
 import { silenceMtv, nativeMv, syncNativeMv, bindMtv } from "./playback/js/media/mtv.js";
+import { paintSettings } from "./playback/js/remote/controls.js";
 import { ensureStageFx, lyricsFingerprint, paint } from "./playback/js/lyric/paint.js";
 import {
   pageVisible,
@@ -42,6 +43,7 @@ installApi({
   prefetchQueue,
   applyMix,
   roomLine,
+  paintSettings,
   ensureStageFx,
   lyricsFingerprint,
   paint,

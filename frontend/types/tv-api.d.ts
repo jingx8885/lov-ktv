@@ -23,6 +23,7 @@ interface TvApi {
   prefetchQueue(snap: Room): void;
   applyMix(): void;
   roomLine(snap: Room): string;
+  paintSettings(): void;
   ensureStageFx(): StageFxHandle | null;
   lyricsFingerprint(data: LyricsDoc | null): string;
   paint(t?: number): void;
@@ -65,8 +66,10 @@ interface TvState {
   keepAliveTone: KeepAliveTone | null;
   playRetryTimer: number;
   resumeAt: number;
+  resumeSong: string;
   emptyNow: number;
   mediaStall: number;
-  mediaFallback: string;
+  fallbackSong: string;
+  fallbackTrack: string;
   lastRecoverAt: number;
 }

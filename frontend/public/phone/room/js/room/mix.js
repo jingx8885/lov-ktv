@@ -174,7 +174,7 @@ export function paintLyricMode(mode, language) {
     select.value = next;
     select.setAttribute("aria-label", t("phone.lyric.mode"));
   });
-  if (api.paintTranscript) api.paintTranscript();
+  if (api.paintDeskLyrics) api.paintDeskLyrics();
 }
 
 export function paintMix(room) {

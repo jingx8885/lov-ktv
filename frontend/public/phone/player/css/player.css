@@ -375,110 +375,10 @@ button.tl-head {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding: 0 0 8px;
-}
-/* 歌词抽屉：整首歌的可点词稿，点词收藏到学习本。 */
-.player-sheet-seg {
-  flex: 0 0 auto;
-  width: auto;
-  margin: 0 12px 8px;
-}
-.player-sheet-pane {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
   align-items: stretch;
   gap: 2px;
+  padding: 0 0 8px;
 }
-.player-sheet-pane[hidden] { display: none !important; }
-.player-sheet-pane.transcript {
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 12px;
-}
-.transcript-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex: 0 0 auto;
-}
-.transcript-hint { margin: 0; color: var(--muted); }
-.transcript-head .btn { flex: 0 0 auto; }
-.transcript-list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  padding: 6px 0 28px;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  touch-action: pan-y;
-}
-.transcript-line {
-  /* Keep the desk transcript shaped like the TV lyric plate: one vertical
-     stack per cue, with the full-line translation below the sung text. */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
-  min-height: 0;
-  box-sizing: border-box;
-  margin: 0 0 20px;
-  padding: 14px 12px 16px;
-  border-radius: 14px;
-  color: var(--text);
-  background: rgba(255,255,255,.045);
-  text-align: center;
-  font-size: clamp(20px, 4.2vw, 30px);
-  font-weight: 700;
-  line-height: 1.18;
-  text-shadow: 0 3px 16px rgba(0,0,0,.3);
-}
-.transcript-line .line-words {
-  width: 100%;
-  justify-content: center;
-  flex-wrap: wrap;
-  row-gap: .26em;
-}
-.transcript-line .tok,
-.transcript-line .anno {
-  flex-shrink: 0;
-  width: max-content;
-}
-.transcript-line .anno .rt,
-.transcript-line .anno .rt i {
-  min-height: .5em;
-  font-size: .42em;
-  line-height: 1.1;
-}
-.transcript-line .anno .roma,
-.transcript-line .anno .gloss {
-  min-height: 1.15em;
-  font-size: .52em;
-  line-height: 1.1;
-}
-.transcript-line .lyric-zh {
-  display: block;
-  flex: 0 0 auto;
-  width: 100%;
-  margin-top: .25em;
-  font-size: .64em;
-  line-height: 1.2;
-}
-.transcript-line > .rb {
-  position: relative;
-  display: inline-block;
-  color: #fff;
-  -webkit-text-fill-color: #fff;
-}
-.transcript-line .tok { cursor: pointer; border-radius: 8px; transition: background .15s ease, transform .15s ease; }
-.transcript-line .tok:hover, .transcript-line .tok:focus-visible { outline: none; background: rgba(245,193,108,.2); transform: translateY(-1px); }
-.transcript-line .tok:active { transform: scale(.95); }
-.transcript-line .lyric-zh { color: var(--muted); }
-.transcript-line .rb-fill { color: var(--gold); -webkit-text-fill-color: var(--gold); }
-
 .player-sheet-grab:active {
   opacity: 0.82;
 }
@@ -1445,8 +1345,7 @@ body.phone.edit-on .tl {
   }
 
   /* 桌面曲库卡片化，宽屏下并排展示更多歌曲；字母索引继续独立贴在右侧。 */
-  body.phone[data-page="player"] .player-sheet-body,
-  body.phone[data-page="player"] .player-sheet-pane {
+  body.phone[data-page="player"] .player-sheet-body {
     gap: 10px;
   }
 
@@ -1610,6 +1509,101 @@ body.phone.edit-on .tl {
 @media (min-width: 1500px) {
   body.phone[data-page="player"] .player-sheet .player-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 宽屏 MV 模式：视频接管主模块位置（第一行左列），不再缩成底部那条进度带。
+   舞台和歌词层共用同一个网格格子，歌词浮在视频上，进度条收进视频面板底部，
+   和手机端 MV 的层次保持一致。歌词模式仍走上面的横向进度带布局。
+   用 :has(.player-art.has-mtv) 收口：display-mv 是默认模式，纯音频的歌没有
+   mtv.mp4，接管后只会撑出一个大空框，这类歌继续用横向进度带。
+   min-height 门槛挡住横屏手机（如 844×390 同样命中 min-width: 700px），
+   那种高度塞不进视频面板，继续用上面以歌词为主的横屏布局。 */
+@media (min-width: 700px) and (min-height: 560px) {
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-main {
+    /* 舞台离开第二行后不再留空轨，避免面板和控制条之间多出一段空隙。
+       保留最小高度：.player-art 的子元素全是绝对定位，轨道一旦按内容计算
+       就会塌成 0 高，视频跟着消失。 */
+    grid-template-rows: minmax(320px, 1fr);
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-stage {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    align-content: stretch;
+    justify-items: stretch;
+    /* 视频占满剩余高度，进度条贴在面板底部。 */
+    grid-template-rows: minmax(0, 1fr) auto;
+    width: auto;
+    max-width: none;
+    height: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-art {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    aspect-ratio: auto;
+    /* 面板本身已有圆角和描边，视频铺满时不再重复圆角。 */
+    border-radius: 0;
+    box-shadow: none;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-mtv {
+    /* 宽屏面板比例和片源不一定一致，按 contain 保留完整画面。 */
+    object-fit: contain;
+    border-radius: 0;
+    background: #04060d;
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-clock {
+    position: relative;
+    z-index: 4;
+    width: 100%;
+    min-height: 36px;
+    padding: 4px 14px 6px;
+    background: rgba(9, 11, 18, 0.82);
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyric-stack {
+    grid-column: 1;
+    grid-row: 1;
+    z-index: 3;
+    min-height: 0;
+    /* 让出底部进度条的高度，歌词不会压到时间轴上。 */
+    padding: 0 0 46px;
+    background: transparent;
+    border-color: transparent;
+    /* 歌词只是叠加层，点击继续落到视频和全屏按钮上。 */
+    pointer-events: none;
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics {
+    padding: 0 24px 16px;
+    background: transparent;
+    text-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.92),
+      0 1px 3px rgba(0, 0, 0, 0.95);
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .line {
+    color: #fff;
+    opacity: 1;
+  }
+
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .prev,
+  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .next {
+    color: rgba(255, 255, 255, 0.74);
+    opacity: 0.92;
   }
 }
 

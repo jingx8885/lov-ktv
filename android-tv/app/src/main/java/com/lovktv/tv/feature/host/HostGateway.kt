@@ -160,6 +160,33 @@ object HostGateway {
         return ApiKind.Static
     }
 
+    /**
+     * Rewrite an upstream Set-Cookie for relaying over the host's plaintext
+     * origin. The process server marks session cookies `Secure` because it is
+     * reached over https, but this host serves http on loopback/LAN, where a
+     * `Secure` cookie is silently discarded by the WebView — which is what
+     * made the TV ask for a QR login on every launch. `SameSite=None` also
+     * requires Secure, so it degrades to Lax alongside it.
+     */
+    fun relaySetCookie(value: String): String {
+        val parts = value.split(';')
+        // Index 0 is the cookie's own name=value; only later segments are
+        // attributes, so a cookie *named* "secure" is not mistaken for one.
+        val attrs = parts.drop(1)
+        val sameSiteNone = attrs.any { attributeIs(it, "samesite", "none") }
+        val kept = parts.filterIndexed { index, part ->
+            index == 0 || !(attributeIs(part, "secure") || attributeIs(part, "samesite", "none"))
+        }
+        val rebuilt = kept.joinToString(";")
+        return if (sameSiteNone) "$rebuilt; SameSite=Lax" else rebuilt
+    }
+
+    private fun attributeIs(attr: String, name: String, value: String? = null): Boolean {
+        val key = attr.substringBefore('=').trim()
+        if (!key.equals(name, ignoreCase = true)) return false
+        return value == null || attr.substringAfter('=', "").trim().equals(value, ignoreCase = true)
+    }
+
     fun isHopByHop(name: String): Boolean {
         return when (name.lowercase()) {
             "connection",

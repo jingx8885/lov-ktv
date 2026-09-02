@@ -98,6 +98,50 @@ class HostGatewayTest {
     }
 
     @Test
+    fun relayedSetCookieDropsSecureForPlaintextHost() {
+        // The process server marks the session cookie Secure because it is
+        // reached over https; this host serves http, where the WebView would
+        // silently discard it and the TV would ask for a QR login every launch.
+        assertEquals(
+            "lovktv_session=abc; HttpOnly; Max-Age=2592000; Path=/; SameSite=lax",
+            HostGateway.relaySetCookie(
+                "lovktv_session=abc; HttpOnly; Max-Age=2592000; Path=/; SameSite=lax; Secure",
+            ),
+        )
+    }
+
+    @Test
+    fun relayedSetCookieDowngradesSameSiteNoneWhichRequiresSecure() {
+        assertEquals(
+            "a=b; HttpOnly; SameSite=Lax",
+            HostGateway.relaySetCookie("a=b; HttpOnly; SameSite=None; Secure"),
+        )
+    }
+
+    @Test
+    fun relayedSetCookieLeavesPlainCookieAlone() {
+        assertEquals("a=b; Path=/", HostGateway.relaySetCookie("a=b; Path=/"))
+    }
+
+    @Test
+    fun relayedSetCookieKeepsCookieWhoseOwnNameLooksLikeAnAttribute() {
+        // Only segments after the first are attributes.
+        assertEquals("secure=1; Path=/", HostGateway.relaySetCookie("secure=1; Path=/; Secure"))
+        assertEquals("samesite=x; Path=/", HostGateway.relaySetCookie("samesite=x; Path=/"))
+    }
+
+    @Test
+    fun cookieHeaderIsForwardedUpstreamSoLoginSticks() {
+        // Cookie must not be treated as hop-by-hop: this host reverse-proxies
+        // the same logical site, and dropping it made every upstream request
+        // anonymous.
+        assertFalse(HostGateway.isHopByHop("cookie"))
+        assertFalse(HostGateway.isHopByHop("set-cookie"))
+        assertTrue(HostGateway.isHopByHop("connection"))
+        assertTrue(HostGateway.isHopByHop("host"))
+    }
+
+    @Test
     fun phoneCorsAllowsMachineHeaderPreflight() {
         assertTrue(HostServer.CORS_ALLOW_HEADERS.contains("X-LovKtv-Machine"))
         assertTrue(HostServer.CORS_ALLOW_METHODS.contains("OPTIONS"))

@@ -15,9 +15,11 @@ export const playbackState = guardState(
     skeleton: null,
     playRetryTimer: 0,
     resumeAt: 0,
+    resumeSong: "",
     emptyNow: 0,
     mediaStall: 0,
-    mediaFallback: "",
+    fallbackSong: "",
+    fallbackTrack: "",
     lastRecoverAt: 0,
     lastRoomStamp: ""
   },

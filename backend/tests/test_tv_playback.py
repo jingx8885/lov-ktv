@@ -59,7 +59,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert "kind is ApiKind.RoomSkip" in handler
     assert "RoomQueue || kind is ApiKind.RoomPlay || kind is ApiKind.RoomSkip" in handler
     assert "ensureActiveTrack(songId)" in tick
-    assert "activeTrackName()" in tick
+    assert "activeTrackName(songId)" in tick
     assert 'const vocal = $("vocal")' not in tick
     assert "api.playEl(vocal)" not in tick
     assert "if (srcHasSong(karaoke, songId))" in tick

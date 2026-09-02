@@ -342,6 +342,37 @@ def user_from_session(token: str) -> dict[str, Any] | None:
     return _user_row(row)
 
 
+def refresh_session(token: str, days: int | None = None) -> int:
+    """Slide a live session's expiry forward.
+
+    Returns the new expiry when it actually moved, else 0. Only writes once the
+    session is past its half-life, so an app that polls /api/auth/me on every
+    boot does not turn every boot into a DB write — and the caller can re-stamp
+    the cookie exactly when the stored row changed, keeping the two in step.
+    """
+    if not token:
+        return 0
+    days = SESSION_DAYS if days is None else days
+    window = days * 86400_000
+    now = now_ms()
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn, "SELECT expires_at FROM sessions WHERE token=?", (token,)
+        ).fetchone()
+        if not row:
+            return 0
+        expires_at = int(row["expires_at"])
+        if expires_at <= now or expires_at - now > window // 2:
+            return 0
+        expires_at = now + window
+        execute(
+            conn,
+            "UPDATE sessions SET expires_at=? WHERE token=?",
+            (expires_at, token),
+        )
+    return expires_at
+
+
 def delete_session(token: str) -> None:
     if not token:
         return

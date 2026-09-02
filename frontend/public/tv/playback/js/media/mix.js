@@ -65,22 +65,69 @@ export function prefetchQueue(snap) {
   urls.slice(0, 12).forEach(prefetchUrl);
 }
 
-export function activeTrackName() {
+/** Song id embedded in a `/media/<songId>/<name>` URL. */
+export function trackSongId(src) {
+  const hit = /\/media\/([^/?#]+)\//.exec(String(src || ""));
+  return hit ? hit[1] : "";
+}
+
+/** Song id of whatever the audio element currently holds. */
+export function elementSongId(el) {
+  return trackSongId((el && (el.getAttribute("src") || el.currentSrc || el.src)) || "");
+}
+
+function nowSongId() {
+  const now = state.room && state.room.now_playing;
+  return (now && now.song_id) || "";
+}
+
+/** The track the room asked for, ignoring any per-song degrade. */
+export function roomTrackName() {
   const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
   return Number(mix) > 0.5 ? "original.mp3" : "karaoke.m4a";
+}
+
+/**
+ * A song whose requested track failed to load is pinned to the other track.
+ * Without the pin, every room snapshot flipped the source back and the song
+ * bounced between original and backing until one of them happened to load.
+ */
+export function trackFallbackActive(songId) {
+  const id = songId || nowSongId();
+  return !!(id && state.fallbackSong === id && state.fallbackTrack);
+}
+
+export function markTrackFallback(songId, track) {
+  if (!songId || !track) return;
+  state.fallbackSong = songId;
+  state.fallbackTrack = track;
+}
+
+export function clearTrackFallback(songId) {
+  if (songId && state.fallbackSong !== songId) return;
+  state.fallbackSong = "";
+  state.fallbackTrack = "";
+}
+
+export function activeTrackName(songId) {
+  const id = songId || nowSongId();
+  if (trackFallbackActive(id)) return state.fallbackTrack;
+  return roomTrackName();
 }
 
 /** Load exactly one playback track and keep the clock when toggling. */
 export function ensureActiveTrack(songId, preserveTime = true) {
   const audio = $("karaoke");
   if (!audio || !songId) return false;
-  const name = activeTrackName();
+  const name = activeTrackName(songId);
   const url = mediaUrl(songId, name);
   if (audio.getAttribute("src") === url) return false;
-  const time = preserveTime ? Number(audio.currentTime) || 0 : 0;
+  // Carrying the clock across a song change would start the next song part
+  // way in. Only an original/backing swap of the same song keeps its time.
+  const sameSong = elementSongId(audio) === songId;
+  const time = preserveTime && sameSong ? Number(audio.currentTime) || 0 : 0;
   const wasPlaying = !audio.paused && !audio.ended;
   audio.pause();
-  state.mediaFallback = "";
   audio.dataset.track = name;
   audio.src = url;
   audio.load();

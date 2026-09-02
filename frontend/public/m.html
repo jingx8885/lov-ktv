@@ -168,6 +168,7 @@
             <button type="button" class="seg-btn" data-desk="lib">
               <span data-i18n="phone.desk.lib">曲库</span><em id="libCount"></em>
             </button>
+            <button type="button" class="seg-btn" data-desk="lyrics" data-i18n="phone.desk.lyrics">歌词</button>
           </div>
           <div class="desk-pane inset-list" id="queue">
             <div class="empty-state">
@@ -211,6 +212,17 @@
               <nav class="lib-index" id="libIndex" data-i18n-aria="phone.desk.letters"></nav>
             </div>
             <div class="lib-pager" id="libPager"></div>
+          </div>
+          <div class="desk-pane desk-lyrics" id="deskLyrics" hidden>
+            <div class="desk-lyrics-head">
+              <div>
+                <span class="kicker" data-i18n="phone.lyrics.current">正在播放</span>
+                <b id="deskLyricsTitle" data-i18n="phone.lyrics.noSong">还没选歌</b>
+              </div>
+              <button type="button" class="btn" id="deskStudyBook" data-i18n="phone.lyrics.studyBook">学习本</button>
+            </div>
+            <p class="tiny desk-lyrics-hint" data-i18n="phone.lyrics.tapHint">点击歌词里的词，收藏到学习本</p>
+            <div class="desk-lyrics-list inset-list" id="deskLyricsList"></div>
           </div>
         </div>
       </section>
@@ -317,23 +329,8 @@
               </button>
             </div>
             <div class="player-sheet-body" id="playerSheetBody">
-              <div class="seg seg-sm player-sheet-seg" role="tablist">
-                <button type="button" class="seg-btn on" data-sheet-pane="lib" data-i18n="phone.desk.lib">曲库</button>
-                <button type="button" class="seg-btn" data-sheet-pane="lyrics" data-i18n="phone.desk.lyrics">歌词</button>
-              </div>
-              <div class="player-sheet-pane" id="playerSheetLib">
-                <div class="player-list inset-list" id="playerList"></div>
-                <nav class="lib-index" id="playerIndex" data-i18n-aria="phone.desk.letters"></nav>
-              </div>
-              <div class="player-sheet-pane transcript" id="playerTranscript" hidden>
-                <div class="transcript-head">
-                  <p class="tiny transcript-hint" data-i18n="phone.lyrics.tapHint">点击歌词里的词，收藏到学习本</p>
-                  <button type="button" class="btn compact" id="transcriptStudyBook" data-i18n="phone.lyrics.studyBook">
-                    学习本
-                  </button>
-                </div>
-                <div class="transcript-list" id="transcriptList"></div>
-              </div>
+              <div class="player-list inset-list" id="playerList"></div>
+              <nav class="lib-index" id="playerIndex" data-i18n-aria="phone.desk.letters"></nav>
             </div>
           </div>
         </div>
@@ -525,7 +522,6 @@
             <button type="button" class="seg-btn" data-lyric-mode="all" data-i18n="phone.lyric.all">全部</button>
           </div>
           <div class="learn-body" id="learnHome">
-            <p class="learn-song" id="learnSong"></p>
             <p class="learn-lead" data-i18n="learn.lead">
               一首歌是一大关。通关要词句都认识，并且能读能唱。每关从这首歌抽知识点，打错的会进错题本。
             </p>
@@ -619,17 +615,22 @@
               />
               <button id="learnSongSearchClear" type="button" data-i18n-aria="learn.searchClear" hidden>×</button>
             </label>
-            <div class="learn-search-results" id="learnSearchResults" hidden></div>
             <div class="learn-library-tools">
               <button type="button" class="learn-tool-card is-mistake" id="learnMistakesBtn">
-                <span class="learn-tool-ico">错</span
+                <span class="learn-tool-ico" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24">
+                    <path d="M6 3h2v18H6zm3 1h10l-2.4 4L19 12H9z" /></svg
+                ></span
                 ><span
                   ><b data-i18n="learn.mistakesBook">错题本</b
                   ><small data-i18n="learn.mistakesBookHint">把易错句再练一遍</small></span
                 ><strong>›</strong>
               </button>
               <button type="button" class="learn-tool-card is-word" id="learnWordsBtn">
-                <span class="learn-tool-ico">词</span
+                <span class="learn-tool-ico" aria-hidden="true"
+                  ><svg viewBox="0 0 24 24">
+                    <path d="M5 4.5A1.5 1.5 0 016.5 3H19v15H6.5a1.5 1.5 0 000 3H19v2H6.5A3.5 3.5 0 013 19.5z" /></svg
+                ></span
                 ><span
                   ><b data-i18n="learn.wordsBook">单词背诵</b
                   ><small data-i18n="learn.wordsBookHint">复习从歌词收藏的词</small></span

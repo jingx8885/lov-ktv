@@ -200,6 +200,125 @@ def test_password_register_login_and_casefold(tmp_path, monkeypatch):
         assert again.json()["quota"]["unlimited"] is True
 
 
+def test_session_cookie_not_secure_on_plaintext_origin(tmp_path, monkeypatch):
+    """A https public URL must not put `Secure` on a plaintext LAN/TV reply.
+
+    The browser silently drops such a cookie, which showed up as the TV and
+    the LAN phone desk asking for a fresh login on every page load.
+    """
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    monkeypatch.setenv("LOVKTV_PUBLIC_URL", "https://ktv.lovbrowser.com")
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    from lovktv.main import app
+
+    with TestClient(app, base_url="http://192.168.1.8:8787") as lan:
+        res = lan.post(
+            "/api/auth/device",
+            json={"device_id": "lan-device-01", "nickname": "局域网"},
+        )
+        assert res.status_code == 200
+        assert "secure" not in res.headers["set-cookie"].lower()
+        # The cookie actually survives the round trip, so login sticks.
+        assert lan.get("/api/auth/me").json()["user"]["nickname"] == "局域网"
+
+
+def test_session_cookie_secure_behind_tls_proxy(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    from lovktv.main import app
+
+    with TestClient(app, base_url="http://127.0.0.1:8787") as client:
+        res = client.post(
+            "/api/auth/device",
+            json={"device_id": "tls-device-01", "nickname": "代理"},
+            headers={"X-Forwarded-Proto": "https"},
+        )
+        assert res.status_code == 200
+        assert "Secure" in res.headers["set-cookie"]
+
+
+def test_session_slides_forward_past_half_life(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    user = store.upsert_device_user("slide-device-01", "常客")
+    token = store.create_session(user["id"], days=30)
+    window = 30 * 86400_000
+
+    def expiry() -> int:
+        with store.connect() as conn:
+            row = store.execute(
+                conn, "SELECT expires_at FROM sessions WHERE token=?", (token,)
+            ).fetchone()
+        return int(row["expires_at"])
+
+    # Fresh session: nothing to do, so no write and nothing to re-stamp.
+    fresh = expiry()
+    assert store.refresh_session(token, 30) == 0
+    assert expiry() == fresh
+
+    # Aged past the half-life: the window slides forward.
+    with store.connect() as conn:
+        store.execute(
+            conn,
+            "UPDATE sessions SET expires_at=? WHERE token=?",
+            (store.now_ms() + 86400_000, token),
+        )
+    slid = store.refresh_session(token, 30)
+    assert slid > fresh
+    assert slid >= store.now_ms() + window - 5_000
+    assert store.user_from_session(token)["id"] == user["id"]
+
+    # Already-expired and unknown tokens are never resurrected.
+    with store.connect() as conn:
+        store.execute(
+            conn,
+            "UPDATE sessions SET expires_at=? WHERE token=?",
+            (store.now_ms() - 1, token),
+        )
+    assert store.refresh_session(token, 30) == 0
+    assert store.refresh_session("no-such-token", 30) == 0
+
+
+def test_auth_me_renews_long_lived_session(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+
+    _init(store, tmp_path)
+    from lovktv.main import app
+
+    with TestClient(app) as client:
+        assert (
+            client.post(
+                "/api/auth/device",
+                json={"device_id": "renew-device-01", "nickname": "回头客"},
+            ).status_code
+            == 200
+        )
+        token = client.cookies["lovktv_session"]
+        with store.connect() as conn:
+            store.execute(
+                conn,
+                "UPDATE sessions SET expires_at=? WHERE token=?",
+                (store.now_ms() + 86400_000, token),
+            )
+        res = client.get("/api/auth/me")
+        assert res.json()["user"]["nickname"] == "回头客"
+        # Same token, pushed further out: the user is not logged out on day 30.
+        assert "lovktv_session" in res.headers.get("set-cookie", "")
+        assert client.cookies["lovktv_session"] == token
+        with store.connect() as conn:
+            row = store.execute(
+                conn, "SELECT expires_at FROM sessions WHERE token=?", (token,)
+            ).fetchone()
+        assert int(row["expires_at"]) > store.now_ms() + 20 * 86400_000
+
+
 def test_guest_song_quota_then_login_unlimited(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv.routers import songs

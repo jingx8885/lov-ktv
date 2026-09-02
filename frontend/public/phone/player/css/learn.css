@@ -124,8 +124,8 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16);
   cursor: pointer;
 }
-.learn-mode.is-quiz { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #ff4d8d; }
-.learn-mode.is-tap { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #f5c16c; }
+.learn-mode.is-quiz { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 var(--accent); }
+.learn-mode.is-tap { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 var(--gold); }
 .learn-mode.is-echo { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16), inset 3px 0 0 #b48cff; }
 .learn-mode:active { transform: scale(.975); }
 .learn-mode-ico {
@@ -142,7 +142,7 @@
   fill: currentColor;
 }
 .learn-mode.is-quiz .learn-mode-ico { color: #ff9cbf; background: rgba(255, 77, 141, .18); }
-.learn-mode.is-tap .learn-mode-ico { color: #f5c16c; background: rgba(245, 193, 108, .16); }
+.learn-mode.is-tap .learn-mode-ico { color: var(--gold); background: rgba(245, 193, 108, .16); }
 .learn-mode.is-echo .learn-mode-ico { color: #c9b0ff; background: rgba(180, 140, 255, .18); }
 .learn-mode-copy {
   display: grid;
@@ -370,10 +370,13 @@ body.phone.learn-on #playerLearn {
     font-size: 22px;
   }
 
+  /* Two columns: the song's summary and practice options on the left, the
+     stage path on the right. Placement targets #learnHome's real children —
+     .learn-mode and .learn-diff sit inside .learn-free, so they cannot be
+     positioned from here. */
   body.phone.learn-on #learnHome {
     display: grid;
-    grid-template-columns: minmax(260px, .8fr) minmax(420px, 1.2fr);
-    grid-template-rows: auto auto 1fr;
+    grid-template-columns: minmax(280px, .85fr) minmax(400px, 1.15fr);
     align-content: start;
     column-gap: 28px;
     row-gap: 14px;
@@ -382,36 +385,31 @@ body.phone.learn-on #playerLearn {
     overflow: auto;
   }
 
-  body.phone.learn-on #learnHome .learn-song {
+  body.phone.learn-on #learnHome > .learn-lead {
     grid-column: 1;
-    grid-row: 1;
+    margin: 0;
+    max-width: 40ch;
+  }
+
+  body.phone.learn-on #learnHome > .learn-goals,
+  body.phone.learn-on #learnHome > .learn-book-card,
+  body.phone.learn-on #learnHome > .learn-free {
+    grid-column: 1;
     margin: 0;
   }
 
-  body.phone.learn-on #learnHome .learn-lead {
-    grid-column: 1;
-    grid-row: 2;
-    margin: 0;
-    max-width: 34ch;
-  }
-
-  body.phone.learn-on #learnHome .learn-diff {
-    grid-column: 1;
-    grid-row: 3;
-    align-self: start;
-    margin: 0;
-  }
-
-  body.phone.learn-on #learnHome .learn-mode {
+  body.phone.learn-on #learnHome > .learn-path {
     grid-column: 2;
+    grid-row: 1 / span 4;
+    align-self: start;
+    padding-top: 0;
+  }
+
+  body.phone.learn-on .learn-mode {
     min-height: 92px;
     padding: 14px 16px;
     border-radius: 10px;
   }
-
-  body.phone.learn-on #learnHome .learn-mode.is-quiz { grid-row: 1; }
-  body.phone.learn-on #learnHome .learn-mode.is-tap { grid-row: 2; }
-  body.phone.learn-on #learnHome .learn-mode.is-echo { grid-row: 3; }
 
   body.phone.learn-on .learn-mode-ico {
     width: 48px;

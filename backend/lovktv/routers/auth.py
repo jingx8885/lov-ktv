@@ -35,6 +35,7 @@ from lovktv.storage.store import (
     delete_session,
     get_login_ticket,
     login_password_user,
+    refresh_session,
     register_password_user,
     upsert_device_user,
     upsert_wechat_user,
@@ -49,13 +50,22 @@ def api_auth_status() -> dict:
 
 
 @router.get("/api/auth/me")
-def api_auth_me(request: Request) -> dict:
+def api_auth_me(request: Request) -> JSONResponse:
     user = current_user(request)
-    return {
-        "user": user,
-        "quota": quota_payload(request, user),
-        "points": points_payload(request, user),
-    }
+    response = JSONResponse(
+        {
+            "user": user,
+            "quota": quota_payload(request, user),
+            "points": points_payload(request, user),
+        }
+    )
+    # Slide the window on every check-in so a daily user is never logged out
+    # at the 30-day mark. Only re-stamps the cookie when the store actually
+    # moved the expiry forward.
+    token = request.cookies.get(SESSION_COOKIE) or ""
+    if user and refresh_session(token):
+        set_session(response, token, request)
+    return response
 
 
 def _password_session(request: Request, user: dict, extra: dict | None = None) -> JSONResponse:

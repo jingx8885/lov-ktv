@@ -17,13 +17,20 @@ function nearBottom(el) {
 }
 
 export function showDeskPane(name) {
-  const pane = name === "lib" ? "lib" : "queue";
+  const pane = name === "lib" || name === "lyrics" ? name : "queue";
   $("queue").hidden = pane !== "queue";
   $("libPane").hidden = pane !== "lib";
+  const lyricsPane = $("deskLyrics");
+  if (lyricsPane) lyricsPane.hidden = pane !== "lyrics";
   document.querySelectorAll("[data-desk]").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.desk === pane);
   });
   if (pane === "lib") loadSongs();
+  if (pane === "lyrics") {
+    api.paintDeskLyrics();
+    // 还没载入过播放器时先引导一次，拿到当前歌再重画。
+    if (!state.playerSong && api.bootPlayer) Promise.resolve(api.bootPlayer()).then(() => api.paintDeskLyrics());
+  }
 }
 
 export function renderLibIndex(letters) {

@@ -39,7 +39,7 @@
   display: grid;
   place-items: center;
   background:
-    conic-gradient(#f5c16c calc(var(--pct) * 1%), rgba(255, 255, 255, .12) 0);
+    conic-gradient(var(--gold) calc(var(--pct) * 1%), rgba(255, 255, 255, .12) 0);
 }
 .learn-ring span {
   width: 32px;
@@ -105,7 +105,6 @@
 .learn-quick-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; }
 .learn-quick-search input::placeholder { color: var(--muted); }
 .learn-quick-search button { appearance: none; border: 0; color: var(--muted); background: transparent; font-size: 24px; line-height: 1; cursor: pointer; }
-.learn-search-results { display: grid; gap: 6px; }
 .learn-library-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
 .learn-tool-card {
   appearance: none; display: grid; grid-template-columns: 34px 1fr 12px; align-items: center; gap: 8px; min-width: 0;
@@ -113,9 +112,11 @@
   background: var(--surface-1, rgba(18, 16, 28, .55)); box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
 }
 .learn-tool-card:active { transform: scale(.98); }
-.learn-tool-card.is-mistake { box-shadow: inset 3px 0 0 #ff4d8d, inset 0 0 0 1px rgba(255,255,255,.09); }
+.learn-tool-card.is-mistake { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--line); }
 .learn-tool-card.is-word { box-shadow: inset 3px 0 0 #58cc02, inset 0 0 0 1px rgba(255,255,255,.09); }
-.learn-tool-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; color: var(--gold); background: rgba(245,193,108,.14); font-size: 13px; font-weight: 900; }
+.learn-tool-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; color: var(--gold); background: rgba(245,193,108,.14); }
+.learn-tool-ico svg { width: 17px; height: 17px; fill: currentColor; }
+.learn-tool-card.is-mistake .learn-tool-ico { color: #ff8fab; background: rgba(255, 55, 95, .16); }
 .learn-tool-card b, .learn-tool-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .learn-tool-card b { font-size: 14px; }
 .learn-tool-card small { margin-top: 2px; color: var(--muted); font-size: 11px; }
@@ -147,101 +148,197 @@
 .learn-path {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   padding: 4px 0 12px;
 }
 .learn-unit {
   display: grid;
-  gap: 10px;
-  padding: 4px 0 14px;
+  gap: 4px;
+  padding: 4px 0 10px;
 }
+/* Duolingo fronts each unit with a solid banner rather than a bare caption, so
+   the path below it reads as one chapter instead of loose bubbles. */
 .learn-unit-h {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 0 6px;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px 12px;
+  border-radius: var(--r-m);
+  text-align: left;
+}
+.learn-unit-txt {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 .learn-unit-h b {
   font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .01em;
 }
-.learn-unit-h span {
+.learn-unit-h em {
+  font-style: normal;
+  font-size: 12px;
+  opacity: .78;
+}
+.learn-unit-h.is-current {
+  color: #fff;
+  background: linear-gradient(180deg, #ff5478, #e0264c);
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .3);
+}
+.learn-unit-h.is-foldable {
+  appearance: none;
+  border: 0;
+  color: var(--text);
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.learn-unit-h.is-foldable em { color: var(--muted); opacity: 1; }
+.learn-unit-fold { flex: 0 0 auto; color: var(--muted); font-style: normal; font-size: 13px; }
+
+/* Cleared and locked units fold to one row each so the unit in play stays on
+   the first screen instead of nine screens down. */
+.learn-unit-row {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-m);
+  color: var(--text);
+  text-align: left;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line);
+  cursor: pointer;
+}
+.learn-unit-row:active { transform: scale(.99); }
+.learn-unit-row b { flex: 0 0 auto; font-size: 14px; font-weight: 650; }
+.learn-unit-row em {
+  flex: 1 1 auto;
   color: var(--muted);
+  font-style: normal;
   font-size: 12px;
 }
+.learn-unit-row i {
+  flex: 0 0 auto;
+  color: #48dca0;
+  font-style: normal;
+  font-size: 12px;
+  letter-spacing: .1em;
+}
+.learn-unit-row strong { flex: 0 0 auto; color: var(--muted); font-size: 20px; font-weight: 400; }
+.learn-unit-row.is-done { background: rgba(72, 220, 160, .08); }
+.learn-unit-row.is-more b { color: var(--muted); font-weight: 550; }
+/* The path is a curve, not a column: a full sine period across the five skills
+   reads as a deliberate route, where the old +-28px zigzag just looked crooked.
+   Duolingo draws no connector between bubbles, so neither do we. */
 .learn-nodes {
   display: grid;
-  gap: 42px;
   justify-items: center;
-  position: relative;
-  padding: 8px 0 4px;
+  gap: 12px;
+  padding: 42px 0 8px;
 }
-.learn-nodes::before {
-  content: "";
-  position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: 50%;
-  width: 4px;
-  margin-left: -2px;
-  border-radius: 99px;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(245, 193, 108, .55) 0 10px,
-    transparent 10px 18px
-  );
-  pointer-events: none;
+.learn-step {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
 }
+.learn-step:nth-child(2) { transform: translateX(56px); }
+.learn-step:nth-child(4) { transform: translateX(-56px); }
 .learn-node {
   appearance: none;
+  display: grid;
+  place-items: center;
   position: relative;
   z-index: 1;
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
+  padding: 0;
   border: 0;
   border-radius: 50%;
-  color: #fff6df;
-  font-weight: 800;
-  font-size: 13px;
   cursor: pointer;
-  background: radial-gradient(circle at 50% 30%, #ff7eab, #c2185b 72%);
-  box-shadow: 0 8px 0 #7a1038, 0 14px 22px rgba(0, 0, 0, .28);
+  background: #2b2937;
+  box-shadow: 0 6px 0 #1a1824;
 }
-.learn-node:nth-child(odd) { transform: translateX(-28px); }
-.learn-node:nth-child(even) { transform: translateX(28px); }
+.learn-node svg {
+  width: 30px;
+  height: 30px;
+  fill: currentColor;
+}
+.learn-node-tag {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+}
 .learn-node.is-ready {
-  background: radial-gradient(circle at 50% 30%, #ffe08a, #e09b12 74%);
-  box-shadow: 0 8px 0 #8a5a08, 0 14px 22px rgba(245, 193, 108, .28);
+  color: #5a3a00;
+  background: #ffc93c;
+  box-shadow: 0 6px 0 #b8830a;
 }
 .learn-node.is-passed,
 .learn-node.is-mastered {
-  background: radial-gradient(circle at 50% 30%, #7dffc2, #1f9d68 74%);
-  box-shadow: 0 8px 0 #0f5c3b, 0 12px 18px rgba(72, 220, 160, .2);
+  color: #06301f;
+  background: #48dca0;
+  box-shadow: 0 6px 0 #127a52;
+}
+/* Mastered differs from merely passed by a gold rim rather than a fifth colour. */
+.learn-node.is-mastered {
+  outline: 3px solid var(--gold);
+  outline-offset: -3px;
 }
 .learn-node.is-locked {
-  background: radial-gradient(circle at 50% 30%, #4a4658, #2b2836 76%);
-  box-shadow: 0 8px 0 #1a1822;
-  color: rgba(255, 255, 255, .45);
+  color: rgba(255, 255, 255, .34);
   cursor: not-allowed;
 }
-.learn-node.is-ready.is-current::after {
+.learn-node.is-current {
+  animation: learn-node-pulse 1.9s ease-out infinite;
+}
+.learn-node.is-current + .learn-node-tag { color: var(--text); font-weight: 750; }
+@keyframes learn-node-pulse {
+  0% { box-shadow: 0 6px 0 #b8830a, 0 0 0 0 rgba(255, 201, 60, .45); }
+  70% { box-shadow: 0 6px 0 #b8830a, 0 0 0 14px rgba(255, 201, 60, 0); }
+  100% { box-shadow: 0 6px 0 #b8830a, 0 0 0 0 rgba(255, 201, 60, 0); }
+}
+/* "Start" hangs above the bubble; below it collided with the next node. */
+.learn-node.is-current::after {
   content: attr(data-start);
   position: absolute;
   left: 50%;
-  bottom: -34px;
+  bottom: calc(100% + 12px);
   transform: translateX(-50%);
-  padding: 5px 10px;
-  border-radius: 12px;
-  background: #58cc02;
-  color: #143300;
+  padding: 6px 13px;
+  border-radius: 13px;
+  background: #fff;
+  color: #b8360a;
   font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.04em;
-  box-shadow: 0 4px 0 #3d8c02;
+  letter-spacing: .06em;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, .22);
   white-space: nowrap;
 }
-.learn-node:active:not(.is-locked) { transform: translateY(3px); box-shadow: 0 5px 0 #7a1038; }
-.learn-node.is-ready:active { box-shadow: 0 5px 0 #8a5a08; }
+.learn-node.is-current::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 4px);
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  background: #fff;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.learn-node:active:not(.is-locked) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #127a52;
+  animation: none;
+}
+.learn-node.is-ready:active { box-shadow: 0 2px 0 #b8830a; }
 .learn-free {
   margin: 18px 0 0;
   padding: 8px 0 0;
@@ -323,7 +420,7 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
 }
 .learn-match-btn.is-on {
-  box-shadow: inset 0 0 0 2px #f5c16c, 0 0 16px rgba(245, 193, 108, .25);
+  box-shadow: inset 0 0 0 2px var(--gold), 0 0 16px rgba(245, 193, 108, .25);
 }
 .learn-match-btn.is-ok {
   opacity: 0.38;
@@ -334,4 +431,8 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .learn-node:active:not(.is-locked) { transform: none; }
+  .learn-node.is-current {
+    animation: none;
+    box-shadow: 0 6px 0 #b8830a, 0 0 0 4px rgba(255, 201, 60, .3);
+  }
 }

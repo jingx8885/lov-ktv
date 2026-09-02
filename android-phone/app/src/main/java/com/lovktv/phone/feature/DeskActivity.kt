@@ -541,6 +541,13 @@ class DeskActivity : Activity() {
         }
     }
 
+    override fun onPause() {
+        // Persist the cookie jar now. Without this the session cookie can still
+        // be in memory when Android kills the process, losing the login.
+        runCatching { CookieManager.getInstance().flush() }
+        super.onPause()
+    }
+
     override fun onDestroy() {
         watching = false
         watch.removeCallbacksAndMessages(null)

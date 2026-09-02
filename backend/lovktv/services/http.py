@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from fastapi.responses import JSONResponse
 
 from lovktv.core.config import SESSION_DAYS
-from lovktv.identity.auth import SESSION_COOKIE, public_base
+from lovktv.identity.auth import SESSION_COOKIE
 from lovktv.locale.i18n import t as i18n_t
 from lovktv.storage.store import user_from_session
 
@@ -24,12 +24,26 @@ def request_base(request) -> str:
     return f"{proto}://{host}"
 
 
+def request_secure(request) -> bool:
+    """Whether *this* connection is TLS, so `Secure` cookies can survive.
+
+    Never infer it from the configured public URL: the same process also
+    answers plaintext LAN and TV-loopback origins, and a `Secure` cookie on
+    a plaintext response is silently dropped by the browser, which reads to
+    the user as "logged out again".
+    """
+    if request.url.scheme == "https":
+        return True
+    proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0]
+    return proto.strip().lower() == "https"
+
+
 def current_user(request):
     return user_from_session(request.cookies.get(SESSION_COOKIE) or "")
 
 
 def set_session(response, token: str, request) -> None:
-    secure = request.url.scheme == "https" or public_base().startswith("https")
+    secure = request_secure(request)
     response.set_cookie(
         SESSION_COOKIE,
         token,
@@ -51,7 +65,7 @@ def fail(request, status: int, key: str, **vars) -> None:
 
 def set_host_cookie(response: JSONResponse, request, token: str) -> JSONResponse:
     if token:
-        secure = request.url.scheme == "https" or public_base().startswith("https")
+        secure = request_secure(request)
         response.set_cookie(
             "lovktv_host",
             token,

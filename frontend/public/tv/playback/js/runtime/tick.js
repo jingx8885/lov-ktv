@@ -11,7 +11,11 @@ import {
   applyMix,
   roomLine,
   activeTrackName,
-  ensureActiveTrack
+  ensureActiveTrack,
+  elementSongId,
+  markTrackFallback,
+  clearTrackFallback,
+  trackFallbackActive
 } from "../media/mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
@@ -65,9 +69,33 @@ export function wantsResume(el) {
   return true;
 }
 
+/** Remember a stall/recover position against the song it belongs to. */
+export function rememberResume(songId, at) {
+  const t = Number(at) || 0;
+  if (!songId || t <= 0.25) return;
+  state.resumeSong = songId;
+  state.resumeAt = t;
+}
+
+export function clearResume() {
+  state.resumeSong = "";
+  state.resumeAt = 0;
+}
+
+/** The saved position, but only when it belongs to the song being asked about. */
+export function resumeFor(songId) {
+  if (!songId || (state.resumeSong && state.resumeSong !== songId)) return 0;
+  return state.resumeAt || 0;
+}
+
+/**
+ * A saved position belongs to one song only. Applying it to a different song
+ * started the next pick partway in instead of at the first second.
+ */
 export function restoreResume(el) {
   const t = state.resumeAt || 0;
   if (!el || t <= 1 || (el.currentTime || 0) >= 1) return;
+  if (state.resumeSong && elementSongId(el) !== state.resumeSong) return;
   try {
     el.currentTime = t;
   } catch (err) {}
@@ -77,7 +105,7 @@ function bindStallGuard(el) {
   if (!el || el.dataset.stallGuard === "1") return;
   el.dataset.stallGuard = "1";
   el.addEventListener("timeupdate", () => {
-    if ((el.currentTime || 0) > 0.25) state.resumeAt = el.currentTime;
+    rememberResume(elementSongId(el), el.currentTime);
   });
   el.addEventListener("waiting", () => {
     state.mediaStall = Date.now();
@@ -91,8 +119,9 @@ function bindStallGuard(el) {
 }
 
 function recoverSameSrc(el) {
-  const t = el.currentTime || state.resumeAt || 0;
-  if (t > 0.5) state.resumeAt = t;
+  const songId = elementSongId(el);
+  const t = el.currentTime || resumeFor(songId);
+  if (t > 0.5) rememberResume(songId, t);
   if (!el.getAttribute("src")) return;
   if (Date.now() - state.lastRecoverAt < 4000) return;
   state.lastRecoverAt = Date.now();
@@ -107,21 +136,32 @@ function recoverSameSrc(el) {
   );
 }
 
+/**
+ * A track that cannot load degrades to the other one, and the song stays
+ * pinned there until it is skipped or the toggle asks for a retry. The pin
+ * is what stops the next room snapshot from swapping the source back and
+ * leaving the song bouncing between original and backing.
+ */
 function bindKaraokeFallback(karaoke, songId) {
   karaoke.onerror = () => {
-    const t = karaoke.currentTime || state.resumeAt || 0;
+    // Only this song's own progress counts as "already playing"; a leftover
+    // position from the previous pick must not suppress the degrade path.
+    const t = karaoke.currentTime || resumeFor(songId);
     if (t > 0.5) {
-      state.resumeAt = t;
+      rememberResume(songId, t);
       return;
     }
-    if (state.mediaFallback === songId) return;
-    state.mediaFallback = songId;
-    const fallback = activeTrackName() === "original.mp3" ? "karaoke.m4a" : "original.mp3";
+    if (trackFallbackActive(songId)) return;
+    const failed = karaoke.dataset.track || activeTrackName(songId);
+    const fallback = failed === "original.mp3" ? "karaoke.m4a" : "original.mp3";
+    markTrackFallback(songId, fallback);
     karaoke.dataset.track = fallback;
     karaoke.src = mediaUrl(songId, fallback);
     karaoke.onloadedmetadata = () => {
       restoreResume(karaoke);
     };
+    applyMix();
+    if (typeof api.paintSettings === "function") api.paintSettings();
   };
 }
 
@@ -155,10 +195,10 @@ export function stopPlayback() {
   state.lyrics = { cues: [] };
   state.skeleton = null;
   state.lastItem = "";
-  state.resumeAt = 0;
+  clearResume();
   state.emptyNow = 0;
   state.mediaStall = 0;
-  state.mediaFallback = "";
+  clearTrackFallback();
   state.lastRecoverAt = 0;
   state.lyricPaint.prev = "";
   state.lyricPaint.cur = "";
@@ -243,7 +283,8 @@ export async function applyRoom(room) {
     // and should never add network latency to a room skip.
     state.lyrics = { cues: [] };
     state.skeleton = null;
-    state.resumeAt = 0;
+    clearResume();
+    clearTrackFallback();
     stopAudioOnly();
     stopNativeMtv();
     state.boundMtvSong = "";
@@ -357,12 +398,11 @@ export function startPlayback() {
     }
     return;
   }
-  state.resumeAt = 0;
-  state.mediaFallback = "";
+  clearResume();
   state.mediaStall = 0;
   karaoke.preload = "auto";
-  karaoke.src = mediaUrl(songId, activeTrackName());
-  karaoke.dataset.track = activeTrackName();
+  karaoke.src = mediaUrl(songId, activeTrackName(songId));
+  karaoke.dataset.track = activeTrackName(songId);
   bindKaraokeFallback(karaoke, songId);
   applyMix();
   silenceMtv($("mtv"));

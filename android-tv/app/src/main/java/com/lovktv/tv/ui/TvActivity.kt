@@ -182,6 +182,9 @@ class TvActivity : Activity(), TvHost {
     override fun onPause() {
         pauseMtv()
         webView.onPause()
+        // Persist the cookie jar now. Without this the session cookie can still
+        // be in memory when the launcher kills us, losing the QR login.
+        runCatching { CookieManager.getInstance().flush() }
         super.onPause()
     }
 

@@ -5,7 +5,7 @@ import { state } from "../../../state.js";
 import { nativeAppVersion, nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
 import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
-import { applyMix } from "../media/mix.js";
+import { applyMix, activeTrackName, trackFallbackActive, clearTrackFallback } from "../media/mix.js";
 import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "../runtime/tick.js";
 
 function currentCode() {
@@ -127,6 +127,9 @@ export async function toggleVocal() {
   });
   if (!data || !data.code) return;
   state.room = /** @type {Room} */ (data);
+  // An explicit toggle also retires a load-failure pin, so the track the room
+  // now asks for gets one more real attempt instead of staying degraded.
+  clearTrackFallback();
   applyMix();
   paintSettings();
 }
@@ -170,12 +173,21 @@ export async function nudgeVolume(delta) {
 }
 
 export function paintSettings() {
-  const mix = state.room && state.room.vocal_mix != null ? state.room.vocal_mix : 1;
-  const on = mix > 0.5;
+  // Report the track that is actually playing. A load failure degrades to the
+  // other track, and showing the room's request instead made the menu claim
+  // 原唱 while the backing track was coming out of the speakers.
+  const degraded = trackFallbackActive();
+  const on = activeTrackName() === "original.mp3";
   const vocalValue = $("tvVocalValue");
-  if (vocalValue) vocalValue.textContent = on ? t("common.vocal") : t("common.karaoke");
+  if (vocalValue) {
+    const label = on ? t("common.vocal") : t("common.karaoke");
+    vocalValue.textContent = degraded ? label + t("tv.vocalFallback") : label;
+  }
   const vocalItem = $("tvVocal");
-  if (vocalItem) vocalItem.classList.toggle("on", on);
+  if (vocalItem) {
+    vocalItem.classList.toggle("on", on);
+    vocalItem.classList.toggle("is-degraded", degraded);
+  }
   const setup = $("tvSetup");
   if (setup) {
     const native = nativeSetupAvailable();
