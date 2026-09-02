@@ -94,7 +94,9 @@ def align_lyrics(
                 bounds = _align_lines_official_clock(
                     lines, asr_words, lang, envelope=envelope, hop_ms=hop_ms
                 )
-                asr_clock = _prefer_asr_clock(lines, asr_words, lang, envelope, hop_ms)
+                asr_clock = _prefer_asr_clock(
+                    lines, asr_words, lang, envelope, hop_ms, duration_ms
+                )
                 if asr_clock is not None:
                     bounds = asr_clock
                     used_asr_clock = True
@@ -315,6 +317,15 @@ def _align_version_drift(
     if min(anchors) != 0:
         return None
 
+    # A long official lead-in followed by an ASR match at 0 ms is the common
+    # "broadcast/intro omitted by ASR" shape.  Keep the official clock when
+    # we know the real media duration; an alternative edit is not enough
+    # evidence to erase a trusted lead-in.
+    first_lrc = int(kept[0].get("ms") or 0)
+    first_asr = anchors[0][0] if 0 in anchors else 0
+    if duration_ms and duration_ms >= 120_000 and first_lrc >= 10_000 and first_asr < 3_000:
+        return None
+
     # A near-complete lexical match is strong evidence that the existing
     # official clock belongs to this recording.  Do not replace good timing
     # merely because the file has a long tail, intro, or credits difference.
@@ -408,6 +419,7 @@ def _prefer_asr_clock(
     language: str,
     envelope: list[float] | None,
     hop_ms: int,
+    duration_ms: int | None = None,
 ) -> list[dict[str, Any]] | None:
     """Use Whisper's clock when it consistently disagrees with official LRC.
 
@@ -436,6 +448,10 @@ def _prefer_asr_clock(
         if row.get("from_asr") and line.get("ms") is not None
     ]
     if len(offsets) < 3:
+        return None
+    first_lrc = int(kept[0].get("ms") or 0) if kept else 0
+    first_asr = int(candidate[0].get("start_ms") or 0) if candidate else 0
+    if duration_ms and duration_ms >= 120_000 and first_lrc >= 10_000 and first_asr < 3_000:
         return None
     center = median(offsets)
     if abs(center) < 5_000:
