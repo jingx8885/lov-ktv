@@ -144,6 +144,18 @@ export function useLan(lan, room) {
   }
 }
 
+/** Push the visible phone context to Android's notification shade companion. */
+export function nativeNotificationUpdate(payload) {
+  const native = bridge();
+  if (!native || typeof native.notification !== "function") return false;
+  try {
+    native.notification(JSON.stringify(payload || {}));
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
 let httpSeq = 0;
 const pendingHttp = {};
 
@@ -203,6 +215,9 @@ export const phonePlatform = {
         return false;
       }
     }
+  },
+  notification: {
+    update: nativeNotificationUpdate
   },
   http: {
     available: nativeHttpAvailable,

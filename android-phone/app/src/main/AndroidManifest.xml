@@ -40,6 +40,7 @@
         <activity
             android:name=".feature.DeskActivity"
             android:exported="false"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout"
             android:keepScreenOn="true"
             android:windowSoftInputMode="adjustResize" />
 
@@ -53,5 +54,9 @@
             android:name=".media.MicService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <receiver
+            android:name=".platform.NotificationActionReceiver"
+            android:exported="false" />
     </application>
 </manifest>

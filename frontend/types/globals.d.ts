@@ -261,6 +261,9 @@ interface MicPort {
 interface RemotePort {
   open(url: string): boolean;
 }
+interface NotificationPort {
+  update(payload: { page: string; title?: string; artist?: string; playing?: boolean }): boolean;
+}
 interface ScannerPort {
   available(): boolean;
   scan(): boolean;
@@ -272,6 +275,7 @@ interface PhonePlatform {
   scanner: ScannerPort;
   media: MediaPort;
   remote: RemotePort;
+  notification: NotificationPort;
   http: HttpPort;
   __onHttp?: (msg: any) => void;
 }
@@ -328,6 +332,7 @@ interface LovKtvPhoneBridge {
   stopIem?: () => string;
   setGain?: (value: number) => void;
   openUrl?: (url: string) => void;
+  notification?: (payload: string) => void;
 }
 
 interface Window {

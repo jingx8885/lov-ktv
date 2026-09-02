@@ -7,6 +7,7 @@ import com.lovktv.phone.network.ApiClient
 import com.lovktv.phone.network.LanHttp
 import com.lovktv.phone.platform.Prefs
 import com.lovktv.phone.platform.PhoneBridge
+import com.lovktv.phone.platform.PhoneNotificationController
 import com.lovktv.phone.room.JoinLink
 import com.lovktv.phone.room.RoomConnect
 import com.lovktv.phone.ui.DeskPage
@@ -24,6 +25,10 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import android.view.View
+import android.view.WindowManager
+import android.widget.FrameLayout
+import java.lang.ref.WeakReference
 import android.webkit.CookieManager
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -36,6 +41,10 @@ import org.json.JSONObject
 
 class DeskActivity : Activity() {
     private lateinit var webView: WebView
+    private lateinit var deskRoot: FrameLayout
+    private var fullscreenView: View? = null
+    private var fullscreenCallback: WebChromeClient.CustomViewCallback? = null
+    private var fullscreenSystemUi = 0
     private var roomCode = ""
     private var server = ""
     private var lanOrigin = ""
@@ -51,6 +60,9 @@ class DeskActivity : Activity() {
     private val watch = Handler(Looper.getMainLooper())
     private var lanMisses = 0
     private var watching = false
+    private lateinit var notificationController: PhoneNotificationController
+    private var pendingNotificationPage = ""
+    private var pendingNotificationAction = ""
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -62,10 +74,18 @@ class DeskActivity : Activity() {
         micHost = intent.getStringExtra(EXTRA_MIC_HOST).orEmpty().ifBlank { Prefs.micHost(this) }
         micPort = intent.getIntExtra(EXTRA_MIC_PORT, 0).takeIf { it in 1..65535 } ?: Prefs.micPort(this)
         micRate = intent.getIntExtra(EXTRA_MIC_RATE, 0).takeIf { it in 8000..96000 } ?: Prefs.micRate(this)
+        deskRoot = findViewById(R.id.desk_root)
         webView = findViewById(R.id.webview)
+        active = WeakReference(this)
+        notificationController = PhoneNotificationController(this)
+        pendingNotificationPage = intent.getStringExtra(EXTRA_NOTIFICATION_PAGE).orEmpty()
+        pendingNotificationAction = intent.getStringExtra(EXTRA_NOTIFICATION_ACTION).orEmpty()
         bindWebView()
         loadDesk()
         startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
+        }
     }
 
     private fun bindWebView() {
@@ -90,6 +110,19 @@ class DeskActivity : Activity() {
         }
         webView.addJavascriptInterface(PhoneBridge(this), "LovKtvPhone")
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onShowCustomView(view: View?, callback: CustomViewCallback?) {
+                showFullscreenView(view, callback)
+            }
+
+            @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+            override fun onShowCustomView(view: View?, requestedOrientation: Int, callback: CustomViewCallback?) {
+                showFullscreenView(view, callback)
+            }
+
+            override fun onHideCustomView() {
+                hideFullscreenView()
+            }
+
             override fun onPermissionRequest(request: PermissionRequest) {
                 runOnUiThread { handleWebPermission(request) }
             }
@@ -153,8 +186,53 @@ class DeskActivity : Activity() {
                 injectLanHttp()
                 injectRebindEntry()
                 injectMachine()
+                consumeNotificationIntent()
             }
         }
+    }
+
+    private fun showFullscreenView(view: View?, callback: WebChromeClient.CustomViewCallback?) {
+        if (view == null) {
+            callback?.onCustomViewHidden()
+            return
+        }
+        if (fullscreenView != null) {
+            callback?.onCustomViewHidden()
+            return
+        }
+        fullscreenView = view
+        fullscreenCallback = callback
+        fullscreenSystemUi = window.decorView.systemUiVisibility
+        webView.visibility = View.GONE
+        deskRoot.addView(
+            view,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            )
+        window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+    }
+
+    private fun hideFullscreenView() {
+        val view = fullscreenView ?: return
+        deskRoot.removeView(view)
+        fullscreenView = null
+        fullscreenCallback?.onCustomViewHidden()
+        fullscreenCallback = null
+        webView.visibility = View.VISIBLE
+        @Suppress("DEPRECATION")
+        window.decorView.systemUiVisibility = fullscreenSystemUi
+        window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
     }
 
     private fun loadDesk(hash: String = "", fresh: Boolean = false) {
@@ -180,6 +258,54 @@ class DeskActivity : Activity() {
             "try{localStorage.setItem('lovktv.machine',$id)}catch(e){}",
             null,
         )
+    }
+
+    fun updateNotification(payload: String) {
+        if (!::notificationController.isInitialized) return
+        notificationController.update(payload)
+    }
+
+    private fun openNotificationPage(page: String) {
+        if (!::webView.isInitialized || page.isBlank()) return
+        val nav = if (page == "player") "player" else "desk"
+        webView.evaluateJavascript("document.querySelector('[data-nav=\\\"$nav\\\"]')?.click()", null)
+    }
+
+    private fun handleNotificationAction(action: String) {
+        val script = when (action) {
+            PhoneNotificationController.ACTION_SEARCH -> "document.querySelector('[data-nav=\\\"search\\\"]')?.click()"
+            PhoneNotificationController.ACTION_TO_DESK -> "document.querySelector('[data-nav=\\\"desk\\\"]')?.click()"
+            PhoneNotificationController.ACTION_DESK_PAUSE -> "document.getElementById('deskPause')?.click()"
+            PhoneNotificationController.ACTION_DESK_SKIP -> "document.getElementById('skip')?.click()"
+            PhoneNotificationController.ACTION_DESK_MIC -> "document.getElementById('micToggle')?.click()"
+            PhoneNotificationController.ACTION_PLAYER_PLAY -> "document.getElementById('playerPlay')?.click()"
+            PhoneNotificationController.ACTION_PLAYER_NEXT -> "document.getElementById('playerNextBtn')?.click()"
+            PhoneNotificationController.ACTION_PLAYER_VOCAL -> "document.getElementById('playerVocal')?.click()"
+            else -> return
+        }
+        if (::webView.isInitialized) webView.evaluateJavascript("try{$script}catch(e){}", null)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingNotificationPage = intent?.getStringExtra(EXTRA_NOTIFICATION_PAGE).orEmpty()
+        pendingNotificationAction = intent?.getStringExtra(EXTRA_NOTIFICATION_ACTION).orEmpty()
+        consumeNotificationIntent()
+    }
+
+    private fun consumeNotificationIntent() {
+        val page = pendingNotificationPage
+        val action = pendingNotificationAction
+        if (!::webView.isInitialized || webView.url.isNullOrBlank()) return
+        if (page.isNotBlank()) {
+            openNotificationPage(page)
+            pendingNotificationPage = ""
+        }
+        if (action.isNotBlank()) {
+            pendingNotificationAction = ""
+            webView.postDelayed({ handleNotificationAction(action) }, 350)
+        }
     }
 
     fun scanTv() {
@@ -538,6 +664,7 @@ class DeskActivity : Activity() {
                     dispatchMicEvent("lovktv-mic-denied")
                 }
             }
+            REQ_NOTIFICATIONS -> Unit
         }
     }
 
@@ -549,6 +676,7 @@ class DeskActivity : Activity() {
     }
 
     override fun onDestroy() {
+        hideFullscreenView()
         watching = false
         watch.removeCallbacksAndMessages(null)
         pendingWebPerm?.deny()
@@ -557,6 +685,8 @@ class DeskActivity : Activity() {
         fileCallback = null
         if (!isChangingConfigurations) {
             MicService.stop(this)
+            if (::notificationController.isInitialized) notificationController.close()
+            if (active?.get() === this) active = null
         }
         webView.destroy()
         super.onDestroy()
@@ -580,6 +710,10 @@ class DeskActivity : Activity() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && fullscreenView != null) {
+            hideFullscreenView()
+            return true
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
             webView.goBack()
             return true
@@ -594,9 +728,32 @@ class DeskActivity : Activity() {
         const val EXTRA_MIC_HOST = "mic_host"
         const val EXTRA_MIC_PORT = "mic_port"
         const val EXTRA_MIC_RATE = "mic_rate"
+        const val EXTRA_NOTIFICATION_ACTION = "notification_action"
+        const val EXTRA_NOTIFICATION_PAGE = "notification_page"
         private const val REQ_FILE = 22
         private const val REQ_WEB_MIC = 23
         private const val REQ_PHONE_MIC = 24
+        private const val REQ_NOTIFICATIONS = 25
+
+        @Volatile
+        private var active: WeakReference<DeskActivity>? = null
+
+        fun dispatchNotificationAction(context: android.content.Context, action: String, page: String = "") {
+            val current = active?.get()
+            if (current != null) {
+                current.runOnUiThread {
+                    if (page.isNotBlank()) current.openNotificationPage(page)
+                    current.webView.postDelayed({ current.handleNotificationAction(action) }, if (page.isBlank()) 0 else 250)
+                }
+                return
+            }
+            val intent = Intent(context, DeskActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                putExtra(EXTRA_NOTIFICATION_ACTION, action)
+                putExtra(EXTRA_NOTIFICATION_PAGE, page)
+            }
+            context.startActivity(intent)
+        }
 
         fun hasAudio(activity: Activity): Boolean {
             return activity.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED

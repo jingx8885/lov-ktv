@@ -84,7 +84,6 @@ async function enterPlayerFullscreen() {
   if (mtv) mtv.hidden = false;
   document.body.classList.add("player-fullscreen");
   playerFullscreenFallback = false;
-  const nativeApi = !!(target.requestFullscreen || target.webkitRequestFullscreen);
   let enteredNative = false;
   try {
     if (target.requestFullscreen) {
@@ -95,11 +94,9 @@ async function enterPlayerFullscreen() {
       enteredNative = true;
     }
   } catch (err) {}
-  if (nativeApi && !enteredNative) {
-    document.body.classList.remove("player-fullscreen");
-    paintPlayerFullscreen();
-    return;
-  }
+  // Some WebViews expose requestFullscreen but reject it because the host
+  // does not provide a native custom-view surface. Keep the CSS fullscreen
+  // state in that case so the player still fills the viewport.
   playerFullscreenFallback = !enteredNative;
   try {
     if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("landscape");

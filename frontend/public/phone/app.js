@@ -21,7 +21,7 @@ import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import { bindLearn } from "./player/js/learn/index.js";
 import { api, installApi } from "./api.js";
-import { installPlatform } from "./platform.js";
+import { installPlatform, phonePlatform } from "./platform.js";
 import { songArtist, songTitle } from "../shared/ui/js/song.js";
 
 const mounted = new WeakSet();
@@ -126,6 +126,37 @@ export function mount(root, deps = {}) {
     if (state.libState.page <= 1) loadSongs(false);
   }, 2000);
 
+  // Keep the Android notification shade useful even when the WebView is
+  // backgrounded.  A small heartbeat also picks up room changes and async
+  // player loads without coupling every feature module to the native bridge.
+  const syncNotification = () => {
+    const page = state.currentPage === "player" ? "player" : "desk";
+    let title = "";
+    let artist = "";
+    if (page === "player" && state.playerSong) {
+      title = songTitle(state.playerSong);
+      artist = songArtist(state.playerSong);
+    } else if (page === "desk") {
+      const card = $("nowCard", root);
+      const hit = card && card.querySelector(".now-hit");
+      const values = hit ? hit.querySelectorAll("b, .tiny") : [];
+      title = values[0]?.textContent?.trim() || "";
+      artist = values[1]?.textContent?.trim() || "";
+    }
+    const audio = $("playerAudio", root);
+    const playing =
+      page === "player"
+        ? !!audio && !audio.paused && !!audio.currentSrc
+        : !!$("nowBar", root) &&
+          !$("nowBar", root).classList.contains("is-idle") &&
+          !$("deskPause", root)?.classList.contains("on");
+    if (phonePlatform.notification && typeof phonePlatform.notification.update === "function") {
+      phonePlatform.notification.update({ page, title, artist, playing });
+    }
+  };
+  const notificationTimer = setInterval(syncNotification, 1000);
+  syncNotification();
+
   const bootHash = (location.hash || "").replace("#", "");
   const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
   showPage(bootPage, null, false);
@@ -143,6 +174,7 @@ export function mount(root, deps = {}) {
   syncKeyboard();
   return () => {
     clearInterval(pollTimer);
+    clearInterval(notificationTimer);
     offLang();
     if (window.visualViewport) {
       visualViewport.removeEventListener("resize", syncKeyboard);
