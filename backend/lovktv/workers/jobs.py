@@ -11,6 +11,7 @@ from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
     line_is_romaji,
+    lyric_source_key,
 )
 from lovktv.agents.translate import (
     TRANSLATE_SCHEMA,
@@ -409,6 +410,61 @@ def _stamp_native_video(timeline: dict, out_dir: Path) -> bool:
     return False
 
 
+def _preserve_timeline_annotations(previous: dict, timeline: dict) -> None:
+    """Carry trusted display annotations across an ASR-only realignment.
+
+    Alignment regenerates cues and tokens, but their source text is usually
+    unchanged.  Keep the previous Chinese line/word translations (and other
+    display metadata) so a transient translation-agent failure cannot turn a
+    previously translated song into a blank one.
+    """
+    if not isinstance(previous, dict) or not isinstance(timeline, dict):
+        return
+    for key in ("native_video", "translation", "translation_model", "annotation", "annotation_model"):
+        if previous.get(key) and not timeline.get(key):
+            timeline[key] = previous[key]
+
+    old_by_source: dict[str, list[dict]] = {}
+    for cue in previous.get("cues") or []:
+        if not isinstance(cue, dict):
+            continue
+        source = lyric_source_key(cue.get("source_text") or cue.get("text") or "")
+        if source:
+            old_by_source.setdefault(source, []).append(cue)
+
+    used: dict[str, int] = {}
+    for cue in timeline.get("cues") or []:
+        if not isinstance(cue, dict):
+            continue
+        source = lyric_source_key(cue.get("source_text") or cue.get("text") or "")
+        rows = old_by_source.get(source) or []
+        index = used.get(source, 0)
+        if index >= len(rows):
+            continue
+        old = rows[index]
+        used[source] = index + 1
+        if old.get("zh") and not cue.get("zh"):
+            cue["zh"] = old["zh"]
+
+        old_tokens = [token for token in old.get("tokens") or [] if isinstance(token, dict)]
+        new_tokens = [token for token in cue.get("tokens") or [] if isinstance(token, dict)]
+        if not old_tokens or not new_tokens:
+            continue
+        # Match repeated words in order; this handles punctuation and small
+        # tokenization changes without assigning a gloss to the wrong word.
+        cursor = 0
+        for token in new_tokens:
+            wanted = lyric_source_key(token.get("text") or "")
+            match = None
+            for old_index in range(cursor, len(old_tokens)):
+                if lyric_source_key(old_tokens[old_index].get("text") or "") == wanted:
+                    match = old_tokens[old_index]
+                    cursor = old_index + 1
+                    break
+            if match and match.get("zh") and not token.get("zh"):
+                token["zh"] = match["zh"]
+
+
 def _annotate_ja_timeline(song_id: str, out_dir: Path, timeline: dict) -> bool:
     cues = timeline.get("cues") or []
     if not cues:
@@ -736,13 +792,23 @@ def _restore_mugen_timeline(out_dir: Path, language: str | None = None) -> bool:
     ass_path = out_dir / "mugen.ass"
     if not ass_path.exists():
         return False
+    previous: dict = {}
+    lyrics_path = out_dir / "lyrics.json"
+    if lyrics_path.exists():
+        try:
+            previous = json.loads(lyrics_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, TypeError):
+            previous = {}
     try:
         from lovktv.catalog.mugen import timeline_from_ass
 
         timeline = timeline_from_ass(
             ass_path.read_text(encoding="utf-8", errors="replace"), language or "ja"
         )
-        timeline["native_video"] = _has_native_mtv(out_dir)
+        _preserve_timeline_annotations(previous, timeline)
+        timeline["native_video"] = _has_native_mtv(out_dir) or bool(
+            previous.get("native_video")
+        )
         write_subtitles(timeline, out_dir)
         return True
     except (OSError, UnicodeError, RuntimeError):
@@ -756,6 +822,19 @@ def _align_and_mtv(
     language: str | None,
     rebuild_mtv: bool = True,
 ) -> None:
+    previous_timeline: dict = {}
+    lyrics_path = out_dir / "lyrics.json"
+    if lyrics_path.exists():
+        try:
+            previous_timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, TypeError):
+            previous_timeline = {}
+    # Snapshot this before writing the regenerated timeline.  The list MV
+    # badge is derived from persisted media metadata, so it must survive even
+    # if a later subtitle/translation step is degraded.
+    had_native_video = _has_native_mtv(out_dir) or bool(
+        previous_timeline.get("native_video")
+    )
     lines = load_lyric_lines(out_dir, language)
     lang = resolve_language("".join(item.get("text") or "" for item in lines), language)
     update_song(song_id, language=lang, status="aligning")
@@ -781,7 +860,10 @@ def _align_and_mtv(
     if agent_matches:
         align_kwargs["agent_matches"] = agent_matches
     timeline = align_lyrics(lines, lang, **align_kwargs)
-    keep_native = _stamp_native_video(timeline, out_dir)
+    _preserve_timeline_annotations(previous_timeline, timeline)
+    if had_native_video:
+        timeline["native_video"] = True
+    keep_native = _stamp_native_video(timeline, out_dir) or had_native_video
     if lang == "ja" and timeline.get("cues"):
         update_song(song_id, status="annotating")
         _annotate_ja_timeline(song_id, out_dir, timeline)

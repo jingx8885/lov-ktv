@@ -356,3 +356,40 @@ def test_finish_ready_lyrics_keeps_bilibili_mv_even_when_rebuild(tmp_path, monke
         (out_dir / "lyrics.json").read_text(encoding="utf-8")
     )
     assert timeline["native_video"] is True
+
+
+def test_realign_preserves_native_mv_and_translation_annotations():
+    previous = {
+        "native_video": True,
+        "translation": "lovjpn-zh",
+        "translation_model": "test-model",
+        "cues": [
+            {
+                "text": "I stay",
+                "zh": "我留下",
+                "tokens": [
+                    {"text": "I", "zh": "我"},
+                    {"text": "stay", "zh": "留下"},
+                ],
+            }
+        ],
+    }
+    timeline = {
+        "language": "en",
+        "cues": [
+            {
+                "text": "I stay",
+                "tokens": [
+                    {"text": "I"},
+                    {"text": "stay"},
+                ],
+            }
+        ],
+    }
+
+    jobs._preserve_timeline_annotations(previous, timeline)
+
+    assert timeline["native_video"] is True
+    assert timeline["translation"] == "lovjpn-zh"
+    assert timeline["cues"][0]["zh"] == "我留下"
+    assert [token["zh"] for token in timeline["cues"][0]["tokens"]] == ["我", "留下"]
