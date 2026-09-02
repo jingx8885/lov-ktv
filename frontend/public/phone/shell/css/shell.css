@@ -680,6 +680,14 @@ body.phone .source-tag.youtube { background: #3a2020; color: #ff8a8a; }
 }
 .list-more:disabled { cursor: default; opacity: .7; }
 .empty-state {
+  /* Empty/loading placeholders should occupy the same track as the content
+     they replace.  Without an explicit width, flex/grid parents can size the
+     placeholder to its short message until the real rows arrive, causing a
+     visible narrow frame during loading. */
+  width: 100%;
+  box-sizing: border-box;
+  align-self: stretch;
+  justify-self: stretch;
   padding: 44px 20px 32px;
   text-align: center;
   color: rgba(235, 235, 245, .6);
