@@ -276,7 +276,7 @@ def test_grok_keeps_successful_chunks_when_a_later_chunk_fails(monkeypatch, tmp_
     monkeypatch.setattr(transcribe.httpx, "post", fake_post)
     words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
 
-    assert calls == 3  # second chunk is retried once before local fallback
+    assert calls == 5  # second chunk is retried three times before local fallback
     assert words == [{"text": "kept", "start_ms": 100, "end_ms": 400, "segment": 0}]
     assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
 
@@ -313,6 +313,53 @@ def test_grok_falls_back_per_failed_chunk(monkeypatch, tmp_path):
     words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
 
     assert words == [{"text": "recovered", "start_ms": 30200, "end_ms": 30500, "segment": 0}]
+
+
+def test_grok_retries_wav_before_local_fallback(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    chunk = tmp_path / "chunk.mp3"
+    chunk.write_bytes(b"mp3")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_args, **_kwargs: iter([(chunk, 0.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _path: True)
+    monkeypatch.setattr(transcribe, "_transcribe_faster_whisper", lambda *_args: [])
+
+    class Response:
+        status_code = 200
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"words": [{"start": 0.2, "end": 0.5, "text": "wav-ok"}]}
+
+    seen_names: list[str] = []
+
+    def fake_post(*_args, **kwargs):
+        filename = kwargs["files"]["file"][0]
+        seen_names.append(filename)
+        if filename.endswith(".mp3"):
+            class EmptyResponse(Response):
+                def json(self):
+                    return {"words": []}
+
+            return EmptyResponse()
+        return Response()
+
+    def fake_run(cmd, **_kwargs):
+        assert cmd[0] == "ffmpeg"
+        tmp_path.joinpath(cmd[-1].split("/")[-1]).write_bytes(b"wav")
+        return types.SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    monkeypatch.setattr(transcribe.subprocess, "run", fake_run)
+
+    words = transcribe._transcribe_grok(chunk, "en", None)
+
+    assert seen_names == ["chunk.mp3"] * 4 + ["chunk.wav"]
+    assert words == [{"text": "wav-ok", "start_ms": 200, "end_ms": 500, "segment": 0}]
 
 
 def test_remote_model_does_not_reuse_legacy_whisper_cache(monkeypatch, tmp_path):

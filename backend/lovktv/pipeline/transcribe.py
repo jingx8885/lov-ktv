@@ -330,28 +330,53 @@ def _transcribe_grok(
         for chunk, offset in _remote_chunks(audio_path, audio_format="mp3"):
             if not _audio_has_voice(chunk):
                 continue
-            chunk_words: list[dict[str, Any]] = []
-            for attempt in range(2):
+            def request_chunk(request_path: Path) -> list[dict[str, Any]]:
+                words: list[dict[str, Any]] = []
+                # Keep the initial request plus three retries.  Empty 200
+                # responses are treated like transient upstream failures.
+                for attempt in range(4):
+                    try:
+                        mime = mimetypes.guess_type(request_path.name)[0] or "application/octet-stream"
+                        with request_path.open("rb") as audio:
+                            response = httpx.post(
+                                url,
+                                headers={"Authorization": f"Bearer {key}"},
+                                data=data,
+                                files={"file": (request_path.name, audio, mime)},
+                                timeout=180.0,
+                            )
+                        response.raise_for_status()
+                        payload = response.json()
+                        if isinstance(payload, dict):
+                            words = _parse_grok_payload(payload)
+                        if words:
+                            return words
+                    except Exception:  # noqa: BLE001 - retry transient upstream failures
+                        pass
+                    if attempt < 3:
+                        time.sleep(0.5)
+                return words
+
+            chunk_words = request_chunk(chunk)
+            if not chunk_words:
+                # Some upstream paths reject MP3 frames while accepting the
+                # equivalent PCM WAV.  Re-encode only this failed slice so
+                # successful MP3 chunks keep the fast path.
+                wav_chunk = chunk.with_suffix(".wav")
                 try:
-                    mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
-                    with chunk.open("rb") as audio:
-                        response = httpx.post(
-                            url,
-                            headers={"Authorization": f"Bearer {key}"},
-                            data=data,
-                            files={"file": (chunk.name, audio, mime)},
-                            timeout=180.0,
-                        )
-                    response.raise_for_status()
-                    payload = response.json()
-                    if isinstance(payload, dict):
-                        chunk_words = _parse_grok_payload(payload)
-                    if chunk_words:
-                        break
-                except Exception:  # noqa: BLE001 - retry transient upstream failures
+                    converted = subprocess.run(
+                        [
+                            "ffmpeg", "-y", "-loglevel", "error", "-i", str(chunk),
+                            "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(wav_chunk),
+                        ],
+                        capture_output=True,
+                        timeout=120,
+                        check=False,
+                    )
+                    if converted.returncode == 0 and wav_chunk.exists():
+                        chunk_words = request_chunk(wav_chunk)
+                except (OSError, subprocess.TimeoutExpired):
                     pass
-                if attempt == 0:
-                    time.sleep(0.5)
             if not chunk_words:
                 # Grok occasionally returns a valid 200 with an empty body for
                 # sung material.  Keep the configured Grok-first path, but
