@@ -306,6 +306,15 @@ def _align_version_drift(
     if len(anchors) < 3:
         return None
 
+    # If the first lyric lines have no reliable ASR anchor, the transcript
+    # usually starts with an intro, dialogue, or other non-lyric material.
+    # Treating a later anchor as a different-version clock would project those
+    # missed lines from 0 ms and destroy their trusted official LRC timing.
+    # Version-drift correction is only safe when the recording is anchored
+    # from the first lyric line onward.
+    if min(anchors) != 0:
+        return None
+
     # A near-complete lexical match is strong evidence that the existing
     # official clock belongs to this recording.  Do not replace good timing
     # merely because the file has a long tail, intro, or credits difference.
