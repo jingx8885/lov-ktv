@@ -38,7 +38,7 @@ import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/son
 import { cueIndexAt } from "./player/js/playback/lyrics.js";
 import { setPlayerSheet } from "./player/js/playback/sheet.js";
 import { enterLearn, exitLearn, openStudyBook } from "./player/js/learn/index.js";
-import { paintDeskLyrics } from "./desk/lyrics.js";
+import { paintTranscript } from "./player/js/playback/transcript.js";
 
 installApi({
   ICO,
@@ -94,5 +94,5 @@ installApi({
   enterLearn,
   exitLearn,
   openStudyBook,
-  paintDeskLyrics
+  paintTranscript
 });

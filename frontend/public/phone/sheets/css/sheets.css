@@ -18,21 +18,65 @@
   max-height: min(86dvh, 720px);
   overflow: auto;
   padding: 8px 20px calc(18px + var(--safe-b) + var(--kb));
-  border-radius: 14px 14px 0 0;
-  background: #2c2c2e;
+  border-top: 1px solid var(--line-strong);
+  border-radius: var(--r-l) var(--r-l) 0 0;
+  background: var(--surface-2);
+  box-shadow: 0 -20px 60px rgba(0, 0, 0, .5);
 }
 .sheet-handle {
   width: 36px;
   height: 5px;
   margin: 4px auto 12px;
   border-radius: 99px;
-  background: rgba(235, 235, 245, .3);
+  background: rgba(235, 235, 245, .22);
 }
 .sheet h2 {
   margin: 0 0 14px;
   font-size: 20px;
   font-weight: 700;
+  letter-spacing: -.02em;
 }
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.sheet-head h2 { margin: 0; }
+.sheet-head .lang-picker { margin: 0; }
+.sheet .who { display: flex; align-items: center; gap: 12px; margin: 6px 0 14px; }
+.sheet .who .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.sheet .who b { display: block; font-size: 17px; }
+.sheet .who .tiny { margin: 2px 0 0; line-height: 1.4; }
+.who-meta {
+  display: grid;
+  gap: 4px;
+  margin: 16px 0 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--surface-1);
+}
+.who-meta .tiny { margin: 0; }
+.who-points-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.who-points-row #whoPoints { font-size: 14px; color: var(--text); font-weight: 600; }
+.who-earn {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.who-earn:active { opacity: .6; }
+.who-rule { color: var(--dim); font-size: 11px; }
+.who-version { margin: 10px 0 0; text-align: center; color: var(--dim); }
 .sheet .field { display: block; margin-bottom: 12px; }
 .sheet .field .tiny { display: block; margin-bottom: 6px; }
 .sheet .btn { width: 100%; margin-top: 8px; }
@@ -46,7 +90,6 @@
   color: var(--accent);
   font-weight: 400;
 }
-.sheet .who { margin-bottom: 12px; }
 .action-sheet {
   position: relative;
   width: 100%;
@@ -55,8 +98,9 @@
 .action-card,
 .action-cancel {
   width: 100%;
-  border-radius: 14px;
-  background: #2c2c2e;
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  background: var(--surface-2);
   text-align: center;
 }
 .action-card { padding: 14px 12px 8px; margin-bottom: 8px; }
@@ -80,10 +124,12 @@
   z-index: 50;
   max-width: calc(100vw - 48px);
   padding: 10px 16px;
+  border: 1px solid var(--line-strong);
   border-radius: 12px;
-  background: rgba(44, 44, 46, .92);
+  background: rgba(37, 37, 45, .94);
   color: #fff;
   font-size: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .4);
   transform: translateX(-50%);
   pointer-events: none;
 }

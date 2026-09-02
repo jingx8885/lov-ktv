@@ -153,17 +153,6 @@ export function bindAds() {
   if (skip) skip.onclick = closeAd;
   const watch = $("whoWatchAd");
   if (watch) watch.onclick = () => showAd("wait");
-  const waitBtn = $("adWaitWatch");
-  if (waitBtn) waitBtn.onclick = () => showAd("wait");
-}
-
-export function syncWaitBar(songs) {
-  const bar = $("adWaitBar");
-  if (!bar) return;
-  const busy = (songs || []).some((song) =>
-    ["queued", "fetching", "separating", "aligning", "annotating", "composing"].includes(song.status)
-  );
-  bar.hidden = !busy;
 }
 
 export function bootAds() {

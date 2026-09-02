@@ -4,12 +4,12 @@ import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js";
 import { PAGES, state, pageTitle, searchEmpty } from "./state.js";
 import { openOverlay } from "./ui/js/overlays.js";
 import { bindWho, loadWho } from "./ui/js/who.js";
-import { bootAds, syncWaitBar } from "./ui/js/ads.js";
+import { bootAds } from "./ui/js/ads.js";
 import { bindOverlays } from "./ui/js/overlays.js";
 import { bindNav, showPage } from "./nav/js/pages.js";
 import { bindSearch, paintSearchHits } from "./search/js/hits.js";
 import { bindLibrary, loadSongs } from "./desk/js/library.js";
-import { bindDeskLyrics, paintDeskLyrics } from "./desk/lyrics.js";
+import { bindTranscript, paintTranscript } from "./player/js/playback/transcript.js";
 import { loadRoom } from "./desk/js/queue.js";
 import { bindJoin, paintBindBtns } from "./room/js/room/join.js";
 import { bindMix, paintVocalMix, paintLyricMode, paintDisplayMode } from "./room/js/room/mix.js";
@@ -22,6 +22,7 @@ import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import { bindLearn } from "./player/js/learn/index.js";
 import { api, installApi } from "./api.js";
 import { installPlatform } from "./platform.js";
+import { songArtist, songTitle } from "../shared/ui/js/song.js";
 
 const mounted = new WeakSet();
 
@@ -70,7 +71,7 @@ export function mount(root, deps = {}) {
           : t("phone.desk.libPh");
     loadWho();
     loadRoom();
-    paintDeskLyrics();
+    paintTranscript();
     loadSongs();
     if (!must("page-search").hidden) {
       if (state.searchHits.length) {
@@ -82,7 +83,7 @@ export function mount(root, deps = {}) {
     paintVocalMix(must("vocalMix").classList.contains("on") ? 1 : 0);
     paintLyricMode(state.lyricMode, state.nowLanguage);
     paintDisplayMode();
-    paintDeskLyrics();
+    paintTranscript();
     paintPhoneMic();
     updatePlayOrderBtns();
     syncPlayerSheetMeta();
@@ -92,11 +93,8 @@ export function mount(root, deps = {}) {
       state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff")
     );
     if (state.playerSong) {
-      must("playerTitle").textContent = state.playerSong.title;
-      must("playerMeta").textContent =
-        state.playerSong.artist && !String(state.playerSong.title).includes(state.playerSong.artist)
-          ? state.playerSong.artist
-          : "";
+      must("playerTitle").textContent = songTitle(state.playerSong);
+      must("playerMeta").textContent = songArtist(state.playerSong);
     }
     must("tlChain").textContent = state.chainRest ? t("phone.align.chainRest") : t("phone.align.chain");
     updateAlignNow();
@@ -109,7 +107,7 @@ export function mount(root, deps = {}) {
   bindNav();
   bindSearch();
   bindLibrary();
-  bindDeskLyrics();
+  bindTranscript();
   bindJoin();
   bindMix();
   paintLyricMode(state.lyricMode, state.nowLanguage);
@@ -126,7 +124,6 @@ export function mount(root, deps = {}) {
     if (!desk || desk.hidden) return;
     loadRoom();
     if (state.libState.page <= 1) loadSongs(false);
-    syncWaitBar(state.libSongs);
   }, 2000);
 
   const bootHash = (location.hash || "").replace("#", "");

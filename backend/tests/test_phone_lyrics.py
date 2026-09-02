@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "frontend" / "public"
@@ -41,7 +42,7 @@ def test_lyric_mode_buttons_do_not_select_body():
         encoding="utf-8"
     )
     assert ".player-dock.is-hint .player-hint" in css
-    assert ".player-hint[data-hold] { display: block; }" in css
+    assert re.search(r"\.player-hint\[data-hold\]\s*\{\s*display:\s*block;\s*\}", css)
     assert 'btn.classList.add("busy")' in mic
     assert "btn.disabled = true" not in mic
     for name in ("zh", "yue", "en", "ja"):

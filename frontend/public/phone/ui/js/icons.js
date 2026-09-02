@@ -8,6 +8,7 @@ export const WHO_ICO =
 export const ROOM_ICO =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.8L12 4l8 6.8V20a1 1 0 01-1 1h-5.2v-6.2H10.2V21H5a1 1 0 01-1-1v-9.2z"/></svg>';
 export const ICO = {
+  note: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v11.2A3.4 3.4 0 1012.4 12H11V8h6V4H9z"/></svg>',
   play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.2v11.6L18.8 12z"/></svg>',
   bump: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5l6.5 6.5-1.4 1.4L12 7.8 6.9 12.9 5.5 11.5 12 5zm0 6.2l6.5 6.5-1.4 1.4L12 14l-5.1 5.1-1.4-1.4L12 11.2z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h5v14H5zm9 0h5v14h-5z"/></svg>',
@@ -25,11 +26,6 @@ export const ICO = {
   learn:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.2A2.2 2.2 0 016.2 3H20v16.2H6.6A2.6 2.6 0 014 16.6V5.2zM6.2 5H18v12.2H6.6a.6.6 0 01-.6-.6V5.2c0-.1.1-.2.2-.2zM8 7.2h8V9H8V7.2zm0 3.6h8v1.8H8v-1.8z"/></svg>'
 };
-
-export function songInitial(text) {
-  const ch = String(text || "").replace(/[^\p{L}\p{N}]/gu, "")[0];
-  return ch || "♪";
-}
 
 export function songLetter(text) {
   const folded = String(text || "").normalize("NFKC");

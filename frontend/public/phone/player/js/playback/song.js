@@ -1,4 +1,5 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
+import { songArtist, songTitle } from "../../../../shared/ui/js/song.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { roomUrl } from "../../../origin.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
@@ -17,7 +18,8 @@ import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
 import { markCurrentPlayerPick, renderPlayerList } from "./queue.js";
-import { paintDeskLyrics } from "../../../desk/lyrics.js";
+import { paintTranscript } from "./transcript.js";
+import { syncPlayerSheetMeta } from "./sheet.js";
 
 export async function loadPlayerSong(songId, opts) {
   const wantPlay = !!(opts && opts.play);
@@ -60,13 +62,14 @@ export async function loadPlayerSong(songId, opts) {
   } catch (err) {}
   const lyrics = await fetchJson(mediaUrl(song.id, "lyrics.json"));
   state.playerLyrics = lyrics.ok ? sanitizeLyrics(lyrics.data) : { cues: [] };
-  paintDeskLyrics();
+  paintTranscript();
   paintLyricMode(state.lyricMode, song.language || state.playerLyrics.language || "");
   if (gen !== state.playerLoad) return;
   state.lyricsDirty = false;
   resetPlayerFace();
-  $("playerTitle").textContent = song.title;
-  $("playerMeta").textContent = song.artist && !String(song.title).includes(song.artist) ? song.artist : "";
+  $("playerTitle").textContent = songTitle(song);
+  $("playerMeta").textContent = songArtist(song);
+  syncPlayerSheetMeta();
   setPlayerCover(song);
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
   $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");

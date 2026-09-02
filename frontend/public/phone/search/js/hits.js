@@ -81,18 +81,30 @@ export function searchCard(hit) {
       : hit.duration_match === "close"
         ? t("phone.search.durationClose")
         : "";
-  const bits = [
-    escapeHtml(hit.artist || t("common.unknownArtist")),
-    isMv ? "MV" : t("phone.search.song"),
-    durationText,
-    lyricMatch,
-    timingMatch
+  const lyricTone = Number.isFinite(lyricScore)
+    ? lyricScore >= 80
+      ? "is-good"
+      : lyricScore >= 50
+        ? "is-mid"
+        : "is-low"
+    : hit.lyrics_match === "available"
+      ? "is-good"
+      : hit.lyrics_match === "none"
+        ? "is-low"
+        : "";
+  const meta = [
+    `<i class="meta-pill ${lyricTone}">${lyricMatch}</i>`,
+    timingMatch ? `<i class="meta-pill is-good">${escapeHtml(timingMatch)}</i>` : "",
+    durationText ? `<i>${durationText}</i>` : ""
   ].filter(Boolean);
+  const source = escapeHtml(String(hit.source || ""));
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
+          <span class="list-cover ${isMv ? "mv" : ""} ${source}" aria-hidden="true">${isMv ? "MV" : ICO.note}</span>
           <div class="list-copy">
             <b>${escapeHtml(hit.title)}</b>
-            <span class="tiny">${bits.join(" · ")}</span>
+            <span class="tiny">${escapeHtml(hit.artist || t("common.unknownArtist"))}</span>
+            <span class="list-meta">${meta.join("")}</span>
           </div>
           ${hit.id ? `<button type="button" class="row-action ghost list-preview" data-preview="${escapeHtml(hit.id)}" aria-label="${t("phone.search.preview")}">${ICO.play}</button>` : ""}
           <button type="button" class="row-action list-add" data-import='${JSON.stringify(hit)}' aria-label="${t("phone.search.add")}">${ICO.plus}</button>

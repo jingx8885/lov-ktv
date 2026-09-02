@@ -1,13 +1,14 @@
 :root {
-  --bg: #030303;
+  /* 和手机端 / 共享 tokens.css 同一套底色与强调色。 */
+  --bg: #09090c;
   --ink: #ffffff;
   --mute: #a7a7a7;
   --dim: #6b7280;
-  --line: #1a1a1a;
-  --stroke: #27272a;
-  --card: #0a0a0a;
-  --alt: #050505;
-  --accent: #ff4d8d;
+  --line: #17171c;
+  --stroke: #25252d;
+  --card: #131318;
+  --alt: #0d0d11;
+  --accent: #ff375f;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -39,8 +40,8 @@ a { color: inherit; text-decoration: none; }
   position: sticky;
   top: 0;
   z-index: 30;
-  border-bottom: 1px solid rgba(26, 26, 26, 0.6);
-  background: rgba(3, 3, 3, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(9, 9, 12, 0.8);
   backdrop-filter: blur(16px);
 }
 .lp-nav-inner {
@@ -109,7 +110,7 @@ select.lang-picker {
   -webkit-appearance: none;
 }
 select.lang-picker:focus {
-  outline: 2px solid #ff4d8d;
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 .btn {
@@ -252,7 +253,7 @@ select.lang-picker:focus {
 .lp-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, transparent 38%, rgba(3, 3, 3, 0.78) 100%);
+  background: radial-gradient(ellipse at center, transparent 38%, rgba(9, 9, 12, 0.78) 100%);
 }
 @keyframes meshA {
   to { transform: translate3d(4%, 3%, 0) rotate(8deg) scale(1.08); }
@@ -386,7 +387,7 @@ select.lang-picker:focus {
   z-index: 2;
   border-radius: inherit;
   padding: 1px;
-  background: conic-gradient(from 0deg, transparent 52%, #ff4d8d, #f5c16c, #a78bfa, transparent 78%);
+  background: conic-gradient(from 0deg, transparent 52%, var(--accent), #f5c16c, #a78bfa, transparent 78%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
@@ -473,7 +474,7 @@ select.lang-picker:focus {
   flex: 1;
   height: 30%;
   border-radius: 99px;
-  background: linear-gradient(180deg, #ff4d8d, #f5c16c);
+  background: linear-gradient(180deg, var(--accent), #f5c16c);
   animation: bar 1.1s ease-in-out infinite;
 }
 .lp-bars i:nth-child(2) { animation-delay: -0.15s; }

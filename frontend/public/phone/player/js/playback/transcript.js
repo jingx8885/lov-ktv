@@ -1,9 +1,9 @@
-import { $, escapeHtml } from "../../shared/ui/js/dom.js";
-import { renderCue, clusterTokens, normLyricMode } from "../../shared/lyrics/js/paint.js";
-import { t } from "../../shared/i18n/js/i18n.js";
-import { state } from "../state.js";
-import { showToast } from "../ui/js/toast.js";
-import { api } from "../api.js";
+import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
+import { renderCue, clusterTokens, normLyricMode } from "../../../../shared/lyrics/js/paint.js";
+import { t } from "../../../../shared/i18n/js/i18n.js";
+import { state } from "../../../state.js";
+import { showToast } from "../../../ui/js/toast.js";
+import { api } from "../../../api.js";
 
 const WORDS_KEY = "lovktv.study.words";
 
@@ -42,35 +42,29 @@ export function saveStudyWord(word, cue) {
   return true;
 }
 
-function emptyView(message, action = "") {
-  return `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${escapeHtml(message)}</p>${action}</div>`;
+function emptyView(message) {
+  return `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${escapeHtml(message)}</p></div>`;
 }
 
-export function paintDeskLyrics() {
-  const pane = $("deskLyrics");
+export function paintTranscript() {
+  const pane = $("playerTranscript");
   if (!pane || pane.hidden) return;
-  const list = $("deskLyricsList");
-  const title = $("deskLyricsTitle");
+  const list = $("transcriptList");
   const song = state.playerSong;
   const cues = state.playerLyrics?.cues || [];
-  if (title)
-    title.textContent = song ? `${song.title}${song.artist ? ` · ${song.artist}` : ""}` : t("phone.lyrics.noSong");
   if (!list) return;
   if (!cues.length) {
-    list.innerHTML = emptyView(
-      song ? t("phone.lyrics.empty") : t("phone.lyrics.noSongHint"),
-      song ? "" : `<button class="btn primary" type="button" data-go-player>${t("phone.lyrics.goListen")}</button>`
-    );
+    list.innerHTML = emptyView(song ? t("phone.lyrics.empty") : t("phone.lyrics.noSongHint"));
     return;
   }
   const mode = normLyricMode(state.lyricMode || "all");
   list.innerHTML = cues
     .map(
       (cue, cueIndex) =>
-        `<article class="desk-lyric-line lyrics" data-cue-index="${cueIndex}">${renderCue(cue, 1e12, mode)}</article>`
+        `<article class="transcript-line lyrics" data-cue-index="${cueIndex}">${renderCue(cue, 1e12, mode)}</article>`
     )
     .join("");
-  list.querySelectorAll(".desk-lyric-line").forEach((line) => {
+  list.querySelectorAll(".transcript-line").forEach((line) => {
     const cue = cues[Number(line.dataset.cueIndex)];
     const tokens = clusterTokens(cue.tokens || []);
     line.querySelectorAll(".tok").forEach((node, index) => {
@@ -92,8 +86,8 @@ export function paintDeskLyrics() {
   });
 }
 
-export function bindDeskLyrics() {
-  const study = $("deskStudyBook");
+export function bindTranscript() {
+  const study = $("transcriptStudyBook");
   if (study) {
     study.onclick = async () => {
       if (!state.playerSong) return showToast(t("phone.player.needSong"));
@@ -101,17 +95,5 @@ export function bindDeskLyrics() {
       await api.enterLearn();
       api.openStudyBook();
     };
-  }
-  document.querySelectorAll("[data-go-player]").forEach((btn) => {
-    btn.onclick = () => {
-      if (state.playerSong) api.showPage("player");
-    };
-  });
-  const list = $("deskLyricsList");
-  if (list) {
-    list.addEventListener("click", (event) => {
-      const btn = event.target.closest("[data-go-player]");
-      if (btn && state.playerSong) api.showPage("player");
-    });
   }
 }

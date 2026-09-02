@@ -52,27 +52,3 @@
   color: #fff;
   font-size: 13px;
 }
-.ad-wait-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0 0;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 77, 141, .12);
-  color: var(--muted);
-  font-size: 12px;
-}
-.ad-wait-bar[hidden] { display: none !important; }
-.ad-wait-bar button {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--accent);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-}

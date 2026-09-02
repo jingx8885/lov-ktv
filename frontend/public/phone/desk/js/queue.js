@@ -4,9 +4,10 @@ import { adoptLan, lanOrigin, roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
-import { ICO, songInitial, paintTopRoom } from "../../ui/js/icons.js";
+import { ICO, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
+import { songArtist, songTitle } from "../../../shared/ui/js/song.js";
 import { fetchRoom, roomStamp } from "../../room/js/room/state.js";
 
 let lastLanFailAt = 0;
@@ -17,6 +18,7 @@ export async function loadRoom(opts) {
   const injected = opts && opts.room;
   const code = $("room").value.trim();
   if (!code) {
+    if ($("nowBar")) $("nowBar").classList.add("is-idle");
     if ($("nowCard") && !$("nowCard").innerHTML.trim()) {
       $("nowCard").innerHTML =
         `<div class="now-idle"><span class="now-cover">${ICO.listen}</span><div><b>${t("phone.desk.idle")}</b><p class="tiny">${t("phone.desk.idleHint")}</p></div></div>`;
@@ -62,13 +64,14 @@ export async function loadRoom(opts) {
   api.paintMix(room);
   api.connectRoomRtc(code);
   if ($("queueCount")) $("queueCount").textContent = room.queue.length ? String(room.queue.length) : "";
+  if ($("nowBar")) $("nowBar").classList.toggle("is-idle", !now);
   $("nowCard").innerHTML = now
     ? `<div class="now-hit">
-            <span class="now-cover">${now.status === "ready" ? ICO.play : escapeHtml(songInitial(now.title))}</span>
+            <span class="now-cover">${now.status === "ready" ? ICO.play : ICO.note}</span>
             <div>
               <p class="kicker">${now.status === "ready" ? t("phone.desk.now") : STATUS[now.status] || now.status}</p>
-              <b>${escapeHtml(now.title)}</b>
-              <p class="tiny">${escapeHtml(now.artist || "")}</p>
+              <b>${escapeHtml(songTitle(now))}</b>
+              <p class="tiny">${escapeHtml(songArtist(now))}</p>
             </div>
           </div>`
     : `<div class="now-idle">
@@ -85,7 +88,7 @@ export async function loadRoom(opts) {
         <div class="desk-row ${playing ? "on" : ""}">
           <span class="desk-index ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1)}</span>
           <div class="desk-copy">
-            <b>${escapeHtml(item.title)}</b>
+            <b>${escapeHtml(songTitle(item))}</b>
             <span class="tiny">${playing ? t("phone.desk.now") : ready ? t("phone.desk.nextQueued") : STATUS[item.status] || item.status}</span>
           </div>
           <div class="desk-actions">

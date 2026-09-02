@@ -6,9 +6,10 @@ import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
+import { songArtist, songTitle } from "../../../shared/ui/js/song.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
-import { handlePointError, syncWaitBar } from "../../ui/js/ads.js";
+import { handlePointError } from "../../ui/js/ads.js";
 
 function nearBottom(el) {
   if (!el) return false;
@@ -16,23 +17,20 @@ function nearBottom(el) {
 }
 
 export function showDeskPane(name) {
-  const pane = name === "lib" || name === "lyrics" ? name : "queue";
+  const pane = name === "lib" ? "lib" : "queue";
   $("queue").hidden = pane !== "queue";
   $("libPane").hidden = pane !== "lib";
-  const lyricsPane = $("deskLyrics");
-  if (lyricsPane) lyricsPane.hidden = pane !== "lyrics";
   document.querySelectorAll("[data-desk]").forEach((btn) => {
     btn.classList.toggle("on", btn.dataset.desk === pane);
   });
   if (pane === "lib") loadSongs();
-  if (pane === "lyrics") {
-    api.paintDeskLyrics();
-    if (!state.playerSong && api.bootPlayer) Promise.resolve(api.bootPlayer()).then(() => api.paintDeskLyrics());
-  }
 }
 
 export function renderLibIndex(letters) {
   const have = new Map((letters || []).map((item) => [item.key, item.count]));
+  const total = [...have.values()].reduce((sum, n) => sum + n, 0);
+  // A letter rail only earns its column once the catalog outgrows one screen.
+  $("libIndex").hidden = !state.libState.letter && total < 24;
   $("libIndex").innerHTML =
     `<button type="button" class="lib-letter ${state.libState.letter ? "" : "on"}" data-lib-letter="">${t("phone.desk.letterAll")}</button>` +
     LIB_LETTERS.map((key) => {
@@ -61,8 +59,8 @@ function songRow(song) {
   return `
         <div class="desk-row ${canPlay ? "" : "busy"}" data-song="${escapeHtml(song.id)}">
           <div class="desk-copy">
-            <b>${escapeHtml(song.title)}</b>
-            <span class="tiny">${escapeHtml(song.artist || t("common.unknownArtist"))} ${mv}${pill}</span>
+            <b>${escapeHtml(songTitle(song))}</b>
+            <span class="tiny">${escapeHtml(songArtist(song) || t("common.unknownArtist"))} ${mv}${pill}</span>
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
@@ -305,7 +303,6 @@ export async function loadSongs(append = false, force = false) {
     }
   }
   renderLibTail(state.libState.page, state.libPages, data.total || 0);
-  syncWaitBar(state.libSongs);
   bindSongActions();
 }
 

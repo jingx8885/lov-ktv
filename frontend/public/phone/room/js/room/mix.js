@@ -29,10 +29,15 @@ function fullscreenTarget() {
   return $("playerMain") || $("page-player");
 }
 
+/** Safari still exposes fullscreen only under the webkit prefix. */
+function doc() {
+  return /** @type {any} */ (document);
+}
+
 function fullscreenActive() {
   return !!(
     document.fullscreenElement ||
-    document.webkitFullscreenElement ||
+    doc().webkitFullscreenElement ||
     document.body.classList.contains("player-fullscreen")
   );
 }
@@ -53,7 +58,7 @@ async function exitPlayerFullscreen() {
   document.body.classList.remove("player-fullscreen");
   try {
     if (document.fullscreenElement && document.exitFullscreen) await document.exitFullscreen();
-    else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (doc().webkitFullscreenElement && doc().webkitExitFullscreen) doc().webkitExitFullscreen();
   } catch (err) {}
   try {
     if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
@@ -169,7 +174,7 @@ export function paintLyricMode(mode, language) {
     select.value = next;
     select.setAttribute("aria-label", t("phone.lyric.mode"));
   });
-  if (api.paintDeskLyrics) api.paintDeskLyrics();
+  if (api.paintTranscript) api.paintTranscript();
 }
 
 export function paintMix(room) {

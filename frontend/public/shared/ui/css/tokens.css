@@ -1,10 +1,20 @@
 :root {
-  --bg: #0b1020;
-  --card: #151b2e;
+  /* 全端共用色板：与手机端 shell.css 同一套 surface / accent。 */
+  --bg: #09090c;
+  --surface-1: #131318;
+  --surface-2: #1b1b21;
+  --surface-3: #25252d;
+  --card: var(--surface-2);
+  --line: rgba(255, 255, 255, .07);
+  --line-strong: rgba(255, 255, 255, .12);
   --text: #f4f1ea;
   --muted: #9aa3b5;
-  --accent: #ff4d8d;
+  --accent: #ff375f;
+  --accent-soft: rgba(255, 55, 95, .14);
   --gold: #f5c16c;
+  --r-s: 10px;
+  --r-m: 14px;
+  --r-l: 20px;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: "Noto Sans SC", "PingFang SC", sans-serif; }
@@ -30,7 +40,7 @@ h1, h2 { margin: .2em 0 .4em; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
   min-height: 48px; padding: 0 18px; border-radius: 999px;
-  background: #3a4670; text-decoration: none; border: 0; color: var(--text); font-size: 16px;
+  background: var(--surface-3); text-decoration: none; border: 0; color: var(--text); font-size: 16px;
   cursor: pointer; position: relative; z-index: 3; flex: 0 0 auto; pointer-events: auto;
 }
 .btn:hover, .btn:focus { filter: brightness(1.12); }

@@ -27,13 +27,14 @@
   z-index: 60;
   display: grid;
   place-items: center;
-  background: rgba(11, 16, 32, .78);
+  background: rgba(9, 9, 12, .78);
 }
 .login-gate[hidden] { display: none; }
 .login-card {
   width: min(520px, 92vw);
   background: var(--card);
-  border-radius: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-l);
   padding: 28px 28px 22px;
   text-align: center;
 }

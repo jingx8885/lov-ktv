@@ -1,6 +1,24 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
+import { paintTranscript } from "./transcript.js";
+import { songTitle } from "../../../../shared/ui/js/song.js";
+
+let sheetPane = "lib";
+
+/** Switch the drawer between the song list and the tappable transcript. */
+export function setSheetPane(name) {
+  sheetPane = name === "lyrics" ? "lyrics" : "lib";
+  const lib = $("playerSheetLib");
+  const transcript = $("playerTranscript");
+  if (lib) lib.hidden = sheetPane !== "lib";
+  if (transcript) transcript.hidden = sheetPane !== "lyrics";
+  document.querySelectorAll("[data-sheet-pane]").forEach((btn) => {
+    btn.classList.toggle("on", btn.dataset.sheetPane === sheetPane);
+  });
+  if (sheetPane === "lyrics") paintTranscript();
+  syncPlayerSheetMeta();
+}
 
 const PEEK_PORT = 58;
 const PEEK_LAND = 48;
@@ -115,6 +133,11 @@ export function syncPlayerSheetMeta() {
   const count = (state.playerCatalog || []).length;
   const title = $("playerSheetTitle");
   const meta = $("playerSheetMeta");
+  if (sheetPane === "lyrics") {
+    if (title) title.textContent = t("phone.desk.lyrics");
+    if (meta) meta.textContent = state.playerSong ? songTitle(state.playerSong) : "";
+    return;
+  }
   if (title) title.textContent = t("phone.desk.lib");
   if (meta) meta.textContent = count ? t("phone.desk.nSongs", { n: count }) : t("phone.player.noPlayable");
 }
@@ -228,6 +251,12 @@ export function bindPlayerSheet() {
   }
 
   if (scrim) scrim.onclick = () => setPlayerSheet("peek", true);
+  document.querySelectorAll("[data-sheet-pane]").forEach((btn) => {
+    btn.onclick = () => {
+      setSheetPane(btn.dataset.sheetPane);
+      if (sheet.dataset.snap !== "open") setPlayerSheet("open", true);
+    };
+  });
 
   window.addEventListener("resize", () => {
     if ($("page-player") && !$("page-player").hidden) syncPlayerSheet();

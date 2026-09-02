@@ -3,7 +3,7 @@ import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
 import { showToast } from "../../../ui/js/toast.js";
-import { getStudyWords } from "../../../desk/lyrics.js";
+import { getStudyWords } from "../playback/transcript.js";
 
 /** @type {LearnCampaign | null} */
 let campaign = null;

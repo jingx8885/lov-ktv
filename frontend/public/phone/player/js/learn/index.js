@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
+import { songArtist, songTitle } from "../../../../shared/ui/js/song.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
@@ -14,7 +15,7 @@ import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js
 import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
-import { getStudyWords } from "../../../desk/lyrics.js";
+import { getStudyWords } from "../playback/transcript.js";
 
 /** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any }} */
 const ui = {
@@ -130,8 +131,8 @@ function openLearnShell() {
   $("topTitle").textContent = t("learn.pageTitle");
   syncLearnNav(true);
   $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = state.playerSong ? `${state.playerSong.title}` : "";
-  $("learnSong").textContent = state.playerSong ? state.playerSong.title : "";
+  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
+  $("learnSong").textContent = state.playerSong ? songTitle(state.playerSong) : "";
   paintDiff();
 }
 
@@ -167,7 +168,7 @@ function goHome() {
   ui.pendingScore = null;
   showPane("learnHome");
   $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
+  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
   paintDiff();
   loadCampaign(true).then((data) => {
     if (data) paintCampaign(data);
@@ -200,7 +201,7 @@ function paintLearnSongList(songs, campaigns) {
       const current = state.playerSong && state.playerSong.id === song.id;
       return `<button type="button" class="learn-song-row${progress.done ? " is-complete" : ""}${current ? " is-current" : ""}" data-learn-song="${escapeHtml(song.id)}">
         <span class="learn-song-cover">${progress.done ? "✓" : "♪"}</span>
-        <span class="learn-song-copy"><b>${escapeHtml(song.title || "")}</b><small>${escapeHtml(song.artist || t("common.unknownArtist"))}</small></span>
+        <span class="learn-song-copy"><b>${escapeHtml(songTitle(song))}</b><small>${escapeHtml(songArtist(song) || t("common.unknownArtist"))}</small></span>
         <span class="learn-song-progress"><i style="--pct:${progress.pct}%"></i><em>${progress.done ? escapeHtml(t("learn.completed")) : `${progress.pct}%`}</em></span>
       </button>`;
     })
@@ -258,8 +259,8 @@ async function selectLearnSong(songId) {
   }
   showPane("learnHome");
   $("learnTitle").textContent = t("learn.pageTitle");
-  $("learnMeta").textContent = state.playerSong.title;
-  $("learnSong").textContent = state.playerSong.title;
+  $("learnMeta").textContent = songTitle(state.playerSong);
+  $("learnSong").textContent = songTitle(state.playerSong);
   const data = await loadCampaign(true, true);
   if (data) paintCampaign(data);
   else paintCampaign(null);
@@ -288,7 +289,7 @@ function showScore(score) {
   const view = spec.score(score, gradeLabel);
   showPane("learnScore");
   $("learnTitle").textContent = view.title;
-  $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
+  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
   $("learnScoreNum").textContent = String(score.pct);
   $("learnScoreSub").textContent = view.sub;
   $("learnScoreDetail").textContent = view.detail;
@@ -500,7 +501,7 @@ export async function openStudyBook(kind = "") {
   showPane("learnBook");
   $("learnTitle").textContent =
     kind === "words" ? t("learn.wordsBook") : kind === "mistakes" ? t("learn.mistakesBook") : t("learn.book");
-  $("learnMeta").textContent = state.playerSong ? state.playerSong.title : "";
+  $("learnMeta").textContent = state.playerSong ? songTitle(state.playerSong) : "";
   const go = $("learnBookGo");
   if (go) go.hidden = kind === "words" || !rows.length;
 }

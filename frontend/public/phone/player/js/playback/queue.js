@@ -1,4 +1,5 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
+import { songArtist, songTitle } from "../../../../shared/ui/js/song.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state, LIB_LETTERS } from "../../../state.js";
@@ -14,7 +15,7 @@ export function updatePlayOrderBtns() {
   const label = shuffle ? t("common.shuffle") : t("common.seq");
   const main = $("playerOrder");
   if (main) {
-    main.innerHTML = `${icon}<em class="vh" id="playerOrderLabel">${label}</em>`;
+    main.innerHTML = `${icon}<em id="playerOrderLabel">${label}</em>`;
     main.setAttribute("aria-label", shuffle ? t("common.shufflePlay") : t("common.seqPlay"));
     main.classList.toggle("on", shuffle);
   }
@@ -79,8 +80,8 @@ export function renderPlayerList() {
         (song) => `
         <button type="button" class="list-row player-pick${song.id === cur ? " on" : ""}" data-pick="${song.id}" data-letter="${escapeHtml(song.letter || songLetter(song.title))}">
           <span class="list-copy">
-            <b>${escapeHtml(song.title)}</b>
-            <span class="tiny">${escapeHtml(song.artist || "")}</span>
+            <b>${escapeHtml(songTitle(song))}</b>
+            <span class="tiny">${escapeHtml(songArtist(song))}</span>
           </span>
         </button>
       `

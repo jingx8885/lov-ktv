@@ -4,7 +4,7 @@
   --auth-line: rgba(255, 255, 255, .1);
   --auth-soft: rgba(255, 255, 255, .06);
   --auth-muted: #a5a2b1;
-  --auth-pink: #ff4d8d;
+  --auth-pink: #ff375f;
   --auth-purple: #9c7aff;
   --auth-green: #23c987;
 }
@@ -80,7 +80,7 @@ body.auth-page::before {
 .password-toggle { flex: 0 0 auto; margin: 0 7px 0 4px; padding: 7px; border: 0; color: #a49fab; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
 .password-toggle:hover { color: #fff; }
 .auth-submit { width: 100%; min-height: 50px; margin-top: 5px; border-radius: 12px; font-size: 15px; font-weight: 700; }
-.btn.primary { background: linear-gradient(100deg, #ff4d8d, #d85cff); box-shadow: 0 13px 30px rgba(224,67,151,.25); }
+.btn.primary { background: linear-gradient(100deg, #ff375f, #d85cff); box-shadow: 0 13px 30px rgba(224,67,151,.25); }
 .switch-auth { display: block; margin: 16px auto 0; padding: 3px 5px; border: 0; color: #847f8d; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
 .switch-link { color: #ff8eb8; font-weight: 650; }
 .scan-card { margin-top: 22px; }

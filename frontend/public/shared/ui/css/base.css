@@ -127,6 +127,6 @@ select.lang-picker:focus {
   background: #1c1619;
   color: #f6f1ea;
 }
-.lp .lang-picker button.on { background: #ff4d8d; color: #fff; }
+.lp .lang-picker button.on { background: var(--accent); color: #fff; }
 .user-chip .lang-picker { margin: 0 8px 0 0; }
 .login-card .lang-picker { justify-content: center; }

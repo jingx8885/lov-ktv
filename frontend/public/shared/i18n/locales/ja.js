@@ -199,6 +199,7 @@ export default {
   "phone.player.micSing": "マイクで歌う",
   "phone.player.micOn": "マイク使用中",
   "phone.player.iem": "イヤホンモニター",
+  "phone.player.iemShort": "モニター",
   "phone.player.micHintIdle": "イヤホンをつけてください。伴奏と声はイヤホン内だけなので、ハウリングしません。",
   "phone.player.done": "完了",
   "phone.align.hint": "ブロックを吸着させ、離すとその行から再生",
@@ -239,7 +240,7 @@ export default {
   "phone.search.quotaLogin": "ログイン",
   "phone.who.points": "{n} ポイント",
   "phone.who.pointsRule": "予約 1pt · 処理 5pt · 30秒広告 +1",
-  "phone.who.watchAd": "広告を見る +1",
+  "phone.who.watchAd": "広告でポイント",
   "phone.who.logout": "ログアウト",
   "phone.who.bye": "ログアウトしました",
   "phone.mic.liveTv": "マイクはテレビに接続済み",
@@ -423,7 +424,6 @@ export default {
   "ads.done": "完了、+1 ポイント",
   "ads.earned": "+1 ポイント",
   "ads.watch": "広告を見てポイント",
-  "ads.processing": "処理中。広告でポイントを稼げます",
   "login.wechatBtn": "WeChatでログイン",
   "login.wechatHint": "テレビのコードをWeChatでスキャン。確認タップは不要。",
   "login.deviceBtn": "この端末でID取得",
@@ -488,10 +488,8 @@ export default {
   "admin.roomMeta": "予約 {n} · 再生中 {title}",
 
   "landing.title": "lov-ktv · あなたの舞台 いつでも歌える",
-  "landing.desc":
-    "テレビをつけて歌い、スマホで選曲。家族の集まり、友達との部屋、一人の練習にもすぐ使えます。",
-  "landing.ogDesc":
-    "テレビは大画面、スマホは選曲台。みんなで部屋に入り、歌いたい曲を次々に入れられます。",
+  "landing.desc": "テレビをつけて歌い、スマホで選曲。家族の集まり、友達との部屋、一人の練習にもすぐ使えます。",
+  "landing.ogDesc": "テレビは大画面、スマホは選曲台。みんなで部屋に入り、歌いたい曲を次々に入れられます。",
   "landing.nav.ritual": "3ステップで開始",
   "landing.nav.features": "できること",
   "landing.nav.versus": "比較",
@@ -501,12 +499,10 @@ export default {
   "landing.hero.badge": "家庭カラオケ · いつでも開演",
   "landing.hero.h1a": "あなたの舞台",
   "landing.hero.h1b": "いつでも歌える",
-  "landing.hero.lead":
-    "テレビで大画面、スマホで選曲。検索、予約、曲送りまで一台で完了。家族や友達もすぐ使えます。",
+  "landing.hero.lead": "テレビで大画面、スマホで選曲。検索、予約、曲送りまで一台で完了。家族や友達もすぐ使えます。",
   "landing.hero.tv": "今すぐ歌う",
   "landing.hero.phone": "スマホで選曲",
-  "landing.hero.fine":
-    "説明書はいりません。テレビにQRを出し、スマホで読み込めば最初の曲が始まります。",
+  "landing.hero.fine": "説明書はいりません。テレビにQRを出し、スマホで読み込めば最初の曲が始まります。",
   "landing.apps.tv": "テレビ App をダウンロード",
   "landing.apps.phone": "スマホ App をダウンロード",
   "landing.apps.ver": "{version} · {size}",
@@ -531,11 +527,9 @@ export default {
   "landing.hook1.p":
     "スマホにマスター音源はまず無い。本線は曲名検索：試聴して確認し、曲庫へ入れる。処理は自動で終わる。",
   "landing.hook2.h": "原曲とカラオケを切替",
-  "landing.hook2.p":
-    "原曲とカラオケはいつでも切替。まず練習して、みんなで思いきり歌えます。",
+  "landing.hook2.p": "原曲とカラオケはいつでも切替。まず練習して、みんなで思いきり歌えます。",
   "landing.hook3.h": "歌詞が口に合わせて進む",
-  "landing.hook3.p":
-    "大画面の歌詞は見やすく、今の行と次の行が一目で分かります。初めてでも安心です。",
+  "landing.hook3.p": "大画面の歌詞は見やすく、今の行と次の行が一目で分かります。初めてでも安心です。",
   "landing.ritual.eye": "入室から最初の1曲まで",
   "landing.ritual.h": "テレビがコードを出し、スマホで入り、すぐ歌い始める",
   "landing.ritual.1h": "大画面をつける",
@@ -589,8 +583,7 @@ export default {
   "landing.faq.eye": "本番前に聞きたくなること",
   "landing.faq.h": "つまずきやすいところを先に。",
   "landing.faq.1q": "専用のテレビ機器は必要ですか？",
-  "landing.faq.1a":
-    "いいえ。ブラウザが開けるテレビ、プロジェクター、PCなら使えます。アプリは必要に応じて選べます。",
+  "landing.faq.1a": "いいえ。ブラウザが開けるテレビ、プロジェクター、PCなら使えます。アプリは必要に応じて選べます。",
   "landing.faq.2q": "どうやって曲を追加しますか？",
   "landing.faq.2a": "曲名を入力して試聴し、部屋の予約に追加します。手元の音声を加えることもできます。",
   "landing.faq.3q": "家族が機械に弱くても使えますか？",
@@ -609,5 +602,33 @@ export default {
   "landing.foot.note": "個人または家庭LAN専用。曲庫を公開しないでください。",
   "landing.foot.tv": "テレビ",
   "landing.foot.phone": "選曲",
-  "landing.foot.login": "ID取得"
+  "landing.foot.login": "ID取得",
+
+  "phone.desk.lyrics": "歌詞",
+  "phone.lyrics.noSongHint": "先に曲庫から曲を選んでください",
+  "phone.lyrics.empty": "この曲にはまだ歌詞がありません",
+  "phone.lyrics.tapHint": "歌詞の単語をタップして学習帳に保存",
+  "phone.lyrics.studyBook": "学習帳",
+  "phone.lyrics.wordAdded": "「{word}」を保存しました",
+  "phone.lyrics.wordSaved": "この単語はすでに学習帳にあります",
+
+  "learn.libraryKicker": "学習センター",
+  "learn.libraryLead": "曲を選び、前回の続きから始めましょう。",
+  "learn.searchPh": "追加済みの曲を検索",
+  "learn.searchClear": "検索を消去",
+  "learn.searchMore": "曲を検索して追加",
+  "learn.addedSongs": "追加した曲",
+  "learn.songCount": "{n} 曲",
+  "learn.noAddedSongs": "学習できる曲がまだありません",
+  "learn.completed": "学習済み",
+  "learn.mistakesBook": "間違い帳",
+  "learn.mistakesBookHint": "間違えた行をもう一度練習",
+  "learn.wordsBook": "単語帳",
+  "learn.wordsBookHint": "歌詞から保存した単語を復習",
+  "learn.savedWords": "保存した単語",
+  "learn.savedFromLyrics": "歌詞から",
+  "learn.mistakes": "間違い",
+  "learn.bookSummary": "単語 {words} · 間違い {mistakes}",
+  "learn.wordsSummary": "復習する単語 {n}",
+  "learn.mistakesSummary": "復習する間違い {n}"
 };
