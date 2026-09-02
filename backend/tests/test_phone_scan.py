@@ -16,7 +16,9 @@ def test_phone_app_does_not_force_tv_on_boot():
     assert "export function hasNativeScan" in join
     assert "platformScanTv" in join
     assert "hasNativeScan() && !tvBound()" not in app
-    assert '? "player" : "desk"' not in app
+    # Keep this assertion focused on the actual boot-page assignment below;
+    # other features (for example notification metadata) may legitimately use
+    # a player/desk ternary without changing the initial page.
     assert 'bootPage = PAGES.includes(bootHash) ? bootHash : "desk"' in app
     assert '!$must("room").value) openOverlay("roomSheet")' not in app
     assert 'if (bootHash === "room") openOverlay("roomSheet")' in app

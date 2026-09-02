@@ -562,9 +562,10 @@ def install_video(src: Path, dest: Path) -> bool:
         return False
     codec = video_codec(src)
     try:
-        if codec in {"h264", "avc1"} and src.suffix.lower() == ".mp4":
-            shutil.copy2(src, dest)
-        elif codec in {"h264", "avc1"}:
+        if codec in {"h264", "avc1"}:
+            # Keep the fast path (no video re-encode), but always remux so
+            # the native TV MTV player cannot leak the source video's audio
+            # alongside the canonical karaoke/original audio element.
             _ffmpeg("-i", str(src), "-map", "0:v:0", "-c:v", "copy", "-an", str(dest))
         else:
             _ffmpeg(

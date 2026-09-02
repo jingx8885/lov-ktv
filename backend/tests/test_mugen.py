@@ -44,18 +44,26 @@ def test_install_video_encodes_av1(tmp_path, monkeypatch):
     assert "libx264" in calls[0][0]
 
 
-def test_install_video_copies_h264_mp4(tmp_path, monkeypatch):
+def test_install_video_strips_audio_from_h264_mp4(tmp_path, monkeypatch):
     src = tmp_path / "clip.mp4"
     dest = tmp_path / "mtv.mp4"
     src.write_bytes(b"v" * 2000)
     monkeypatch.setattr(mugen, "video_codec", lambda path: "h264")
-    monkeypatch.setattr(
-        mugen,
-        "_ffmpeg",
-        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("copy h264")),
-    )
+    calls = []
+
+    def fake_ffmpeg(*args, timeout=300):
+        calls.append((args, timeout))
+        dest.write_bytes(b"v" * 2000)
+
+    monkeypatch.setattr(mugen, "_ffmpeg", fake_ffmpeg)
     assert mugen.install_video(src, dest)
-    assert dest.read_bytes() == src.read_bytes()
+    assert calls
+    args = calls[0][0]
+    assert "-map" in args
+    assert args[args.index("-map") + 1] == "0:v:0"
+    assert "-c:v" in args
+    assert args[args.index("-c:v") + 1] == "copy"
+    assert "-an" in args
 
 
 def test_finish_ready_lyrics_marks_native_video(tmp_path, monkeypatch):
