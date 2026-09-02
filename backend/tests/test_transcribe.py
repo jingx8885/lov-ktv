@@ -235,6 +235,51 @@ def test_transcribe_uses_grok_verbose_word_timestamps(monkeypatch, tmp_path):
     assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
 
 
+def test_grok_keeps_successful_chunks_when_a_later_chunk_fails(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    chunk_one = tmp_path / "chunk-one.mp3"
+    chunk_two = tmp_path / "chunk-two.mp3"
+    chunk_one.write_bytes(b"one")
+    chunk_two.write_bytes(b"two")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(
+        transcribe,
+        "_remote_chunks",
+        lambda _path, audio_format="wav": iter([(chunk_one, 0.0), (chunk_two, 30.0)]),
+    )
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _path: True)
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"words": [{"start": 0.1, "end": 0.4, "text": "kept"}]}
+
+    calls = 0
+
+    def fake_post(*_args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise RuntimeError("upstream chunk failed")
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+
+    assert calls == 2
+    assert words == [{"text": "kept", "start_ms": 100, "end_ms": 400, "segment": 0}]
+    assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
+
+
 def test_remote_model_does_not_reuse_legacy_whisper_cache(monkeypatch, tmp_path):
     from lovktv.pipeline import transcribe
 

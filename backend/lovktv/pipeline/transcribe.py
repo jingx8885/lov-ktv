@@ -330,23 +330,26 @@ def _transcribe_grok(
         for chunk, offset in _remote_chunks(audio_path, audio_format="mp3"):
             if not _audio_has_voice(chunk):
                 continue
-            mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
-            with chunk.open("rb") as audio:
-                response = httpx.post(
-                    url,
-                    headers={"Authorization": f"Bearer {key}"},
-                    data=data,
-                    files={"file": (chunk.name, audio, mime)},
-                    timeout=180.0,
-                )
-            response.raise_for_status()
-            payload = response.json()
-            if not isinstance(payload, dict):
+            try:
+                mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
+                with chunk.open("rb") as audio:
+                    response = httpx.post(
+                        url,
+                        headers={"Authorization": f"Bearer {key}"},
+                        data=data,
+                        files={"file": (chunk.name, audio, mime)},
+                        timeout=180.0,
+                    )
+                response.raise_for_status()
+                payload = response.json()
+                if not isinstance(payload, dict):
+                    continue
+                for word in _parse_grok_payload(payload):
+                    word["start_ms"] += int(offset * 1000)
+                    word["end_ms"] += int(offset * 1000)
+                    all_words.append(word)
+            except Exception:  # noqa: BLE001 - one bad chunk must not erase good chunks
                 continue
-            for word in _parse_grok_payload(payload):
-                word["start_ms"] += int(offset * 1000)
-                word["end_ms"] += int(offset * 1000)
-                all_words.append(word)
         all_words = _dedupe_words(all_words)
         if cache_path and all_words:
             cache_path.parent.mkdir(parents=True, exist_ok=True)
