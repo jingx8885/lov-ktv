@@ -256,6 +256,8 @@ def _looks_like_wrong_lyric_version(
         return False
     scores: list[float] = []
     low_times: list[int] = []
+    offsets: list[int] = []
+    lyric_order: list[int] = []
     for match in matches:
         try:
             lyric = int(match["lyric"]) - 1
@@ -268,11 +270,22 @@ def _looks_like_wrong_lyric_version(
         heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
         score = _line_match_score(str(kept[lyric].get("text") or ""), heard, language)
         scores.append(score)
+        lyric_order.append(lyric)
+        if kept[lyric].get("ms") is not None:
+            offsets.append(int(words[start].get("start_ms") or 0) - int(kept[lyric]["ms"]))
         low_threshold = 0.7 if language in {"zh", "yue"} else 0.45
         if score < low_threshold:
             low_times.append(int(words[start].get("start_ms") or 0))
     if len(scores) < 3:
         return False
+    # An edited recording can still yield high lexical scores while the
+    # agent labels an earlier LRC duplicate for a later ASR occurrence.  A
+    # backwards lyric-number jump plus widely varying clock offsets is a
+    # stronger version-mismatch signal than low word scores alone.
+    reordered = any(right < left for left, right in zip(lyric_order, lyric_order[1:]))
+    offset_spread = max(offsets) - min(offsets) if offsets else 0
+    if reordered and len(scores) >= 5 and offset_spread >= 15_000:
+        return True
     low = len(low_times)
     # Two or more low-confidence spans spread through the recording are
     # enough evidence; a single Whisper miss should still use the LRC clock.

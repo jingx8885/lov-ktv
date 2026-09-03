@@ -283,6 +283,33 @@ def test_low_coverage_english_version_drift_uses_actual_asr_clock():
     assert all(cue["start_ms"] != 20_000 for cue in timeline["cues"])
 
 
+def test_reordered_high_score_anchors_detect_edited_english_version():
+    lines = [{"ms": i * 20_000, "text": text} for i, text in enumerate(
+        ["first line", "second line", "third line", "fourth line", "fifth line"]
+    )]
+    asr = [
+        {"text": "first", "start_ms": 0, "end_ms": 300},
+        {"text": "line", "start_ms": 300, "end_ms": 600},
+        {"text": "second", "start_ms": 10_000, "end_ms": 10_300},
+        {"text": "line", "start_ms": 10_300, "end_ms": 10_600},
+        {"text": "fifth", "start_ms": 30_000, "end_ms": 30_300},
+        {"text": "line", "start_ms": 30_300, "end_ms": 30_600},
+        {"text": "fourth", "start_ms": 40_000, "end_ms": 40_300},
+        {"text": "line", "start_ms": 40_300, "end_ms": 40_600},
+        {"text": "third", "start_ms": 50_000, "end_ms": 50_300},
+        {"text": "line", "start_ms": 50_300, "end_ms": 50_600},
+    ]
+    matches = [
+        {"lyric": 1, "from": 1, "to": 2},
+        {"lyric": 2, "from": 3, "to": 4},
+        {"lyric": 5, "from": 5, "to": 6},
+        {"lyric": 4, "from": 7, "to": 8},
+        {"lyric": 3, "from": 9, "to": 10},
+    ]
+    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
+    assert timeline["alignment_source"] == "whisper-transcript-fallback"
+
+
 def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
     timeline = align_lyrics(
         [{"ms": i * 10_000, "text": text} for i, text in enumerate(
