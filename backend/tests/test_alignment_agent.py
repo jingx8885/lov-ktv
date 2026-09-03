@@ -1,7 +1,7 @@
 import json
 
 from lovktv.agents import alignment
-from lovktv.pipeline.orchestrator import align_lyrics
+from lovktv.pipeline.orchestrator import align_lyrics, _timeline_from_asr_words
 
 
 def test_agent_matches_are_validated_and_cached(tmp_path, monkeypatch):
@@ -352,3 +352,38 @@ def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
     text = " ".join(cue["text"] for cue in timeline["cues"])
     assert "實際第二句" in text
     assert "舊第二句" not in text
+
+
+def test_transcript_fallback_fills_one_known_line_between_reliable_anchors():
+    timeline = _timeline_from_asr_words(
+        asr_words=[
+            {"text": "first", "start_ms": 0, "end_ms": 200},
+            {"text": "line", "start_ms": 200, "end_ms": 400},
+            # The middle line is badly heard, but its time falls between
+            # reliable agent anchors and must not disappear from the cue list.
+            {"text": "I", "start_ms": 1_000, "end_ms": 1_100},
+            {"text": "believe", "start_ms": 1_100, "end_ms": 1_300},
+            {"text": "my", "start_ms": 1_300, "end_ms": 1_450},
+            {"text": "heart", "start_ms": 1_450, "end_ms": 1_700},
+            {"text": "from", "start_ms": 2_000, "end_ms": 2_200},
+            {"text": "now", "start_ms": 2_200, "end_ms": 2_400},
+            {"text": "on", "start_ms": 2_400, "end_ms": 2_600},
+        ],
+        language="en",
+        duration_ms=4_000,
+        lines=[
+            {"ms": 0, "text": "first line"},
+            {"ms": 1_000, "text": "like an anthem in my heart"},
+            {"ms": 2_000, "text": "from now on"},
+        ],
+        matches=[
+            {"lyric": 1, "from": 1, "to": 2},
+            {"lyric": 3, "from": 7, "to": 9},
+        ],
+    )
+    assert timeline and timeline["alignment_source"] == "whisper-transcript-fallback"
+    assert [cue["text"] for cue in timeline["cues"]] == [
+        "first line",
+        "like an anthem in my heart",
+        "from now on",
+    ]

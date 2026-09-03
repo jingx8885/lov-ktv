@@ -354,7 +354,9 @@ def _timeline_from_asr_words(
     # Keep high-confidence known LRC rows (they have better spelling than
     # Whisper) and use ASR text only for words that cannot be mapped to them.
     known_rows: list[tuple[str, list[dict[str, Any]]]] = []
+    known_matches: list[tuple[int, int, int, str]] = []
     used_indices: set[int] = set()
+    used_lyrics: set[int] = set()
     if lines and matches and language not in {"zh", "yue"}:
         kept = [
             item
@@ -373,11 +375,75 @@ def _timeline_from_asr_words(
             if any(index in used_indices for index in range(start, end + 1)):
                 continue
             heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
-            known_threshold = 0.7 if language in {"zh", "yue"} else 0.6
+            # An explicit agent span is useful even when Whisper has a couple
+            # of substitutions (for example ``then, rubble`` -> ``nan
+            # robbin``).  Keep the threshold high enough that a completely
+            # unrelated version cannot borrow stale LRC wording.
+            known_threshold = 0.7 if language in {"zh", "yue"} else 0.5
             if _line_match_score(str(kept[lyric].get("text") or ""), heard, language) < known_threshold:
                 continue
             used_indices.update(range(start, end + 1))
-            known_rows.append((str(kept[lyric].get("text") or ""), words[start : end + 1]))
+            used_lyrics.add(lyric)
+            text = str(kept[lyric].get("text") or "")
+            known_rows.append((text, words[start : end + 1]))
+            known_matches.append((lyric, start, end, text))
+
+        # A single low-confidence ASR phrase can hide a known line from the
+        # agent (``I can't believe my heart`` for ``Like an anthem in my
+        # heart`` is the concrete case).  Recover only small gaps between
+        # reliable, forward lyric anchors whose LRC clocks imply the same
+        # offset.  We deliberately do not fill a large gap: that is how an
+        # edited recording's omitted chorus would get stale LRC text again.
+        known_matches.sort(key=lambda item: item[1])
+        inserted: list[tuple[str, list[dict[str, Any]]]] = []
+        for left, right in zip(known_matches, known_matches[1:]):
+            left_lyric, _left_start, left_end, _left_text = left
+            right_lyric, right_start, _right_end, _right_text = right
+            missing = right_lyric - left_lyric - 1
+            if not (0 < missing <= 2 and right_start - left_end > 0):
+                continue
+            missing_rows = [
+                (index, kept[index])
+                for index in range(left_lyric + 1, right_lyric)
+                if index not in used_lyrics and str(kept[index].get("text") or "").strip()
+            ]
+            if len(missing_rows) != missing:
+                continue
+            left_ms = int(words[left[1]].get("start_ms") or 0)
+            right_ms = int(words[right_start].get("start_ms") or 0)
+            left_lrc = kept[left_lyric].get("ms")
+            right_lrc = kept[right_lyric].get("ms")
+            if left_lrc is None or right_lrc is None:
+                continue
+            offsets = (left_ms - int(left_lrc), right_ms - int(right_lrc))
+            if abs(offsets[0] - offsets[1]) > 8_000:
+                continue
+            offset = int(round((offsets[0] + offsets[1]) / 2))
+            word_cursor = left_end + 1
+            time_cursor = left_ms
+            for position, (index, item) in enumerate(missing_rows):
+                expected = int(item["ms"]) + offset
+                start = max(time_cursor, expected)
+                next_expected = (
+                    int(missing_rows[position + 1][1]["ms"]) + offset
+                    if position + 1 < len(missing_rows)
+                    else right_ms
+                )
+                end = max(start + 200, min(right_ms, next_expected))
+                span = [
+                    {**word, "start_ms": int(word.get("start_ms") or 0), "end_ms": int(word.get("end_ms") or 0)}
+                    for word in words[word_cursor:right_start]
+                    if int(word.get("start_ms") or 0) < end and int(word.get("end_ms") or 0) > start
+                ]
+                if not span:
+                    span = [{"text": "", "start_ms": start, "end_ms": end}]
+                inserted.append((str(item["text"]), span))
+                used_lyrics.add(index)
+                time_cursor = end
+                while word_cursor < right_start and int(words[word_cursor].get("end_ms") or 0) <= end:
+                    word_cursor += 1
+            used_indices.update(range(left_end + 1, right_start))
+        known_rows.extend(inserted)
 
     remaining = [word for index, word in enumerate(words) if index not in used_indices]
     groups: list[list[dict[str, Any]]] = []

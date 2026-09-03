@@ -201,7 +201,24 @@ def _dedupe_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Remove duplicate tokens produced by the intentional chunk overlap."""
     result: list[dict[str, Any]] = []
     for word in sorted(words, key=lambda item: (item.get("start_ms", 0), item.get("end_ms", 0))):
-        if result and word.get("text") == result[-1].get("text") and abs(word.get("start_ms", 0) - result[-1].get("start_ms", 0)) <= 180:
+        text = re.sub(r"[^a-z0-9]+", "", str(word.get("text") or "").lower())
+        start = int(word.get("start_ms") or 0)
+        end = int(word.get("end_ms") or start)
+        # Chunk overlap can change case/punctuation (``'cause`` vs
+        # ``'Cause``) and can interleave the duplicate pair with the original
+        # pair after sorting by timestamps.  Compare against a short recent
+        # window and require overlapping time ranges; two genuinely repeated
+        # sung words normally have a gap between them.
+        duplicate = False
+        if text:
+            for previous in reversed(result[-4:]):
+                previous_text = re.sub(r"[^a-z0-9]+", "", str(previous.get("text") or "").lower())
+                previous_start = int(previous.get("start_ms") or 0)
+                previous_end = int(previous.get("end_ms") or previous_start)
+                if text == previous_text and start < previous_end and previous_start < end:
+                    duplicate = True
+                    break
+        if duplicate:
             continue
         result.append(word)
     return result
