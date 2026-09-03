@@ -250,6 +250,39 @@ def test_wrong_lyric_version_uses_asr_text_instead_of_interpolating_stale_lrc():
     assert "old second line" not in text
 
 
+def test_low_coverage_english_version_drift_uses_actual_asr_clock():
+    lines = [
+        {"ms": 20_000, "text": "hello world"},
+        {"ms": 30_000, "text": "good morning"},
+        {"ms": 40_000, "text": "this is new"},
+        {"ms": 50_000, "text": "another line"},
+        {"ms": 60_000, "text": "final words"},
+    ]
+    asr = [
+        {"text": "hello", "start_ms": 0, "end_ms": 300},
+        {"text": "world", "start_ms": 300, "end_ms": 600},
+        {"text": "good", "start_ms": 10_000, "end_ms": 10_300},
+        {"text": "morning", "start_ms": 10_300, "end_ms": 10_600},
+        {"text": "unrelated", "start_ms": 30_000, "end_ms": 30_300},
+        {"text": "noise", "start_ms": 30_300, "end_ms": 30_600},
+        {"text": "other", "start_ms": 50_000, "end_ms": 50_300},
+        {"text": "noise", "start_ms": 50_300, "end_ms": 50_600},
+        {"text": "last", "start_ms": 70_000, "end_ms": 70_300},
+        {"text": "noise", "start_ms": 70_300, "end_ms": 70_600},
+    ]
+    matches = [
+        {"lyric": 1, "from": 1, "to": 2},
+        {"lyric": 2, "from": 3, "to": 4},
+        {"lyric": 3, "from": 5, "to": 6},
+        {"lyric": 4, "from": 7, "to": 8},
+        {"lyric": 5, "from": 9, "to": 10},
+    ]
+    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
+    assert timeline["alignment_source"] == "whisper-transcript-fallback"
+    assert timeline["cues"][0]["start_ms"] == 0
+    assert all(cue["start_ms"] != 20_000 for cue in timeline["cues"])
+
+
 def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
     timeline = align_lyrics(
         [{"ms": i * 10_000, "text": text} for i, text in enumerate(

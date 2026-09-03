@@ -284,9 +284,15 @@ def _looks_like_wrong_lyric_version(
         # language/version (many bad anchors across the track) while leaving
         # sparse anchors and ordinary character recognition errors alone.
         return coverage >= 0.4 and low >= 3 and low / len(scores) >= 0.5 and spread
-    if coverage < 0.75:
+    # Edited English releases commonly omit a whole chorus while retaining
+    # several accurate anchors.  Requiring 75% coverage here incorrectly
+    # preserves the full-version LRC clock and shifts every later cue.  A
+    # lower threshold is safe when the contradictions are distributed across
+    # the recording; _timeline_from_asr_words still keeps only high-scoring
+    # known lyric rows and fills the omitted portions from ASR.
+    if coverage < 0.4:
         return False
-    return low >= 2 and (low / len(scores) >= 0.2) and spread
+    return low >= 3 and (low / len(scores) >= 0.1) and spread
 
 
 def _join_asr_words(words: list[dict[str, Any]], language: str) -> str:
@@ -325,7 +331,7 @@ def _timeline_from_asr_words(
     # Whisper) and use ASR text only for words that cannot be mapped to them.
     known_rows: list[tuple[str, list[dict[str, Any]]]] = []
     used_indices: set[int] = set()
-    if lines and matches:
+    if lines and matches and language not in {"zh", "yue"}:
         kept = [
             item
             for item in drop_credit_lines(lines, language)
@@ -352,24 +358,13 @@ def _timeline_from_asr_words(
     remaining = [word for index, word in enumerate(words) if index not in used_indices]
     groups: list[list[dict[str, Any]]] = []
     current: list[dict[str, Any]] = []
-    segment_values = [word.get("segment") for word in remaining]
-    use_segments = (
-        any(value is not None for value in segment_values)
-        and len({value for value in segment_values if value is not None})
-        < len(remaining) * 0.8
-    )
     for word in remaining:
         start = int(word.get("start_ms") or 0)
         end = max(start + 40, int(word.get("end_ms") or start + 40))
         if current:
             prev_end = int(current[-1].get("end_ms") or 0)
             # Keep phrase-sized cues while splitting instrumental/speech gaps.
-            segment_break = (
-                use_segments
-                and word.get("segment") is not None
-                and current[-1].get("segment") != word.get("segment")
-            )
-            if segment_break or start - prev_end > 650 or start - int(current[0].get("start_ms") or start) >= 7_000:
+            if start - prev_end > 650 or start - int(current[0].get("start_ms") or start) >= 7_000:
                 groups.append(current)
                 current = []
         current.append({**word, "start_ms": start, "end_ms": end})
