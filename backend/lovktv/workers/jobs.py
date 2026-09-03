@@ -21,6 +21,8 @@ from lovktv.agents.translate import (
     translate_lines,
 )
 from lovktv.catalog.audio import extract_mv_mp3
+from lovktv.catalog.bilibili import VIEW_URL, api_get, is_bvid
+from lovktv.catalog.kugou import fetch_kugou_lyrics
 from lovktv.catalog.importer import import_song
 from lovktv.catalog.lyrics import parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal, prepare_media
@@ -36,7 +38,10 @@ from lovktv.pipeline.lyrics import (
     write_subtitles,
 )
 from lovktv.pipeline.mtv import compose_mtv
-from lovktv.pipeline.orchestrator import align_lyrics
+from lovktv.pipeline.orchestrator import (
+    _looks_like_wrong_lyric_version,
+    align_lyrics,
+)
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
 from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.storage import store as _store
@@ -838,6 +843,38 @@ def _restore_mugen_timeline(out_dir: Path, language: str | None = None) -> bool:
         return False
 
 
+def _fetch_alternate_kugou_timeline(
+    song_id: str, song: dict[str, Any], out_dir: Path
+) -> dict[str, Any] | None:
+    """Fetch an authored lyric version using the source video's singer/title."""
+    bvid = str(song.get("netease_id") or "").strip()
+    if not is_bvid(bvid):
+        return None
+    try:
+        payload = api_get(f"{VIEW_URL}?bvid={bvid}", timeout=10)
+        title = str((payload.get("data") or {}).get("title") or "")
+    except Exception:
+        return None
+    match = re.search(r"([^《】]{2,24})《([^》]{2,80})》", title)
+    if not match:
+        return None
+    artist_parts = re.findall(r"[\u4e00-\u9fffA-Za-z·]{2,12}", match.group(1))
+    artist = artist_parts[-1].strip() if artist_parts else ""
+    lyric_title = re.sub(r"[（(][^）)]{0,20}[）)]", "", match.group(2)).strip()
+    if not artist or not lyric_title:
+        return None
+    result = fetch_kugou_lyrics(lyric_title, artist)
+    timeline = result.get("timeline") if result else None
+    if not isinstance(timeline, dict) or not timeline.get("cues"):
+        return None
+    try:
+        write_subtitles(timeline, out_dir)
+        write_manual_lrc(out_dir, timeline["cues"])
+    except OSError:
+        return None
+    return timeline
+
+
 def _align_and_mtv(
     song_id: str,
     out_dir: Path,
@@ -845,6 +882,7 @@ def _align_and_mtv(
     language: str | None,
     rebuild_mtv: bool = True,
 ) -> None:
+    song = get_song(song_id) or {}
     previous_timeline: dict = {}
     lyrics_path = out_dir / "lyrics.json"
     if lyrics_path.exists():
@@ -882,7 +920,18 @@ def _align_and_mtv(
     }
     if agent_matches:
         align_kwargs["agent_matches"] = agent_matches
-    timeline = align_lyrics(lines, lang, **align_kwargs)
+    # If the selected LRC is a different (often Mandarin) version, prefer
+    # the official Cantonese KRC when the Bilibili title exposes the singer.
+    # ASR is useful for detecting the mismatch, but its transcript is not a
+    # substitute for authored lyrics.
+    alternate = None
+    if _looks_like_wrong_lyric_version(lines, asr_words, agent_matches, lang):
+        alternate = _fetch_alternate_kugou_timeline(song_id, song, out_dir)
+    if alternate:
+        timeline = alternate
+        lang = str(timeline.get("language") or lang)
+    else:
+        timeline = align_lyrics(lines, lang, **align_kwargs)
     _preserve_timeline_annotations(previous_timeline, timeline)
     if had_native_video:
         timeline["native_video"] = True
