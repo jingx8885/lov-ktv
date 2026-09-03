@@ -268,18 +268,24 @@ def _looks_like_wrong_lyric_version(
         heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
         score = _line_match_score(str(kept[lyric].get("text") or ""), heard, language)
         scores.append(score)
-        if score < 0.45:
+        low_threshold = 0.7 if language in {"zh", "yue"} else 0.45
+        if score < low_threshold:
             low_times.append(int(words[start].get("start_ms") or 0))
     if len(scores) < 3:
-        return False
-    if language in {"zh", "yue"}:
-        return False
-    if len(scores) / max(1, len(kept)) < 0.75:
         return False
     low = len(low_times)
     # Two or more low-confidence spans spread through the recording are
     # enough evidence; a single Whisper miss should still use the LRC clock.
     spread = bool(low_times) and max(low_times) - min(low_times) >= 15_000
+    coverage = len(scores) / max(1, len(kept))
+    if language in {"zh", "yue"}:
+        # CJK ASR is noisier, so require a stronger, song-wide contradiction
+        # before discarding the supplied LRC.  This catches a different
+        # language/version (many bad anchors across the track) while leaving
+        # sparse anchors and ordinary character recognition errors alone.
+        return coverage >= 0.4 and low >= 3 and low / len(scores) >= 0.5 and spread
+    if coverage < 0.75:
+        return False
     return low >= 2 and (low / len(scores) >= 0.2) and spread
 
 
@@ -337,7 +343,8 @@ def _timeline_from_asr_words(
             if any(index in used_indices for index in range(start, end + 1)):
                 continue
             heard = " ".join(str(word.get("text") or "") for word in words[start : end + 1])
-            if _line_match_score(str(kept[lyric].get("text") or ""), heard, language) < 0.6:
+            known_threshold = 0.7 if language in {"zh", "yue"} else 0.6
+            if _line_match_score(str(kept[lyric].get("text") or ""), heard, language) < known_threshold:
                 continue
             used_indices.update(range(start, end + 1))
             known_rows.append((str(kept[lyric].get("text") or ""), words[start : end + 1]))

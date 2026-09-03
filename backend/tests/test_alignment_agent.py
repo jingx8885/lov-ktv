@@ -248,3 +248,29 @@ def test_wrong_lyric_version_uses_asr_text_instead_of_interpolating_stale_lrc():
     text = " ".join(cue["text"] for cue in timeline["cues"])
     assert "actual verse" in text
     assert "old second line" not in text
+
+
+def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
+    timeline = align_lyrics(
+        [{"ms": i * 10_000, "text": text} for i, text in enumerate(
+            ["開場歌詞", "舊第二句", "舊第三句", "舊第四句", "舊第五句"]
+        )],
+        "zh",
+        duration_ms=50_000,
+        asr_words=[
+            {"text": "開場歌詞", "start_ms": 0, "end_ms": 500},
+            {"text": "實際第二句", "start_ms": 20_000, "end_ms": 20_500},
+            {"text": "實際第三句", "start_ms": 30_000, "end_ms": 30_500},
+            {"text": "實際第四句", "start_ms": 40_000, "end_ms": 40_500},
+        ],
+        agent_matches=[
+            {"lyric": 1, "from": 1, "to": 1},
+            {"lyric": 2, "from": 2, "to": 2},
+            {"lyric": 3, "from": 3, "to": 3},
+            {"lyric": 4, "from": 4, "to": 4},
+        ],
+    )
+    assert timeline["alignment_source"] == "whisper-transcript-fallback"
+    text = " ".join(cue["text"] for cue in timeline["cues"])
+    assert "實際第二句" in text
+    assert "舊第二句" not in text
