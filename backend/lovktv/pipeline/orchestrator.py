@@ -286,6 +286,17 @@ def _looks_like_wrong_lyric_version(
     offset_spread = max(offsets) - min(offsets) if offsets else 0
     if reordered and len(scores) >= 5 and offset_spread >= 15_000:
         return True
+    # A shortened edit can preserve lyric order while omitting a complete
+    # section.  In that case the agent anchors stay monotonic, but their
+    # ASR-vs-LRC offsets jump by tens of seconds at the cut.  Distinguish it
+    # from a harmless global offset by requiring both a wide spread and a
+    # substantial median displacement across several anchors.
+    if (
+        len(offsets) >= 8
+        and offset_spread >= 15_000
+        and abs(median(offsets)) >= 10_000
+    ):
+        return True
     low = len(low_times)
     # Two or more low-confidence spans spread through the recording are
     # enough evidence; a single Whisper miss should still use the LRC clock.

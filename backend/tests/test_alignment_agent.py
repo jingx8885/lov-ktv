@@ -310,6 +310,24 @@ def test_reordered_high_score_anchors_detect_edited_english_version():
     assert timeline["alignment_source"] == "whisper-transcript-fallback"
 
 
+def test_monotonic_offset_jump_detects_omitted_english_section():
+    lines = [{"ms": i * 10_000, "text": f"line {i}"} for i in range(8)]
+    asr = []
+    matches = []
+    for i in range(8):
+        start = i * 10_000 - (2_000 if i < 4 else 20_000)
+        base = len(asr) + 1
+        asr.extend(
+            [
+                {"text": "line", "start_ms": start, "end_ms": start + 300},
+                {"text": str(i), "start_ms": start + 300, "end_ms": start + 600},
+            ]
+        )
+        matches.append({"lyric": i + 1, "from": base, "to": base + 1})
+    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
+    assert timeline["alignment_source"] == "whisper-transcript-fallback"
+
+
 def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
     timeline = align_lyrics(
         [{"ms": i * 10_000, "text": text} for i, text in enumerate(
