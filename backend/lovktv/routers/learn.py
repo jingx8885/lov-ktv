@@ -40,7 +40,7 @@ def load_song_timeline(request: Request, song_id: str) -> tuple[dict[str, Any], 
         timeline = normalize_timeline(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError, ValueError):
         fail(request, 409, "api.lyrics_not_ready")
-    if not singable_cues(timeline):
+    if not singable_cues(timeline, song):
         fail(request, 409, "api.no_learn_lines")
     return song, timeline
 

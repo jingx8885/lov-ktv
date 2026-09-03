@@ -13,6 +13,7 @@ from lovktv.workers.learn import (
     _norm,
     _question,
     _seeded_rng,
+    _song_meta,
     _unique,
     content_tokens,
     cue_romaji,
@@ -38,11 +39,16 @@ def _has_kanji(text: str) -> bool:
     return any("\u3400" <= char <= "\u9fff" for char in str(text or ""))
 
 
-def singable_cues(timeline: dict[str, Any]) -> list[dict[str, Any]]:
+def singable_cues(
+    timeline: dict[str, Any], song: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Lines worth learning: drops instrumental markers, credits/metadata,
+    the title line and pure interjection lines ("ah~", "la la la")."""
+    meta = _song_meta(timeline, song)
     return [
         cue
-        for cue in (timeline.get("cues") or [])
-        if isinstance(cue, dict) and is_singable_cue(cue)
+        for position, cue in enumerate(timeline.get("cues") or [])
+        if isinstance(cue, dict) and is_singable_cue(cue, meta, position)
     ]
 
 
@@ -159,7 +165,7 @@ def build_campaign(
     lang: str = "zh",
 ) -> dict[str, Any]:
     song = song or {}
-    cues = singable_cues(timeline)
+    cues = singable_cues(timeline, song)
     lines = [line_record(cue, index) for index, cue in enumerate(cues)]
     words = knowledge_words(cues)
     sentences = knowledge_sentences(cues)
@@ -513,7 +519,7 @@ def build_lesson(
     lang: str = "zh",
 ) -> dict[str, Any]:
     song = song or {}
-    cues = singable_cues(timeline)
+    cues = singable_cues(timeline, song)
     units = chunk_units(cues)
     try:
         unit_index = int(str(unit_id).lstrip("u") or "0")
@@ -592,7 +598,7 @@ def build_review_lesson(
 ) -> dict[str, Any]:
     del lang
     song = song or {}
-    cues = singable_cues(timeline)
+    cues = singable_cues(timeline, song)
     lines = [line_record(cue, index) for index, cue in enumerate(cues)]
     items: list[dict[str, Any]] = []
     for row in mistakes:

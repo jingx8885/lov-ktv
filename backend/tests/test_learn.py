@@ -115,7 +115,7 @@ def test_skips_instrumental_and_mixes_meaning_with_words():
         assert item["prompt"] == "这句是什么意思？"
         assert item["choices"][item["answer"]]["text"] == "奔跑的记忆"
     else:
-        assert item["stem"] in {"走る", "記憶", "夜", "の", "風", "青い", "空"}
+        assert item["stem"] in {"走る", "記憶", "夜", "風", "青い", "空"}
         assert item["choices"][item["answer"]]["text"]
     assert quiz["total_questions"] == 3
     assert [item["text"] for item in first["words"]] == ["走る", "記憶"]
@@ -301,6 +301,106 @@ def test_is_singable_cue():
     assert not is_singable_cue({"text": "instrumental"})
     assert not is_singable_cue({"text": "♪"})
     assert not is_singable_cue({"text": ""})
+
+
+def test_filler_lines_are_not_quiz_material():
+    # Pure interjections / vocalisations are not real sentences.
+    for text in (
+        "ah~",
+        "啊~",
+        "ああ〜",
+        "ウォウウォウ",
+        "ah ah ah",
+        "oh yeah",
+        "la la la la",
+        "na na na na",
+        "tuturu turu",
+        "So La Si Si Si Si La Si La So",
+        "Re So So Si Do Si La",
+    ):
+        assert not is_singable_cue({"text": text}), text
+    # Token glosses that are only interjections count as filler too.
+    assert not is_singable_cue(
+        {
+            "text": "ah yeah",
+            "tokens": [{"text": "ah", "zh": "啊"}, {"text": "yeah", "zh": "耶"}],
+        }
+    )
+    # Real sentences that merely start with an interjection stay.
+    for text in (
+        "ah nanmai demo",
+        "aa, itsumo no you ni",
+        "odorou",
+        "踊ろう",
+        "let it be",
+        "So tired of tears",
+        "（it's ridiculous）",
+        "kore de ii",
+    ):
+        assert is_singable_cue({"text": text}), text
+
+
+def test_credit_and_title_lines_are_skipped():
+    song = {"title": "晴天", "artist": "周杰伦"}
+    for text in (
+        "词：周杰伦",
+        "曲：周杰伦",
+        "合声编写：周杰伦",
+        "吉他：蔡科俊Again",
+        "Lyrics by: Someone",
+        "晴天 - 周杰伦 (Jay Chou)",
+        "周杰伦 - 晴天",
+    ):
+        assert not is_singable_cue({"text": text}, song), text
+    assert is_singable_cue({"text": "从出生那年就飘着"}, song)
+    assert is_singable_cue({"text": "晴天里的那一场雨"}, song)
+    # Imported titles are often long platform strings; a leading "X - Y"
+    # header whose half matches the title is still a header.
+    long_title = {"title": "【Hi-Res无损音质】｜《晴天》- 周杰伦 -‘故事的小黄花’ VV音乐局", "artist": "VV音乐局"}
+    assert not is_singable_cue({"text": "晴天 - 周杰伦 (Jay Chou)"}, long_title, 0)
+    # ...but only in the first few lines, and never for ordinary lyrics.
+    assert is_singable_cue({"text": "晴天 - 周杰伦 (Jay Chou)"}, long_title, 12)
+    assert is_singable_cue({"text": "你 - 我的全部"}, long_title, 0)
+    assert [cue["text"] for cue in singable_cues(
+        {"cues": [{"text": "词：周杰伦"}, {"text": "ah~"}, {"text": "故事的小黄花"}]},
+        song,
+    )] == ["故事的小黄花"]
+
+
+def test_particles_are_not_word_questions():
+    from lovktv.workers.learn import content_tokens, quiz_words
+
+    cue = {
+        "text": "kawaranai ne omoidashite wa",
+        "zh": "不会改变呢，一想起来就",
+        "tokens": [
+            {"text": "kawaranai", "zh": "不会改变"},
+            {"text": "ne", "zh": "呢"},
+            {"text": "omoidashite", "zh": "一想起来"},
+            {"text": "wa", "zh": ""},
+        ],
+    }
+    assert [w["text"] for w in content_tokens(cue, include_function=True)] == [
+        "kawaranai",
+        "omoidashite",
+    ]
+    assert [w["text"] for w in quiz_words(cue)] == ["kawaranai", "omoidashite"]
+    # Grammar particles are drilled only when a line has nothing else.
+    night = {
+        "text": "夜の風",
+        "tokens": [
+            {"text": "夜", "zh": "夜晚"},
+            {"text": "の", "zh": "的"},
+            {"text": "風", "zh": "风"},
+        ],
+    }
+    assert [w["text"] for w in quiz_words(night)] == ["夜", "風"]
+    only_particle = {"text": "のよ", "tokens": [{"text": "の", "zh": "的"}, {"text": "よ", "zh": "哟"}]}
+    assert [w["text"] for w in quiz_words(only_particle)] == ["の"]
+    assert knowledge_words([cue]) == [
+        {"kind": "word", "key": "kawaranai", "text": "kawaranai", "zh": "不会改变"},
+        {"kind": "word", "key": "omoidashite", "text": "omoidashite", "zh": "一想起来"},
+    ]
 
 
 def test_phone_learn_shell_is_wired():
