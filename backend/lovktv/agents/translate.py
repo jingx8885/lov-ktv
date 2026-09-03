@@ -17,7 +17,9 @@ from lovktv.agents.ja_lyrics import (
     agent_enabled,
     agent_model,
     complete_json,
+    has_han,
     lyric_source_key,
+    valid_zh,
 )
 from lovktv.pipeline.lyrics import tokenize
 
@@ -38,6 +40,13 @@ not beautify, paraphrase freely, or add information. The line translation is
 the source of truth; word glosses explain how words contribute to that line.
 Return JSON only:
 {"lines":[{"source":"<exact original line>","translation":"<faithful, clear Simplified Chinese>","units":[{"surface":"<surface>","translation":"<short contextual gloss>"}]}]}
+
+Field names: `translation` on a line (also called `zh`) is the Chinese line;
+`surface` on a unit (also called `sing`) is the sung piece; `translation` on a
+unit (also called `zh`) is its Chinese gloss. Every `translation` value must be
+written in Chinese characters (简体中文). Never answer in English, never leave
+the source language, and never copy a non-Chinese source line as its own
+translation.
 
 Rules:
 1. `source` must equal the input line exactly.
@@ -77,6 +86,129 @@ def _source_hash(lines: list[str], title: str, artist: str) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
+_TRANSLATABLE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]")
+_NOT_CHINESE_NOTE = (
+    "IMPORTANT: your previous answer for these lines was not Chinese (it was "
+    "English, romaji, or a copy of the source). Every `translation` must be "
+    "written in Simplified Chinese characters. Translate them again."
+)
+
+
+def line_needs_zh(source: str) -> bool:
+    """A lyric line that carries words (Latin, kana, or Han) must get Chinese."""
+    return bool(_TRANSLATABLE.search(str(source or "")))
+
+
+def translation_is_invalid(item: dict[str, Any]) -> bool:
+    """True when the agent did not answer this line in Chinese."""
+    source = str(item.get("source") or "")
+    if not line_needs_zh(source):
+        return False
+    return not has_han(item.get("translation") or item.get("zh") or "")
+
+
+def _request_translation(
+    chunk: list[str], title: str, artist: str, lang: str, note: str = ""
+) -> list[dict[str, Any]]:
+    numbered = "\n".join(f"{index + 1}. {line}" for index, line in enumerate(chunk))
+    user = (
+        f"Song: {title} / {artist}\n"
+        f"Language: {lang}\n"
+        "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses. Units must follow words; every contiguous English run, including one embedded in a mixed-language line, is one unit per word. Do not group English words.\n"
+        + (f"{note}\n" if note else "")
+        + f"\n{numbered}"
+    )
+    payload = complete_json(
+        [
+            {"role": "system", "content": SYSTEM},
+            {"role": "user", "content": user},
+        ]
+    )
+    return list(payload["lines"])
+
+
+def _translate_chunk(
+    chunk: list[str], title: str, artist: str, lang: str
+) -> list[dict[str, Any]]:
+    """Translate one batch, re-asking once for any line not answered in Chinese."""
+    items = _request_translation(chunk, title, artist, lang)
+    bad = [
+        lyric_source_key(item.get("source") or "")
+        for item in items
+        if translation_is_invalid(item)
+    ]
+    if not bad:
+        return items
+    retry = {
+        lyric_source_key(item.get("source") or ""): item
+        for item in _request_translation(bad, title, artist, lang, _NOT_CHINESE_NOTE)
+        if not translation_is_invalid(item)
+    }
+    fixed: list[dict[str, Any]] = []
+    for item in items:
+        key = lyric_source_key(item.get("source") or "")
+        fixed.append(retry.get(key, item) if key in bad else item)
+    return fixed
+
+
+def _unique_lines(texts: list[str]) -> list[str]:
+    unique: list[str] = []
+    seen: set[str] = set()
+    for line in texts:
+        if line and line not in seen:
+            unique.append(line)
+            seen.add(line)
+    return unique
+
+
+def _write_cache(cache_path: Path | None, result: dict[str, Any]) -> None:
+    if not cache_path:
+        return
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def repair_notes(
+    notes: dict[str, Any],
+    title: str = "",
+    artist: str = "",
+    language: str = "",
+    chunk_size: int = 24,
+) -> int:
+    """Re-translate every cached line that is not Chinese. Returns fixed count."""
+    lang = str(language or notes.get("language") or "").strip() or "unknown"
+    bad = _unique_lines(
+        [
+            lyric_source_key(item.get("source") or "")
+            for item in notes.get("lines") or []
+            if isinstance(item, dict) and translation_is_invalid(item)
+        ]
+    )
+    if not bad:
+        return 0
+    if not agent_enabled():
+        raise RuntimeError("翻译 agent 未启用")
+    repaired: dict[str, dict[str, Any]] = {}
+    for start in range(0, len(bad), chunk_size):
+        for item in _request_translation(
+            bad[start : start + chunk_size], title, artist, lang, _NOT_CHINESE_NOTE
+        ):
+            if not translation_is_invalid(item):
+                repaired[lyric_source_key(item.get("source") or "")] = item
+    fixed = 0
+    lines = notes.get("lines") or []
+    for index, item in enumerate(lines):
+        if not isinstance(item, dict) or not translation_is_invalid(item):
+            continue
+        replacement = repaired.get(lyric_source_key(item.get("source") or ""))
+        if replacement:
+            lines[index] = replacement
+            fixed += 1
+    return fixed
+
+
 def translate_lines(
     lines: list[str],
     title: str = "",
@@ -98,33 +230,20 @@ def translate_lines(
             and cached.get("schema") == TRANSLATE_SCHEMA
             and cached.get("lines")
         ):
+            # An old cache may hold English answers; re-ask only those lines
+            # instead of throwing away the whole song.
+            if repair_notes(cached, title, artist, language, chunk_size):
+                _write_cache(cache_path, cached)
             return cached
     if not agent_enabled():
         raise RuntimeError("翻译 agent 未启用")
     collected: list[dict[str, Any]] = []
-    unique: list[str] = []
-    seen: set[str] = set()
-    for line in texts:
-        if line and line not in seen:
-            unique.append(line)
-            seen.add(line)
+    unique = _unique_lines(texts)
     lang = str(language or "").strip() or "unknown"
     for start in range(0, len(unique), chunk_size):
-        chunk = unique[start : start + chunk_size]
-        numbered = "\n".join(f"{index + 1}. {line}" for index, line in enumerate(chunk))
-        user = (
-            f"Song: {title} / {artist}\n"
-            f"Language: {lang}\n"
-            "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses. Units must follow words; every contiguous English run, including one embedded in a mixed-language line, is one unit per word. Do not group English words.\n\n"
-            f"{numbered}"
+        collected.extend(
+            _translate_chunk(unique[start : start + chunk_size], title, artist, lang)
         )
-        payload = complete_json(
-            [
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": user},
-            ]
-        )
-        collected.extend(list(payload["lines"]))
     result = {
         "schema": TRANSLATE_SCHEMA,
         "source_hash": digest,
@@ -134,11 +253,7 @@ def translate_lines(
         "language": lang,
         "lines": collected,
     }
-    if cache_path:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        cache_path.write_text(
-            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+    _write_cache(cache_path, result)
     return result
 
 
@@ -159,7 +274,7 @@ def _unit_surface(unit: dict[str, Any]) -> str:
 
 
 def _unit_translation(unit: dict[str, Any]) -> str:
-    return str(unit.get("translation") or unit.get("zh") or "").strip()
+    return valid_zh(unit.get("translation") or unit.get("zh") or "")
 
 
 def _english_unit_map(
@@ -264,8 +379,8 @@ def apply_zh_translation(
         item = by_source.get(original) or by_source.get(text)
         if not item:
             continue
-        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
-        if line_zh and (overwrite or not str(cue.get("zh") or "").strip()):
+        line_zh = valid_zh(item.get("translation") or item.get("zh") or "")
+        if line_zh and (overwrite or not valid_zh(cue.get("zh") or "")):
             cue["zh"] = line_zh
             cue["translation"] = line_zh
         units = [unit for unit in item.get("units") or [] if isinstance(unit, dict)]
@@ -296,7 +411,7 @@ def apply_zh_translation(
         for index, token in enumerate(tokens):
             if index not in projected:
                 continue
-            existing = str(token.get("zh") or "").strip()
+            existing = valid_zh(token.get("zh") or "")
             is_latin = bool(
                 re.match(
                     r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]", str(token.get("text") or "")
@@ -312,7 +427,7 @@ def apply_zh_translation(
                 if (
                     index not in projected
                     and re.match(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]", token_text)
-                    and not str(token.get("zh") or "").strip()
+                    and not valid_zh(token.get("zh") or "")
                 ):
                     fallback = _EN_FUNCTION_GLOSSES.get(
                         _surface_key(token_text, "en")
@@ -322,7 +437,7 @@ def apply_zh_translation(
                         token["translation"] = fallback
         if language_key.startswith("en"):
             continue
-        missing = [token for token in tokens if not str(token.get("zh") or "").strip()]
+        missing = [token for token in tokens if not valid_zh(token.get("zh") or "")]
         if not missing:
             continue
         if len(missing) == len(tokens) and len(glosses) == len(tokens):

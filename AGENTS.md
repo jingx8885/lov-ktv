@@ -97,3 +97,16 @@ gradle --no-daemon :app:assembleRelease
 - 主路是搜歌名入库，不是先上传文件。
 - 歌词优先官方 LRC；没有 Whisper 也能唱。
 - Android TV 是局域网宿主 + 成品缓存，处理仍走这台处理端。
+
+## 歌词审计
+
+- 已入库歌曲的两类常见坏数据：翻译不是中文（英文 / 罗马音 / 原文照抄）、日语行仍显示罗马音（注音 agent 把罗马音放进 `surface`、假名放进 `reading`）。
+- 在 43 的容器里跑审计；不带 `--fix` 只报告，不改任何文件：
+
+```bash
+sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec lov-ktv python -m lovktv.workers.lyric_audit
+sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env exec lov-ktv python -m lovktv.workers.lyric_audit --fix
+```
+
+- `--fix` 优先用 `ja-annotate.json` / `zh-translate.json` 缓存重刷，只有缓存缺失或不是中文的行才会再问 agent；改完重写 `lyrics.json` 并重传 OSS。可跟歌曲 id 只修指定歌。
+- 重刷时 `text` 与 `surface` 必须一起改：`normalize_timeline` 以 `surface` 为准，只改 `text` 会在落盘时被还原成罗马音。

@@ -13,6 +13,7 @@ from lovktv.agents.ja_lyrics import (
     apply_ja_annotation,
     line_is_romaji,
     lyric_source_key,
+    valid_zh,
 )
 from lovktv.agents.translate import (
     TRANSLATE_SCHEMA,
@@ -544,7 +545,7 @@ def _translate_foreign_timeline(
         except (OSError, ValueError, TypeError):
             cache_stale = True
     force = force or cache_stale
-    if not force and all(str(cue.get("zh") or "").strip() for cue in cues):
+    if not force and all(valid_zh(cue.get("zh") or "") for cue in cues):
         # A cached line translation can coexist with an untranslated English
         # token (most commonly a contraction such as ``'Cause``/``it's``).
         # Re-enter the lightweight translation pass so token-level fallbacks
@@ -553,7 +554,7 @@ def _translate_foreign_timeline(
             not re.search(r"[:：]", str(cue.get("text") or _cue_source(cue)))
             and any(
                 re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", str(token.get("text") or ""))
-                and not str(token.get("zh") or token.get("translation") or "").strip()
+                and not valid_zh(token.get("zh") or token.get("translation") or "")
                 for token in (cue.get("tokens") or [])
             )
             for cue in cues

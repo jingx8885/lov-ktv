@@ -29,6 +29,8 @@ _LATIN_PART = re.compile(r"[A-Za-z0-9']+(?:[!?.,…]+)?|[^\sA-Za-z0-9']+")
 _LATIN_WORD = re.compile(r"[A-Za-z]+")
 _HIRA = re.compile(r"[\u3040-\u309f]")
 _KANJI_RUN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff々]+")
+_HAN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+_LATIN_LETTER = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]")
 # The agent also supplies Chinese line/unit meanings. Bump the cache schema so
 # old literal glosses are regenerated after semantic-translation prompt changes.
 ANNOTATION_SCHEMA = "restore-ja-v4"
@@ -38,19 +40,29 @@ Return JSON only:
 {"lines":[{"source":"<exact original line>","translation":"...","units":[{"surface":"...","reading":"...","pronunciation":{"system":"romaji","value":"..."},"translation":"..."}]}]}
 
 Rules:
+Field names: `surface` (also called `sing`) is the Japanese text that is sung
+and displayed; `reading` (also called `label`) is the hiragana reading or the
+loanword's original English; `pronunciation.value` (also called `romaji`) is
+Hepburn romaji; `translation` (also called `zh`) is Simplified Chinese.
+
 1. `source` must equal the input line exactly, even when the input is romaji.
-2. If the line is Hepburn romaji, restore Japanese in `sing` (ひらがな / カタカナ). Example: "itsumo no you ni" → いつもの / ように. Do not leave romaji in `sing`.
+2. If the line is Hepburn romaji, restore Japanese in `surface` (kanji /
+   ひらがな / カタカナ as the lyric is normally written). Example:
+   "itsumo no you ni" → いつもの / ように; "tomatta hari" → 止まった / 針.
+   NEVER put romaji in `surface` and never put the Japanese only in
+   `reading`: `surface` must be Japanese, and the romaji goes in
+   `pronunciation.value`.
 3. Units cover the WHOLE sung line in order. Do not drop or invent words. If the source is romaji, every source word must become a unit (me magurushii jikan no mure ga → めまぐるしい / じかん / の / むれ / が).
-4. Kanji / kanji+okurigana: `sing` is the original writing as in the lyric (止まった, 君, 溢れる); `label` is the hiragana reading in THIS song (とまった, きみ, あふれる); `romaji` is Hepburn (tomatta, kimi). Split at word boundaries: 走り続ける → 走り / 続ける. Context: 君 as you → きみ, not くん.
-5. Katakana loanwords (メモリー, コーヒー, ダンサー): `sing` is katakana; `label` is the original English/French word (memory, coffee, dancer); `romaji` is empty. Never write memorii or koohii.
-6. Native katakana (ズレ, フリ, ダメ): `sing` katakana; `label` empty; `romaji` Hepburn (zure, furi).
-7. Hiragana particles / leftover kana: `sing` as kana; `label` empty; `romaji` Hepburn (no, ni, you).
+4. Kanji / kanji+okurigana: `surface` is the original writing as in the lyric (止まった, 君, 溢れる); `reading` is the hiragana reading in THIS song (とまった, きみ, あふれる); `pronunciation.value` is Hepburn (tomatta, kimi). Split at word boundaries: 走り続ける → 走り / 続ける. Context: 君 as you → きみ, not くん.
+5. Katakana loanwords (メモリー, コーヒー, ダンサー): `surface` is katakana; `reading` is the original English/French word (memory, coffee, dancer); `pronunciation.value` is empty. Never write memorii or koohii.
+6. Native katakana (ズレ, フリ, ダメ): `surface` katakana; `reading` empty; `pronunciation.value` Hepburn (zure, furi).
+7. Hiragana particles / leftover kana: `surface` as kana; `reading` empty; `pronunciation.value` Hepburn (no, ni, you).
 8. Already-English words in the lyric (Give a reason, Here we go): keep them in
-   `sing`, one English word per unit (never ``Give a reason`` as one unit);
-   `label` and `romaji` are empty. Every unit's romaji, when present, belongs
-   to that unit only.
-9. Every line MUST include `zh`: a faithful, clear Simplified Chinese translation of the whole sung line. Keep close to the source wording and structure; use the complete line, surrounding input lines, song title, and artist to resolve meaning. Make only the smallest adjustment needed for understandable Chinese—do not freely paraphrase or add poetic information. Preserve agency, negation, tense/aspect, modality, and emotional tone. No notes, no brackets.
-10. Every unit MUST include the `zh` key. Its value is a short *contextual contribution* (usually 1–6 Chinese characters), not a dictionary definition. If a Japanese word/compound is written in Hanzi that modern Chinese can directly understand, prefer copying that same Hanzi into `zh`, converting Japanese/traditional forms to Simplified Chinese as needed (for example, 電光石火 → 电光石火, not “转瞬即逝”). Only change it when it is a Japanese false friend or would mislead in this line.
+   `surface`, one English word per unit (never ``Give a reason`` as one unit);
+   `reading` and `pronunciation.value` are empty. Every unit's romaji, when
+   present, belongs to that unit only.
+9. Every line MUST include `translation`: a faithful, clear Simplified Chinese translation of the whole sung line, written in Chinese characters. Never answer in English, romaji, or by copying the Japanese line. Keep close to the source wording and structure; use the complete line, surrounding input lines, song title, and artist to resolve meaning. Make only the smallest adjustment needed for understandable Chinese—do not freely paraphrase or add poetic information. Preserve agency, negation, tense/aspect, modality, and emotional tone. No notes, no brackets.
+10. Every unit MUST include the `translation` key. Its value is a short *contextual contribution* in Chinese characters (usually 1–6 Chinese characters), not a dictionary definition and never an English word. If a Japanese word/compound is written in Hanzi that modern Chinese can directly understand, prefer copying that same Hanzi into `zh`, converting Japanese/traditional forms to Simplified Chinese as needed (for example, 電光石火 → 电光石火, not “转瞬即逝”). Only change it when it is a Japanese false friend or would mislead in this line.
 11. Resolve remaining ambiguity from grammar and lyric context (for example, 君 can be “你” or “君”; miss can be “想念” or “错过”). Keep the closest understandable meaning, without freer poetic paraphrase.
 12. Particles and function words are grammatical. Their `zh` may be empty (`""`) when Chinese word order or the whole-line translation already expresses them. If they add meaning, use the contextual relation; never use fixed mappings such as の→的, に→在, を→把, は→是. Do not force a Chinese word for every token.
 13. Several source units may share one Chinese phrase, and a unit gloss may be empty when its meaning is absorbed by the phrase. Keep source coverage/order and let the faithful, clear line translation take priority over literal gloss alignment.
@@ -109,6 +121,188 @@ def line_is_romaji(text: str) -> bool:
         return False
     letters = [char for char in source if char.isalpha()]
     return bool(letters) and all(char.isascii() for char in letters)
+
+
+def has_han(text: str) -> bool:
+    """True when the text contains at least one Chinese character."""
+    return bool(_HAN.search(unicodedata.normalize("NFKC", str(text or ""))))
+
+
+def valid_zh(text: str) -> str:
+    """Return a usable Chinese gloss/translation, or "" when the agent answered
+    in English, romaji, punctuation, or copied a non-Chinese source."""
+    body = str(text or "").strip()
+    return body if has_han(body) else ""
+
+
+def _unit_surface_text(unit: dict[str, Any]) -> str:
+    return lyric_source_key(unit.get("surface") or unit.get("sing") or "")
+
+
+def _unit_reading_text(unit: dict[str, Any]) -> str:
+    return unicodedata.normalize(
+        "NFKC", str(unit.get("reading") or unit.get("label") or "")
+    ).strip()
+
+
+def _unit_romaji_text(unit: dict[str, Any]) -> str:
+    pronunciation = unit.get("pronunciation")
+    pron_value = (
+        str(pronunciation.get("value") or "").strip()
+        if isinstance(pronunciation, dict)
+        else ""
+    )
+    return str(unit.get("romaji") or pron_value).strip()
+
+
+def unit_is_unrestored_romaji(unit: dict[str, Any]) -> bool:
+    """The agent echoed romaji in ``surface`` and put the Japanese in ``reading``."""
+    sing = _unit_surface_text(unit)
+    if not sing or _KANA.search(sing) or _KANJI.search(sing):
+        return False
+    if not _LATIN_WORD.search(sing):
+        return False
+    reading = _unit_reading_text(unit)
+    return bool(_KANA.search(reading) or _KANJI.search(reading))
+
+
+_ROMAJI_MACRONS = str.maketrans({"ā": "aa", "ī": "ii", "ū": "uu", "ē": "ee", "ō": "ou"})
+_ROMAJI_TABLE: dict[str, str] = {
+    "kya": "きゃ", "kyu": "きゅ", "kyo": "きょ", "sha": "しゃ", "shu": "しゅ",
+    "sho": "しょ", "sya": "しゃ", "syu": "しゅ", "syo": "しょ", "cha": "ちゃ",
+    "chu": "ちゅ", "cho": "ちょ", "tya": "ちゃ", "tyu": "ちゅ", "tyo": "ちょ",
+    "nya": "にゃ", "nyu": "にゅ", "nyo": "にょ", "hya": "ひゃ", "hyu": "ひゅ",
+    "hyo": "ひょ", "mya": "みゃ", "myu": "みゅ", "myo": "みょ", "rya": "りゃ",
+    "ryu": "りゅ", "ryo": "りょ", "gya": "ぎゃ", "gyu": "ぎゅ", "gyo": "ぎょ",
+    "zya": "じゃ", "zyu": "じゅ", "zyo": "じょ", "jya": "じゃ", "jyu": "じゅ",
+    "jyo": "じょ", "bya": "びゃ", "byu": "びゅ", "byo": "びょ", "pya": "ぴゃ",
+    "pyu": "ぴゅ", "pyo": "ぴょ", "shi": "し", "chi": "ち", "tsu": "つ",
+    "dzu": "づ", "she": "しぇ", "che": "ちぇ",
+    "ka": "か", "ki": "き", "ku": "く", "ke": "け", "ko": "こ", "sa": "さ",
+    "si": "し", "su": "す", "se": "せ", "so": "そ", "ta": "た", "ti": "ち",
+    "tu": "つ", "te": "て", "to": "と", "na": "な", "ni": "に", "nu": "ぬ",
+    "ne": "ね", "no": "の", "ha": "は", "hi": "ひ", "hu": "ふ", "fu": "ふ",
+    "he": "へ", "ho": "ほ", "ma": "ま", "mi": "み", "mu": "む", "me": "め",
+    "mo": "も", "ya": "や", "yu": "ゆ", "yo": "よ", "ra": "ら", "ri": "り",
+    "ru": "る", "re": "れ", "ro": "ろ", "wa": "わ", "wi": "うぃ", "we": "うぇ",
+    "wo": "を", "ga": "が", "gi": "ぎ", "gu": "ぐ", "ge": "げ", "go": "ご",
+    "za": "ざ", "zi": "じ", "zu": "ず", "ze": "ぜ", "zo": "ぞ", "ja": "じゃ",
+    "ji": "じ", "ju": "じゅ", "je": "じぇ", "jo": "じょ", "da": "だ", "di": "ぢ",
+    "du": "づ", "de": "で", "do": "ど", "ba": "ば", "bi": "び", "bu": "ぶ",
+    "be": "べ", "bo": "ぼ", "pa": "ぱ", "pi": "ぴ", "pu": "ぷ", "pe": "ぺ",
+    "po": "ぽ", "fa": "ふぁ", "fi": "ふぃ", "fe": "ふぇ", "fo": "ふぉ",
+    "va": "ゔぁ", "vi": "ゔぃ", "vu": "ゔ", "ve": "ゔぇ", "vo": "ゔぉ",
+    "a": "あ", "i": "い", "u": "う", "e": "え", "o": "お",
+}
+_VOWELS = set("aiueo")
+_ROMAJI_PARTICLES = {"wa": "は", "e": "へ", "wo": "を", "o": "お"}
+
+
+def romaji_to_hiragana(text: str) -> str:
+    """Convert one Hepburn / Kunrei romaji word to hiragana.
+
+    Returns "" unless the whole word converts, so English words such as
+    ``love`` or ``only`` are left alone.  Used for particles and short words
+    the annotation agent echoed as romaji without any Japanese.
+    """
+    raw = unicodedata.normalize("NFKC", str(text or "")).strip().lower()
+    raw = raw.translate(_ROMAJI_MACRONS).replace("’", "'")
+    if not raw or not re.fullmatch(r"[a-z'\-~]+", raw):
+        return ""
+    out: list[str] = []
+    index = 0
+    while index < len(raw):
+        char = raw[index]
+        if char in "'~":
+            index += 1
+            continue
+        if char == "-":
+            out.append("ー")
+            index += 1
+            continue
+        rest = raw[index:]
+        nxt = raw[index + 1] if index + 1 < len(raw) else ""
+        # syllabic ん: n before a consonant / apostrophe / end, m before b/p/m
+        if char == "n" and (not nxt or (nxt not in _VOWELS and nxt != "y")):
+            out.append("ん")
+            index += 1
+            continue
+        if char == "m" and nxt in ("b", "p", "m") and nxt:
+            out.append("ん")
+            index += 1
+            continue
+        # sokuon: doubled consonant or t before ch
+        if (
+            char not in _VOWELS
+            and char != "n"
+            and nxt
+            and (nxt == char or (char == "t" and rest.startswith("tch")))
+        ):
+            out.append("っ")
+            index += 1
+            continue
+        for size in (3, 2, 1):
+            kana = _ROMAJI_TABLE.get(rest[:size])
+            if kana:
+                out.append(kana)
+                index += size
+                break
+        else:
+            return ""
+    return "".join(out)
+
+
+def _romaji_matches(romaji: str, sing: str) -> bool:
+    strip = lambda value: re.sub(r"[^a-z]", "", value.lower())  # noqa: E731
+    return bool(strip(romaji)) and strip(romaji) == strip(sing)
+
+
+def restore_romaji_unit(unit: dict[str, Any], source: str = "") -> dict[str, Any]:
+    """Return a unit whose ``surface`` is Japanese, not romaji.
+
+    Two agent mistakes are repaired:
+    - ``surface=romaji / reading=Japanese``: the Japanese moves into
+      ``surface``/``sing`` and the romaji is kept as the pronunciation.  A
+      kanji reading is resolved later by ``expand_units`` (pykakasi).
+    - a romaji-only line where a particle/word was echoed as romaji with no
+      Japanese at all (``wa``, ``no``, ``dakedo``): converted to hiragana
+      deterministically, but only when the romaji is the word itself so
+      English lyrics are never touched.
+    """
+    sing = _unit_surface_text(unit)
+    if unit_is_unrestored_romaji(unit):
+        japanese = _unit_reading_text(unit)
+        romaji = _unit_romaji_text(unit) or sing
+        fixed = dict(unit)
+        fixed["sing"] = japanese
+        fixed["surface"] = japanese
+        fixed["label"] = ""
+        fixed["reading"] = ""
+        fixed["romaji"] = romaji
+        fixed["pronunciation"] = {"system": "romaji", "value": romaji}
+        return fixed
+    if not sing or _KANA.search(sing) or _KANJI.search(sing):
+        return unit
+    if source and not line_is_romaji(source):
+        return unit
+    reading = _unit_reading_text(unit)
+    if reading and not _romaji_matches(reading, sing):
+        return unit
+    romaji = _unit_romaji_text(unit)
+    if not romaji or not _romaji_matches(romaji, sing):
+        return unit
+    # A standalone ``wa`` / ``e`` unit is the topic / direction particle.
+    kana = _ROMAJI_PARTICLES.get(sing.lower()) or romaji_to_hiragana(sing)
+    if not kana:
+        return unit
+    fixed = dict(unit)
+    fixed["sing"] = kana
+    fixed["surface"] = kana
+    fixed["label"] = ""
+    fixed["reading"] = ""
+    fixed["romaji"] = romaji
+    fixed["pronunciation"] = {"system": "romaji", "value": romaji}
+    return fixed
 
 
 def japanese_from_units(units: list[dict[str, str]]) -> str:
@@ -183,16 +377,21 @@ def _parse_payload(raw: str) -> dict[str, Any]:
             romaji = unit_model.romaji or pronunciation_value
             translation = unit_model.translation
             units.append(
-                {
-                    "sing": sing,
-                    "surface": sing,
-                    "label": reading,
-                    "reading": reading,
-                    "romaji": romaji,
-                    "pronunciation": {"system": "romaji", "value": romaji} if romaji else {},
-                    "zh": translation,
-                    "translation": translation,
-                }
+                restore_romaji_unit(
+                    source=source,
+                    unit={
+                        "sing": sing,
+                        "surface": sing,
+                        "label": reading,
+                        "reading": reading,
+                        "romaji": romaji,
+                        "pronunciation": {"system": "romaji", "value": romaji}
+                        if romaji
+                        else {},
+                        "zh": translation,
+                        "translation": translation,
+                    },
+                )
             )
         line_zh = str(item.get("translation") or item.get("zh") or "").strip()
         if source and (units or line_zh):
@@ -575,25 +774,25 @@ def apply_ja_annotation(
         item = by_source.get(original) or by_source.get(text)
         if not item:
             continue
+        # Cached notes may still carry the agent's ``surface=romaji /
+        # reading=kana`` mistake; normalize before expanding so a plain
+        # ``--reapply`` restores the Japanese without another agent call.
         units = [
-            unit
+            restore_romaji_unit(unit, source=original)
             for unit in item.get("units") or []
             if isinstance(unit, dict) and (unit.get("surface") or unit.get("sing"))
         ]
-        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
+        line_zh = valid_zh(item.get("translation") or item.get("zh") or "")
         if line_zh:
             cue["zh"] = line_zh
             cue["translation"] = line_zh
+        elif not valid_zh(cue.get("zh") or cue.get("translation") or ""):
+            cue.pop("zh", None)
+            cue.pop("translation", None)
         specs: list[tuple[str, str, str, str]] = []
         for unit in units:
-            pronunciation = unit.get("pronunciation")
-            pron_value = (
-                str(pronunciation.get("value") or "").strip()
-                if isinstance(pronunciation, dict)
-                else ""
-            )
-            roma = str(unit.get("romaji") or pron_value).strip()
-            gloss = str(unit.get("translation") or unit.get("zh") or "").strip()
+            roma = _unit_romaji_text(unit)
+            gloss = valid_zh(unit.get("translation") or unit.get("zh") or "")
             normalized_unit = {
                 **unit,
                 "sing": unit.get("surface") or unit.get("sing") or "",
@@ -620,15 +819,19 @@ def apply_ja_annotation(
         )
         displayed = _join_surfaces([piece for piece, _label, _roma, _gloss in specs])
         current = lyric_source_key(cue.get("text") or "")
+        # ``normalize_timeline`` prefers ``surface`` over ``text``; keep both
+        # in step or the restored kana silently reverts to romaji on save.
         if line_is_romaji(original) and not _units_cover_romaji(units, original):
             if line_is_romaji(current):
                 continue
             if japanese and japanese == current:
                 cue["text"] = original
+                cue["surface"] = original
                 continue
         if (displayed or japanese) and line_is_romaji(original):
             cue["source_text"] = original
             cue["text"] = displayed or japanese
+            cue["surface"] = cue["text"]
         start_ms = int(cue["start_ms"])
         end_ms = int(cue.get("sing_end_ms") or cue["end_ms"])
         span = max(end_ms - start_ms, 200)
