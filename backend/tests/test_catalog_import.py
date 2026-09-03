@@ -332,3 +332,20 @@ def test_select_lyrics_without_media_length_keeps_first_netease_hit(monkeypatch)
     monkeypatch.setattr(importer, "fetch_lyric", fetch)
     selected = importer._select_lyrics("song", "", {"id": "1"}, 0)
     assert selected["netease"]["id"] == "1" and calls == ["1"]
+
+
+def test_search_score_uses_best_fitting_lrc_like_import(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "search_tonzhon",
+        lambda *args, **kwargs: [
+            {"id": "1", "name": "From Now On", "artist": [["Hugh Jackman"]]},
+            {"id": "2", "name": "From Now On", "artist": [["Hugh Jackman"]]},
+        ],
+    )
+    lyrics = {"1": "[00:10.00]studio\n[03:20.00]end", "2": "[00:10.00]film\n[04:50.00]end"}
+    monkeypatch.setattr("lovktv.catalog.lyrics.fetch_lyric", lambda song_id, source="netease": lyrics[song_id])
+    hit = {"source": "bilibili", "title": "From Now On", "artist": "Hugh Jackman", "duration": 300}
+    search.enrich_lyric_durations([hit], "From Now On")
+    assert hit["lyrics_duration_ms"] == 290_000
+    assert search.annotate_duration_match(hit)["lyrics_match_score"] >= 96

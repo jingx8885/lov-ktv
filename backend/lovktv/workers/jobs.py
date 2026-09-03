@@ -23,9 +23,14 @@ from lovktv.agents.translate import (
 from lovktv.catalog.audio import extract_mv_mp3
 from lovktv.catalog.importer import import_song
 from lovktv.catalog.lyrics import parse_lrc
-from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal, prepare_media
+from lovktv.catalog.mugen import (
+    attach_vocal_audio,
+    is_mugen_kid,
+    is_off_vocal,
+    prepare_media,
+)
 from lovktv.core.config import MEDIA_DIR
-from lovktv.pipeline.audio import extract_envelope, probe_duration_ms
+from lovktv.pipeline.audio import extract_envelope, probe_duration_ms, vocal_regions
 from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.language import resolve_language
 from lovktv.pipeline.lyrics import (
@@ -895,6 +900,8 @@ def _align_and_mtv(
     lang = resolve_language("".join(item.get("text") or "" for item in lines), language)
     update_song(song_id, language=lang, status="aligning")
     voice = _ensure_vocals(out_dir, src)
+    envelope, hop_ms = extract_envelope(voice)
+    energy_regions = vocal_regions(envelope, hop_ms)
     prompt = "\n".join(str(item.get("text") or "") for item in lines[:10])
     asr_words = transcribe_words(
         voice,
@@ -908,6 +915,7 @@ def _align_and_mtv(
         asr_words,
         lang,
         cache_path=out_dir / "agent-align.json",
+        energy_regions=energy_regions,
     )
     processing_debug.event(
         song_id,
@@ -924,6 +932,8 @@ def _align_and_mtv(
         lang,
         audio_path=voice,
         duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
+        envelope=envelope,
+        hop_ms=hop_ms,
         asr_words=asr_words or None,
         sung_rows=sung.rows() if sung else None,
         sung_words=sung.words if sung else None,

@@ -55,6 +55,8 @@ BAD_TITLE_TOKENS = (
 )
 TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
 SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
+# NetEase LRC candidates compared per search hit when its duration is known.
+LYRIC_DURATION_CANDIDATES = 4
 
 
 def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
@@ -168,7 +170,13 @@ def _pick_lyric_candidate(
 
 
 def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int | None:
-    """Fetch a NetEase LRC and return its last timed cue in milliseconds."""
+    """Return the last timed cue (ms) of the NetEase LRC that best fits the hit.
+
+    Uses the same fit measure as import (``lyric_mismatch_ms``) over several
+    candidates, so the score shown on the search card is the score the
+    imported lyrics will actually have.  Without a hit duration the first
+    candidate with lyrics is used.
+    """
     title = str(hit.get("title") or "").strip()
     artist = str(hit.get("artist") or "").strip()
     query = " ".join(part for part in (clean_search_title(title), artist) if part)
@@ -176,6 +184,11 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
     if fallback_query.strip() and fallback_query.strip() not in queries:
         queries.append(fallback_query.strip())
     try:
+        media_ms = int(round(float(hit.get("duration") or 0) * 1000))
+    except (TypeError, ValueError):
+        media_ms = 0
+    try:
+        from lovktv.catalog.kugou import lyric_mismatch_ms
         from lovktv.catalog.lyrics import fetch_lyric, parse_lrc
 
         for lyric_query in queries:
@@ -188,7 +201,8 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
             candidates = [candidate] + [
                 row for row in rows if row is not candidate
             ]
-            for row in candidates:
+            best: tuple[int, int] | None = None
+            for row in candidates[:LYRIC_DURATION_CANDIDATES]:
                 song_id = str(row.get("lyric_id") or row.get("id") or "").strip()
                 if not song_id.isdigit():
                     continue
@@ -197,8 +211,18 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
                 except Exception:
                     continue
                 times = [int(cue.get("ms")) for cue in cues if cue.get("ms") is not None]
-                if times:
-                    return max(times)
+                if not times:
+                    continue
+                last_ms = max(times)
+                if not media_ms:
+                    return last_ms
+                mismatch = lyric_mismatch_ms(last_ms, media_ms)
+                if best is None or mismatch < best[0]:
+                    best = (mismatch, last_ms)
+                if mismatch == 0:
+                    break
+            if best is not None:
+                return best[1]
     except Exception:
         return None
     return None

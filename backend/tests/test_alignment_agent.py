@@ -85,12 +85,15 @@ def test_generate_sung_lyrics_uses_transcript_and_caches(tmp_path, monkeypatch):
     result = alignment.generate_sung_lyrics(
         [{"ms": 0, "text": "From now on"}, {"ms": 5000, "text": "Studio only line"}],
         words, "en", cache_path=tmp_path / "agent-align.json",
+        energy_regions=[(0, 1000), (5000, 6000)],
     )
     assert result is not None
     assert [row.text for row in result.lyrics.rows] == ["From now on", "And we will come back home"]
     assert result.lyrics.rows[0].ref == 1 and result.lyrics.rows[1].ref is None
     assert "[12340-12500] from" in seen["calls"][0]
     assert "1. From now on" in seen["calls"][0]
+    assert "Vocal-energy regions" in seen["calls"][0]
+    assert "0-1000ms" in seen["calls"][0]
     cached = json.loads((tmp_path / "agent-align.json").read_text(encoding="utf-8"))
     assert cached["schema"] == "lovktv-sung-lyrics-v1"
 
@@ -98,6 +101,7 @@ def test_generate_sung_lyrics_uses_transcript_and_caches(tmp_path, monkeypatch):
     again = alignment.generate_sung_lyrics(
         [{"ms": 0, "text": "From now on"}, {"ms": 5000, "text": "Studio only line"}],
         words, "en", cache_path=tmp_path / "agent-align.json",
+        energy_regions=[(0, 1000), (5000, 6000)],
     )
     assert again is not None and len(seen["calls"]) == 1
 
@@ -199,6 +203,31 @@ def test_inferred_line_without_gap_borrows_time_from_previous_line():
     assert [row["text"] for row in rows] == ["first", "missed but sung", "third"]
     assert rows[0]["end_ms"] == rows[1]["start_ms"] == 250
     assert rows[1]["end_ms"] == rows[2]["start_ms"] == 1_050
+
+
+def test_inferred_run_is_dropped_when_gap_has_no_vocal_energy(monkeypatch):
+    # The agent may infer a chorus from reference line order, but an
+    # instrumental break must not acquire lyrics.  Regions at the anchors are
+    # intentionally ignored by the interior-energy guard.
+    monkeypatch.setattr(
+        "lovktv.pipeline.orchestrator._vocal_regions",
+        lambda envelope, hop_ms: [(0, 100), (9_900, 10_100)],
+    )
+    words = alignment.agent_words(
+        _words(("first", 0, 100), ("last", 10_000, 10_100))
+    )
+    rows = resolve_sung_rows(
+        [
+            {"text": "first", "from": 1, "to": 1},
+            {"text": "instrumental chorus", "status": "inferred", "reason": "gap"},
+            {"text": "last", "from": 2, "to": 2},
+        ],
+        words,
+        "en",
+        envelope=[1.0],
+        hop_ms=20,
+    )
+    assert [row["text"] for row in rows] == ["first", "last"]
 
 
 def test_half_heard_line_is_completed_from_reference(monkeypatch):

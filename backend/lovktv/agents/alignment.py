@@ -61,12 +61,15 @@ misheard ones.
 4. Incomplete lines: when the ASR captured only part of a reference line that
 was clearly sung, return the complete reference line with the span over the
 captured words.
-5. Missed lines: when the reference and the neighbouring matched lines make
+5. Missed lines: only emit `status`:"inferred" when supplied vocal-energy
+   regions show singing in that gap and the reference/neighbouring lines make
 it clear a line was sung but the transcript has no words for it (a line in the
 middle of a verse whose surrounding lines matched in order, with a time gap
 that fits), emit it in its position with `status`:"inferred", no `from`/`to`,
 and a short `reason`. Do not invent sections the recording omits; a missing
-chorus with no time gap is simply not sung.
+chorus with no time gap is simply not sung. Never infer lyrics over a gap with
+no vocal energy: an instrumental break is not evidence that a reference
+section was sung.
 6. Skip spoken dialogue, crowd noise, title/credit lines, and ASR
 hallucinations such as a phrase looping many times. Reference lines that are
 not sung in this recording must not appear.
@@ -164,12 +167,19 @@ def _build_messages(
     *,
     window: tuple[int, int] | None = None,
     emitted: list[str] | None = None,
+    energy_regions: list[tuple[int, int]] | None = None,
 ) -> list[dict[str, str]]:
     numbered_lines = "\n".join(f"{i}. {text}" for i, text in enumerate(reference, 1)) or "(none)"
     numbered_words = "\n".join(
         f"{word['index']}. [{word['start_ms']}-{word['end_ms']}] {word['text']}" for word in words
     )
     parts = [f"Language: {language}", f"Reference lyrics:\n{numbered_lines}"]
+    if energy_regions:
+        regions = ", ".join(f"{start}-{end}ms" for start, end in energy_regions)
+        parts.append(
+            "Vocal-energy regions (hard evidence of sung voice; gaps between "
+            f"regions are instrumental/silent):\n{regions}"
+        )
     if window is not None:
         parts.append(
             f"This request covers ASR words {window[0]}-{window[1]} of the song. "
@@ -208,12 +218,24 @@ def _windows(words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
     return out
 
 
-def _generate_whole(reference: list[str], words: list[dict[str, Any]], language: str) -> SungLyrics:
-    payload = _json_payload(_request_content(_build_messages(reference, words, language)))
+def _generate_whole(
+    reference: list[str],
+    words: list[dict[str, Any]],
+    language: str,
+    energy_regions: list[tuple[int, int]] | None = None,
+) -> SungLyrics:
+    payload = _json_payload(
+        _request_content(_build_messages(reference, words, language, energy_regions=energy_regions))
+    )
     return parse_sung_lyrics(payload, word_count=len(words))
 
 
-def _generate_windowed(reference: list[str], words: list[dict[str, Any]], language: str) -> SungLyrics:
+def _generate_windowed(
+    reference: list[str],
+    words: list[dict[str, Any]],
+    language: str,
+    energy_regions: list[tuple[int, int]] | None = None,
+) -> SungLyrics:
     rows: list[dict[str, Any]] = []
     emitted: list[str] = []
     last_to = 0
@@ -221,7 +243,14 @@ def _generate_windowed(reference: list[str], words: list[dict[str, Any]], langua
         lo, hi = int(window[0]["index"]), int(window[-1]["index"])
         payload = _json_payload(
             _request_content(
-                _build_messages(reference, window, language, window=(lo, hi), emitted=emitted[-3:])
+                _build_messages(
+                    reference,
+                    window,
+                    language,
+                    window=(lo, hi),
+                    emitted=emitted[-3:],
+                    energy_regions=energy_regions,
+                )
             )
         )
         for row in payload.get("rows") or []:
@@ -260,6 +289,7 @@ def generate_sung_lyrics(
     language: str,
     *,
     cache_path: Path | None = None,
+    energy_regions: list[tuple[int, int]] | None = None,
 ) -> SungGeneration | None:
     """Return the sung lines for this recording, or None when the agent is
     unavailable or its answer fails validation (callers then fall back to the
@@ -276,7 +306,13 @@ def generate_sung_lyrics(
         return None
     digest = hashlib.sha256(
         json.dumps(
-            {"schema": SUNG_SCHEMA, "language": language, "reference": reference, "words": words},
+            {
+                "schema": SUNG_SCHEMA,
+                "language": language,
+                "reference": reference,
+                "words": words,
+                "energy_regions": energy_regions or [],
+            },
             ensure_ascii=False,
             separators=(",", ":"),
         ).encode("utf-8")
@@ -291,12 +327,12 @@ def generate_sung_lyrics(
     lyrics: SungLyrics | None = None
     if len(words) <= _WHOLE_SONG_WORDS:
         try:
-            lyrics = _generate_whole(reference, words, language)
+            lyrics = _generate_whole(reference, words, language, energy_regions)
         except Exception:
             lyrics = None
     if lyrics is None:
         try:
-            lyrics = _generate_windowed(reference, words, language)
+            lyrics = _generate_windowed(reference, words, language, energy_regions)
         except Exception:
             return None
     lyrics = _complete_from_reference(lyrics, reference)
