@@ -125,6 +125,11 @@ export function renderAlignList() {
   ensureTimeline().render();
 }
 
+function syncRegenerateVisibility() {
+  const btn = $("playerRegenerate");
+  if (btn) btn.hidden = !state.songAdmin || !state.playerSong;
+}
+
 async function regenerateLyrics() {
   const song = state.playerSong;
   if (!song) return showToast(t("phone.player.needSong"));
@@ -195,6 +200,8 @@ export function bindAlign() {
   $("editPlay").onclick = () => api.togglePlayer();
   $("playerEdit").onclick = () => enterEdit();
   $("playerRegenerate").onclick = () => regenerateLyrics();
+  syncRegenerateVisibility();
+  document.addEventListener("lovktv-auth-change", syncRegenerateVisibility);
   $("editBack").onclick = () => exitEdit();
   $("tlMixHead").onclick = () => {
     state.mixTrackOn = !state.mixTrackOn;

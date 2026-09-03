@@ -58,6 +58,7 @@ export default {
   "api.ja_annotate_failed": "日语注音失败：{exc}",
   "api.song_not_found": "歌曲不存在",
   "api.retry_only_failed": "只有失败的歌可以重试",
+  "api.song_admin_required": "只有管理员可以重新处理歌曲",
   "api.no_lyrics": "这首还没有歌词",
   "api.lyrics_not_ready": "歌词还不能用来玩",
   "api.no_learn_lines": "这首没有可玩的句子",

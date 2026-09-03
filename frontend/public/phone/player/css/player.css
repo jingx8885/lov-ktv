@@ -1261,7 +1261,9 @@ body.phone.edit-on .tl {
   body.phone[data-page="player"] .player-main {
     display: grid;
     grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
-    grid-template-rows: minmax(220px, 1fr) auto;
+    /* 只有一行：MV/封面舞台与歌词层共用第一行左列，右列是曲库。
+       不再留第二行给横向进度带，进度条统一在播放键上方的 dock 里。 */
+    grid-template-rows: minmax(0, 1fr);
     gap: 20px 28px;
     max-width: none;
     margin: 0 auto;
@@ -1298,40 +1300,48 @@ body.phone.edit-on .tl {
     gap: 8px;
   }
 
+  /* MV 模式：舞台（视频或封面）占满歌词所在的那一格，歌词叠在上面。
+     歌词模式：舞台整体 display:none（见上方通用规则）。
+     无论有没有 mtv.mp4、无论视口多高，都不再把舞台压成播放键上方的横条。 */
   body.phone[data-page="player"] .player-stage {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    align-self: start;
-    align-content: start;
-    justify-items: center;
-    /* 进度带横向铺开、纵向收紧，和上方两列内容形成稳定的横向基线。 */
-    width: min(1080px, 100%);
+    grid-column: 1;
+    grid-row: 1;
+    align-self: stretch;
+    align-content: stretch;
+    justify-items: stretch;
+    grid-template-rows: minmax(0, 1fr);
+    width: auto;
+    max-width: none;
+    height: auto;
     min-height: 0;
-    margin: 0 auto;
-    padding: 6px 16px 5px;
+    margin: 0;
+    padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
     background: rgba(23, 26, 36, 0.9);
-    gap: 4px;
+    gap: 0;
+    overflow: hidden;
   }
 
   body.phone[data-page="player"] .player-art {
     width: 100%;
-    height: 72px;
+    height: auto;
+    min-height: 0;
+    max-height: none;
     aspect-ratio: auto;
-    max-height: 72px;
+    margin: 0;
+    /* 面板本身已有圆角和描边，铺满时不再重复圆角。 */
+    border-radius: 0;
+    box-shadow: none;
     opacity: 1;
     pointer-events: auto;
-    border-radius: 14px;
-    background:
-      radial-gradient(70% 90% at 18% 20%, rgba(255, 55, 95, 0.28), transparent 72%),
-      linear-gradient(145deg, #292033, #171a26 58%, #10121a);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.3);
   }
 
-  body.phone[data-page="player"] .player-clock {
-    width: 100%;
-    min-height: 34px;
+  body.phone[data-page="player"] .player-mtv {
+    /* 宽屏面板比例和片源不一定一致，按 contain 保留完整画面。 */
+    object-fit: contain;
+    border-radius: 0;
+    background: #04060d;
   }
 
   body.phone[data-page="player"] .player-lyric-stack {
@@ -1342,6 +1352,35 @@ body.phone.edit-on .tl {
     border-radius: 20px;
     background: rgba(23, 26, 36, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* MV 模式下歌词只是叠加层：透明、不拦点击，点击继续落到视频和全屏按钮上。 */
+  body.phone[data-page="player"].display-mv .player-lyric-stack {
+    z-index: 3;
+    padding: 0;
+    overflow: hidden;
+    background: transparent;
+    border-color: transparent;
+    pointer-events: none;
+  }
+
+  body.phone[data-page="player"].display-mv .player-lyrics {
+    padding: 0 24px 16px;
+    background: transparent;
+    text-shadow:
+      0 2px 12px rgba(0, 0, 0, 0.92),
+      0 1px 3px rgba(0, 0, 0, 0.95);
+  }
+
+  body.phone[data-page="player"].display-mv .player-lyrics .line {
+    color: #fff;
+    opacity: 1;
+  }
+
+  body.phone[data-page="player"].display-mv .player-lyrics .prev,
+  body.phone[data-page="player"].display-mv .player-lyrics .next {
+    color: rgba(255, 255, 255, 0.74);
+    opacity: 0.92;
   }
 
   /* 桌面端曲库是右侧常驻栏，列表独立滚动；手机端仍使用底部抽屉。 */
@@ -1519,139 +1558,16 @@ body.phone.edit-on .tl {
     display: none;
   }
 
-  body.phone[data-page="player"] .player-stage {
-    display: grid;
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-    max-width: none;
-    height: 82px;
-    min-height: 0;
-    margin: 14px 0 0;
-    padding: 6px 14px 4px;
-    border-radius: 14px;
-    gap: 2px;
-  }
-
-  body.phone[data-page="player"] .player-art {
-    height: 40px;
-    max-height: 40px;
-    border-radius: 9px;
-  }
-
-  body.phone[data-page="player"] .player-clock {
-    width: 100%;
-    min-height: 30px;
-  }
-
+  body.phone[data-page="player"] .player-stage,
   body.phone[data-page="player"] .player-lyric-stack,
   body.phone[data-page="player"] .player-sheet {
     grid-row: 1;
-  }
-
-  body.phone[data-page="player"] .player-main {
-    grid-template-rows: minmax(220px, 1fr) auto;
   }
 }
 
 @media (min-width: 1500px) {
   body.phone[data-page="player"] .player-sheet .player-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-/* 宽屏 MV 模式：视频接管主模块位置（第一行左列），不再缩成底部那条进度带。
-   舞台和歌词层共用同一个网格格子，歌词浮在视频上；进度条统一收进底部播放控制栏，
-   和手机端 MV 的层次保持一致。
-   用 :has(.player-art.has-mtv) 收口：display-mv 是默认模式，纯音频的歌没有
-   mtv.mp4，接管后只会撑出一个大空框，这类歌继续用横向进度带。
-   min-height 门槛挡住横屏手机（如 844×390 同样命中 min-width: 700px），
-   那种高度塞不进视频面板，继续用上面以歌词为主的横屏布局。 */
-@media (min-width: 700px) and (min-height: 560px) {
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-main {
-    /* 舞台离开第二行后不再留空轨，避免面板和控制条之间多出一段空隙。
-       保留最小高度：.player-art 的子元素全是绝对定位，轨道一旦按内容计算
-       就会塌成 0 高，视频跟着消失。 */
-    grid-template-rows: minmax(320px, 1fr);
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-stage {
-    grid-column: 1;
-    grid-row: 1;
-    align-self: stretch;
-    align-content: stretch;
-    justify-items: stretch;
-    /* 视频占满剩余高度，进度条贴在面板底部。 */
-    grid-template-rows: minmax(0, 1fr) auto;
-    width: auto;
-    max-width: none;
-    height: auto;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
-    gap: 0;
-    overflow: hidden;
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-art {
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-    aspect-ratio: auto;
-    /* 面板本身已有圆角和描边，视频铺满时不再重复圆角。 */
-    border-radius: 0;
-    box-shadow: none;
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-mtv {
-    /* 宽屏面板比例和片源不一定一致，按 contain 保留完整画面。 */
-    object-fit: contain;
-    border-radius: 0;
-    background: #04060d;
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-clock {
-    position: relative;
-    z-index: 4;
-    width: 100%;
-    min-height: 36px;
-    padding: 4px 14px 6px;
-    background: rgba(9, 11, 18, 0.82);
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyric-stack {
-    grid-column: 1;
-    grid-row: 1;
-    z-index: 3;
-    min-height: 0;
-    /* 歌词叠在视频上，进度条位于下方播放控制栏。 */
-    padding: 0;
-    background: transparent;
-    border-color: transparent;
-    /* 歌词只是叠加层，点击继续落到视频和全屏按钮上。 */
-    pointer-events: none;
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics {
-    padding: 0 24px 16px;
-    background: transparent;
-    text-shadow:
-      0 2px 12px rgba(0, 0, 0, 0.92),
-      0 1px 3px rgba(0, 0, 0, 0.95);
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .line {
-    color: #fff;
-    opacity: 1;
-  }
-
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .prev,
-  body.phone[data-page="player"].display-mv:has(.player-art.has-mtv) .player-lyrics .next {
-    color: rgba(255, 255, 255, 0.74);
-    opacity: 0.92;
   }
 }
 

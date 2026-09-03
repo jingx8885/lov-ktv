@@ -36,6 +36,7 @@ interface Song {
   native_video?: boolean;
   media_rev?: string;
   letter?: string;
+  can_realign?: boolean;
 }
 
 interface QueueItem extends Song {
@@ -129,6 +130,7 @@ interface AuthUser {
   wechat?: boolean;
   username?: string;
   account?: boolean;
+  admin?: boolean;
 }
 
 interface AuthQuota {

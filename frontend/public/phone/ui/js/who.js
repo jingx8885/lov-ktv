@@ -5,6 +5,7 @@ import { isAccount, submitAccount } from "../../../shared/ui/js/account.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
 import { openOverlay } from "./overlays.js";
+import { state } from "../../state.js";
 
 let lastQuota = null;
 
@@ -60,6 +61,8 @@ export async function loadWho() {
     data: { user: null }
   }));
   const user = data.user;
+  state.songAdmin = !!(data.user && data.user.admin) || !!data.song_admin;
+  document.dispatchEvent(new CustomEvent("lovktv-auth-change"));
   const signed = isAccount(user);
   const deskCta = $("deskLoginCta");
   if (deskCta) {

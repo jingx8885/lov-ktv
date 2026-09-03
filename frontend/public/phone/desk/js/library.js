@@ -59,7 +59,7 @@ export function renderLibIndex(letters) {
 function songRow(song) {
   const canPlay = song.status === "ready";
   const canRetry = song.status === "failed";
-  const canRecalculate = song.status === "ready";
+  const canRecalculate = song.status === "ready" && state.songAdmin && song.can_realign !== false;
   const canDelete = song.status !== "fetching" && song.status !== "separating";
   const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
   const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
@@ -314,6 +314,10 @@ export async function loadSongs(append = false, force = false) {
 }
 
 export function bindLibrary() {
+  document.addEventListener("lovktv-auth-change", () => {
+    state.libStamp = "";
+    loadSongs(false, true);
+  });
   document.querySelectorAll("[data-desk]").forEach((btn) => {
     btn.onclick = () => showDeskPane(btn.dataset.desk);
   });

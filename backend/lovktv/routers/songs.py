@@ -22,11 +22,13 @@ from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
 from lovktv.identity.points import charge_process
+from lovktv.identity.song_admin import is_song_admin
 from lovktv.locale.i18n import localize_exc, localize_song, request_lang
 from lovktv.locale.i18n import t as i18n_t
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.platform.runtime import media_root
 from lovktv.services.http import fail
+from lovktv.services.http import current_user
 from lovktv.storage.store import (
     create_song,
     delete_song,
@@ -160,6 +162,8 @@ def api_ja_lyrics(request: Request, payload: dict = Body(default={})) -> dict:
 def api_realign(
     request: Request, song_id: str, payload: dict = Body(default={})
 ) -> dict:
+    if not is_song_admin(current_user(request)):
+        fail(request, 403, "api.song_admin_required")
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
@@ -231,8 +235,15 @@ def api_songs(
     after: str = "",
 ) -> dict:
     lang = request_lang(request)
+    can_realign = is_song_admin(current_user(request))
     songs = prefer_native_library(
-        [localize_song(lang, with_media_flags(song) or song) for song in list_songs()]
+        [
+            {
+                **(localize_song(lang, with_media_flags(song) or song) or song),
+                "can_realign": can_realign,
+            }
+            for song in list_songs()
+        ]
     )
     if page is None and not q and not letter and not after:
         tagged = [{**song, "letter": song_letter(song)} for song in songs]
@@ -249,6 +260,7 @@ def api_song(request: Request, song_id: str) -> dict:
     if not song:
         fail(request, 404, "api.song_not_found")
     folder = media_root() / song_id
+    song["can_realign"] = is_song_admin(current_user(request))
     song["files"] = (
         sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     )

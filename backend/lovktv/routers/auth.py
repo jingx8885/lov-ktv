@@ -18,6 +18,7 @@ from lovktv.identity.auth import (
     wechat_ready,
 )
 from lovktv.identity.points import grant_register, points_payload
+from lovktv.identity.song_admin import is_song_admin
 from lovktv.identity.quota import quota_payload
 from lovktv.locale.i18n import localize_exc
 from lovktv.services.http import (
@@ -55,6 +56,7 @@ def api_auth_me(request: Request) -> JSONResponse:
     response = JSONResponse(
         {
             "user": user,
+            "song_admin": is_song_admin(user),
             "quota": quota_payload(request, user),
             "points": points_payload(request, user),
         }

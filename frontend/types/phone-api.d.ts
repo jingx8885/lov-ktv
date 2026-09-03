@@ -68,6 +68,7 @@ interface PhoneState {
   libLoading: boolean;
   libPages: number;
   libTotal: number;
+  songAdmin: boolean;
   searchLoading: boolean;
   searchHasMore: boolean;
   playerSong: Song | null;

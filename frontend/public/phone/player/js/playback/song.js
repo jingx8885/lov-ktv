@@ -63,6 +63,8 @@ export async function loadPlayerSong(songId, opts) {
     guide.onerror = null;
   }
   state.playerSong = song;
+  const regenerate = $("playerRegenerate");
+  if (regenerate) regenerate.hidden = !state.songAdmin || !song.can_realign;
   // 空闲页不显示封面/进度占位；歌曲资料确认可用后再恢复播放器舞台。
   const playerStage = $("playerStage");
   if (playerStage) playerStage.hidden = false;

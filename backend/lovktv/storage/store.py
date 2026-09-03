@@ -18,6 +18,7 @@ from lovktv.identity.passwords import (
     username_key,
     verify_password,
 )
+from lovktv.identity.song_admin import is_song_admin
 from lovktv.storage.media import (
     media_flags as _media_flags,
 )
@@ -205,6 +206,7 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         "wechat": wechat,
         "username": username,
         "account": bool(username or wechat),
+        "admin": is_song_admin({"username": username}),
         "created_at": int(data.get("created_at") or 0),
     }
 

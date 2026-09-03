@@ -58,6 +58,7 @@ export default {
   "api.ja_annotate_failed": "Japanese annotation failed: {exc}",
   "api.song_not_found": "Song not found",
   "api.retry_only_failed": "Only failed songs can be retried",
+  "api.song_admin_required": "Only the administrator can reprocess songs",
   "api.no_lyrics": "This song has no lyrics yet",
   "api.lyrics_not_ready": "Lyrics are not ready to play",
   "api.no_learn_lines": "This song has no lines to play",

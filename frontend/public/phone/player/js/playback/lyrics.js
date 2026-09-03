@@ -158,6 +158,10 @@ export function paintPlayer() {
     const hasMtv = !!mtv.src;
     mtv.hidden = !showMtv;
     if (art) art.classList.toggle("has-mtv", showMtv);
+    // The fullscreen affordance follows the same rule as the video surface so
+    // it cannot linger after an MV fails to load or a song without MV starts.
+    const fullscreen = $("playerFullscreen");
+    if (fullscreen && !document.body.classList.contains("player-fullscreen")) fullscreen.hidden = !showMtv;
     // Keep a loaded MV warm while lyrics are shown so switching back is
     // immediate instead of waiting for another decode/buffer cycle.
     if (hasMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
