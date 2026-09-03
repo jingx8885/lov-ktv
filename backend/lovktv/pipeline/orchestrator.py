@@ -47,6 +47,147 @@ from lovktv.pipeline.matching import (
 )
 
 
+def apply_generated_lyrics(timeline: dict[str, Any], generated: Any | None) -> dict[str, Any]:
+    """Overlay direct agent output (translation/tokens) onto generated cues.
+
+    Timing remains server-owned.  Rows are matched by lyric number and source
+    text, so an agent can enrich a cue without being able to move it or inject
+    arbitrary lines into the timeline.
+    """
+    if not generated or not isinstance(timeline.get("cues"), list):
+        return timeline
+    rows = generated.get("rows") if isinstance(generated, dict) else getattr(generated, "rows", None)
+    if not rows:
+        return timeline
+    normalized = []
+    for row in rows:
+        if hasattr(row, "model_dump"):
+            row = row.model_dump(mode="json", by_alias=True)
+        if isinstance(row, dict):
+            normalized.append(row)
+    cues = timeline["cues"]
+    used: set[int] = set()
+    applied = 0
+    for row in sorted(normalized, key=lambda item: int(item.get("lyric") or 0)):
+        text = str(row.get("text") or "").strip()
+        if not text:
+            continue
+        target = next(
+            (i for i, cue in enumerate(cues) if i not in used and str(cue.get("text") or "").strip() == text),
+            None,
+        )
+        if target is None:
+            continue
+        cue = cues[target]
+        translation = str(row.get("translation") or "").strip()
+        if translation:
+            cue["translation"] = cue["zh"] = translation
+        tokens = row.get("tokens")
+        if isinstance(tokens, list) and tokens:
+            old_tokens = list(cue.get("tokens") or [])
+            # Keep server-owned timing and token boundaries.  The generation
+            # agent may use a different punctuation/word segmentation; in
+            # that case overlay metadata onto matching existing tokens rather
+            # than replacing the row and accidentally collapsing English into
+            # one long token (or assigning every token the line's timing).
+            exact_shape = len(old_tokens) == len(tokens) and all(
+                str(old.get("text") or old.get("surface") or "").strip().casefold()
+                == str(token.get("surface") or token.get("text") or "").strip().casefold()
+                for old, token in zip(old_tokens, tokens)
+                if isinstance(token, dict)
+            )
+            fresh = []
+            if not old_tokens:
+                # Some fallback timelines have no ASR token rows at all;
+                # create display tokens with the cue span split evenly.
+                count = len([token for token in tokens if isinstance(token, dict) and str(token.get("surface") or token.get("text") or "").strip()])
+                span = max(int(cue.get("end_ms") or 0) - int(cue.get("start_ms") or 0), 200)
+                cursor_ms = int(cue.get("start_ms") or 0)
+                for index, token in enumerate(tokens):
+                    if not isinstance(token, dict):
+                        continue
+                    surface = str(token.get("surface") or token.get("text") or "").strip()
+                    if not surface:
+                        continue
+                    end_ms = int(cue.get("end_ms") or cursor_ms + span)
+                    if index < count - 1:
+                        end_ms = cursor_ms + max(40, span // count)
+                    fresh.append({
+                        **token,
+                        "text": surface,
+                        "surface": surface,
+                        "translation": str(token.get("translation") or token.get("zh") or ""),
+                        "zh": str(token.get("translation") or token.get("zh") or ""),
+                        "start_ms": cursor_ms,
+                        "end_ms": max(cursor_ms + 40, end_ms),
+                    })
+                    cursor_ms = end_ms
+            elif exact_shape:
+                for index, token in enumerate(tokens):
+                    if not isinstance(token, dict):
+                        continue
+                    old = old_tokens[index]
+                    surface = str(old.get("text") or old.get("surface") or "").strip()
+                    if not surface:
+                        continue
+                    merged = dict(old)
+                    merged.update(token)
+                    merged.update(
+                        text=surface,
+                        surface=surface,
+                        translation=str(token.get("translation") or token.get("zh") or ""),
+                        zh=str(token.get("translation") or token.get("zh") or ""),
+                    )
+                    fresh.append(merged)
+            else:
+                # Best-effort sequential surface matching for a punctuation
+                # mismatch; never synthesize a new timing row.
+                cursor = 0
+                for token in tokens:
+                    if not isinstance(token, dict):
+                        continue
+                    surface = str(token.get("surface") or token.get("text") or "").strip()
+                    if not surface:
+                        continue
+                    target_index = next(
+                        (
+                            i for i in range(cursor, len(old_tokens))
+                            if str(old_tokens[i].get("text") or old_tokens[i].get("surface") or "").strip().casefold()
+                            == surface.casefold()
+                        ),
+                        None,
+                    )
+                    if target_index is None:
+                        continue
+                    old = old_tokens[target_index]
+                    merged = dict(old)
+                    merged.update(token)
+                    merged.update(
+                        text=str(old.get("text") or old.get("surface") or surface),
+                        surface=str(old.get("surface") or old.get("text") or surface),
+                        translation=str(token.get("translation") or token.get("zh") or ""),
+                        zh=str(token.get("translation") or token.get("zh") or ""),
+                    )
+                    fresh.append(merged)
+                    cursor = target_index + 1
+            if not old_tokens and fresh:
+                cue["tokens"] = fresh
+            elif fresh and len(fresh) == len(old_tokens):
+                cue["tokens"] = fresh
+            elif fresh:
+                for token in fresh:
+                    target = next(
+                        (old for old in old_tokens if str(old.get("text") or old.get("surface") or "").strip().casefold() == str(token.get("text") or "").strip().casefold()),
+                        None,
+                    )
+                    if target is not None:
+                        target.update({k: v for k, v in token.items() if k not in {"start_ms", "end_ms", "text", "surface"}})
+                        target["translation"] = target["zh"] = str(token.get("translation") or token.get("zh") or "")
+        used.add(target)
+        applied += 1
+    if applied:
+        timeline["generation_source"] = "agent"
+    return timeline
 def align_lyrics(
     lines: list[dict[str, Any]],
     language: str | None = None,
@@ -56,6 +197,7 @@ def align_lyrics(
     hop_ms: int = HOP_MS,
     asr_words: list[dict[str, Any]] | None = None,
     agent_matches: list[dict[str, int]] | None = None,
+    generated_lyrics: Any | None = None,
 ) -> dict[str, Any]:
     """Return karaoke timeline anchored to voice when possible."""
     joined = "".join(str(item.get("text") or "") for item in lines)
@@ -86,6 +228,7 @@ def align_lyrics(
                 asr_words, lang, duration_ms, lines=lines, matches=agent_matches
             )
             if transcript:
+                apply_generated_lyrics(transcript, generated_lyrics)
                 return transcript
         reordered = _align_reordered_lines(lines, asr_words, lang, agent_matches, duration_ms)
         if reordered is not None:
@@ -167,7 +310,7 @@ def align_lyrics(
                 )
                 if cue:
                     cues.append(cue)
-            return {
+            result = {
                 "language": lang,
                 "alignment": "agent" if agent_count else ("asr" if used_asr_clock else ("lrc" if timed_lines else "asr")),
                 "alignment_source": (
@@ -177,6 +320,8 @@ def align_lyrics(
                 ),
                 "cues": cues,
             }
+            apply_generated_lyrics(result, generated_lyrics)
+            return result
 
     if envelope:
         regions = _vocal_regions(envelope, hop_ms)
@@ -209,18 +354,21 @@ def align_lyrics(
             if cue:
                 cues.append(cue)
         source = str(audio_path.name) if audio_path else "envelope"
-        return {
+        result = {
             "language": lang,
             "alignment": "onset",
             "alignment_source": source,
             "cues": cues,
         }
+        apply_generated_lyrics(result, generated_lyrics)
+        return result
 
 
     if timed and all(item.get("ms") is not None for item in lines):
         timeline = timeline_from_lrc(lines, lang, duration_ms=duration_ms)
         timeline["alignment"] = "lrc-interp"
         timeline["alignment_source"] = ""
+        apply_generated_lyrics(timeline, generated_lyrics)
         return timeline
 
     duration = duration_ms or max(len(lines) * 4000, 4000)
@@ -229,6 +377,7 @@ def align_lyrics(
     timeline = timeline_from_lrc(assigned, lang, duration_ms=duration)
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
+    apply_generated_lyrics(timeline, generated_lyrics)
     return timeline
 
 def _looks_like_wrong_lyric_version(

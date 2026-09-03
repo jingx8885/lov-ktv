@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv.agents.alignment import align_lines_with_agent
+from lovktv.agents.alignment import align_lines_with_agent, generate_lyrics_with_agent
 from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
@@ -952,17 +952,27 @@ def _align_and_mtv(
         prompt=prompt,
     )
     processing_debug.event(song_id, "asr", count=len(asr_words or []), cache="asr.json")
-    agent_matches = align_lines_with_agent(
+    generated = generate_lyrics_with_agent(
         lines,
         asr_words,
         lang,
         cache_path=out_dir / "agent-align.json",
     )
-    processing_debug.event(song_id, "agent-align", count=len(agent_matches or []), cache="agent-align.json")
+    agent_matches = generated.legacy_matches() if generated is not None else align_lines_with_agent(
+        lines, asr_words, lang, cache_path=out_dir / "agent-align.json"
+    )
+    processing_debug.event(
+        song_id,
+        "agent-align",
+        count=len(agent_matches or []),
+        generated=bool(generated),
+        cache="agent-align.json",
+    )
     align_kwargs = {
         "audio_path": voice,
         "duration_ms": probe_duration_ms(src) or probe_duration_ms(voice),
         "asr_words": asr_words or None,
+        "generated_lyrics": generated,
     }
     if agent_matches:
         align_kwargs["agent_matches"] = agent_matches

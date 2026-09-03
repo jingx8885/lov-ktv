@@ -1,8 +1,9 @@
-"""Agent-assisted matching of known lyrics to Whisper word timestamps.
+"""Agent-assisted lyric alignment and direct lyric-result generation.
 
-The model chooses which ASR word span belongs to each lyric line.  It never
-chooses milliseconds directly; the server derives those from the ASR words and
-keeps the existing deterministic alignment as a fallback.
+The preferred contract returns a complete row for every source lyric line
+(text, translation, tokens, status and optional ASR span).  The legacy matcher
+still exposes only validated spans for older callers; milliseconds remain
+server-owned and are always derived from ASR words.
 """
 
 from __future__ import annotations
@@ -20,15 +21,24 @@ from lovktv.agents.ja_lyrics import (
     agent_base_url,
     agent_model,
 )
+from lovktv.domain.alignment import (
+    AgentAlignment,
+    GeneratedLyrics,
+    parse_alignment_payload,
+    parse_generated_lyrics,
+)
 from lovktv.pipeline.lyrics import drop_credit_lines
 from lovktv.pipeline.matching import _usable_asr_words
 
-# v2 tightens repeated-line handling; old sparse matches are regenerated.
-ALIGN_SCHEMA = "lovktv-align-v3"
+# v4 stores the complete status-bearing contract alongside legacy matches.
+# Any old sparse cache is intentionally regenerated.
+ALIGN_SCHEMA = "lovktv-align-v4"
+GENERATE_SCHEMA = "lovktv-generated-lyrics-v1"
 _JSON_BLOCK = re.compile(r"\{.*\}", re.S)
 
-SYSTEM = """You match known karaoke lyric lines to a Whisper word transcript.
-Return JSON only: {\"matches\":[{\"lyric\":1,\"from\":3,\"to\":8}]}.
+SYSTEM = """Generate a complete karaoke lyric document from known lyrics and
+the ASR transcript. Return JSON only in this shape:
+{\"rows\":[{\"lyric\":1,\"status\":\"matched\",\"from\":3,\"to\":8}],\"groups\":[]}.
 
 Rules:
 1. `lyric` is the 1-based lyric line number, and `from`/`to` are 1-based ASR
@@ -53,9 +63,52 @@ Rules:
    invent, average, or shift word times while choosing `from`/`to`.
 6. Bracketed lyric times are the source LRC clock, not ground truth. Compare
    them with ASR times and correct obvious offsets or version drift.
-7. Omit a lyric only when no plausible sung counterpart exists in the ASR
-   transcript (for example, an actual cut or spoken-only line); never invent
-   ASR indices. Do not return timestamps or rewritten lyric text.
+7. Do not silently skip any known lyric line. Every numbered lyric line must
+   appear exactly once in `rows`. Use `matched` for a reliable ASR span,
+   `uncertain` for a weak but real span, and `inferred` when ASR missed the
+   words but repeated-chorus/context proves the line belongs there. Use
+   `absent` only when the audio demonstrably omits the line. Inferred/absent
+   rows have no ASR span and must include a concise `reason`. Never invent ASR
+   indices and do not return rewritten lyric text. Every row must preserve the
+   source `text`, provide a line-level `translation`, and split the line into
+   ordered `tokens`; each token is one word/unit and has its own `translation`.
+   Japanese tokens keep kanji readings and token-corresponding romaji. English
+   embedded in another language is split as ordinary words; never put a whole
+   sentence translation into the first token.
+8. When several consecutive known lines form a verse/chorus block and the ASR
+   contains only its beginning or ending, mark the unresolved middle lines in
+   `missing` in their original order. The server will restore their timing
+   from neighboring anchors; do not replace them with a different lyric line.
+"""
+
+GENERATE_SYSTEM = """You generate the complete karaoke lyric result from the
+known lyric lines and a Whisper transcript. Return JSON only:
+{"schema":"lovktv-generated-lyrics-v1","language":"en","rows":[
+ {"lyric":1,"status":"matched","text":"from now on","translation":"从现在起",
+  "from":1,"to":3,"tokens":[{"surface":"from","translation":"从"}]}
+],"groups":[]}.
+
+Rules:
+1. Return exactly one row for every numbered lyric line, in lyric-number order.
+`text` must be the exact source lyric line; never rewrite or omit it.
+2. Use `matched` when the line is present in the transcript and provide the
+1-based inclusive ASR word span. Use `uncertain` for a weak but real span,
+`inferred` when context proves the line but ASR missed it, and `absent` only
+when the recording demonstrably omits it. If a known lyric line falls between
+two matched lines in the same section, treat an ASR gap as `inferred` and
+return the complete known line and tokens; do not call it `absent` merely
+because Whisper omitted its words. Inferred/absent rows must omit
+`from`/`to` and include a concise `reason`.
+3. `translation` is a faithful, clear Simplified Chinese translation of the
+whole line. Keep the meaning, agency, negation, tense and emotional tone.
+4. `tokens` cover the whole line in order. Each token has `surface` and a
+short contextual Chinese `translation`; for English use exactly one token per
+word (including words such as from, a, and). Do not put the whole-line
+translation in one token. Japanese tokens may also include `reading`, `romaji`
+and `pronunciation`.
+5. ASR spans are references only; use the numbered transcript timestamps as the
+timing source and never invent indices. Repeated lines must use their actual
+occurrence. Do not return a matches-only object.
 """
 
 
@@ -68,7 +121,7 @@ def _source_hash(lines: list[str], words: list[dict[str, Any]], language: str) -
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _parse(raw: str) -> list[dict[str, int]]:
+def _json_payload(raw: str) -> dict[str, Any]:
     text = raw.strip()
     if text.startswith("```"):
         text = re.sub(r"^```(?:json)?\s*", "", text)
@@ -78,7 +131,22 @@ def _parse(raw: str) -> list[dict[str, int]]:
     except json.JSONDecodeError:
         match = _JSON_BLOCK.search(text)
         data = json.loads(match.group(0)) if match else {}
-    rows = data.get("matches") if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        raise ValueError("对齐 agent 返回的不是 JSON 对象")
+    return data
+
+
+def _parse_alignment(raw: str, lyric_count: int | None = None, word_count: int | None = None) -> AgentAlignment:
+    return parse_alignment_payload(_json_payload(raw), lyric_count=lyric_count, word_count=word_count)
+
+
+def _parse(raw: str) -> list[dict[str, int]]:
+    """Parse both protocol versions and expose legacy matched rows."""
+    return _parse_legacy_rows(_json_payload(raw))
+
+
+def _parse_legacy_rows(data: dict[str, Any]) -> list[dict[str, int]]:
+    rows = data.get("matches")
     if not isinstance(rows, list):
         raise ValueError("对齐 agent 返回的不是 matches JSON")
     out: list[dict[str, int]] = []
@@ -95,7 +163,7 @@ def _parse(raw: str) -> list[dict[str, int]]:
     return out
 
 
-def _complete(messages: list[dict[str, str]]) -> list[dict[str, int]]:
+def _request_content(messages: list[dict[str, str]]) -> str:
     base = agent_base_url()
     key = agent_api_key()
     if not base or not key:
@@ -129,7 +197,230 @@ def _complete(messages: list[dict[str, str]]) -> list[dict[str, int]]:
         )
     if not content:
         raise RuntimeError("对齐 agent 没有返回内容")
-    return _parse(str(content))
+    return str(content)
+
+
+def _complete(messages: list[dict[str, str]]) -> GeneratedLyrics | AgentAlignment | list[dict[str, int]]:
+    """Call the configured model and parse either the v1 or legacy response.
+
+    Returning the validated object here lets callers retain ``missing`` and
+    ``inferred`` rows while the list branch keeps monkey-patched integrations
+    and older tests/source-compatible adapters working.
+    """
+    payload = _json_payload(_request_content(messages))
+    # New protocol is status-bearing.  Keep accepting the old matches-only
+    # object so an older configured gateway does not disable alignment.
+    if isinstance(payload.get("rows"), list):
+        rows = payload.get("rows") or []
+        if rows and any(isinstance(row, dict) and "text" in row for row in rows):
+            # A partially generated document is not a valid legacy response;
+            # reject it so the caller can fall back deterministically.
+            return parse_generated_lyrics(payload)
+        return parse_alignment_payload(payload)
+    if "missing" in payload:
+        return parse_alignment_payload(payload)
+    return _parse_legacy_rows(payload)
+
+
+def _build_messages(
+    line_specs: list[str], words: list[dict[str, Any]], language: str,
+    *, system: str = SYSTEM,
+) -> list[dict[str, str]]:
+    numbered_lines = "\n".join(f"{i}. {spec}" for i, spec in enumerate(line_specs, 1))
+    numbered_words = "\n".join(
+        f"{i}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
+        for i, word in enumerate(words, 1)
+    )
+    return [
+        {"role": "system", "content": system},
+        {
+            "role": "user",
+            "content": (
+                f"Language: {language}\nKnown lyric lines:\n{numbered_lines}\n\n"
+                f"Whisper ASR words:\n{numbered_words}"
+            ),
+        },
+    ]
+
+
+def _build_generation_messages(
+    line_specs: list[str], words: list[dict[str, Any]], language: str,
+    *, line_numbers: list[int] | None = None, context: str = "",
+) -> list[dict[str, str]]:
+    ids = line_numbers or list(range(1, len(line_specs) + 1))
+    numbered_lines = "\n".join(f"{i}. {spec}" for i, spec in zip(ids, line_specs))
+    numbered_words = "\n".join(
+        f"{i}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
+        for i, word in enumerate(words, 1)
+    )
+    return [
+        {"role": "system", "content": GENERATE_SYSTEM},
+        {
+            "role": "user",
+            "content": (
+                f"Language: {language}\nKnown lyric lines:\n{numbered_lines}\n\n"
+                + (f"Neighboring lyric context (do not return these lines):\n{context}\n\n" if context else "")
+                + f"Whisper ASR words:\n{numbered_words}"
+            ),
+        },
+    ]
+
+
+def _generation_line_specs(lines: list[dict[str, Any]]) -> tuple[list[int], list[str]]:
+    numbers: list[int] = []
+    specs: list[str] = []
+    for number, item in enumerate(lines, 1):
+        start = item.get("ms")
+        end = item.get("end_ms")
+        clock = (
+            f"[{int(start)}-{int(end) if end is not None else '?'}] "
+            if start is not None
+            else "[no timestamp] "
+        )
+        numbers.append(number)
+        specs.append(clock + str(item.get("text") or ""))
+    return numbers, specs
+
+
+def _generate_chunk(
+    lines: list[dict[str, Any]],
+    words: list[dict[str, Any]],
+    language: str,
+    *,
+    global_numbers: list[int] | None = None,
+    context: str = "",
+) -> GeneratedLyrics:
+    local_numbers, specs = _generation_line_specs(lines)
+    ids = global_numbers or local_numbers
+    payload = _json_payload(
+        _request_content(
+            _build_generation_messages(
+                specs, words, language, line_numbers=ids, context=context
+            )
+        )
+    )
+    return parse_generated_lyrics(payload, expected_lyrics=set(ids), word_count=len(words))
+
+
+def generate_lyrics_with_agent(
+    lines: list[dict[str, Any]],
+    asr_words: list[dict[str, Any]],
+    language: str,
+    *,
+    cache_path: Path | None = None,
+) -> GeneratedLyrics | None:
+    """Ask the model to generate the complete, tokenized lyric document.
+
+    This is intentionally separate from the legacy timeline adapter: callers
+    can inspect and review the generation result before converting its timing
+    anchors into ``lyrics.json``.  No model output is written directly to the
+    persisted timeline.
+    """
+    if not agent_base_url() or not agent_api_key() or not asr_words:
+        return None
+    kept = [
+        item
+        for item in drop_credit_lines(lines, language)
+        if str(item.get("text") or "").strip()
+    ]
+    words = [
+        {
+            "text": str(item.get("text") or ""),
+            "start_ms": int(item.get("start_ms") or 0),
+            "end_ms": int(item.get("end_ms") or item.get("start_ms") or 0),
+        }
+        for item in _usable_asr_words(asr_words)
+        if str(item.get("text") or "").strip()
+    ][:800]
+    if not kept or not words:
+        return None
+    _numbers, line_specs = _generation_line_specs(kept)
+    digest = hashlib.sha256(
+        json.dumps(
+            {"schema": GENERATE_SCHEMA, "language": language, "lines": line_specs, "words": words},
+            ensure_ascii=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if cache_path and cache_path.exists():
+        try:
+            cached = json.loads(cache_path.read_text(encoding="utf-8"))
+            if cached.get("schema") == GENERATE_SCHEMA and cached.get("source_hash") == digest:
+                parsed = parse_generated_lyrics(cached, lyric_count=len(kept), word_count=len(words))
+                if any(parsed.rows[i - 1].text != str(kept[i - 1].get("text") or "") for i in range(1, len(kept) + 1)):
+                    raise ValueError("generated lyric text does not match source lines")
+                return parsed
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            pass
+    generated: GeneratedLyrics | None = None
+    # A whole-song response is preferred because it gives the model global
+    # context for repeated choruses.  Long songs can exceed the gateway's
+    # completion limit, so retry in bounded sections and merge only after the
+    # same schema validator checks every section and every ASR span.
+    try:
+        payload = _json_payload(
+            _request_content(_build_generation_messages(line_specs, words, language))
+        )
+        generated = parse_generated_lyrics(
+            payload, lyric_count=len(kept), word_count=len(words)
+        )
+    except Exception:
+        chunk_size = 16
+        chunk_rows = []
+        try:
+            for offset in range(0, len(kept), chunk_size):
+                chunk = kept[offset : offset + chunk_size]
+                ids = list(range(offset + 1, offset + 1 + len(chunk)))
+                before = str(kept[offset - 1].get("text") or "") if offset else ""
+                after_index = offset + len(chunk)
+                after = str(kept[after_index].get("text") or "") if after_index < len(kept) else ""
+                context = "\n".join(
+                    part for part in (
+                        f"before: {before}" if before else "",
+                        f"after: {after}" if after else "",
+                    ) if part
+                )
+                part = _generate_chunk(
+                    chunk, words, language, global_numbers=ids, context=context
+                )
+                chunk_rows.extend(part.rows)
+            generated = parse_generated_lyrics(
+                {
+                    "schema": GENERATE_SCHEMA,
+                    "language": language,
+                    "rows": [row.model_dump(mode="json", by_alias=True) for row in chunk_rows],
+                    "groups": [],
+                },
+                lyric_count=len(kept),
+                word_count=len(words),
+            )
+        except Exception:
+            return None
+    if generated is None:
+        return None
+    if any(
+        generated.rows[i - 1].text != str(kept[i - 1].get("text") or "")
+        for i in range(1, len(kept) + 1)
+    ):
+        return None
+    if cache_path:
+        try:
+            cache_path.write_text(
+                json.dumps(
+                    {
+                        **generated.model_dump(mode="json", by_alias=True),
+                        "schema": GENERATE_SCHEMA,
+                        "source_hash": digest,
+                        "model": agent_model(),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+        except OSError:
+            pass
+    return generated
 
 
 def align_lines_with_agent(
@@ -185,18 +476,31 @@ def align_lines_with_agent(
         for i, word in enumerate(words, 1)
     )
     try:
+        # The alignment entry point now asks for the complete generated
+        # document.  The legacy matcher list is derived only after the
+        # document passes the status/token schema validator.
         matches = _complete(
-            [
-                {"role": "system", "content": SYSTEM},
-                {
-                    "role": "user",
-                    "content": (
-                        f"Language: {language}\nKnown lyric lines:\n{numbered_lines}\n\n"
-                        f"Whisper ASR words:\n{numbered_words}"
-                    ),
-                },
-            ]
+            _build_messages(line_specs, words, language, system=GENERATE_SYSTEM)
         )
+        generated = matches if isinstance(matches, GeneratedLyrics) else None
+        alignment = matches if isinstance(matches, AgentAlignment) else None
+        if generated is not None:
+            generated = parse_generated_lyrics(
+                generated.model_dump(mode="json", by_alias=True),
+                lyric_count=len(kept),
+                word_count=len(words),
+            )
+            matches = generated.legacy_matches()
+        elif alignment is not None:
+            # Enforce complete source coverage at the Python boundary.  A
+            # valid-looking Pi response that omitted a line must fail closed
+            # instead of silently degrading into a sparse legacy list.
+            alignment = parse_alignment_payload(
+                alignment.model_dump(mode="json", by_alias=True),
+                lyric_count=len(kept),
+                word_count=len(words),
+            )
+            matches = alignment.legacy_matches()
         valid = _validate(matches, len(kept), len(words))
     except Exception:
         return []
@@ -204,7 +508,20 @@ def align_lines_with_agent(
         try:
             cache_path.write_text(
                 json.dumps(
-                    {"schema": ALIGN_SCHEMA, "source_hash": digest, "matches": valid},
+                    {
+                        "schema": ALIGN_SCHEMA,
+                        "source_hash": digest,
+                        "matches": valid,
+                        **(
+                            {"generated": generated.model_dump(mode="json", by_alias=True)}
+                            if generated is not None
+                            else (
+                                {"alignment": alignment.model_dump(mode="json", by_alias=True)}
+                                if alignment is not None
+                                else {}
+                            )
+                        ),
+                    },
                     ensure_ascii=False,
                     indent=2,
                 ),

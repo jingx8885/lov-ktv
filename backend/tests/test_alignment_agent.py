@@ -1,7 +1,11 @@
 import json
 
+import pytest
+
 from lovktv.agents import alignment
-from lovktv.pipeline.orchestrator import align_lyrics, _timeline_from_asr_words
+from lovktv.domain.alignment import parse_alignment_payload
+from lovktv.pipeline.orchestrator import align_lyrics, apply_generated_lyrics, _timeline_from_asr_words
+from lovktv.pipeline.orchestrator import apply_generated_lyrics
 
 
 def test_agent_matches_are_validated_and_cached(tmp_path, monkeypatch):
@@ -29,6 +33,205 @@ def test_agent_matches_are_validated_and_cached(tmp_path, monkeypatch):
     ]
     cached = json.loads((tmp_path / "agent-align.json").read_text(encoding="utf-8"))
     assert cached["schema"] == alignment.ALIGN_SCHEMA
+
+
+def test_status_protocol_preserves_inferred_rows_and_legacy_matches():
+    payload = {
+        "schema": "lovktv-agent-alignment-v1",
+        "rows": [
+            {"lyric": 1, "status": "matched", "from": 1, "to": 2},
+            {"lyric": 2, "status": "inferred", "reason": "重复副歌位于两个锚点之间"},
+            {"lyric": 3, "status": "uncertain", "from": 3, "to": 3},
+        ],
+        "groups": [],
+    }
+    parsed = parse_alignment_payload(payload, lyric_count=3, word_count=3)
+    assert parsed.rows[1].status == "inferred"
+    assert parsed.rows[1].reason
+    assert parsed.legacy_matches() == [
+        {"lyric": 1, "from": 1, "to": 2},
+        {"lyric": 3, "from": 3, "to": 3},
+    ]
+
+
+def test_status_protocol_rejects_silent_omission_and_reused_words():
+    with pytest.raises(ValueError):
+        parse_alignment_payload(
+            {"rows": [{"lyric": 1, "status": "matched", "from": 1, "to": 1}]},
+            lyric_count=2,
+            word_count=1,
+        )
+
+
+def test_generate_lyrics_with_agent_validates_complete_tokenized_document(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
+    monkeypatch.setattr(
+        alignment,
+        "_request_content",
+        lambda messages: json.dumps(
+            {
+                "schema": "lovktv-generated-lyrics-v1",
+                "language": "en",
+                "rows": [
+                    {
+                        "lyric": 1,
+                        "status": "matched",
+                        "text": "hello world",
+                        "translation": "你好世界",
+                        "tokens": [
+                            {"surface": "hello", "translation": "你好"},
+                            {"surface": "world", "translation": "世界"},
+                        ],
+                        "from": 1,
+                        "to": 2,
+                    },
+                    {
+                        "lyric": 2,
+                        "status": "inferred",
+                        "text": "again",
+                        "translation": "再次",
+                        "tokens": [{"surface": "again", "translation": "再次"}],
+                        "reason": "副歌结构确认",
+                    },
+                ],
+                "groups": [],
+            }
+        ),
+    )
+    result = alignment.generate_lyrics_with_agent(
+        [{"ms": 0, "text": "hello world"}, {"ms": 1000, "text": "again"}],
+        [
+            {"text": "hello", "start_ms": 0, "end_ms": 100},
+            {"text": "world", "start_ms": 100, "end_ms": 200},
+        ],
+        "en",
+        cache_path=tmp_path / "generated.json",
+    )
+    assert result is not None
+    assert [token.surface for token in result.rows[0].tokens] == ["hello", "world"]
+    assert result.rows[1].status == "inferred"
+    assert result.legacy_matches() == [{"lyric": 1, "from": 1, "to": 2}]
+    assert json.loads((tmp_path / "generated.json").read_text())["schema"] == "lovktv-generated-lyrics-v1"
+    with pytest.raises(ValueError):
+        parse_alignment_payload(
+            {
+                "rows": [
+                    {"lyric": 1, "status": "matched", "from": 1, "to": 1},
+                    {"lyric": 2, "status": "matched", "from": 1, "to": 1},
+                ]
+            },
+            lyric_count=2,
+            word_count=1,
+        )
+
+
+def test_generate_from_now_on_returns_line_and_word_results(monkeypatch):
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
+    monkeypatch.setattr(
+        alignment,
+        "_request_content",
+        lambda messages: json.dumps(
+            {
+                "schema": "lovktv-generated-lyrics-v1",
+                "language": "en",
+                "rows": [
+                    {
+                        "lyric": 1,
+                        "status": "matched",
+                        "text": "from now on",
+                        "translation": "从现在起",
+                        "from": 1,
+                        "to": 3,
+                        "tokens": [
+                            {"surface": "from", "translation": "从"},
+                            {"surface": "now", "translation": "现在"},
+                            {"surface": "on", "translation": "起"},
+                        ],
+                    }
+                ],
+                "groups": [],
+            }
+        ),
+    )
+    result = alignment.generate_lyrics_with_agent(
+        [{"ms": 0, "text": "from now on"}],
+        [
+            {"text": "from", "start_ms": 0, "end_ms": 100},
+            {"text": "now", "start_ms": 100, "end_ms": 200},
+            {"text": "on", "start_ms": 200, "end_ms": 300},
+        ],
+        "en",
+    )
+    assert result is not None
+    assert result.rows[0].text == "from now on"
+    assert [token.surface for token in result.rows[0].tokens] == ["from", "now", "on"]
+
+
+def test_generated_result_enriches_final_timeline_without_changing_timing():
+    timeline = {
+        "cues": [
+            {
+                "text": "from now on",
+                "start_ms": 100,
+                "end_ms": 400,
+                "tokens": [],
+            }
+        ]
+    }
+    generated = {
+        "rows": [
+            {
+                "lyric": 1,
+                "status": "matched",
+                "text": "from now on",
+                "translation": "从现在起",
+                "tokens": [{"surface": "from", "translation": "从"}],
+            }
+        ]
+    }
+    apply_generated_lyrics(timeline, generated)
+    assert timeline["cues"][0]["start_ms"] == 100
+    assert timeline["cues"][0]["translation"] == "从现在起"
+    assert timeline["cues"][0]["tokens"][0]["text"] == "from"
+
+
+def test_generated_metadata_does_not_erase_server_token_timing():
+    timeline = {
+        "cues": [
+            {
+                "text": "hello world",
+                "start_ms": 100,
+                "end_ms": 500,
+                "tokens": [
+                    {"text": "hello", "start_ms": 100, "end_ms": 250},
+                    {"text": "world", "start_ms": 250, "end_ms": 500},
+                ],
+            }
+        ]
+    }
+    apply_generated_lyrics(
+        timeline,
+        {
+            "rows": [
+                {
+                    "lyric": 1,
+                    "text": "hello world",
+                    "translation": "你好世界",
+                    "tokens": [
+                        {"surface": "hello", "translation": "你好"},
+                        {"surface": "world", "translation": "世界"},
+                    ],
+                }
+            ]
+        },
+    )
+    assert [(t["start_ms"], t["end_ms"]) for t in timeline["cues"][0]["tokens"]] == [
+        (100, 250),
+        (250, 500),
+    ]
+    assert timeline["cues"][0]["translation"] == "你好世界"
 
 
 def test_agent_prompt_keeps_grok_word_level_times(monkeypatch):
