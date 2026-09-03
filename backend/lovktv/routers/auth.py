@@ -41,6 +41,8 @@ from lovktv.storage.store import (
     upsert_device_user,
     upsert_wechat_user,
 )
+from lovktv.storage import favorites as favorite_store
+from lovktv.identity.quota import guest_key
 
 router = APIRouter()
 
@@ -109,6 +111,8 @@ def api_auth_register(
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
     points = grant_register(request, user)
+    # Keep songs saved before account creation with the new account.
+    favorite_store.merge_owners(guest_key(request, guest), "u:" + str(user["id"]))
     return _password_session(request, user, {"points": points})
 
 

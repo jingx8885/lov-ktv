@@ -71,6 +71,7 @@ function songRow(song) {
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
+            <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
             ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
             ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
             ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}</button>` : ""}
@@ -103,6 +104,32 @@ function renderLibTail(page, pages, total) {
 }
 
 function bindSongActions() {
+  $("songs")
+    .querySelectorAll("[data-favorite]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = async (event) => {
+        event.stopPropagation();
+        const next = btn.getAttribute("aria-pressed") !== "true";
+        btn.disabled = true;
+        const result = await fetchJson(`/api/songs/${encodeURIComponent(btn.dataset.favorite)}/favorite`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ favorite: next })
+        }).catch(() => null);
+        btn.disabled = false;
+        if (!result || !result.ok) {
+          showToast(result?.data?.detail || t("phone.desk.favoriteFailed"));
+          return;
+        }
+        const active = !!result.data.favorite;
+        btn.classList.toggle("on", active);
+        btn.setAttribute("aria-pressed", String(active));
+        btn.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
+        if (api.loadPlayerList) api.loadPlayerList();
+      };
+    });
   $("songs")
     .querySelectorAll("[data-queue]")
     .forEach((btn) => {

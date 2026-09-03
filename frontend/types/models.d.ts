@@ -37,6 +37,7 @@ interface Song {
   media_rev?: string;
   letter?: string;
   can_realign?: boolean;
+  favorite?: boolean;
 }
 
 interface QueueItem extends Song {

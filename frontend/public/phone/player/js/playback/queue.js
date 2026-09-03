@@ -50,7 +50,9 @@ export function renderPlayerIndex() {
 }
 
 export async function loadPlayerList() {
-  const { data } = await fetchJson("/api/songs").catch(() => ({ data: { songs: [] } }));
+  const { data } = await fetchJson("/api/songs?favorites=1", { cache: "no-store" }).catch(() => ({
+    data: { songs: [] }
+  }));
   state.playerCatalog = (data.songs || []).filter((song) => song.status === "ready");
   renderPlayerList();
 }

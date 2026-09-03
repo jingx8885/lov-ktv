@@ -131,6 +131,13 @@ CREATE TABLE IF NOT EXISTS login_tickets (
 );
 CREATE INDEX IF NOT EXISTS queue_room_pos ON queue (room, position);
 CREATE INDEX IF NOT EXISTS queue_song ON queue (song_id);
+CREATE TABLE IF NOT EXISTS song_favorites (
+  owner TEXT NOT NULL,
+  song_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (owner, song_id)
+);
+CREATE INDEX IF NOT EXISTS song_favorites_song ON song_favorites (song_id);
 CREATE INDEX IF NOT EXISTS users_wechat ON users (wechat_openid);
 CREATE INDEX IF NOT EXISTS users_device ON users (device_id);
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);
@@ -291,6 +298,13 @@ CREATE TABLE IF NOT EXISTS login_tickets (
 );
 CREATE INDEX IF NOT EXISTS queue_room_pos ON queue (room, position);
 CREATE INDEX IF NOT EXISTS queue_song ON queue (song_id);
+CREATE TABLE IF NOT EXISTS song_favorites (
+  owner TEXT NOT NULL,
+  song_id TEXT NOT NULL,
+  created_at BIGINT NOT NULL,
+  PRIMARY KEY (owner, song_id)
+);
+CREATE INDEX IF NOT EXISTS song_favorites_song ON song_favorites (song_id);
 CREATE INDEX IF NOT EXISTS users_wechat ON users (wechat_openid);
 CREATE INDEX IF NOT EXISTS users_device ON users (device_id);
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions (user_id);

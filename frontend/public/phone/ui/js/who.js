@@ -5,6 +5,7 @@ import { isAccount, submitAccount } from "../../../shared/ui/js/account.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
 import { openOverlay } from "./overlays.js";
+import { api } from "../../api.js";
 import { state } from "../../state.js";
 
 let lastQuota = null;
@@ -121,6 +122,7 @@ async function runWhoPass(mode) {
   }
   $("whoPassword").value = "";
   await loadWho();
+  if (api.loadPlayerList) await api.loadPlayerList();
   showToast(t("login.done"));
 }
 
@@ -134,6 +136,7 @@ export function bindWho() {
   $("whoLogout").onclick = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     await loadWho();
+    if (api.loadPlayerList) await api.loadPlayerList();
     showToast(t("phone.who.bye"));
   };
   $("whoPassForm").addEventListener("submit", (event) => {

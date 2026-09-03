@@ -22,6 +22,7 @@ from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
 from lovktv.identity.points import charge_process
+from lovktv.identity.quota import learn_owner
 from lovktv.identity.song_admin import is_song_admin
 from lovktv.locale.i18n import localize_exc, localize_song, request_lang
 from lovktv.locale.i18n import t as i18n_t
@@ -38,6 +39,7 @@ from lovktv.storage.store import (
     update_song,
     with_media_flags,
 )
+from lovktv.storage import favorites as favorite_store
 from lovktv.workers.jobs import process_import, process_realign, process_upload, spawn
 from lovktv.workers.learn import build_learn_quiz
 
@@ -117,6 +119,9 @@ def api_import(request: Request, payload: dict) -> dict:
         language=language,
         netease_id=raw_id,
     )
+    # Importing from the song-picker is also the user's explicit save action.
+    favorite_store.set_favorite(learn_owner(request), song["id"], True)
+    song["favorite"] = True
     spawn(process_import, song["id"], query, raw_id, language)
     return song
 
@@ -134,6 +139,8 @@ async def api_upload(
     song = create_song(
         title or file.filename or i18n_t(request, "api.unnamed"), artist, language
     )
+    favorite_store.set_favorite(learn_owner(request), song["id"], True)
+    song["favorite"] = True
     dest = media_root() / song["id"] / "original.mp3"
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)
@@ -206,6 +213,37 @@ def api_delete_song(request: Request, song_id: str) -> dict:
     return {"ok": True, "song_id": song_id}
 
 
+@router.post("/api/songs/{song_id}/favorite")
+def api_favorite_song(request: Request, song_id: str, payload: dict = Body(default={})) -> dict:
+    if not get_song(song_id):
+        fail(request, 404, "api.song_not_found")
+    favorite = payload.get("favorite")
+    if favorite is None:
+        favorite = not favorite_store.is_favorite(learn_owner(request), song_id)
+    favorite = bool(favorite)
+    favorite_store.set_favorite(learn_owner(request), song_id, favorite)
+    return {"ok": True, "song_id": song_id, "favorite": favorite}
+
+
+@router.get("/api/songs/{song_id}/favorite")
+def api_song_favorite(request: Request, song_id: str) -> dict:
+    if not get_song(song_id):
+        fail(request, 404, "api.song_not_found")
+    return {
+        "ok": True,
+        "song_id": song_id,
+        "favorite": favorite_store.is_favorite(learn_owner(request), song_id),
+    }
+
+
+@router.delete("/api/songs/{song_id}/favorite")
+def api_unfavorite_song(request: Request, song_id: str) -> dict:
+    if not get_song(song_id):
+        fail(request, 404, "api.song_not_found")
+    favorite_store.set_favorite(learn_owner(request), song_id, False)
+    return {"ok": True, "song_id": song_id, "favorite": False}
+
+
 @router.post("/api/songs/{song_id}/retry")
 def api_retry_song(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
@@ -233,18 +271,35 @@ def api_songs(
     page: int | None = None,
     count: int = 12,
     after: str = "",
+    favorites_only: bool = False,
+    favorites: bool = False,
 ) -> dict:
     lang = request_lang(request)
+    owner = learn_owner(request)
+    favorite_ids = favorite_store.list_favorite_ids(owner)
     can_realign = is_song_admin(current_user(request))
-    songs = prefer_native_library(
-        [
-            {
-                **(localize_song(lang, with_media_flags(song) or song) or song),
-                "can_realign": can_realign,
-            }
-            for song in list_songs()
-        ]
+    raw_songs = [
+        {
+            **(localize_song(lang, with_media_flags(song) or song) or song),
+            "can_realign": can_realign,
+        }
+        for song in list_songs()
+    ]
+    # Do not hide a user's explicitly saved composed copy merely because an
+    # official-MV duplicate exists in the shared catalogue.
+    songs = (
+        raw_songs
+        if (favorites_only or favorites)
+        else prefer_native_library(raw_songs)
     )
+    for song in songs:
+        song["favorite"] = song.get("id") in favorite_ids
+    if favorites_only or favorites:
+        songs = [
+            song
+            for song in songs
+            if song.get("favorite") and song.get("status") == "ready"
+        ]
     if page is None and not q and not letter and not after:
         tagged = [{**song, "letter": song_letter(song)} for song in songs]
         tagged.sort(key=library_sort_key)
@@ -261,6 +316,7 @@ def api_song(request: Request, song_id: str) -> dict:
         fail(request, 404, "api.song_not_found")
     folder = media_root() / song_id
     song["can_realign"] = is_song_admin(current_user(request))
+    song["favorite"] = favorite_store.is_favorite(learn_owner(request), song_id)
     song["files"] = (
         sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     )
