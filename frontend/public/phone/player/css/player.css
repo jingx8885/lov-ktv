@@ -518,15 +518,17 @@ button.tl-head {
   display: grid;
   gap: 4px;
 }
+.player-stage .player-clock {
+  /* The transport dock owns seeking so the scrubber is always above the
+     play button instead of being split between the artwork and controls. */
+  display: none;
+}
 .player-stage[hidden],
 .player-clock-dock[hidden] {
   display: none !important;
 }
 /* 歌词模式只保留歌词区域，不留下 MV/封面及其进度带的空白舞台。 */
 body.phone[data-page="player"].display-lyrics .player-stage {
-  display: none !important;
-}
-body.phone[data-page="player"].display-lyrics .player-clock-dock {
   display: none !important;
 }
 .player-art {
@@ -927,7 +929,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   margin: 0 8px 6px;
 }
 .player-clock-dock {
-  display: none;
+  /* Keep the seek control in the transport dock so it stays directly above
+     the play button, including when the player is in lyrics-only mode. */
+  display: flex;
+  width: 100%;
 }
 .player-hint {
   display: none;
@@ -1556,8 +1561,8 @@ body.phone.edit-on .tl {
 }
 
 /* 宽屏 MV 模式：视频接管主模块位置（第一行左列），不再缩成底部那条进度带。
-   舞台和歌词层共用同一个网格格子，歌词浮在视频上，进度条收进视频面板底部，
-   和手机端 MV 的层次保持一致。歌词模式仍走上面的横向进度带布局。
+   舞台和歌词层共用同一个网格格子，歌词浮在视频上；进度条统一收进底部播放控制栏，
+   和手机端 MV 的层次保持一致。
    用 :has(.player-art.has-mtv) 收口：display-mv 是默认模式，纯音频的歌没有
    mtv.mp4，接管后只会撑出一个大空框，这类歌继续用横向进度带。
    min-height 门槛挡住横屏手机（如 844×390 同样命中 min-width: 700px），
@@ -1622,8 +1627,8 @@ body.phone.edit-on .tl {
     grid-row: 1;
     z-index: 3;
     min-height: 0;
-    /* 让出底部进度条的高度，歌词不会压到时间轴上。 */
-    padding: 0 0 46px;
+    /* 歌词叠在视频上，进度条位于下方播放控制栏。 */
+    padding: 0;
     background: transparent;
     border-color: transparent;
     /* 歌词只是叠加层，点击继续落到视频和全屏按钮上。 */
