@@ -292,7 +292,7 @@ def _looks_like_wrong_lyric_version(
     # known lyric rows and fills the omitted portions from ASR.
     if coverage < 0.4:
         return False
-    return low >= 3 and (low / len(scores) >= 0.1) and spread
+    return low >= 3 and (low / len(scores) >= 0.08) and spread
 
 
 def _join_asr_words(words: list[dict[str, Any]], language: str) -> str:
