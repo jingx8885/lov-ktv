@@ -854,7 +854,18 @@ def _fetch_alternate_kugou_timeline(
         payload = api_get(f"{VIEW_URL}?bvid={bvid}", timeout=10)
         title = str((payload.get("data") or {}).get("title") or "")
     except Exception:
-        return None
+        # Some datacenter egresses return Bilibili 412 to urllib's request
+        # fingerprint while accepting curl's browser-like request.
+        try:
+            result = subprocess.run(
+                ["curl", "-fsS", "--max-time", "10", "-A", "Mozilla/5.0",
+                 f"{VIEW_URL}?bvid={bvid}"],
+                capture_output=True, text=True, check=False, timeout=15,
+            )
+            payload = json.loads(result.stdout or "{}")
+            title = str((payload.get("data") or {}).get("title") or "")
+        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
+            return None
     match = re.search(r"([^《】]{2,24})《([^》]{2,80})》", title)
     if not match:
         return None
