@@ -37,6 +37,53 @@ function rowsHtml(headers, lines) {
   return `<div class="table-wrap"><table class="admin"><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${lines.join("")}</tbody></table></div>`;
 }
 
+function esc(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fmtBytes(value) {
+  const n = Number(value || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function paintSongDebug(box, data) {
+  if (!data.enabled) {
+    box.innerHTML = `<p class="tiny">${t("admin.debugDisabled")}</p>`;
+    return;
+  }
+  const trace = data.trace || {};
+  const events = Array.isArray(trace.events) ? trace.events : [];
+  const eventRows = events.length
+    ? events
+        .map(
+          (item) =>
+            `<li><span>${fmtTime(Number(item.at) * 1000)}</span><b>${esc(item.phase)}</b><em class="debug-${esc(item.status)}">${esc(item.status)}</em><code>${esc(
+              Object.entries(item)
+                .filter(([key]) => !["at", "phase", "status"].includes(key))
+                .map(([key, value]) => `${key}=${typeof value === "object" ? JSON.stringify(value) : value}`)
+                .join(" · ")
+            )}</code></li>`
+        )
+        .join("")
+    : `<li class="tiny">${t("admin.debugEmpty")}</li>`;
+  const files = (data.artifacts || [])
+    .map((file) => `<span class="debug-file"><code>${esc(file.name)}</code> <em>${fmtBytes(file.size)}</em></span>`)
+    .join("");
+  const intermediates = (data.intermediates || [])
+    .map(
+      (item) =>
+        `<details class="debug-intermediate"><summary>${esc(item.name)}</summary><pre>${esc(item.content)}</pre></details>`
+    )
+    .join("");
+  box.innerHTML = `<div class="debug-summary"><b>${t("admin.debugStatus", { status: esc(trace.status || "未开始") })}</b>${trace.error ? `<span class="err">${esc(trace.error)}</span>` : ""}</div><ol class="debug-events">${eventRows}</ol>${files ? `<div class="debug-files"><span class="tiny">${t("admin.debugArtifacts")}</span>${files}</div>` : ""}${intermediates ? `<div class="debug-intermediates"><span class="tiny">${t("admin.debugArtifacts")}</span>${intermediates}</div>` : ""}`;
+}
+
 async function api(path, opts) {
   const hit = await fetchJson(path, opts);
   if (!hit.ok) {
@@ -211,12 +258,15 @@ async function loadSongs() {
     [t("admin.tab.songs"), "", ""],
     (data.songs || []).map((song) => {
       const retry = `<button type="button" class="btn" data-retry="${song.id}">${t("admin.retry")}</button>`;
+      const songId = encodeURIComponent(song.id);
       return `<tr>
         <td>
-          <input data-title="${song.id}" value="${String(song.title || "").replace(/"/g, "&quot;")}" />
-          <div class="tiny">${song.status || ""} · ${song.id}</div>
+          <input data-title="${esc(song.id)}" value="${esc(song.title || "")}" />
+          <div class="tiny">${esc(song.status || "")} · ${esc(song.id)}</div>
+          <p class="song-links"><a href="/m.html?song=${songId}#lyrics" target="_blank" rel="noopener">${t("admin.songLyrics")}</a><a href="/m.html?song=${songId}#player" target="_blank" rel="noopener">${t("admin.songListen")}</a><button type="button" class="btn ghost" data-debug="${esc(song.id)}">${t("admin.songDebug")}</button></p>
+          <div class="song-debug" data-debug-box="${esc(song.id)}" hidden></div>
         </td>
-        <td><input data-artist="${song.id}" value="${String(song.artist || "").replace(/"/g, "&quot;")}" /></td>
+        <td><input data-artist="${esc(song.id)}" value="${esc(song.artist || "")}" /></td>
         <td>
           <button type="button" class="btn" data-save="${song.id}">${t("admin.saveSong")}</button>
           ${retry}
@@ -225,6 +275,21 @@ async function loadSongs() {
       </tr>`;
     })
   );
+  $("songs")
+    .querySelectorAll("[data-debug]")
+    .forEach((btn) => {
+      btn.onclick = async () => {
+        const box = [...$("songs").querySelectorAll("[data-debug-box]")].find(
+          (item) => item.dataset.debugBox === btn.dataset.debug
+        );
+        if (!box) return;
+        box.hidden = !box.hidden;
+        if (box.hidden) return;
+        box.innerHTML = `<p class="tiny">${t("admin.debugLoading")}</p>`;
+        const { ok, data } = await api("/api/admin/songs/" + encodeURIComponent(btn.dataset.debug) + "/debug");
+        if (ok) paintSongDebug(box, data);
+      };
+    });
   $("songs")
     .querySelectorAll("[data-del]")
     .forEach((btn) => {
@@ -389,24 +454,38 @@ async function loadAds() {
 async function loadSettings() {
   const { ok, data } = await api("/api/admin/settings");
   if (!ok) return;
-  $("settings").innerHTML = (data.settings || []).map((item) => {
-    const checked = item.type === "bool" ? (item.value ? " checked" : "") : "";
-    if (item.type === "bool") return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="checkbox" data-setting="${item.key}"${checked}></label>`;
-    const type = item.secret ? "password" : "text";
-    const value = item.secret ? "" : String(item.value ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
-    const placeholder = item.secret && item.value ? "已配置，留空保持不变" : "";
-    return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="${type}" data-setting="${item.key}" value="${value}" placeholder="${placeholder}"></label>`;
-  }).join("");
+  $("settings").innerHTML = (data.settings || [])
+    .map((item) => {
+      const checked = item.type === "bool" ? (item.value ? " checked" : "") : "";
+      if (item.type === "bool")
+        return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="checkbox" data-setting="${item.key}"${checked}></label>`;
+      const type = item.secret ? "password" : "text";
+      const value = item.secret
+        ? ""
+        : String(item.value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/"/g, "&quot;");
+      const placeholder = item.secret && item.value ? "已配置，留空保持不变" : "";
+      return `<label class="field"><span class="tiny">${item.label} <em class="tiny">(${item.source})</em></span><input type="${type}" data-setting="${item.key}" value="${value}" placeholder="${placeholder}"></label>`;
+    })
+    .join("");
 }
 
 $("settingsForm").onsubmit = async (event) => {
   event.preventDefault();
   const values = {};
-  $("settings").querySelectorAll("[data-setting]").forEach((el) => {
-    if (el.type === "password" && !el.value) return;
-    values[el.dataset.setting] = el.type === "checkbox" ? el.checked : el.value;
+  $("settings")
+    .querySelectorAll("[data-setting]")
+    .forEach((el) => {
+      if (el.type === "password" && !el.value) return;
+      values[el.dataset.setting] = el.type === "checkbox" ? el.checked : el.value;
+    });
+  await api("/api/admin/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ settings: values })
   });
-  await api("/api/admin/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings: values }) });
   loadSummary();
   loadSettings();
 };

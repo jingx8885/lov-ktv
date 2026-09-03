@@ -526,6 +526,14 @@ export default {
   "admin.playNow": "Play now",
   "admin.removeItem": "Remove",
   "admin.roomMeta": "Queue {n} · now {title}",
+  "admin.songLyrics": "Lyrics",
+  "admin.songListen": "Listen",
+  "admin.songDebug": "Processing log",
+  "admin.debugDisabled": "Processing debug is off. Enable it in Settings and process the song again.",
+  "admin.debugLoading": "Loading…",
+  "admin.debugStatus": "Status: {status}",
+  "admin.debugArtifacts": "Artifacts",
+  "admin.debugEmpty": "No processing events yet; waiting for the worker.",
 
   "landing.title": "lov-ktv · Your stage · Sing anytime",
   "landing.desc":

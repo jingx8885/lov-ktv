@@ -24,3 +24,24 @@ table.admin input {
   padding: 8px 10px;
   font-size: 14px;
 }
+.song-links { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 0; }
+.song-links a { color: #9fd8ff; text-decoration: none; }
+.song-links a:hover { text-decoration: underline; }
+.song-debug { margin-top: 10px; padding: 10px; border: 1px solid #24394c; border-radius: 8px; background: rgba(4, 13, 22, .65); max-width: 650px; }
+.debug-summary { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.debug-events { margin: 8px 0 0 18px; padding: 0; }
+.debug-events li { margin: 5px 0; line-height: 1.35; }
+.debug-events li > span { color: #8295a8; margin-right: 8px; font-size: 12px; }
+.debug-events li > b { margin-right: 8px; }
+.debug-events li > em { font-style: normal; margin-right: 8px; color: #7dffa3; }
+.debug-events li > em.debug-running { color: #ffd479; }
+.debug-events li > em.debug-error { color: #ff8aa8; }
+.debug-events code { color: #b9c7d4; white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+.debug-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.debug-files > .tiny { width: 100%; }
+.debug-file { padding: 3px 6px; border-radius: 4px; background: #152535; color: #a9bdd0; font-size: 12px; }
+.debug-file em { color: #7f93a8; font-style: normal; }
+.debug-intermediates { margin-top: 10px; }
+.debug-intermediate { margin-top: 6px; border-top: 1px solid #24394c; }
+.debug-intermediate summary { cursor: pointer; padding: 6px 0; color: #b9d8ef; }
+.debug-intermediate pre { max-height: 280px; overflow: auto; margin: 0 0 8px; padding: 8px; background: #07111b; color: #c5d2dd; white-space: pre-wrap; word-break: break-word; font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }

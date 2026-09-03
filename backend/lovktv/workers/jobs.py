@@ -45,6 +45,7 @@ from lovktv.pipeline.orchestrator import (
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
 from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.storage import store as _store
+from lovktv.workers import debug as processing_debug
 from lovktv.workers.queue import JobQueue, job_queue, spawn
 
 __all__ = [
@@ -279,9 +280,13 @@ def process_import(
     song_id: str, query: str, netease_id: str = "", language: str | None = None
 ) -> None:
     out_dir = MEDIA_DIR / song_id
+    processing_debug.start(song_id, "import")
+    processing_debug.event(song_id, "queued", query=query, netease_id=netease_id or "")
     try:
         update_song(song_id, status="fetching")
+        processing_debug.event(song_id, "fetch", status="running")
         skeleton = import_song(query=query, out_dir=out_dir, song_id=netease_id or None)
+        processing_debug.event(song_id, "fetch", files=sorted(path.name for path in out_dir.iterdir()) if out_dir.exists() else [])
         lang = str(language or skeleton.get("language") or "")
         fields = {
             "title": skeleton.get("title") or query,
@@ -296,6 +301,7 @@ def process_import(
         if is_mugen_kid(mugen_kid):
             fields["netease_id"] = mugen_kid
         update_song(song_id, **fields)
+        processing_debug.event(song_id, "metadata", title=fields.get("title"), language=lang, audio_source=fields.get("audio_source"))
         src = out_dir / "original.mp3"
         if not src.exists():
             raise RuntimeError("音频下载失败，没有 original.mp3")
@@ -305,17 +311,20 @@ def process_import(
             except Exception as sep_exc:
                 update_song(song_id, error=f"分离降级：{sep_exc}")
                 _fallback_media(src, out_dir)
+            processing_debug.event(song_id, "separate", mode="mugen")
         elif skeleton.get("needs_separate", True):
             try:
                 separate_vocals(src, out_dir)
             except Exception as sep_exc:
                 update_song(song_id, error=f"分离降级：{sep_exc}")
                 _fallback_media(src, out_dir)
+            processing_debug.event(song_id, "separate", mode="onnx")
         elif not (out_dir / "karaoke.m4a").exists():
             _fallback_media(src, out_dir)
         from lovktv.pipeline.loudness import normalize_file
 
         normalize_file(src)
+        processing_debug.event(song_id, "normalize", file="original.mp3")
         # Pre-timed lyrics are trustworthy only when they belong to the native
         # MV that will be played.  Downloaded/alternate audio (including
         # Kugou and Karaoke Mugen audio without a native video) still needs
@@ -333,6 +342,7 @@ def process_import(
                 lang or language,
                 rebuild_mtv=not (skeleton.get("has_video") or _has_native_mtv(out_dir)),
             )
+            processing_debug.finish(song_id, "ready" if (get_song(song_id) or {}).get("status") == "ready" else "running")
             return
         _finish_ready_lyrics(
             song_id,
@@ -341,8 +351,11 @@ def process_import(
             lang or language,
             rebuild_mtv=not (skeleton.get("has_video") or _has_native_mtv(out_dir)),
         )
+        processing_debug.finish(song_id, "ready")
     except Exception as exc:  # noqa: BLE001 — job must record any failure
         update_song(song_id, status="failed", error=str(exc))
+        processing_debug.event(song_id, "failed", status="error", error=str(exc))
+        processing_debug.finish(song_id, "failed", str(exc))
 
 
 def _cue_source(cue: dict) -> str:
@@ -581,6 +594,7 @@ def _finish_ready_lyrics(
 
     lyrics_path = out_dir / "lyrics.json"
     timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
+    processing_debug.event(song_id, "lyrics", count=len(timeline.get("cues") or []), source="persisted")
     song = get_song(song_id) or {}
     blob = "".join(_cue_source(cue) for cue in timeline.get("cues") or [])
     lang = resolve_language(
@@ -596,9 +610,11 @@ def _finish_ready_lyrics(
         _publish_ready(song_id)
     wrote = False
     if lang == "ja" and timeline.get("cues") and not burned:
+        processing_debug.event(song_id, "annotation", status="running", language=lang)
         wrote = _annotate_ja_timeline(song_id, out_dir, timeline)
     if timeline.get("cues") and not burned:
         wrote = _translate_foreign_timeline(song_id, out_dir, timeline, lang) or wrote
+        processing_debug.event(song_id, "translation", language=lang)
     if wrote or (timeline.get("native_video") and not burned):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
@@ -611,6 +627,7 @@ def _finish_ready_lyrics(
         audio = src
     cover = out_dir / "cover.jpg"
     try:
+        processing_debug.event(song_id, "compose-mtv", status="running")
         compose_mtv(
             out_dir,
             audio_path=audio,
@@ -619,16 +636,20 @@ def _finish_ready_lyrics(
             timeline=timeline,
             cover_path=cover if cover.exists() else None,
         )
+        processing_debug.event(song_id, "compose-mtv", files=["mtv.mp4"])
         _publish_ready(song_id)
     except Exception as mtv_exc:
+        processing_debug.event(song_id, "compose-mtv", status="error", error=str(mtv_exc))
         previous = str(song.get("error") or "").strip()
         update_song(song_id, error=f"{previous} MTV降级：{mtv_exc}".strip())
 
 
 def process_upload(song_id: str, src: Path, language: str | None = None) -> None:
     out_dir = MEDIA_DIR / song_id
+    processing_debug.start(song_id, "upload")
     try:
         update_song(song_id, status="separating")
+        processing_debug.event(song_id, "separate", status="running", source=str(src.name))
         if not src.exists():
             raise RuntimeError("没有上传音频")
         try:
@@ -637,8 +658,11 @@ def process_upload(song_id: str, src: Path, language: str | None = None) -> None
             update_song(song_id, error=f"分离降级：{sep_exc}")
             _fallback_media(src, out_dir)
         _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=True)
+        processing_debug.finish(song_id, "ready")
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))
+        processing_debug.event(song_id, "failed", status="error", error=str(exc))
+        processing_debug.finish(song_id, "failed", str(exc))
 
 
 def load_lyric_lines(out_dir: Path, language: str | None = None) -> list[dict]:
@@ -749,6 +773,8 @@ def process_realign(
 ) -> None:
     """Re-run the same ASR + lyric pipeline used by import/upload."""
     out_dir = MEDIA_DIR / song_id
+    processing_debug.start(song_id, "realign")
+    processing_debug.event(song_id, "realign", status="running", force=force)
     src = out_dir / "original.mp3"
     if not src.exists():
         src = _voice_audio(out_dir, out_dir / "karaoke.m4a")
@@ -788,10 +814,12 @@ def process_realign(
             src = _refresh_audio_tracks(out_dir, skeleton)
         if (out_dir / "lyrics.manual.lrc").exists():
             apply_locked_manual(song_id, rebuild_mtv=rebuild_mtv)
+            processing_debug.finish(song_id, "ready")
             return
         if _is_mugen_skeleton(skeleton) and (out_dir / "lyrics.json").exists():
             _restore_mugen_timeline(out_dir, language or skeleton.get("language"))
             _finish_ready_lyrics(song_id, out_dir, src, language, rebuild_mtv)
+            processing_debug.finish(song_id, "ready")
             return
         if force and not mugen_off_vocal:
             src = _refresh_audio_tracks(out_dir, skeleton)
@@ -811,8 +839,11 @@ def process_realign(
                     except FileNotFoundError:
                         pass
         _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=rebuild_mtv)
+        processing_debug.finish(song_id, "ready")
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))
+        processing_debug.event(song_id, "failed", status="error", error=str(exc))
+        processing_debug.finish(song_id, "failed", str(exc))
 
 
 def _restore_mugen_timeline(out_dir: Path, language: str | None = None) -> bool:
@@ -894,6 +925,7 @@ def _align_and_mtv(
     rebuild_mtv: bool = True,
 ) -> None:
     song = get_song(song_id) or {}
+    processing_debug.event(song_id, "align", status="running")
     previous_timeline: dict = {}
     lyrics_path = out_dir / "lyrics.json"
     if lyrics_path.exists():
@@ -908,6 +940,7 @@ def _align_and_mtv(
         previous_timeline.get("native_video")
     )
     lines = load_lyric_lines(out_dir, language)
+    processing_debug.event(song_id, "lyrics", count=len(lines), language=language or "")
     lang = resolve_language("".join(item.get("text") or "" for item in lines), language)
     update_song(song_id, language=lang, status="aligning")
     voice = _ensure_vocals(out_dir, src)
@@ -918,12 +951,14 @@ def _align_and_mtv(
         cache_path=out_dir / "asr.json",
         prompt=prompt,
     )
+    processing_debug.event(song_id, "asr", count=len(asr_words or []), cache="asr.json")
     agent_matches = align_lines_with_agent(
         lines,
         asr_words,
         lang,
         cache_path=out_dir / "agent-align.json",
     )
+    processing_debug.event(song_id, "agent-align", count=len(agent_matches or []), cache="agent-align.json")
     align_kwargs = {
         "audio_path": voice,
         "duration_ms": probe_duration_ms(src) or probe_duration_ms(voice),
@@ -943,6 +978,7 @@ def _align_and_mtv(
         lang = str(timeline.get("language") or lang)
     else:
         timeline = align_lyrics(lines, lang, **align_kwargs)
+    processing_debug.event(song_id, "timeline", cues=len(timeline.get("cues") or []), source=timeline.get("alignment_source") or "")
     _preserve_timeline_annotations(previous_timeline, timeline)
     if had_native_video:
         timeline["native_video"] = True
@@ -955,11 +991,13 @@ def _align_and_mtv(
     if timeline.get("cues"):
         update_song(song_id, status="annotating")
         _translate_foreign_timeline(song_id, out_dir, timeline, lang)
+        processing_debug.event(song_id, "translation", language=lang)
         if keep_native:
             timeline["native_video"] = True
     if timeline.get("cues"):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
+    processing_debug.event(song_id, "ready", files=sorted(path.name for path in out_dir.iterdir()) if out_dir.exists() else [])
     _publish_ready(song_id)
     if keep_native or (not rebuild_mtv and (out_dir / "mtv.mp4").exists()):
         return
@@ -969,6 +1007,7 @@ def _align_and_mtv(
         audio = src
     cover = out_dir / "cover.jpg"
     try:
+        processing_debug.event(song_id, "compose-mtv", status="running")
         compose_mtv(
             out_dir,
             audio_path=audio,
@@ -977,8 +1016,10 @@ def _align_and_mtv(
             timeline=timeline,
             cover_path=cover if cover.exists() else None,
         )
+        processing_debug.event(song_id, "compose-mtv", files=["mtv.mp4"])
         _publish_ready(song_id)
     except Exception as mtv_exc:
+        processing_debug.event(song_id, "compose-mtv", status="error", error=str(mtv_exc))
         previous = str(song.get("error") or "").strip()
         note = f"MTV降级：{mtv_exc}"
         update_song(song_id, error=f"{previous} {note}".strip())

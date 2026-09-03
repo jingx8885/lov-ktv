@@ -30,9 +30,14 @@ def _grok_debug_enabled() -> bool:
     try:
         from lovktv.storage import settings
 
-        return bool(settings.get("asr_debug"))
+        return bool(settings.get("asr_debug") or settings.get("processing_debug"))
     except Exception:  # noqa: BLE001 - diagnostics must never break ASR
-        return str(os.environ.get("LOVKTV_ASR_DEBUG") or "").strip().lower() in {
+        value = str(
+            os.environ.get("LOVKTV_ASR_DEBUG")
+            or os.environ.get("LOVKTV_PROCESSING_DEBUG")
+            or ""
+        ).strip().lower()
+        return value in {
             "1",
             "true",
             "yes",
@@ -514,13 +519,18 @@ def _transcribe_grok(
                         chunk_debug["wav_reencode"] = f"error: {type(exc).__name__}: {exc}"
                 persist_debug()
             if not chunk_words:
-                # Grok occasionally returns a valid 200 with an empty body for
-                # sung material.  Keep the configured Grok-first path, but
-                # recover only this failed slice with the local no-Torch
-                # Whisper runtime instead of losing the whole song.
-                chunk_debug["fallback"] = "faster-whisper"
-                chunk_words = _transcribe_faster_whisper(chunk, language, None, "")
-                chunk_debug["fallback_words"] = len(chunk_words)
+                # Keep the configured Grok-first path, but recover only this
+                # failed slice through the remote Fish model before falling
+                # back to the local no-Torch Whisper runtime.  Calling Fish
+                # on the already materialized chunk avoids re-chunking and
+                # keeps the original offset authoritative.
+                chunk_debug["fallback"] = "fish-audio"
+                chunk_words = _transcribe_fish(chunk, language, None)
+                chunk_debug["fish_words"] = len(chunk_words)
+                if not chunk_words:
+                    chunk_debug["fallback"] = "faster-whisper"
+                    chunk_words = _transcribe_faster_whisper(chunk, language, None, "")
+                    chunk_debug["fallback_words"] = len(chunk_words)
                 persist_debug()
             for word in chunk_words:
                 word["start_ms"] += int(offset * 1000)

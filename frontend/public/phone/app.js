@@ -158,8 +158,16 @@ export function mount(root, deps = {}) {
   syncNotification();
 
   const bootHash = (location.hash || "").replace("#", "");
+  const linkedSong = (params.get("song") || "").trim();
+  const linkedLyrics = linkedSong && bootHash === "lyrics";
   const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
-  showPage(bootPage, null, false);
+  showPage(linkedLyrics ? "desk" : bootPage, linkedSong && !linkedLyrics ? linkedSong : null, false);
+  if (linkedLyrics) {
+    // Admin deep links can open the read-only lyric desk without requiring a
+    // room. Loading the player data also keeps the lyric source identical to
+    // what singers see on the listen page.
+    Promise.resolve(api.loadPlayerSong(linkedSong, { play: false })).then(() => api.showDeskPane("lyrics"));
+  }
   if (bootHash === "room") openOverlay("roomSheet");
 
   const syncKeyboard = () => {

@@ -306,7 +306,7 @@ def test_grok_keeps_successful_chunks_when_a_later_chunk_fails(monkeypatch, tmp_
     monkeypatch.setattr(transcribe.httpx, "post", fake_post)
     words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
 
-    assert calls == 5  # second chunk is retried three times before local fallback
+    assert calls == 6  # second chunk: Grok retries, then Fish fallback retries once
     assert words == [{"text": "kept", "start_ms": 100, "end_ms": 400, "segment": 0}]
     assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
 
@@ -343,6 +343,44 @@ def test_grok_falls_back_per_failed_chunk(monkeypatch, tmp_path):
     words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
 
     assert words == [{"text": "recovered", "start_ms": 30200, "end_ms": 30500, "segment": 0}]
+
+
+def test_grok_uses_fish_before_local_fallback(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    chunk = tmp_path / "chunk.mp3"
+    chunk.write_bytes(b"chunk")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_args, **_kwargs: iter([(chunk, 30.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _path: True)
+    monkeypatch.setattr(
+        transcribe,
+        "_transcribe_fish",
+        lambda *_args: [{"text": "fish", "start_ms": 200, "end_ms": 500, "segment": 0}],
+    )
+    monkeypatch.setattr(
+        transcribe,
+        "_transcribe_faster_whisper",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("Fish should run first")),
+    )
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"words": []}
+
+    monkeypatch.setattr(transcribe.httpx, "post", lambda *_args, **_kwargs: Response())
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+
+    assert words == [{"text": "fish", "start_ms": 30200, "end_ms": 30500, "segment": 0}]
 
 
 def test_grok_retries_wav_before_local_fallback(monkeypatch, tmp_path):

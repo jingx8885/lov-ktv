@@ -43,6 +43,7 @@ from lovktv.storage.store import (
     update_song,
     with_media_flags,
 )
+from lovktv.workers import debug as processing_debug
 from lovktv.workers.jobs import process_import, spawn
 
 router = APIRouter()
@@ -290,7 +291,49 @@ def api_admin_songs(request: Request, q: str = "") -> dict:
         songs.append(item)
         if len(songs) >= 120:
             break
-    return {"songs": songs}
+    return {"songs": songs, "debug_enabled": processing_debug.enabled()}
+
+
+@router.get("/api/admin/songs/{song_id}/debug")
+def api_admin_song_debug(request: Request, song_id: str) -> dict:
+    """Return the opt-in processing trace and safe artifact metadata."""
+    require_admin(request)
+    song = get_song(song_id)
+    if not song:
+        fail(request, 404, "api.song_not_found")
+    folder = processing_debug.trace_path(song_id).parent
+    trace = processing_debug.snapshot(song_id) if processing_debug.enabled() else None
+    artifacts = []
+    intermediates = []
+    inspectable = {"skeleton.json", "lyrics.lrc", "lyrics.json", "asr.json", "agent-align.json", "zh-translate.json", "ja-annotate.json"}
+    if folder.exists():
+        for path in sorted(folder.iterdir(), key=lambda item: item.name):
+            if not path.is_file() or path.name.startswith("."):
+                continue
+            try:
+                artifacts.append({"name": path.name, "size": path.stat().st_size, "modified_at": path.stat().st_mtime})
+                if path.name in inspectable and path.stat().st_size <= 512 * 1024:
+                    intermediates.append({"name": path.name, "content": path.read_text(encoding="utf-8", errors="replace")})
+            except OSError:
+                continue
+    asr_trace = None
+    asr_dir = folder / "_asr-debug"
+    if processing_debug.enabled() and asr_dir.exists():
+        traces = sorted(asr_dir.glob("*.json"), key=lambda item: item.stat().st_mtime if item.exists() else 0)
+        if traces:
+            try:
+                import json
+                asr_trace = json.loads(traces[-1].read_text(encoding="utf-8"))
+            except (OSError, ValueError, TypeError):
+                asr_trace = None
+    return {
+        "song": with_media_flags(song) or song,
+        "enabled": processing_debug.enabled(),
+        "trace": trace,
+        "asr_trace": asr_trace,
+        "artifacts": artifacts,
+        "intermediates": intermediates,
+    }
 
 
 @router.delete("/api/admin/songs/{song_id}")
