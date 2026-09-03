@@ -176,13 +176,13 @@ def apply_generated_lyrics(timeline: dict[str, Any], generated: Any | None) -> d
                 cue["tokens"] = fresh
             elif fresh:
                 for token in fresh:
-                    target = next(
+                    target_token = next(
                         (old for old in old_tokens if str(old.get("text") or old.get("surface") or "").strip().casefold() == str(token.get("text") or "").strip().casefold()),
                         None,
                     )
-                    if target is not None:
-                        target.update({k: v for k, v in token.items() if k not in {"start_ms", "end_ms", "text", "surface"}})
-                        target["translation"] = target["zh"] = str(token.get("translation") or token.get("zh") or "")
+                    if target_token is not None:
+                        target_token.update({k: v for k, v in token.items() if k not in {"start_ms", "end_ms", "text", "surface"}})
+                        target_token["translation"] = target_token["zh"] = str(token.get("translation") or token.get("zh") or "")
         used.add(target)
         applied += 1
     if applied:

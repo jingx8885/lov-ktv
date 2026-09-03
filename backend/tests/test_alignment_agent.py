@@ -3,7 +3,7 @@ import json
 import pytest
 
 from lovktv.agents import alignment
-from lovktv.domain.alignment import parse_alignment_payload
+from lovktv.domain.alignment import parse_alignment_payload, parse_generated_lyrics
 from lovktv.pipeline.orchestrator import align_lyrics, apply_generated_lyrics, _timeline_from_asr_words
 from lovktv.pipeline.orchestrator import apply_generated_lyrics
 
@@ -126,6 +126,34 @@ def test_generate_lyrics_with_agent_validates_complete_tokenized_document(tmp_pa
         )
 
 
+def test_generated_schema_accepts_partial_tokenization_for_observability():
+    base = {
+        "schema": "lovktv-generated-lyrics-v1",
+        "language": "en",
+        "rows": [
+            {
+                "lyric": 1,
+                "status": "inferred",
+                "text": "from now on",
+                "translation": "从现在起",
+                "reason": "副歌上下文确认",
+                "tokens": [
+                    {"surface": "from", "translation": "从"},
+                    {"surface": "now", "translation": "现在"},
+                    {"surface": "on", "translation": "起"},
+                ],
+            }
+        ],
+    }
+    assert parse_generated_lyrics(base, lyric_count=1).rows[0].text == "from now on"
+    missing_translation = json.loads(json.dumps(base))
+    missing_translation["rows"][0]["tokens"][1]["translation"] = ""
+    assert parse_generated_lyrics(missing_translation, lyric_count=1).rows[0].tokens[1].translation == ""
+    missing_token = json.loads(json.dumps(base))
+    missing_token["rows"][0]["tokens"].pop()
+    assert len(parse_generated_lyrics(missing_token, lyric_count=1).rows[0].tokens) == 2
+
+
 def test_generate_from_now_on_returns_line_and_word_results(monkeypatch):
     monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
@@ -232,6 +260,45 @@ def test_generated_metadata_does_not_erase_server_token_timing():
         (250, 500),
     ]
     assert timeline["cues"][0]["translation"] == "你好世界"
+
+
+def test_generated_token_mismatch_keeps_existing_layout_and_timing():
+    timeline = {
+        "cues": [
+            {
+                "text": "My jealous 心",
+                "start_ms": 100,
+                "end_ms": 700,
+                "tokens": [
+                    {"text": "My", "start_ms": 100, "end_ms": 250},
+                    {"text": "jealous", "start_ms": 250, "end_ms": 550},
+                    {"text": "心", "start_ms": 550, "end_ms": 700},
+                ],
+            }
+        ]
+    }
+    apply_generated_lyrics(
+        timeline,
+        {
+            "rows": [
+                {
+                    "lyric": 1,
+                    "text": "My jealous 心",
+                    "translation": "我嫉妒的心",
+                    "tokens": [
+                        {"surface": "My jealous", "translation": "我的嫉妒"},
+                        {"surface": "心", "translation": "心"},
+                    ],
+                }
+            ]
+        },
+    )
+    assert [token["text"] for token in timeline["cues"][0]["tokens"]] == ["My", "jealous", "心"]
+    assert [(token["start_ms"], token["end_ms"]) for token in timeline["cues"][0]["tokens"]] == [
+        (100, 250),
+        (250, 550),
+        (550, 700),
+    ]
 
 
 def test_agent_prompt_keeps_grok_word_level_times(monkeypatch):

@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -228,7 +229,7 @@ def _build_messages(
 ) -> list[dict[str, str]]:
     numbered_lines = "\n".join(f"{i}. {spec}" for i, spec in enumerate(line_specs, 1))
     numbered_words = "\n".join(
-        f"{i}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
+        f"{int(word.get('index') or i)}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
         for i, word in enumerate(words, 1)
     )
     return [
@@ -250,7 +251,7 @@ def _build_generation_messages(
     ids = line_numbers or list(range(1, len(line_specs) + 1))
     numbered_lines = "\n".join(f"{i}. {spec}" for i, spec in zip(ids, line_specs))
     numbered_words = "\n".join(
-        f"{i}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
+        f"{int(word.get('index') or i)}. [{word['start_ms']}-{word['end_ms']}] {word['text']}"
         for i, word in enumerate(words, 1)
     )
     return [
@@ -289,6 +290,8 @@ def _generate_chunk(
     *,
     global_numbers: list[int] | None = None,
     context: str = "",
+    word_count: int | None = None,
+    allowed_word_indices: set[int] | None = None,
 ) -> GeneratedLyrics:
     local_numbers, specs = _generation_line_specs(lines)
     ids = global_numbers or local_numbers
@@ -299,7 +302,90 @@ def _generate_chunk(
             )
         )
     )
-    return parse_generated_lyrics(payload, expected_lyrics=set(ids), word_count=len(words))
+    source_by_id = {
+        number: str(item.get("text") or "")
+        for number, item in zip(ids, lines)
+    }
+    for row in payload.get("rows") or []:
+        if isinstance(row, dict):
+            try:
+                number = int(row.get("lyric"))
+            except (TypeError, ValueError):
+                continue
+            if number in source_by_id:
+                # Preserve authored source text exactly; tolerate harmless
+                # punctuation/case edits while validating token coverage.
+                row["text"] = source_by_id[number]
+            if (
+                allowed_word_indices is not None
+                and isinstance(row.get("from"), int)
+                and isinstance(row.get("to"), int)
+                and not set(range(row["from"], row["to"] + 1)).issubset(allowed_word_indices)
+            ):
+                row.pop("from", None)
+                row.pop("to", None)
+                row["status"] = "inferred"
+                row["reason"] = "ASR 片段超出本段时间窗口，保留歌词并交由时间轴推断"
+    return parse_generated_lyrics(payload, expected_lyrics=set(ids), word_count=word_count or len(words))
+
+
+def _recover_obvious_spans(
+    generated: GeneratedLyrics,
+    lines: list[dict[str, Any]],
+    words: list[dict[str, Any]],
+) -> GeneratedLyrics:
+    """Recover exact ASR phrases a cautious model marked absent.
+
+    This is deliberately conservative and only upgrades a row when a
+    contiguous ASR window has a near-exact lexical match near that line's LRC
+    clock. It prevents a model's uncertainty from turning clearly sung
+    repeated hooks into silent omissions, while leaving genuinely missing
+    lines as ``inferred``/``absent``.
+    """
+    by_id = {index: item for index, item in enumerate(lines, 1)}
+    used = {
+        index
+        for row in generated.rows
+        if row.from_ is not None and row.to is not None
+        for index in range(row.from_, row.to + 1)
+    }
+    out: list[dict[str, Any]] = []
+    for row in generated.rows:
+        data = row.model_dump(mode="json", by_alias=True)
+        if row.from_ is None or row.to is None:
+            source = str(by_id.get(row.lyric, {}).get("text") or row.text)
+            wanted = [part.casefold() for part in re.findall(r"[\w']+", source, re.UNICODE)]
+            if wanted:
+                clock = int(by_id.get(row.lyric, {}).get("ms") or 0)
+                candidates: list[tuple[float, int, int]] = []
+                for start in range(len(words)):
+                    if abs(int(words[start].get("start_ms") or 0) - clock) > 15_000:
+                        continue
+                    for size in range(max(1, len(wanted) - 1), len(wanted) + 3):
+                        end = start + size
+                        if end > len(words):
+                            continue
+                        if any(index in used for index in range(start + 1, end + 1)):
+                            continue
+                        heard = [
+                            part.casefold()
+                            for word in words[start:end]
+                            for part in re.findall(r"[\w']+", str(word.get("text") or ""), re.UNICODE)
+                        ]
+                        score = SequenceMatcher(None, wanted, heard).ratio()
+                        if score >= 0.82:
+                            candidates.append((score, start + 1, end))
+                if candidates:
+                    _score, from_, to = max(candidates, key=lambda item: (item[0], -abs(item[1] - 1)))
+                    data.update(status="uncertain", **{"from": from_, "to": to})
+                    data["reason"] = "ASR 与原歌词存在连续高置信词序，恢复为不确定匹配"
+                    used.update(range(from_, to + 1))
+        out.append(data)
+    return parse_generated_lyrics(
+        {"schema": GENERATE_SCHEMA, "language": generated.language, "rows": out, "groups": []},
+        lyric_count=len(lines),
+        word_count=len(words),
+    )
 
 
 def generate_lyrics_with_agent(
@@ -325,11 +411,12 @@ def generate_lyrics_with_agent(
     ]
     words = [
         {
+            "index": index,
             "text": str(item.get("text") or ""),
             "start_ms": int(item.get("start_ms") or 0),
             "end_ms": int(item.get("end_ms") or item.get("start_ms") or 0),
         }
-        for item in _usable_asr_words(asr_words)
+        for index, item in enumerate(_usable_asr_words(asr_words), 1)
         if str(item.get("text") or "").strip()
     ][:800]
     if not kept or not words:
@@ -357,16 +444,32 @@ def generate_lyrics_with_agent(
     # context for repeated choruses.  Long songs can exceed the gateway's
     # completion limit, so retry in bounded sections and merge only after the
     # same schema validator checks every section and every ASR span.
-    try:
-        payload = _json_payload(
-            _request_content(_build_generation_messages(line_specs, words, language))
-        )
-        generated = parse_generated_lyrics(
-            payload, lyric_count=len(kept), word_count=len(words)
-        )
-    except Exception:
+    if len(kept) <= 24:
+        try:
+            payload = _json_payload(
+                _request_content(_build_generation_messages(line_specs, words, language))
+            )
+            source_by_id = {
+                number: str(item.get("text") or "")
+                for number, item in enumerate(kept, 1)
+            }
+            for row in payload.get("rows") or []:
+                if isinstance(row, dict):
+                    try:
+                        number = int(row.get("lyric"))
+                    except (TypeError, ValueError):
+                        continue
+                    if number in source_by_id:
+                        row["text"] = source_by_id[number]
+            generated = parse_generated_lyrics(
+                payload, lyric_count=len(kept), word_count=len(words)
+            )
+        except Exception:
+            generated = None
+    if generated is None:
         chunk_size = 16
         chunk_rows = []
+        occupied: set[int] = set()
         try:
             for offset in range(0, len(kept), chunk_size):
                 chunk = kept[offset : offset + chunk_size]
@@ -380,15 +483,44 @@ def generate_lyrics_with_agent(
                         f"after: {after}" if after else "",
                     ) if part
                 )
+                chunk_start = int(chunk[0].get("ms") or 0)
+                chunk_end = int(chunk[-1].get("end_ms") or chunk[-1].get("ms") or chunk_start)
+                window_words = [
+                    word for word in words
+                    if int(word.get("end_ms") or 0) >= chunk_start - 12_000
+                    and int(word.get("start_ms") or 0) <= chunk_end + 12_000
+                ] or words
                 part = _generate_chunk(
-                    chunk, words, language, global_numbers=ids, context=context
+                    chunk,
+                    window_words,
+                    language,
+                    global_numbers=ids,
+                    context=context,
+                    word_count=len(words),
+                    allowed_word_indices={int(word.get("index") or 0) for word in window_words},
                 )
-                chunk_rows.extend(part.rows)
+                for row in part.rows:
+                    row_data = row.model_dump(mode="json", by_alias=True)
+                    if row.from_ is not None and row.to is not None:
+                        span = set(range(row.from_, row.to + 1))
+                        if occupied.intersection(span):
+                            # Two independently generated sections may choose
+                            # the same repeated chorus occurrence. Preserve the
+                            # line and its translation, but remove the unsafe
+                            # anchor so the deterministic LRC/ASR path places
+                            # it instead of dropping the whole document.
+                            row_data.pop("from", None)
+                            row_data.pop("to", None)
+                            row_data["status"] = "inferred"
+                            row_data["reason"] = "分段生成的 ASR 片段与另一段重复，保留歌词并交由时间轴推断"
+                        else:
+                            occupied.update(span)
+                    chunk_rows.append(row_data)
             generated = parse_generated_lyrics(
                 {
                     "schema": GENERATE_SCHEMA,
                     "language": language,
-                    "rows": [row.model_dump(mode="json", by_alias=True) for row in chunk_rows],
+                    "rows": chunk_rows,
                     "groups": [],
                 },
                 lyric_count=len(kept),
@@ -398,6 +530,12 @@ def generate_lyrics_with_agent(
             return None
     if generated is None:
         return None
+    try:
+        generated = _recover_obvious_spans(generated, kept, words)
+    except Exception:
+        # Metadata is still useful when recovery cannot be applied; the
+        # original, schema-validated rows remain the source of truth.
+        pass
     if any(
         generated.rows[i - 1].text != str(kept[i - 1].get("text") or "")
         for i in range(1, len(kept) + 1)

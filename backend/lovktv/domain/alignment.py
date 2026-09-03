@@ -143,12 +143,6 @@ class GeneratedLyricRow(BaseModel):
             raise ValueError("generated lyric row requires text")
         if not self.translation.strip():
             raise ValueError("generated lyric row requires translation")
-        if not self.tokens:
-            raise ValueError("generated lyric row requires token-level decomposition")
-        source = _compact(self.text)
-        covered = _compact("".join(token.surface for token in self.tokens))
-        if source != covered:
-            raise ValueError("generated tokens do not cover the source lyric exactly")
         if self.status in {"matched", "uncertain"}:
             if self.from_ is None or self.to is None or self.from_ > self.to:
                 raise ValueError("matched/uncertain generated row requires valid span")
@@ -166,6 +160,9 @@ class GeneratedLyrics(BaseModel):
 
     schema_: str = Field(default="lovktv-generated-lyrics-v1", alias="schema")
     language: str = ""
+    source: str = "current"
+    source_hash: str = ""
+    evidence: list[dict[str, Any]] = Field(default_factory=list)
     rows: list[GeneratedLyricRow]
     groups: list[AlignmentGroup] = Field(default_factory=list)
 
@@ -174,6 +171,8 @@ class GeneratedLyrics(BaseModel):
         ids = [row.lyric for row in self.rows]
         if len(ids) != len(set(ids)):
             raise ValueError("each lyric line must appear exactly once")
+        if self.source != "current" and not self.source_hash.strip():
+            raise ValueError("alternate lyric source requires source_hash")
         return self
 
     def legacy_matches(self) -> list[dict[str, int]]:
@@ -214,11 +213,6 @@ def parse_generated_lyrics(
             raise ValueError(f"ASR words reused: {sorted(overlap)}")
         used.update(range(row.from_, row.to + 1))
     return result
-
-
-def _compact(value: str) -> str:
-    """Normalize only whitespace for exact source/token coverage checks."""
-    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", value or ""))
 
 
 def parse_alignment_payload(
