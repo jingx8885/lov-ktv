@@ -66,6 +66,8 @@ def resolve_sung_rows(
     words: list[dict[str, Any]],
     language: str,
     duration_ms: int | None = None,
+    envelope: list[float] | None = None,
+    hop_ms: int = HOP_MS,
 ) -> list[dict[str, Any]]:
     """Give every agent row ``start_ms``/``end_ms`` derived from ASR words.
 
@@ -107,6 +109,27 @@ def resolve_sung_rows(
         item["end_ms"] = max(item["end_ms"], min(wanted, limit) if limit is not None else wanted)
 
     # Place inferred runs inside the gap between their matched neighbours.
+    # An agent can infer a reference chorus from line order even when the
+    # recording contains an instrumental break.  When an envelope is
+    # available, require meaningful vocal energy in the interior of the gap;
+    # otherwise dropping the inferred run is safer than displaying lyrics
+    # over silence.  Keep the old behaviour when no audio envelope is known
+    # (callers/tests may only have ASR word timestamps).
+    vocal_regions = _vocal_regions(envelope, hop_ms) if envelope else []
+
+    def has_vocal_interior(start_ms: int, end_ms: int) -> bool:
+        if not vocal_regions:
+            return False
+        # Ignore short boundary bleed from the neighbouring matched lines.
+        left = start_ms + 300
+        right = end_ms - 300
+        if right <= left:
+            return False
+        return any(
+            min(region_end, right) - max(region_start, left) >= 300
+            for region_start, region_end in vocal_regions
+        )
+
     out: list[dict[str, Any]] = []
     i = 0
     while i < len(placed):
@@ -129,6 +152,11 @@ def resolve_sung_rows(
             next_start = prev_end + _INFERRED_LINE_MS * len(run)
             if duration_ms:
                 next_start = min(next_start, int(duration_ms))
+        if envelope and not has_vocal_interior(prev_end, next_start):
+            # No sung energy between the anchors: these are reference-only
+            # guesses, not lines that should appear in the karaoke timeline.
+            i = j
+            continue
         needed = _INFERRED_MIN_MS * len(run)
         if next_start - prev_end < needed and out:
             # Not enough silence: borrow display time from the previous line
@@ -246,7 +274,14 @@ def align_lyrics(
         duration_ms = duration_ms or _probe_duration_ms(audio_path)
 
     if sung_rows and sung_words:
-        bounds = resolve_sung_rows(sung_rows, sung_words, lang, duration_ms)
+        bounds = resolve_sung_rows(
+            sung_rows,
+            sung_words,
+            lang,
+            duration_ms,
+            envelope=envelope,
+            hop_ms=hop_ms,
+        )
         cues = _cues_from_bounds(bounds, lang, asr_words, envelope, hop_ms)
         if cues:
             return {

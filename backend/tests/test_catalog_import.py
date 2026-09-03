@@ -267,3 +267,68 @@ def test_search_has_more_when_page_is_full(monkeypatch):
     result = search.search_songs("x", count=10, page=1)
     assert result["has_more"] is True
     assert len(result["hits"]) == 10
+
+
+def test_select_lyrics_prefers_netease_lrc_that_fits_the_film_cut(monkeypatch):
+    # Studio KRC is 3:30, the MV is the 5:00 film cut; NetEase lists the
+    # studio single first and the film version second.
+    monkeypatch.setattr(
+        importer,
+        "fetch_kugou_lyrics",
+        lambda title, artist="", duration_ms=0, language=None: {
+            "timeline": {"language": "en", "cues": [{"text": "x", "start_ms": 1000, "end_ms": 205_000}]},
+            "lrc": "[00:01.00]x\n",
+            "candidate": {"id": "kg"},
+            "duration_ms": 210_000,
+            "mismatch_ms": 90_000,
+        },
+    )
+    monkeypatch.setattr(
+        importer,
+        "search_tonzhon",
+        lambda query, count=12, source="netease", page=1: [
+            {"id": "1", "name": "From Now On"},
+            {"id": "2", "name": "From Now On (Film Version)"},
+        ],
+    )
+    lyrics = {
+        "1": "[00:10.00]studio\n[03:20.00]studio end",
+        "2": "[00:10.00]film\n[04:40.00]film end",
+    }
+    monkeypatch.setattr(importer, "fetch_lyric", lambda song_id, source="netease": lyrics[song_id])
+    selected = importer._select_lyrics("From Now On", "Hugh Jackman", {"id": "1"}, 300_000)
+    assert selected["source"] == "netease"
+    assert selected["netease"]["id"] == "2"
+
+
+def test_select_lyrics_keeps_kugou_when_it_matches_media(monkeypatch):
+    monkeypatch.setattr(
+        importer,
+        "fetch_kugou_lyrics",
+        lambda title, artist="", duration_ms=0, language=None: {
+            "timeline": {"language": "zh", "cues": [{"text": "x", "start_ms": 1000, "end_ms": 260_000}]},
+            "lrc": "[00:01.00]x\n",
+            "candidate": {"id": "kg"},
+            "duration_ms": 268_000,
+            "mismatch_ms": 1_000,
+        },
+    )
+    monkeypatch.setattr(
+        importer, "fetch_lyric", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("no netease"))
+    )
+    selected = importer._select_lyrics("晴天", "周杰伦", {"id": "1"}, 269_000)
+    assert selected["source"] == "kugou"
+
+
+def test_select_lyrics_without_media_length_keeps_first_netease_hit(monkeypatch):
+    monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "search_tonzhon", lambda *args, **kwargs: [{"id": "2", "name": "song"}])
+    calls: list[str] = []
+
+    def fetch(song_id, source="netease"):
+        calls.append(song_id)
+        return "[00:01.00]line"
+
+    monkeypatch.setattr(importer, "fetch_lyric", fetch)
+    selected = importer._select_lyrics("song", "", {"id": "1"}, 0)
+    assert selected["netease"]["id"] == "1" and calls == ["1"]

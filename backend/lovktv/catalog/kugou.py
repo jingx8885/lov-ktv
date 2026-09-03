@@ -186,16 +186,30 @@ def download_kugou_krc(candidate: dict[str, Any]) -> str:
     return decode_krc(content)
 
 
-def pick_candidate(
+def _duration_bonus(candidate_ms: int, media_ms: int) -> int:
+    """Reward a candidate whose length matches the media we actually play."""
+    if not candidate_ms or not media_ms:
+        return 0
+    diff = abs(candidate_ms - media_ms)
+    if diff <= 3000:
+        return 30
+    if diff <= 8000:
+        return 15
+    if diff > max(20_000, int(media_ms * 0.08)):
+        return -40
+    return 0
+
+
+def rank_candidates(
     candidates: list[dict[str, Any]],
     title: str = "",
     artist: str = "",
     duration_ms: int = 0,
-) -> dict[str, Any] | None:
-    ranked: list[tuple[int, dict[str, Any]]] = []
+) -> list[dict[str, Any]]:
+    ranked: list[tuple[int, int, dict[str, Any]]] = []
     title_c = re.sub(r"\s+", "", title or "")
     artist_c = re.sub(r"\s+", "", artist or "")
-    for item in candidates:
+    for index, item in enumerate(candidates):
         score = int(item.get("score") or 0)
         source = str(item.get("product_from") or "")
         song = re.sub(r"\s+", "", str(item.get("song") or ""))
@@ -206,12 +220,40 @@ def pick_candidate(
             score += 10
         if artist_c and artist_c in singer:
             score += 10
-        if duration_ms and item.get("duration"):
-            if abs(int(item["duration"]) - duration_ms) <= 4000:
-                score += 8
-        ranked.append((score, item))
-    ranked.sort(key=lambda row: row[0], reverse=True)
-    return ranked[0][1] if ranked else None
+        try:
+            candidate_ms = int(item.get("duration") or 0)
+        except (TypeError, ValueError):
+            candidate_ms = 0
+        score += _duration_bonus(candidate_ms, int(duration_ms or 0))
+        ranked.append((score, -index, item))
+    ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
+    return [item for _score, _index, item in ranked]
+
+
+def pick_candidate(
+    candidates: list[dict[str, Any]],
+    title: str = "",
+    artist: str = "",
+    duration_ms: int = 0,
+) -> dict[str, Any] | None:
+    ranked = rank_candidates(candidates, title=title, artist=artist, duration_ms=duration_ms)
+    return ranked[0] if ranked else None
+
+
+def lyric_mismatch_ms(last_ms: int, media_ms: int, candidate_ms: int = 0) -> int:
+    """How far a lyric track is from the media length, in milliseconds.
+
+    A declared track length is compared directly.  Otherwise the last timed
+    cue is used: running past the media is penalised heavily (it is another
+    version), while an outro of up to 15 s after the last line is free.
+    """
+    if not media_ms:
+        return 0
+    if candidate_ms:
+        return abs(int(candidate_ms) - int(media_ms))
+    if last_ms > media_ms + 3000:
+        return (last_ms - media_ms) * 4
+    return max(0, media_ms - last_ms - 15_000)
 
 
 def fetch_kugou_lyrics(
@@ -220,7 +262,12 @@ def fetch_kugou_lyrics(
     duration_ms: int = 0,
     language: str | None = None,
 ) -> dict[str, Any] | None:
-    """Search + download KRC. None if Kugou has nothing usable."""
+    """Search + download KRC. None if Kugou has nothing usable.
+
+    ``duration_ms`` is the length of the media we will play; candidates whose
+    lyrics run past it are skipped so a longer version's KRC never lands on a
+    shorter cut.
+    """
     title = (title or "").strip()
     artist = (artist or "").strip()
     if not title:
@@ -230,22 +277,32 @@ def fetch_kugou_lyrics(
         candidates = search_kugou_lyrics(keyword, duration_ms=duration_ms)
         if not candidates and artist:
             candidates = search_kugou_lyrics(title, duration_ms=duration_ms)
-        chosen = pick_candidate(
-            candidates, title=title, artist=artist, duration_ms=duration_ms
-        )
-        if not chosen:
-            return None
-        raw = download_kugou_krc(chosen)
-        timeline = timeline_from_krc(raw, title=title, artist=artist, language=language)
     except Exception:
         return None
-    return {
-        "timeline": timeline,
-        "lrc": lrc_from_cues(timeline["cues"]),
-        "candidate": {
-            "id": str(chosen.get("id") or ""),
-            "song": str(chosen.get("song") or title),
-            "singer": str(chosen.get("singer") or artist),
-            "source": str(chosen.get("product_from") or "kugou"),
-        },
-    }
+    ranked = rank_candidates(candidates, title=title, artist=artist, duration_ms=duration_ms)
+    for chosen in ranked[:3]:
+        try:
+            raw = download_kugou_krc(chosen)
+            timeline = timeline_from_krc(raw, title=title, artist=artist, language=language)
+        except Exception:
+            continue
+        last_ms = max(int(cue.get("end_ms") or cue.get("start_ms") or 0) for cue in timeline["cues"])
+        if duration_ms and last_ms > int(duration_ms) + 3000:
+            continue
+        try:
+            candidate_ms = int(chosen.get("duration") or 0)
+        except (TypeError, ValueError):
+            candidate_ms = 0
+        return {
+            "timeline": timeline,
+            "lrc": lrc_from_cues(timeline["cues"]),
+            "candidate": {
+                "id": str(chosen.get("id") or ""),
+                "song": str(chosen.get("song") or title),
+                "singer": str(chosen.get("singer") or artist),
+                "source": str(chosen.get("product_from") or "kugou"),
+            },
+            "duration_ms": candidate_ms,
+            "mismatch_ms": lyric_mismatch_ms(last_ms, int(duration_ms or 0), candidate_ms),
+        }
+    return None

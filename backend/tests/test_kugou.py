@@ -191,3 +191,31 @@ def test_import_song_falls_back_to_netease_lyrics(tmp_path, monkeypatch):
     assert (
         (tmp_path / "lyrics.lrc").read_text(encoding="utf-8").startswith("[00:01.00]")
     )
+
+
+def test_rank_candidates_penalises_wrong_length():
+    ranked = kugou.rank_candidates(
+        [
+            {"id": "long", "accesskey": "a", "score": 60, "product_from": "官方推荐歌词", "song": "From Now On", "singer": "Hugh Jackman", "duration": 349_000},
+            {"id": "fit", "accesskey": "b", "score": 55, "product_from": "第三方歌词", "song": "From Now On", "singer": "Hugh Jackman", "duration": 300_500},
+        ],
+        title="From Now On",
+        artist="Hugh Jackman",
+        duration_ms=300_000,
+    )
+    assert [item["id"] for item in ranked] == ["fit", "long"]
+
+
+def test_fetch_kugou_lyrics_skips_candidate_running_past_media(monkeypatch):
+    monkeypatch.setattr(
+        kugou,
+        "search_kugou_lyrics",
+        lambda keyword, duration_ms=0: [
+            {"id": "1", "accesskey": "a", "score": 90, "product_from": "官方推荐歌词", "song": "晴天", "singer": "周杰伦"},
+            {"id": "2", "accesskey": "b", "score": 10, "product_from": "第三方歌词", "song": "晴天", "singer": "周杰伦"},
+        ],
+    )
+    long_krc = KRC_SAMPLE.replace("[29269,", "[329269,")
+    monkeypatch.setattr(kugou, "download_kugou_krc", lambda candidate: long_krc if candidate["id"] == "1" else KRC_SAMPLE)
+    got = kugou.fetch_kugou_lyrics("晴天", "周杰伦", duration_ms=120_000)
+    assert got is not None and got["candidate"]["id"] == "2"

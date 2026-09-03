@@ -13,6 +13,7 @@ from lovktv.catalog.mugen import (
     pick_vocal_hit,
     search_mugen,
 )
+from lovktv.pipeline.audio import probe_duration_ms
 
 from .audio import (
     _ytdlp_download,
@@ -25,7 +26,7 @@ from .audio import (
     sync_video_to_audio,
 )
 from .bilibili import is_bvid
-from .kugou import fetch_kugou_lyrics
+from .kugou import fetch_kugou_lyrics, lyric_mismatch_ms
 from .lyrics import fetch_lyric, parse_lrc
 from .search import (
     BROWSER_UA,
@@ -34,6 +35,12 @@ from .search import (
     is_clean_title,
     search_tonzhon,
 )
+
+# A word-level Kugou track this close to the media length wins outright;
+# beyond it the NetEase LRC candidates compete on the same mismatch scale.
+KUGOU_ACCEPT_MS = 8000
+# How many NetEase lyric candidates to fetch when the media length is known.
+NETEASE_LYRIC_CANDIDATES = 6
 
 
 def _pick_lyric_result(
@@ -58,6 +65,86 @@ def _pick_lyric_result(
         ranked.append((score, -index, item))
     ranked.sort(key=lambda row: (row[0], row[1]), reverse=True)
     return ranked[0][2] if ranked else None
+
+
+def _netease_lyric_ids(chosen: dict[str, Any], title_name: str) -> list[str]:
+    """Candidate NetEase ids: the chosen song first, then title matches."""
+    ids: list[str] = []
+    chosen_id = str(chosen.get("id") or "")
+    if chosen_id.isdigit():
+        ids.append(chosen_id)
+    try:
+        results = search_tonzhon(title_name, count=NETEASE_LYRIC_CANDIDATES, page=1)
+    except Exception:
+        results = []
+    picked = _pick_lyric_result(results, title_name)
+    ordered = ([picked] if picked else []) + [item for item in results if item is not picked]
+    for song in ordered:
+        sid = str(song.get("id") or "")
+        if sid.isdigit() and sid not in ids:
+            ids.append(sid)
+    return ids[:NETEASE_LYRIC_CANDIDATES]
+
+
+def _lrc_last_ms(lines: list[dict[str, Any]]) -> int:
+    return max(
+        (int(item.get("end_ms") or item.get("ms") or 0) for item in lines),
+        default=0,
+    )
+
+
+def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | None:
+    """Fetch LRC candidates and keep the one that fits the media length best.
+
+    Without a known media length the first candidate with lyrics wins, as
+    before.  With one, every candidate is scored by ``lyric_mismatch_ms`` so
+    a film cut picks the film lyrics even when the studio single is listed
+    first.
+    """
+    best: dict[str, Any] | None = None
+    for sid in ids:
+        try:
+            lrc = fetch_lyric(sid)
+        except Exception:
+            continue
+        if not lrc.strip():
+            continue
+        lines = parse_lrc(lrc)
+        if not lines:
+            continue
+        mismatch = lyric_mismatch_ms(_lrc_last_ms(lines), media_ms) if media_ms else 0
+        if best is None or mismatch < int(best["mismatch_ms"]):
+            best = {"id": sid, "lrc": lrc, "lines": lines, "mismatch_ms": mismatch}
+        if mismatch == 0:
+            break
+    return best
+
+
+def _select_lyrics(
+    title_name: str,
+    artist_name: str,
+    chosen: dict[str, Any],
+    media_ms: int,
+) -> dict[str, Any]:
+    """Choose between Kugou KRC and NetEase LRC using the media length."""
+    kugou = fetch_kugou_lyrics(title_name, artist_name, duration_ms=media_ms)
+    if kugou and not kugou.get("timeline"):
+        kugou = None
+    if kugou is not None and media_ms and "mismatch_ms" not in kugou:
+        cues = kugou["timeline"].get("cues") or []
+        last_ms = max((int(c.get("end_ms") or c.get("start_ms") or 0) for c in cues), default=0)
+        kugou["mismatch_ms"] = lyric_mismatch_ms(last_ms, media_ms, int(kugou.get("duration_ms") or 0))
+    kugou_mismatch = int((kugou or {}).get("mismatch_ms") or 0)
+    if kugou is not None and (not media_ms or kugou_mismatch <= KUGOU_ACCEPT_MS):
+        return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
+    netease = _fetch_netease_lyrics(_netease_lyric_ids(chosen, title_name), media_ms)
+    if netease is not None and (kugou is None or int(netease["mismatch_ms"]) < kugou_mismatch):
+        return {"source": "netease", "netease": netease, "mismatch_ms": int(netease["mismatch_ms"])}
+    if kugou is not None:
+        return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
+    if netease is not None:
+        return {"source": "netease", "netease": netease, "mismatch_ms": int(netease["mismatch_ms"])}
+    raise RuntimeError("歌词为空")
 
 
 def _complete_mugen_audio(
@@ -153,50 +240,9 @@ def import_song(
         str(chosen.get("name") or query),
         flatten_artists(chosen),
     )
-    kugou = fetch_kugou_lyrics(title_name, artist_name)
-    lyric_source, needs_align, language = "netease", True, ""
-    if kugou and kugou.get("timeline"):
-        from lovktv.pipeline.lyrics import write_subtitles
 
-        timeline = kugou["timeline"]
-        write_subtitles(timeline, out_dir)
-        (out_dir / "lyrics.lrc").write_text(
-            str(kugou.get("lrc") or ""), encoding="utf-8"
-        )
-        lines = [
-            {"ms": int(c["start_ms"]), "text": str(c.get("text") or "")}
-            for c in timeline.get("cues") or []
-        ]
-        lyric_source, needs_align, language = (
-            "kugou",
-            False,
-            str(timeline.get("language") or ""),
-        )
-    else:
-        lyric_id = str(chosen.get("id") or "")
-        lrc = fetch_lyric(lyric_id) if lyric_id.isdigit() else ""
-        if not lrc.strip():
-            lyric_results = search_tonzhon(title_name, count=5, page=1)
-            # Keep the title-exact duplicate first before fetching lyrics.
-            picked = _pick_lyric_result(lyric_results, title_name)
-            ordered = ([picked] if picked else []) + [
-                item for item in lyric_results if item is not picked
-            ]
-            for song in ordered:
-                sid = str(song.get("id") or "")
-                if sid.isdigit():
-                    try:
-                        lrc = fetch_lyric(sid)
-                    except Exception:
-                        lrc = ""
-                    if lrc.strip():
-                        break
-        if not lrc.strip():
-            raise RuntimeError("歌词为空")
-        (out_dir / "lyrics.lrc").write_text(lrc, encoding="utf-8")
-        lines = parse_lrc(lrc)
-    if not lines:
-        raise RuntimeError("歌词为空")
+    # Media first: the lyric version is chosen against the length of what we
+    # will actually play (a film cut and the studio single share a title).
     audio_file = None
     audio_source = "none"
     audio_title = ""
@@ -269,16 +315,34 @@ def import_song(
         # fallback for video-only sources.
         mv_audio_extracted = extract_mv_mp3(mtv_path, mp3_path)
         sync_video_to_audio(mtv_path, mp3_path)
-        lp = out_dir / "lyrics.json"
-        if lp.exists():
-            try:
-                timeline = json.loads(lp.read_text(encoding="utf-8"))
-                timeline["native_video"] = True
-                lp.write_text(
-                    json.dumps(timeline, ensure_ascii=False, indent=2), encoding="utf-8"
-                )
-            except (OSError, json.JSONDecodeError):
-                pass
+    media_ms = probe_duration_ms(mp3_path) or (probe_duration_ms(mtv_path) if has_video else 0)
+
+    selected = _select_lyrics(title_name, artist_name, chosen, media_ms)
+    lyric_source = str(selected["source"])
+    kugou = selected.get("kugou")
+    needs_align, language = True, ""
+    if lyric_source == "kugou" and kugou:
+        from lovktv.pipeline.lyrics import write_subtitles
+
+        timeline = kugou["timeline"]
+        if has_video:
+            timeline["native_video"] = True
+        write_subtitles(timeline, out_dir)
+        (out_dir / "lyrics.lrc").write_text(
+            str(kugou.get("lrc") or ""), encoding="utf-8"
+        )
+        lines = [
+            {"ms": int(c["start_ms"]), "text": str(c.get("text") or "")}
+            for c in timeline.get("cues") or []
+        ]
+        needs_align, language = False, str(timeline.get("language") or "")
+    else:
+        netease = selected["netease"]
+        (out_dir / "lyrics.lrc").write_text(str(netease["lrc"]), encoding="utf-8")
+        lines = list(netease["lines"])
+    if not lines:
+        raise RuntimeError("歌词为空")
+
     cover_file = ""
     if pic.startswith("http"):
         try:
@@ -300,7 +364,10 @@ def import_song(
             "netease_id": chosen_id,
             "query": query,
             "lyrics": lyric_source,
+            "lyric_id": str((selected.get("netease") or {}).get("id") or ""),
             "kugou_id": str((kugou or {}).get("candidate", {}).get("id") or ""),
+            "media_ms": media_ms,
+            "lyric_mismatch_ms": int(selected.get("mismatch_ms") or 0),
             "bvid": audio_bvid,
         },
         "audio": {
