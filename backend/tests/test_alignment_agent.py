@@ -3,657 +3,259 @@ import json
 import pytest
 
 from lovktv.agents import alignment
-from lovktv.domain.alignment import parse_alignment_payload, parse_generated_lyrics
-from lovktv.pipeline.orchestrator import align_lyrics, apply_generated_lyrics, _timeline_from_asr_words
-from lovktv.pipeline.orchestrator import apply_generated_lyrics
+from lovktv.domain.alignment import parse_sung_lyrics
+from lovktv.pipeline.orchestrator import align_lyrics, resolve_sung_rows
 
 
-def test_agent_matches_are_validated_and_cached(tmp_path, monkeypatch):
+def _words(*spec: tuple[str, int, int]) -> list[dict]:
+    return [{"text": text, "start_ms": start, "end_ms": end} for text, start, end in spec]
+
+
+def _agent(monkeypatch, payload: dict) -> dict:
     monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
-    monkeypatch.setattr(alignment, "_complete", lambda messages: [
-        {"lyric": 1, "from": 1, "to": 2},
-        {"lyric": 2, "from": 3, "to": 3},
-        {"lyric": 2, "from": 4, "to": 4},  # duplicate lyric
-        {"lyric": 3, "from": 2, "to": 1},  # reversed span
-    ])
-    got = alignment.align_lines_with_agent(
-        [{"text": "hello"}, {"text": "world"}],
-        [
-            {"text": "hello", "start_ms": 100, "end_ms": 200},
-            {"text": "there", "start_ms": 200, "end_ms": 300},
-            {"text": "world", "start_ms": 300, "end_ms": 400},
-        ],
-        "en",
-        cache_path=tmp_path / "agent-align.json",
-    )
-    assert got == [
-        {"lyric": 1, "from": 1, "to": 2},
-        {"lyric": 2, "from": 3, "to": 3},
-    ]
-    cached = json.loads((tmp_path / "agent-align.json").read_text(encoding="utf-8"))
-    assert cached["schema"] == alignment.ALIGN_SCHEMA
+    seen: dict = {"calls": []}
+
+    def request(messages):
+        seen["calls"].append(messages[1]["content"])
+        return json.dumps(payload)
+
+    monkeypatch.setattr(alignment, "_request_content", request)
+    return seen
 
 
-def test_status_protocol_preserves_inferred_rows_and_legacy_matches():
-    payload = {
-        "schema": "lovktv-agent-alignment-v1",
-        "rows": [
-            {"lyric": 1, "status": "matched", "from": 1, "to": 2},
-            {"lyric": 2, "status": "inferred", "reason": "重复副歌位于两个锚点之间"},
-            {"lyric": 3, "status": "uncertain", "from": 3, "to": 3},
-        ],
-        "groups": [],
-    }
-    parsed = parse_alignment_payload(payload, lyric_count=3, word_count=3)
-    assert parsed.rows[1].status == "inferred"
-    assert parsed.rows[1].reason
-    assert parsed.legacy_matches() == [
-        {"lyric": 1, "from": 1, "to": 2},
-        {"lyric": 3, "from": 3, "to": 3},
-    ]
+# --- protocol -----------------------------------------------------------------
 
 
-def test_status_protocol_rejects_silent_omission_and_reused_words():
+def test_sung_lyrics_reject_overlapping_or_backwards_spans():
     with pytest.raises(ValueError):
-        parse_alignment_payload(
-            {"rows": [{"lyric": 1, "status": "matched", "from": 1, "to": 1}]},
-            lyric_count=2,
-            word_count=1,
+        parse_sung_lyrics(
+            {"rows": [
+                {"text": "a", "from": 1, "to": 3},
+                {"text": "b", "from": 3, "to": 4},
+            ]},
+            word_count=4,
         )
-
-
-def test_generate_lyrics_with_agent_validates_complete_tokenized_document(tmp_path, monkeypatch):
-    monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
-    monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
-    monkeypatch.setattr(
-        alignment,
-        "_request_content",
-        lambda messages: json.dumps(
-            {
-                "schema": "lovktv-generated-lyrics-v1",
-                "language": "en",
-                "rows": [
-                    {
-                        "lyric": 1,
-                        "status": "matched",
-                        "text": "hello world",
-                        "translation": "你好世界",
-                        "tokens": [
-                            {"surface": "hello", "translation": "你好"},
-                            {"surface": "world", "translation": "世界"},
-                        ],
-                        "from": 1,
-                        "to": 2,
-                    },
-                    {
-                        "lyric": 2,
-                        "status": "inferred",
-                        "text": "again",
-                        "translation": "再次",
-                        "tokens": [{"surface": "again", "translation": "再次"}],
-                        "reason": "副歌结构确认",
-                    },
-                ],
-                "groups": [],
-            }
-        ),
-    )
-    result = alignment.generate_lyrics_with_agent(
-        [{"ms": 0, "text": "hello world"}, {"ms": 1000, "text": "again"}],
-        [
-            {"text": "hello", "start_ms": 0, "end_ms": 100},
-            {"text": "world", "start_ms": 100, "end_ms": 200},
-        ],
-        "en",
-        cache_path=tmp_path / "generated.json",
-    )
-    assert result is not None
-    assert [token.surface for token in result.rows[0].tokens] == ["hello", "world"]
-    assert result.rows[1].status == "inferred"
-    assert result.legacy_matches() == [{"lyric": 1, "from": 1, "to": 2}]
-    assert json.loads((tmp_path / "generated.json").read_text())["schema"] == "lovktv-generated-lyrics-v1"
     with pytest.raises(ValueError):
-        parse_alignment_payload(
-            {
-                "rows": [
-                    {"lyric": 1, "status": "matched", "from": 1, "to": 1},
-                    {"lyric": 2, "status": "matched", "from": 1, "to": 1},
-                ]
-            },
-            lyric_count=2,
-            word_count=1,
+        parse_sung_lyrics(
+            {"rows": [
+                {"text": "a", "from": 4, "to": 5},
+                {"text": "b", "from": 1, "to": 2},
+            ]},
+            word_count=5,
         )
+    with pytest.raises(ValueError):
+        parse_sung_lyrics({"rows": [{"text": "a", "from": 1, "to": 9}]}, word_count=4)
 
 
-def test_generated_schema_accepts_partial_tokenization_for_observability():
-    base = {
-        "schema": "lovktv-generated-lyrics-v1",
+def test_sung_lyrics_need_one_anchor_and_accept_inferred_rows():
+    with pytest.raises(ValueError):
+        parse_sung_lyrics({"rows": [{"text": "a", "status": "inferred", "reason": "x"}]})
+    parsed = parse_sung_lyrics(
+        {"rows": [
+            {"text": "first", "from": 1, "to": 1},
+            {"text": "missed", "reason": "verse continues"},
+            {"text": "third", "from": 2, "to": 2},
+        ]},
+        word_count=2,
+    )
+    assert [row.status for row in parsed.rows] == ["matched", "inferred", "matched"]
+
+
+# --- agent adapter -------------------------------------------------------------
+
+
+def test_generate_sung_lyrics_uses_transcript_and_caches(tmp_path, monkeypatch):
+    seen = _agent(monkeypatch, {
+        "schema": "lovktv-sung-lyrics-v1",
         "language": "en",
         "rows": [
-            {
-                "lyric": 1,
-                "status": "inferred",
-                "text": "from now on",
-                "translation": "从现在起",
-                "reason": "副歌上下文确认",
-                "tokens": [
-                    {"surface": "from", "translation": "从"},
-                    {"surface": "now", "translation": "现在"},
-                    {"surface": "on", "translation": "起"},
-                ],
-            }
+            {"text": "From now on", "from": 1, "to": 3, "ref": 1, "translation": "从现在起",
+             "tokens": [{"surface": "From", "translation": "从"}, {"surface": "now", "translation": "现在"},
+                        {"surface": "on", "translation": "起"}]},
+            {"text": "And we will come back home", "from": 4, "to": 8, "ref": None,
+             "translation": "我们终将回家"},
         ],
-    }
-    assert parse_generated_lyrics(base, lyric_count=1).rows[0].text == "from now on"
-    missing_translation = json.loads(json.dumps(base))
-    missing_translation["rows"][0]["tokens"][1]["translation"] = ""
-    assert parse_generated_lyrics(missing_translation, lyric_count=1).rows[0].tokens[1].translation == ""
-    missing_token = json.loads(json.dumps(base))
-    missing_token["rows"][0]["tokens"].pop()
-    assert len(parse_generated_lyrics(missing_token, lyric_count=1).rows[0].tokens) == 2
+    })
+    words = _words(
+        ("from", 12_340, 12_500), ("now", 12_500, 12_700), ("on", 12_700, 12_900),
+        ("and", 14_000, 14_100), ("we", 14_100, 14_200), ("will", 14_200, 14_300),
+        ("come", 14_300, 14_500), ("back", 14_500, 14_700), ("home", 14_700, 15_000),
+    )
+    result = alignment.generate_sung_lyrics(
+        [{"ms": 0, "text": "From now on"}, {"ms": 5000, "text": "Studio only line"}],
+        words, "en", cache_path=tmp_path / "agent-align.json",
+    )
+    assert result is not None
+    assert [row.text for row in result.lyrics.rows] == ["From now on", "And we will come back home"]
+    assert result.lyrics.rows[0].ref == 1 and result.lyrics.rows[1].ref is None
+    assert "[12340-12500] from" in seen["calls"][0]
+    assert "1. From now on" in seen["calls"][0]
+    cached = json.loads((tmp_path / "agent-align.json").read_text(encoding="utf-8"))
+    assert cached["schema"] == "lovktv-sung-lyrics-v1"
+
+    # Second call hits the cache and never asks the model again.
+    again = alignment.generate_sung_lyrics(
+        [{"ms": 0, "text": "From now on"}, {"ms": 5000, "text": "Studio only line"}],
+        words, "en", cache_path=tmp_path / "agent-align.json",
+    )
+    assert again is not None and len(seen["calls"]) == 1
 
 
-def test_generate_from_now_on_returns_line_and_word_results(monkeypatch):
+def test_generate_sung_lyrics_returns_none_on_invalid_answer(monkeypatch):
+    _agent(monkeypatch, {"rows": []})
+    assert alignment.generate_sung_lyrics([{"text": "a"}], _words(("a", 0, 100), ("b", 100, 200)), "en") is None
+
+
+def test_generate_sung_lyrics_recovers_overlap_by_windowing(monkeypatch):
+    # A whole-song answer with a reused word fails strict validation; the
+    # windowed retry keeps the first claim on the words and drops the other.
+    _agent(monkeypatch, {"rows": [{"text": "a", "from": 1, "to": 2}, {"text": "b", "from": 2, "to": 3}]})
+    result = alignment.generate_sung_lyrics([{"text": "a"}], _words(("a", 0, 100), ("b", 100, 200), ("c", 200, 300)), "en")
+    assert result is not None and [row.text for row in result.lyrics.rows] == ["a"]
+
+
+def test_generate_sung_lyrics_windows_long_transcripts(monkeypatch):
+    monkeypatch.setattr(alignment, "_WHOLE_SONG_WORDS", 4)
+    monkeypatch.setattr(alignment, "_WINDOW_WORDS", 3)
+    monkeypatch.setattr(alignment, "_WINDOW_SEARCH", 1)
     monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
-    monkeypatch.setattr(
-        alignment,
-        "_request_content",
-        lambda messages: json.dumps(
-            {
-                "schema": "lovktv-generated-lyrics-v1",
-                "language": "en",
-                "rows": [
-                    {
-                        "lyric": 1,
-                        "status": "matched",
-                        "text": "from now on",
-                        "translation": "从现在起",
-                        "from": 1,
-                        "to": 3,
-                        "tokens": [
-                            {"surface": "from", "translation": "从"},
-                            {"surface": "now", "translation": "现在"},
-                            {"surface": "on", "translation": "起"},
-                        ],
-                    }
-                ],
-                "groups": [],
-            }
-        ),
-    )
-    result = alignment.generate_lyrics_with_agent(
-        [{"ms": 0, "text": "from now on"}],
-        [
-            {"text": "from", "start_ms": 0, "end_ms": 100},
-            {"text": "now", "start_ms": 100, "end_ms": 200},
-            {"text": "on", "start_ms": 200, "end_ms": 300},
-        ],
+    calls: list[str] = []
+
+    def request(messages):
+        body = messages[1]["content"]
+        calls.append(body)
+        if "words 1-3" in body:
+            return json.dumps({"rows": [{"text": "one two three", "from": 1, "to": 3}]})
+        # A window may only claim its own words; the stray span is dropped.
+        return json.dumps({"rows": [
+            {"text": "stray", "from": 2, "to": 2},
+            {"text": "four five six", "from": 4, "to": 6},
+        ]})
+
+    monkeypatch.setattr(alignment, "_request_content", request)
+    result = alignment.generate_sung_lyrics(
+        [],
+        _words(("one", 0, 100), ("two", 100, 200), ("three", 200, 300),
+               ("four", 5_000, 5_100), ("five", 5_100, 5_200), ("six", 5_200, 5_300)),
         "en",
     )
     assert result is not None
-    assert result.rows[0].text == "from now on"
-    assert [token.surface for token in result.rows[0].tokens] == ["from", "now", "on"]
+    assert [row.text for row in result.lyrics.rows] == ["one two three", "four five six"]
+    assert len(calls) == 2 and "do not repeat" in calls[1]
 
 
-def test_generated_result_enriches_final_timeline_without_changing_timing():
-    timeline = {
-        "cues": [
-            {
-                "text": "from now on",
-                "start_ms": 100,
-                "end_ms": 400,
-                "tokens": [],
-            }
-        ]
-    }
-    generated = {
-        "rows": [
-            {
-                "lyric": 1,
-                "status": "matched",
-                "text": "from now on",
-                "translation": "从现在起",
-                "tokens": [{"surface": "from", "translation": "从"}],
-            }
-        ]
-    }
-    apply_generated_lyrics(timeline, generated)
-    assert timeline["cues"][0]["start_ms"] == 100
-    assert timeline["cues"][0]["translation"] == "从现在起"
-    assert timeline["cues"][0]["tokens"][0]["text"] == "from"
+# --- timing resolution ---------------------------------------------------------
 
 
-def test_generated_metadata_does_not_erase_server_token_timing():
-    timeline = {
-        "cues": [
-            {
-                "text": "hello world",
-                "start_ms": 100,
-                "end_ms": 500,
-                "tokens": [
-                    {"text": "hello", "start_ms": 100, "end_ms": 250},
-                    {"text": "world", "start_ms": 250, "end_ms": 500},
-                ],
-            }
-        ]
-    }
-    apply_generated_lyrics(
-        timeline,
-        {
-            "rows": [
-                {
-                    "lyric": 1,
-                    "text": "hello world",
-                    "translation": "你好世界",
-                    "tokens": [
-                        {"surface": "hello", "translation": "你好"},
-                        {"surface": "world", "translation": "世界"},
-                    ],
-                }
-            ]
-        },
+def test_resolve_sung_rows_takes_word_times_in_transcript_order():
+    words = alignment.agent_words(_words(("first", 100, 500), ("second", 700, 1100), ("chorus", 1500, 1900)))
+    rows = resolve_sung_rows(
+        [{"text": "first", "from": 1, "to": 1}, {"text": "second", "from": 2, "to": 2}, {"text": "chorus", "from": 3, "to": 3}],
+        words, "en",
     )
-    assert [(t["start_ms"], t["end_ms"]) for t in timeline["cues"][0]["tokens"]] == [
-        (100, 250),
-        (250, 500),
-    ]
-    assert timeline["cues"][0]["translation"] == "你好世界"
+    assert [(row["start_ms"], row["end_ms"]) for row in rows] == [(100, 700), (700, 1500), (1500, 1900)]
 
 
-def test_generated_token_mismatch_keeps_existing_layout_and_timing():
-    timeline = {
-        "cues": [
-            {
-                "text": "My jealous 心",
-                "start_ms": 100,
-                "end_ms": 700,
-                "tokens": [
-                    {"text": "My", "start_ms": 100, "end_ms": 250},
-                    {"text": "jealous", "start_ms": 250, "end_ms": 550},
-                    {"text": "心", "start_ms": 550, "end_ms": 700},
-                ],
-            }
-        ]
-    }
-    apply_generated_lyrics(
-        timeline,
-        {
-            "rows": [
-                {
-                    "lyric": 1,
-                    "text": "My jealous 心",
-                    "translation": "我嫉妒的心",
-                    "tokens": [
-                        {"surface": "My jealous", "translation": "我的嫉妒"},
-                        {"surface": "心", "translation": "心"},
-                    ],
-                }
-            ]
-        },
-    )
-    assert [token["text"] for token in timeline["cues"][0]["tokens"]] == ["My", "jealous", "心"]
-    assert [(token["start_ms"], token["end_ms"]) for token in timeline["cues"][0]["tokens"]] == [
-        (100, 250),
-        (250, 550),
-        (550, 700),
-    ]
-
-
-def test_agent_prompt_keeps_grok_word_level_times(monkeypatch):
-    monkeypatch.setenv("LOVKTV_AGENT_URL", "http://agent.test")
-    monkeypatch.setenv("LOVKTV_AGENT_KEY", "test-key")
-    seen = {}
-
-    def complete(messages):
-        seen["text"] = messages[1]["content"]
-        return [{"lyric": 1, "from": 1, "to": 1}]
-
-    monkeypatch.setattr(alignment, "_complete", complete)
-    alignment.align_lines_with_agent(
-        [{"ms": 12_000, "text": "hello"}],
-        [{"text": "hello", "start_ms": 12_340, "end_ms": 12_780}],
-        "en",
-    )
-    assert "[12340-12780] hello" in seen["text"]
-
-
-def test_orchestrator_uses_agent_word_times():
-    timeline = align_lyrics(
-        [{"ms": 0, "text": "hello world"}, {"ms": 3000, "text": "again"}],
-        "en",
-        asr_words=[
-            {"text": "hello", "start_ms": 1000, "end_ms": 1400},
-            {"text": "world", "start_ms": 1400, "end_ms": 1800},
-            {"text": "again", "start_ms": 5000, "end_ms": 5400},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 2},
-            {"lyric": 2, "from": 3, "to": 3},
-        ],
-    )
-    assert timeline["alignment"] == "agent"
-    assert [cue["start_ms"] for cue in timeline["cues"]] == [1000, 5000]
-
-
-def test_agent_word_times_are_not_clipped_by_old_next_lrc_clock():
-    timeline = align_lyrics(
-        [{"ms": 10_000, "text": "hello world"}, {"ms": 11_000, "text": "again"}],
-        "en",
-        asr_words=[
-            {"text": "hello", "start_ms": 20_000, "end_ms": 20_500},
-            {"text": "world", "start_ms": 20_500, "end_ms": 21_000},
-            {"text": "again", "start_ms": 22_000, "end_ms": 22_500},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 2},
-            {"lyric": 2, "from": 3, "to": 3},
-        ],
-    )
-    assert timeline["alignment"] == "agent"
-    assert [cue["start_ms"] for cue in timeline["cues"]] == [20_000, 22_000]
-
-
-def test_sparse_agent_anchors_interpolate_version_drift_without_cascade():
-    timeline = align_lyrics(
+def test_incomplete_line_is_extended_toward_next_line():
+    words = alignment.agent_words(_words(("from", 0, 200), ("now", 200, 400), ("hello", 6_000, 6_300)))
+    rows = resolve_sung_rows(
         [
-            {"ms": 23_110, "text": "I saw the sun"},
-            {"ms": 25_990, "text": "And felt the wind"},
-            {"ms": 28_250, "text": "Blow cold"},
-            {"ms": 33_820, "text": "A man learns"},
+            {"text": "From now on these eyes will not be blinded", "from": 1, "to": 2},
+            {"text": "hello", "from": 3, "to": 3},
         ],
-        "en",
-        duration_ms=40_000,
-        asr_words=[
-            {"text": "I", "start_ms": 0, "end_ms": 500},
-            {"text": "saw", "start_ms": 500, "end_ms": 1_000},
-            {"text": "the", "start_ms": 1_000, "end_ms": 1_500},
-            {"text": "And", "start_ms": 2_340, "end_ms": 2_840},
-            {"text": "felt", "start_ms": 2_840, "end_ms": 3_340},
-            {"text": "the", "start_ms": 3_340, "end_ms": 3_840},
-            {"text": "A", "start_ms": 10_280, "end_ms": 10_780},
-            {"text": "man", "start_ms": 10_780, "end_ms": 11_280},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 3},
-            {"lyric": 2, "from": 4, "to": 6},
-            {"lyric": 4, "from": 7, "to": 8},
-        ],
+        words, "en",
     )
-    assert timeline["alignment_source"] == "agent+whisper-drift"
-    starts = [cue["start_ms"] for cue in timeline["cues"]]
-    assert starts[0:2] == [0, 2_340]
-    assert 4_000 <= starts[2] <= 5_500
-    assert starts[3] == 10_280
+    # 7 unheard tokens * 350 ms = 2450 ms past the last heard word.
+    assert rows[0]["end_ms"] == 400 + 7 * 350
+    assert rows[0]["end_ms"] < rows[1]["start_ms"]
 
 
-def test_complete_agent_match_keeps_official_clock_even_with_duration_tail():
-    timeline = align_lyrics(
+def test_inferred_line_shares_the_gap_between_neighbours():
+    words = alignment.agent_words(_words(("first", 0, 1_000), ("third", 7_000, 8_000)))
+    rows = resolve_sung_rows(
         [
-            {"ms": 10_000, "text": "hello world"},
-            {"ms": 14_000, "text": "again now"},
-            {"ms": 18_000, "text": "good night"},
-            {"ms": 22_000, "text": "see you"},
+            {"text": "first", "from": 1, "to": 1},
+            {"text": "a missed second line", "status": "inferred", "reason": "verse continues"},
+            {"text": "third", "from": 2, "to": 2},
         ],
-        "en",
-        duration_ms=25_000,
-        asr_words=[
-            {"text": "hello", "start_ms": 9_900, "end_ms": 10_400},
-            {"text": "world", "start_ms": 10_400, "end_ms": 10_900},
-            {"text": "again", "start_ms": 13_900, "end_ms": 14_400},
-            {"text": "now", "start_ms": 14_400, "end_ms": 14_900},
-            {"text": "good", "start_ms": 17_900, "end_ms": 18_400},
-            {"text": "night", "start_ms": 18_400, "end_ms": 18_900},
-            {"text": "see", "start_ms": 21_900, "end_ms": 22_400},
-            {"text": "you", "start_ms": 22_400, "end_ms": 22_900},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 2},
-            {"lyric": 2, "from": 3, "to": 4},
-            {"lyric": 3, "from": 5, "to": 6},
-            {"lyric": 4, "from": 7, "to": 8},
-        ],
+        words, "en",
     )
-    assert timeline["alignment_source"] == "agent+whisper"
-    assert [cue["start_ms"] for cue in timeline["cues"]] == [9_900, 13_900, 17_900, 21_900]
+    assert [row["text"] for row in rows] == ["first", "a missed second line", "third"]
+    assert rows[1]["start_ms"] == 1_000 and rows[1]["end_ms"] == 7_000
 
 
-def test_orchestrator_switches_to_consistent_asr_clock_for_version_drift():
-    timeline = align_lyrics(
+def test_inferred_line_without_gap_borrows_time_from_previous_line():
+    words = alignment.agent_words(_words(("first", 0, 1_000), ("third", 1_050, 2_000)))
+    rows = resolve_sung_rows(
         [
-            {"ms": 20_000, "text": "hello world"},
-            {"ms": 24_000, "text": "again now"},
-            {"ms": 28_000, "text": "hello world"},
+            {"text": "first", "from": 1, "to": 1},
+            {"text": "missed but sung", "status": "inferred", "reason": "verse continues"},
+            {"text": "third", "from": 2, "to": 2},
         ],
+        words, "en",
+    )
+    assert [row["text"] for row in rows] == ["first", "missed but sung", "third"]
+    assert rows[0]["end_ms"] == rows[1]["start_ms"] == 250
+    assert rows[1]["end_ms"] == rows[2]["start_ms"] == 1_050
+
+
+def test_half_heard_line_is_completed_from_reference(monkeypatch):
+    _agent(monkeypatch, {"rows": [{"text": "From now on these", "from": 1, "to": 4, "ref": 1}]})
+    result = alignment.generate_sung_lyrics(
+        [{"ms": 0, "text": "From now on these eyes will not be blinded by the lights"}],
+        _words(("from", 0, 100), ("now", 100, 200), ("on", 200, 300), ("these", 300, 400)),
         "en",
-        asr_words=[
-            {"text": "hello", "start_ms": 1000, "end_ms": 1400},
-            {"text": "world", "start_ms": 1400, "end_ms": 1800},
-            {"text": "again", "start_ms": 5000, "end_ms": 5400},
-            {"text": "now", "start_ms": 5400, "end_ms": 5800},
-            {"text": "hello", "start_ms": 9000, "end_ms": 9400},
-            {"text": "world", "start_ms": 9400, "end_ms": 9800},
-        ],
     )
-    assert timeline["alignment_source"] == "whisper"
-    assert [cue["start_ms"] for cue in timeline["cues"]] == [1000, 5000, 9000]
+    assert result is not None
+    assert result.lyrics.rows[0].text == "From now on these eyes will not be blinded by the lights"
 
 
-def test_orchestrator_reorders_edited_media_from_agent_matches():
+# --- orchestrator --------------------------------------------------------------
+
+
+def test_align_lyrics_builds_timeline_from_sung_rows_not_reference():
+    asr = _words(("opening", 0, 300), ("line", 300, 600), ("actual", 20_000, 20_300), ("verse", 20_300, 20_600))
+    words = alignment.agent_words(asr)
     timeline = align_lyrics(
-        [
-            {"ms": 0, "text": "first"},
-            {"ms": 1000, "text": "chorus"},
-            {"ms": 2000, "text": "second"},
-        ],
+        [{"ms": 0, "text": "opening line"}, {"ms": 20_000, "text": "old second line"}, {"ms": 40_000, "text": "old third line"}],
         "en",
-        asr_words=[
-            {"text": "first", "start_ms": 100, "end_ms": 500},
-            {"text": "second", "start_ms": 700, "end_ms": 1100},
-            {"text": "chorus", "start_ms": 1500, "end_ms": 1900},
+        duration_ms=60_000,
+        asr_words=asr,
+        sung_rows=[
+            {"text": "opening line", "from": 1, "to": 2, "ref": 1, "translation": "开场",
+             "tokens": [{"surface": "opening", "translation": "开"}, {"surface": "line", "translation": "场"}]},
+            {"text": "Actual verse", "from": 3, "to": 4, "ref": None, "translation": "真实段落"},
         ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 1},
-            {"lyric": 3, "from": 2, "to": 2},
-            {"lyric": 2, "from": 3, "to": 3},
-        ],
+        sung_words=words,
     )
-    assert timeline["alignment_source"] == "agent+whisper-reordered"
-    assert [cue["text"] for cue in timeline["cues"]] == ["first", "second", "chorus"]
-    assert [cue["start_ms"] for cue in timeline["cues"]] == [100, 700, 1500]
+    assert timeline["alignment_source"] == "agent+asr"
+    assert [cue["text"] for cue in timeline["cues"]] == ["opening line", "Actual verse"]
+    assert [cue["start_ms"] for cue in timeline["cues"]] == [0, 20_000]
+    first = timeline["cues"][0]
+    assert first["zh"] == "开场"
+    assert [token["zh"] for token in first["tokens"]] == ["开", "场"]
+    assert [(token["start_ms"], token["end_ms"]) for token in first["tokens"]] == [(0, 300), (300, 600)]
 
 
-def test_sparse_reorder_matches_fall_back_without_dropping_lyric_rows():
-    lines = [{"ms": i * 1000, "text": text} for i, text in enumerate(
-        ["one", "two", "three", "four", "five"]
-    )]
+def test_align_lyrics_falls_back_to_official_clock_without_agent():
     timeline = align_lyrics(
-        lines,
+        [{"ms": 10_000, "text": "hello world"}, {"ms": 14_000, "text": "again now"}],
         "en",
-        asr_words=[
-            {"text": "one", "start_ms": 100, "end_ms": 300},
-            {"text": "three", "start_ms": 700, "end_ms": 900},
-            {"text": "five", "start_ms": 1300, "end_ms": 1500},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 1},
-            {"lyric": 3, "from": 2, "to": 2},
-            {"lyric": 5, "from": 3, "to": 3},
-        ],
-        duration_ms=2000,
+        duration_ms=20_000,
+        asr_words=_words(("hello", 9_900, 10_400), ("world", 10_400, 10_900), ("again", 13_900, 14_400), ("now", 14_400, 14_900)),
     )
-    assert len(timeline["cues"]) == len(lines)
-    assert [cue["text"] for cue in timeline["cues"]] == [x["text"] for x in lines]
+    assert timeline["alignment_source"] == "official"
+    assert [cue["text"] for cue in timeline["cues"]] == ["hello world", "again now"]
 
 
-def test_wrong_lyric_version_uses_asr_text_instead_of_interpolating_stale_lrc():
+def test_align_lyrics_without_reference_still_uses_agent_rows():
+    asr = _words(("la", 0, 300), ("la", 300, 600))
     timeline = align_lyrics(
-        [
-            {"ms": 0, "text": "opening line"},
-            {"ms": 20_000, "text": "old second line"},
-            {"ms": 40_000, "text": "old third line"},
-            {"ms": 60_000, "text": "old fourth line"},
-        ],
-        "en",
-        duration_ms=80_000,
-        asr_words=[
-            {"text": "opening", "start_ms": 0, "end_ms": 300},
-            {"text": "line", "start_ms": 300, "end_ms": 600},
-            {"text": "actual", "start_ms": 20_000, "end_ms": 20_300},
-            {"text": "verse", "start_ms": 20_300, "end_ms": 20_600},
-            {"text": "different", "start_ms": 40_000, "end_ms": 40_300},
-            {"text": "words", "start_ms": 40_300, "end_ms": 40_600},
-            {"text": "final", "start_ms": 60_000, "end_ms": 60_300},
-            {"text": "line", "start_ms": 60_300, "end_ms": 60_600},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 2},
-            {"lyric": 2, "from": 3, "to": 4},
-            {"lyric": 3, "from": 5, "to": 6},
-            {"lyric": 4, "from": 7, "to": 8},
-        ],
+        [], "en", asr_words=asr,
+        sung_rows=[{"text": "la la", "from": 1, "to": 2}],
+        sung_words=alignment.agent_words(asr),
     )
-    assert timeline["alignment_source"] == "whisper-transcript-fallback"
-    text = " ".join(cue["text"] for cue in timeline["cues"])
-    assert "actual verse" in text
-    assert "old second line" not in text
-
-
-def test_low_coverage_english_version_drift_uses_actual_asr_clock():
-    lines = [
-        {"ms": 20_000, "text": "hello world"},
-        {"ms": 30_000, "text": "good morning"},
-        {"ms": 40_000, "text": "this is new"},
-        {"ms": 50_000, "text": "another line"},
-        {"ms": 60_000, "text": "final words"},
-    ]
-    asr = [
-        {"text": "hello", "start_ms": 0, "end_ms": 300},
-        {"text": "world", "start_ms": 300, "end_ms": 600},
-        {"text": "good", "start_ms": 10_000, "end_ms": 10_300},
-        {"text": "morning", "start_ms": 10_300, "end_ms": 10_600},
-        {"text": "unrelated", "start_ms": 30_000, "end_ms": 30_300},
-        {"text": "noise", "start_ms": 30_300, "end_ms": 30_600},
-        {"text": "other", "start_ms": 50_000, "end_ms": 50_300},
-        {"text": "noise", "start_ms": 50_300, "end_ms": 50_600},
-        {"text": "last", "start_ms": 70_000, "end_ms": 70_300},
-        {"text": "noise", "start_ms": 70_300, "end_ms": 70_600},
-    ]
-    matches = [
-        {"lyric": 1, "from": 1, "to": 2},
-        {"lyric": 2, "from": 3, "to": 4},
-        {"lyric": 3, "from": 5, "to": 6},
-        {"lyric": 4, "from": 7, "to": 8},
-        {"lyric": 5, "from": 9, "to": 10},
-    ]
-    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
-    assert timeline["alignment_source"] == "whisper-transcript-fallback"
-    assert timeline["cues"][0]["start_ms"] == 0
-    assert all(cue["start_ms"] != 20_000 for cue in timeline["cues"])
-
-
-def test_reordered_high_score_anchors_detect_edited_english_version():
-    lines = [{"ms": i * 20_000, "text": text} for i, text in enumerate(
-        ["first line", "second line", "third line", "fourth line", "fifth line"]
-    )]
-    asr = [
-        {"text": "first", "start_ms": 0, "end_ms": 300},
-        {"text": "line", "start_ms": 300, "end_ms": 600},
-        {"text": "second", "start_ms": 10_000, "end_ms": 10_300},
-        {"text": "line", "start_ms": 10_300, "end_ms": 10_600},
-        {"text": "fifth", "start_ms": 30_000, "end_ms": 30_300},
-        {"text": "line", "start_ms": 30_300, "end_ms": 30_600},
-        {"text": "fourth", "start_ms": 40_000, "end_ms": 40_300},
-        {"text": "line", "start_ms": 40_300, "end_ms": 40_600},
-        {"text": "third", "start_ms": 50_000, "end_ms": 50_300},
-        {"text": "line", "start_ms": 50_300, "end_ms": 50_600},
-    ]
-    matches = [
-        {"lyric": 1, "from": 1, "to": 2},
-        {"lyric": 2, "from": 3, "to": 4},
-        {"lyric": 5, "from": 5, "to": 6},
-        {"lyric": 4, "from": 7, "to": 8},
-        {"lyric": 3, "from": 9, "to": 10},
-    ]
-    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
-    assert timeline["alignment_source"] == "whisper-transcript-fallback"
-
-
-def test_monotonic_offset_jump_detects_omitted_english_section():
-    lines = [{"ms": i * 10_000, "text": f"line {i}"} for i in range(8)]
-    asr = []
-    matches = []
-    for i in range(8):
-        start = i * 10_000 - (2_000 if i < 4 else 20_000)
-        base = len(asr) + 1
-        asr.extend(
-            [
-                {"text": "line", "start_ms": start, "end_ms": start + 300},
-                {"text": str(i), "start_ms": start + 300, "end_ms": start + 600},
-            ]
-        )
-        matches.append({"lyric": i + 1, "from": base, "to": base + 1})
-    timeline = align_lyrics(lines, "en", asr_words=asr, agent_matches=matches)
-    assert timeline["alignment_source"] == "whisper-transcript-fallback"
-
-
-def test_cjk_wrong_lyric_version_is_detected_with_sparse_agent_anchors():
-    timeline = align_lyrics(
-        [{"ms": i * 10_000, "text": text} for i, text in enumerate(
-            ["開場歌詞", "舊第二句", "舊第三句", "舊第四句", "舊第五句"]
-        )],
-        "zh",
-        duration_ms=50_000,
-        asr_words=[
-            {"text": "開場歌詞", "start_ms": 0, "end_ms": 500},
-            {"text": "實際第二句", "start_ms": 20_000, "end_ms": 20_500},
-            {"text": "實際第三句", "start_ms": 30_000, "end_ms": 30_500},
-            {"text": "實際第四句", "start_ms": 40_000, "end_ms": 40_500},
-        ],
-        agent_matches=[
-            {"lyric": 1, "from": 1, "to": 1},
-            {"lyric": 2, "from": 2, "to": 2},
-            {"lyric": 3, "from": 3, "to": 3},
-            {"lyric": 4, "from": 4, "to": 4},
-        ],
-    )
-    assert timeline["alignment_source"] == "whisper-transcript-fallback"
-    text = " ".join(cue["text"] for cue in timeline["cues"])
-    assert "實際第二句" in text
-    assert "舊第二句" not in text
-
-
-def test_transcript_fallback_fills_one_known_line_between_reliable_anchors():
-    timeline = _timeline_from_asr_words(
-        asr_words=[
-            {"text": "first", "start_ms": 0, "end_ms": 200},
-            {"text": "line", "start_ms": 200, "end_ms": 400},
-            # The middle line is badly heard, but its time falls between
-            # reliable agent anchors and must not disappear from the cue list.
-            {"text": "I", "start_ms": 1_000, "end_ms": 1_100},
-            {"text": "believe", "start_ms": 1_100, "end_ms": 1_300},
-            {"text": "my", "start_ms": 1_300, "end_ms": 1_450},
-            {"text": "heart", "start_ms": 1_450, "end_ms": 1_700},
-            {"text": "from", "start_ms": 2_000, "end_ms": 2_200},
-            {"text": "now", "start_ms": 2_200, "end_ms": 2_400},
-            {"text": "on", "start_ms": 2_400, "end_ms": 2_600},
-        ],
-        language="en",
-        duration_ms=4_000,
-        lines=[
-            {"ms": 0, "text": "first line"},
-            {"ms": 1_000, "text": "like an anthem in my heart"},
-            {"ms": 2_000, "text": "from now on"},
-        ],
-        matches=[
-            {"lyric": 1, "from": 1, "to": 2},
-            {"lyric": 3, "from": 7, "to": 9},
-        ],
-    )
-    assert timeline and timeline["alignment_source"] == "whisper-transcript-fallback"
-    assert [cue["text"] for cue in timeline["cues"]] == [
-        "first line",
-        "like an anthem in my heart",
-        "from now on",
-    ]
+    assert [cue["text"] for cue in timeline["cues"]] == ["la la"]
+    assert align_lyrics([], "en")["alignment"] == "empty"

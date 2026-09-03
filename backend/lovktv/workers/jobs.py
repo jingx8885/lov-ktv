@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv.agents.alignment import align_lines_with_agent, generate_lyrics_with_agent
+from lovktv.agents.alignment import generate_sung_lyrics
 from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
@@ -21,8 +21,6 @@ from lovktv.agents.translate import (
     translate_lines,
 )
 from lovktv.catalog.audio import extract_mv_mp3
-from lovktv.catalog.bilibili import VIEW_URL, api_get, is_bvid
-from lovktv.catalog.kugou import fetch_kugou_lyrics
 from lovktv.catalog.importer import import_song
 from lovktv.catalog.lyrics import parse_lrc
 from lovktv.catalog.mugen import attach_vocal_audio, is_mugen_kid, is_off_vocal, prepare_media
@@ -38,10 +36,7 @@ from lovktv.pipeline.lyrics import (
     write_subtitles,
 )
 from lovktv.pipeline.mtv import compose_mtv
-from lovktv.pipeline.orchestrator import (
-    _looks_like_wrong_lyric_version,
-    align_lyrics,
-)
+from lovktv.pipeline.orchestrator import align_lyrics
 from lovktv.pipeline.separate import named_stem, save_stem_wav, separate_vocals
 from lovktv.pipeline.transcribe import transcribe_words
 from lovktv.storage import store as _store
@@ -874,49 +869,6 @@ def _restore_mugen_timeline(out_dir: Path, language: str | None = None) -> bool:
         return False
 
 
-def _fetch_alternate_kugou_timeline(
-    song_id: str, song: dict[str, Any], out_dir: Path
-) -> dict[str, Any] | None:
-    """Fetch an authored lyric version using the source video's singer/title."""
-    bvid = str(song.get("netease_id") or "").strip()
-    if not is_bvid(bvid):
-        return None
-    try:
-        payload = api_get(f"{VIEW_URL}?bvid={bvid}", timeout=10)
-        title = str((payload.get("data") or {}).get("title") or "")
-    except Exception:
-        # Some datacenter egresses return Bilibili 412 to urllib's request
-        # fingerprint while accepting curl's browser-like request.
-        try:
-            result = subprocess.run(
-                ["curl", "-fsS", "--max-time", "10", "-A", "Mozilla/5.0",
-                 f"{VIEW_URL}?bvid={bvid}"],
-                capture_output=True, text=True, check=False, timeout=15,
-            )
-            payload = json.loads(result.stdout or "{}")
-            title = str((payload.get("data") or {}).get("title") or "")
-        except (OSError, subprocess.TimeoutExpired, json.JSONDecodeError):
-            return None
-    match = re.search(r"([^《】]{2,24})《([^》]{2,80})》", title)
-    if not match:
-        return None
-    artist_parts = re.findall(r"[\u4e00-\u9fffA-Za-z·]{2,12}", match.group(1))
-    artist = artist_parts[-1].strip() if artist_parts else ""
-    lyric_title = re.sub(r"[（(][^）)]{0,20}[）)]", "", match.group(2)).strip()
-    if not artist or not lyric_title:
-        return None
-    result = fetch_kugou_lyrics(lyric_title, artist)
-    timeline = result.get("timeline") if result else None
-    if not isinstance(timeline, dict) or not timeline.get("cues"):
-        return None
-    try:
-        write_subtitles(timeline, out_dir)
-        write_manual_lrc(out_dir, timeline["cues"])
-    except OSError:
-        return None
-    return timeline
-
-
 def _align_and_mtv(
     song_id: str,
     out_dir: Path,
@@ -924,7 +876,6 @@ def _align_and_mtv(
     language: str | None,
     rebuild_mtv: bool = True,
 ) -> None:
-    song = get_song(song_id) or {}
     processing_debug.event(song_id, "align", status="running")
     previous_timeline: dict = {}
     lyrics_path = out_dir / "lyrics.json"
@@ -952,42 +903,31 @@ def _align_and_mtv(
         prompt=prompt,
     )
     processing_debug.event(song_id, "asr", count=len(asr_words or []), cache="asr.json")
-    generated = generate_lyrics_with_agent(
+    sung = generate_sung_lyrics(
         lines,
         asr_words,
         lang,
         cache_path=out_dir / "agent-align.json",
     )
-    agent_matches = generated.legacy_matches() if generated is not None else align_lines_with_agent(
-        lines, asr_words, lang, cache_path=out_dir / "agent-align.json"
-    )
     processing_debug.event(
         song_id,
-        "agent-align",
-        count=len(agent_matches or []),
-        generated=bool(generated),
+        "agent-lyrics",
+        rows=len(sung.lyrics.rows) if sung else 0,
+        inferred=sum(1 for row in sung.lyrics.rows if row.status == "inferred") if sung else 0,
         cache="agent-align.json",
     )
-    align_kwargs = {
-        "audio_path": voice,
-        "duration_ms": probe_duration_ms(src) or probe_duration_ms(voice),
-        "asr_words": asr_words or None,
-        "generated_lyrics": generated,
-    }
-    if agent_matches:
-        align_kwargs["agent_matches"] = agent_matches
-    # If the selected LRC is a different (often Mandarin) version, prefer
-    # the official Cantonese KRC when the Bilibili title exposes the singer.
-    # ASR is useful for detecting the mismatch, but its transcript is not a
-    # substitute for authored lyrics.
-    alternate = None
-    if _looks_like_wrong_lyric_version(lines, asr_words, agent_matches, lang):
-        alternate = _fetch_alternate_kugou_timeline(song_id, song, out_dir)
-    if alternate:
-        timeline = alternate
-        lang = str(timeline.get("language") or lang)
-    else:
-        timeline = align_lyrics(lines, lang, **align_kwargs)
+    if sung and not lines and str(sung.lyrics.language or "").strip():
+        lang = resolve_language("", str(sung.lyrics.language))
+        update_song(song_id, language=lang)
+    timeline = align_lyrics(
+        lines,
+        lang,
+        audio_path=voice,
+        duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
+        asr_words=asr_words or None,
+        sung_rows=sung.rows() if sung else None,
+        sung_words=sung.words if sung else None,
+    )
     processing_debug.event(song_id, "timeline", cues=len(timeline.get("cues") or []), source=timeline.get("alignment_source") or "")
     _preserve_timeline_annotations(previous_timeline, timeline)
     if had_native_video:
