@@ -631,7 +631,7 @@ def align_lines_with_agent(
             matches = generated.legacy_matches()
         elif alignment is not None:
             # Enforce complete source coverage at the Python boundary.  A
-            # valid-looking Pi response that omitted a line must fail closed
+            # A valid-looking response that omitted a line must fail closed
             # instead of silently degrading into a sparse legacy list.
             alignment = parse_alignment_payload(
                 alignment.model_dump(mode="json", by_alias=True),

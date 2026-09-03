@@ -7,8 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any, Callable, Protocol
 
-from lovktv.agents.alignment import generate_lyrics_with_agent
-from lovktv.agents.pi_runtime import generate_with_pi
+from lovktv.agents.alignment import align_lines_with_agent, generate_lyrics_with_agent
 from lovktv.agents.ja_lyrics import (
     annotate_ja_lines,
     apply_ja_annotation,
@@ -953,32 +952,20 @@ def _align_and_mtv(
         prompt=prompt,
     )
     processing_debug.event(song_id, "asr", count=len(asr_words or []), cache="asr.json")
-    generated = generate_with_pi(
-        lines=lines,
-        asr_words=asr_words,
-        language=lang,
-        audio_path=voice,
-        cache_dir=out_dir / "pi-agent",
-        title=str(song.get("title") or ""),
-        artist=str(song.get("artist") or ""),
-        duration_ms=probe_duration_ms(src) or probe_duration_ms(voice),
+    generated = generate_lyrics_with_agent(
+        lines,
+        asr_words,
+        lang,
+        cache_path=out_dir / "agent-align.json",
     )
-    if generated is None:
-        generated = generate_lyrics_with_agent(
-            lines,
-            asr_words,
-            lang,
-            cache_path=out_dir / "agent-align.json",
-        )
-    if generated is None:
-        raise RuntimeError("agent direct generation failed; refusing alignment fallback")
-    agent_matches = generated.legacy_matches()
+    agent_matches = generated.legacy_matches() if generated is not None else align_lines_with_agent(
+        lines, asr_words, lang, cache_path=out_dir / "agent-align.json"
+    )
     processing_debug.event(
         song_id,
         "agent-align",
         count=len(agent_matches or []),
         generated=bool(generated),
-        runtime="pi" if (out_dir / "pi-agent" / "pi-agent-trace.json").exists() else "http",
         cache="agent-align.json",
     )
     align_kwargs = {

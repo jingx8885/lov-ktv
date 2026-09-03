@@ -2,14 +2,13 @@
 
 The agent is allowed to reason about missing audio, but it is not allowed to
 silently drop a source lyric line.  This module is deliberately independent
-from the Pi runtime so both a Python agent adapter and a future Node sidecar
+from the transport/runtime so the Python agent adapter and any future sidecar
 can validate the same JSON document.
 """
 
 from __future__ import annotations
 
 import re
-import unicodedata
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -110,8 +109,6 @@ class GeneratedLyricToken(BaseModel):
     def require_surface(self) -> "GeneratedLyricToken":
         if not self.surface.strip():
             raise ValueError("generated token requires surface")
-        if not self.translation.strip():
-            raise ValueError("generated token requires translation")
         return self
 
 
@@ -154,7 +151,7 @@ class GeneratedLyricRow(BaseModel):
 
 
 class GeneratedLyrics(BaseModel):
-    """Pi's direct-generation response, validated before timeline writing."""
+    """Direct-generation response, validated before timeline writing."""
 
     model_config = ConfigDict(extra="allow")
 
