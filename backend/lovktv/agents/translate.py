@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -92,6 +94,24 @@ _NOT_CHINESE_NOTE = (
     "English, romaji, or a copy of the source). Every `translation` must be "
     "written in Simplified Chinese characters. Translate them again."
 )
+# A translation response is used to build the persisted lyric timeline.  Do
+# not silently keep an incomplete/English response: retry the missing lines a
+# few times and fail the batch explicitly if the agent never produces a valid
+# answer.  The delay is configurable so deployments can tune rate-limit
+# behaviour without changing code (and tests can set it to zero).
+_TRANSLATION_MAX_ATTEMPTS = 3
+_TRANSLATION_RETRY_DELAY = 0.25
+
+
+def _retry_delay(attempt: int) -> None:
+    """Wait briefly between agent retries, unless disabled by configuration."""
+    raw = os.environ.get("LOVKTV_TRANSLATION_RETRY_DELAY")
+    try:
+        delay = float(raw) if raw is not None else _TRANSLATION_RETRY_DELAY
+    except (TypeError, ValueError):
+        delay = _TRANSLATION_RETRY_DELAY
+    if delay > 0:
+        time.sleep(delay * max(1, attempt))
 
 
 def line_needs_zh(source: str) -> bool:
@@ -128,27 +148,63 @@ def _request_translation(
 
 
 def _translate_chunk(
-    chunk: list[str], title: str, artist: str, lang: str
+    chunk: list[str], title: str, artist: str, lang: str, note: str = ""
 ) -> list[dict[str, Any]]:
-    """Translate one batch, re-asking once for any line not answered in Chinese."""
-    items = _request_translation(chunk, title, artist, lang)
-    bad = [
-        lyric_source_key(item.get("source") or "")
-        for item in items
-        if translation_is_invalid(item)
-    ]
-    if not bad:
-        return items
-    retry = {
-        lyric_source_key(item.get("source") or ""): item
-        for item in _request_translation(bad, title, artist, lang, _NOT_CHINESE_NOTE)
-        if not translation_is_invalid(item)
-    }
-    fixed: list[dict[str, Any]] = []
-    for item in items:
-        key = lyric_source_key(item.get("source") or "")
-        fixed.append(retry.get(key, item) if key in bad else item)
-    return fixed
+    """Translate one batch, retrying errors and unusable/missing lines.
+
+    The agent may return only part of a batch or echo a source line in place
+    of Chinese.  Those lines become the next retry batch.  Once the attempt
+    budget is exhausted we raise instead of returning a partial result that
+    would be persisted as a successful translation.
+    """
+    requested = [lyric_source_key(line) for line in chunk]
+    pending = list(chunk)
+    merged: dict[str, dict[str, Any]] = {}
+    invalid_answer = bool(note)
+    last_error: Exception | None = None
+
+    for attempt in range(1, _TRANSLATION_MAX_ATTEMPTS + 1):
+        note = _NOT_CHINESE_NOTE if invalid_answer else ""
+        try:
+            items = _request_translation(pending, title, artist, lang, note)
+        except Exception as exc:  # noqa: BLE001 - retry the agent boundary
+            last_error = exc
+            if attempt >= _TRANSLATION_MAX_ATTEMPTS:
+                raise
+            _retry_delay(attempt)
+            continue
+        # A successful response supersedes any earlier transient transport
+        # error; if this response is still invalid, report that fact instead.
+        last_error = None
+
+        # Keep only requested sources.  A source-less or unrelated model line
+        # must not make the batch appear complete.
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            key = lyric_source_key(item.get("source") or "")
+            if key in requested:
+                merged[key] = item
+
+        pending = [
+            line
+            for line in chunk
+            if (item := merged.get(lyric_source_key(line))) is None
+            or translation_is_invalid(item)
+        ]
+        if not pending:
+            return [merged[key] for key in requested]
+
+        invalid_answer = True
+        if attempt < _TRANSLATION_MAX_ATTEMPTS:
+            _retry_delay(attempt)
+
+    # The loop either returned a complete result or raised the last transport
+    # error.  This guard documents the invariant and protects future edits.
+    if last_error is not None:
+        raise last_error
+    missing = ", ".join(lyric_source_key(line) for line in pending)
+    raise RuntimeError(f"翻译 agent 重试后仍未返回有效中文：{missing}")
 
 
 def _unique_lines(texts: list[str]) -> list[str]:
@@ -192,11 +248,15 @@ def repair_notes(
         raise RuntimeError("翻译 agent 未启用")
     repaired: dict[str, dict[str, Any]] = {}
     for start in range(0, len(bad), chunk_size):
-        for item in _request_translation(
-            bad[start : start + chunk_size], title, artist, lang, _NOT_CHINESE_NOTE
-        ):
-            if not translation_is_invalid(item):
-                repaired[lyric_source_key(item.get("source") or "")] = item
+        repaired_items = _translate_chunk(
+            bad[start : start + chunk_size],
+            title,
+            artist,
+            lang,
+            _NOT_CHINESE_NOTE,
+        )
+        for item in repaired_items:
+            repaired[lyric_source_key(item.get("source") or "")] = item
     fixed = 0
     lines = notes.get("lines") or []
     for index, item in enumerate(lines):

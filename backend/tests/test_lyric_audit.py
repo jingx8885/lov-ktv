@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from lovktv.agents import translate
 from lovktv.agents.ja_lyrics import (
     apply_ja_annotation,
@@ -266,6 +268,42 @@ def test_translate_lines_retries_lines_not_answered_in_chinese(tmp_path, monkeyp
     assert [item["translation"] for item in again["lines"]] == ["我想念你", "坚持住"]
     assert len(calls) == 1 and "I miss you" not in calls[0]
     assert json.loads(cache.read_text(encoding="utf-8"))["lines"][1]["translation"] == "坚持住"
+
+
+def test_translate_lines_retries_transient_agent_failure(tmp_path, monkeypatch):
+    calls = 0
+
+    def flaky_complete(_messages):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("temporary gateway failure")
+        return {"lines": [{"source": "I miss you", "translation": "我想念你", "units": []}]}
+
+    monkeypatch.setenv("LOVKTV_TRANSLATION_RETRY_DELAY", "0")
+    monkeypatch.setattr(translate, "agent_enabled", lambda: True)
+    monkeypatch.setattr(translate, "agent_model", lambda: "test")
+    monkeypatch.setattr(translate, "complete_json", flaky_complete)
+    notes = translate_lines(["I miss you"], "t", "a", "en", cache_path=tmp_path / "zh.json")
+    assert notes["lines"][0]["translation"] == "我想念你"
+    assert calls == 2
+
+
+def test_translate_lines_raises_after_exhausting_invalid_retries(tmp_path, monkeypatch):
+    calls = 0
+
+    def always_invalid(_messages):
+        nonlocal calls
+        calls += 1
+        return {"lines": [{"source": "I miss you", "translation": "I miss you", "units": []}]}
+
+    monkeypatch.setenv("LOVKTV_TRANSLATION_RETRY_DELAY", "0")
+    monkeypatch.setattr(translate, "agent_enabled", lambda: True)
+    monkeypatch.setattr(translate, "agent_model", lambda: "test")
+    monkeypatch.setattr(translate, "complete_json", always_invalid)
+    with pytest.raises(RuntimeError, match="重试后仍未返回有效中文"):
+        translate_lines(["I miss you"], "t", "a", "en", cache_path=tmp_path / "zh.json")
+    assert calls == 3
 
 
 def test_repair_song_restores_romaji_from_cache_and_republishes(tmp_path, monkeypatch):
