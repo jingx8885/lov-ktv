@@ -1260,11 +1260,13 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"] .player-main {
     display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr);
+    /* 曲库是辅助栏，宽度随视口小幅增长即可；让播放/歌词区吃掉剩余空间。 */
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 32vw, 420px);
     /* 只有一行：MV/封面舞台与歌词层共用第一行左列，右列是曲库。
        不再留第二行给横向进度带，进度条统一在播放键上方的 dock 里。 */
     grid-template-rows: minmax(0, 1fr);
     gap: 20px 28px;
+    width: 100%;
     max-width: none;
     margin: 0 auto;
     overflow: visible;
@@ -1540,14 +1542,14 @@ body.phone.edit-on .tl {
   }
 
   body.phone[data-page="player"] .player-main {
-    grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.95fr);
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 460px);
     max-width: none;
   }
 }
 
 @media (min-width: 1200px) {
   body.phone[data-page="player"] .player-main {
-    grid-template-columns: minmax(0, 1.65fr) minmax(360px, 0.95fr);
+    grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 460px);
   }
 }
 
