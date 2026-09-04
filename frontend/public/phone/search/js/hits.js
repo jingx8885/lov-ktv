@@ -32,7 +32,11 @@ export function bindSearchHits(q) {
           title: hit.title,
           artist: hit.artist,
           language: hit.language || "",
-          source: hit.source || ""
+          source: hit.source || "",
+          // Carry the exact lyric candidate selected while scoring this hit;
+          // the importer can still re-check duration, but must not start from
+          // an unrelated same-title result.
+          lyrics_id: hit.lyrics_id || ""
         };
         const {
           ok,

@@ -278,7 +278,14 @@ def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
 
 
 def process_import(
-    song_id: str, query: str, netease_id: str = "", language: str | None = None
+    song_id: str,
+    query: str,
+    netease_id: str = "",
+    language: str | None = None,
+    *,
+    title_hint: str = "",
+    artist_hint: str = "",
+    lyric_id: str = "",
 ) -> None:
     out_dir = MEDIA_DIR / song_id
     processing_debug.start(song_id, "import")
@@ -286,7 +293,14 @@ def process_import(
     try:
         update_song(song_id, status="fetching")
         processing_debug.event(song_id, "fetch", status="running")
-        skeleton = import_song(query=query, out_dir=out_dir, song_id=netease_id or None)
+        skeleton = import_song(
+            query=query,
+            out_dir=out_dir,
+            song_id=netease_id or None,
+            title_hint=title_hint,
+            artist_hint=artist_hint,
+            lyric_id=lyric_id,
+        )
         processing_debug.event(song_id, "fetch", files=sorted(path.name for path in out_dir.iterdir()) if out_dir.exists() else [])
         lang = str(language or skeleton.get("language") or "")
         fields = {

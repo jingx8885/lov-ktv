@@ -20,10 +20,10 @@ from .audio import (
     extract_mv_mp3,
     peek_audio_source,
     pick_bilibili_mv,
+    sync_video_to_audio,
     try_bilibili_download,
     try_netease_download,
     try_ytdlp_search,
-    sync_video_to_audio,
 )
 from .bilibili import is_bvid
 from .kugou import fetch_kugou_lyrics, lyric_mismatch_ms
@@ -41,6 +41,10 @@ from .search import (
 KUGOU_ACCEPT_MS = 8000
 # How many NetEase lyric candidates to fetch when the media length is known.
 NETEASE_LYRIC_CANDIDATES = 6
+# A lyric track that runs substantially past the media is a different edit or
+# version.  Shorter tracks are allowed because a recording may have an outro
+# after its final sung line; the final timeline is clipped to the media clock.
+LYRIC_OVERRUN_TOLERANCE_MS = 20_000
 
 
 def _pick_lyric_result(
@@ -67,11 +71,16 @@ def _pick_lyric_result(
     return ranked[0][2] if ranked else None
 
 
-def _netease_lyric_ids(chosen: dict[str, Any], title_name: str) -> list[str]:
+def _netease_lyric_ids(
+    chosen: dict[str, Any], title_name: str, preferred_id: str = ""
+) -> list[str]:
     """Candidate NetEase ids: the chosen song first, then title matches."""
     ids: list[str] = []
+    preferred = str(preferred_id or "").strip()
+    if preferred.isdigit():
+        ids.append(preferred)
     chosen_id = str(chosen.get("id") or "")
-    if chosen_id.isdigit():
+    if chosen_id.isdigit() and chosen_id not in ids:
         ids.append(chosen_id)
     try:
         results = search_tonzhon(title_name, count=NETEASE_LYRIC_CANDIDATES, page=1)
@@ -112,7 +121,12 @@ def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | Non
         lines = parse_lrc(lrc)
         if not lines:
             continue
-        mismatch = lyric_mismatch_ms(_lrc_last_ms(lines), media_ms) if media_ms else 0
+        last_ms = _lrc_last_ms(lines)
+        if media_ms and last_ms > media_ms + LYRIC_OVERRUN_TOLERANCE_MS:
+            # Do not silently attach the studio/full-song LRC to a short film
+            # cut (or only the first page of a multi-page Bilibili video).
+            continue
+        mismatch = lyric_mismatch_ms(last_ms, media_ms) if media_ms else 0
         if best is None or mismatch < int(best["mismatch_ms"]):
             best = {"id": sid, "lrc": lrc, "lines": lines, "mismatch_ms": mismatch}
         if mismatch == 0:
@@ -125,6 +139,7 @@ def _select_lyrics(
     artist_name: str,
     chosen: dict[str, Any],
     media_ms: int,
+    preferred_lyric_id: str = "",
 ) -> dict[str, Any]:
     """Choose between Kugou KRC and NetEase LRC using the media length."""
     kugou = fetch_kugou_lyrics(title_name, artist_name, duration_ms=media_ms)
@@ -137,7 +152,9 @@ def _select_lyrics(
     kugou_mismatch = int((kugou or {}).get("mismatch_ms") or 0)
     if kugou is not None and (not media_ms or kugou_mismatch <= KUGOU_ACCEPT_MS):
         return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
-    netease = _fetch_netease_lyrics(_netease_lyric_ids(chosen, title_name), media_ms)
+    netease = _fetch_netease_lyrics(
+        _netease_lyric_ids(chosen, title_name, preferred_lyric_id), media_ms
+    )
     if netease is not None and (kugou is None or int(netease["mismatch_ms"]) < kugou_mismatch):
         return {"source": "netease", "netease": netease, "mismatch_ms": int(netease["mismatch_ms"])}
     if kugou is not None:
@@ -207,7 +224,14 @@ def _complete_mugen_audio(
 
 
 def import_song(
-    *, query: str, out_dir: Path, song_id: str | None = None, prefer_ytdlp: bool = False
+    *,
+    query: str,
+    out_dir: Path,
+    song_id: str | None = None,
+    prefer_ytdlp: bool = False,
+    title_hint: str = "",
+    artist_hint: str = "",
+    lyric_id: str = "",
 ) -> dict[str, Any]:
     out_dir.mkdir(parents=True, exist_ok=True)
     if song_id and is_mugen_kid(song_id):
@@ -222,12 +246,32 @@ def import_song(
                 out_dir,
                 query,
             )
-    results = search_tonzhon(query)
+    # External search hits (notably Bilibili) carry a title/artist that can
+    # differ from the user's broad query.  Use that exact hit metadata for
+    # lyric lookup; otherwise a second search may select a different version.
+    lookup_query = " ".join(
+        part.strip() for part in (title_hint, artist_hint) if part and part.strip()
+    ) or query
+    results = search_tonzhon(lookup_query)
     chosen: dict[str, Any] | None = None
     if song_id:
-        chosen = next(
+        matched = next(
             (item for item in results if str(item.get("id")) == str(song_id)), None
-        ) or {"id": song_id, "name": query, "artist": [], "album": [], "pic": ""}
+        )
+        if matched:
+            chosen = matched
+        else:
+            # Keep the media id pinned to the selected hit (for the audio
+            # cache/BVID), while borrowing only descriptive metadata from the
+            # closest lyric search result.
+            lyric_hint = _pick_lyric_result(results, title_hint or query)
+            chosen = {
+                "id": song_id,
+                "name": title_hint or (lyric_hint or {}).get("name") or query,
+                "artist": (lyric_hint or {}).get("artist") or ([artist_hint] if artist_hint else []),
+                "album": (lyric_hint or {}).get("album") or [],
+                "pic": (lyric_hint or {}).get("pic") or "",
+            }
     elif not results:
         raise RuntimeError(f"tonzhon 没有搜到：{query}")
     else:
@@ -237,8 +281,8 @@ def import_song(
                 chosen = item
                 break
     title_name, artist_name = (
-        str(chosen.get("name") or query),
-        flatten_artists(chosen),
+        str(chosen.get("name") or title_hint or query),
+        flatten_artists(chosen) or artist_hint,
     )
 
     # Media first: the lyric version is chosen against the length of what we
@@ -317,7 +361,9 @@ def import_song(
         sync_video_to_audio(mtv_path, mp3_path)
     media_ms = probe_duration_ms(mp3_path) or (probe_duration_ms(mtv_path) if has_video else 0)
 
-    selected = _select_lyrics(title_name, artist_name, chosen, media_ms)
+    selected = _select_lyrics(
+        title_name, artist_name, chosen, media_ms, preferred_lyric_id=lyric_id
+    )
     lyric_source = str(selected["source"])
     kugou = selected.get("kugou")
     needs_align, language = True, ""

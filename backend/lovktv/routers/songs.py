@@ -28,8 +28,8 @@ from lovktv.locale.i18n import localize_exc, localize_song, request_lang
 from lovktv.locale.i18n import t as i18n_t
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.platform.runtime import media_root
-from lovktv.services.http import fail
-from lovktv.services.http import current_user
+from lovktv.services.http import current_user, fail
+from lovktv.storage import favorites as favorite_store
 from lovktv.storage.store import (
     create_song,
     delete_song,
@@ -39,7 +39,6 @@ from lovktv.storage.store import (
     update_song,
     with_media_flags,
 )
-from lovktv.storage import favorites as favorite_store
 from lovktv.workers.jobs import process_import, process_realign, process_upload, spawn
 from lovktv.workers.learn import build_learn_quiz
 
@@ -112,6 +111,9 @@ def api_import(request: Request, payload: dict) -> dict:
         fail(request, 400, "api.missing_query")
     charge_process(request)
     raw_id = str(payload.get("id") or "")
+    title_hint = str(payload.get("title") or query).strip()
+    artist_hint = str(payload.get("artist") or "").strip()
+    lyric_id = str(payload.get("lyrics_id") or payload.get("lyric_id") or "").strip()
     language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
     song = create_song(
         title=str(payload.get("title") or query),
@@ -122,7 +124,16 @@ def api_import(request: Request, payload: dict) -> dict:
     # Importing from the song-picker is also the user's explicit save action.
     favorite_store.set_favorite(learn_owner(request), song["id"], True)
     song["favorite"] = True
-    spawn(process_import, song["id"], query, raw_id, language)
+    spawn(
+        process_import,
+        song["id"],
+        query,
+        raw_id,
+        language,
+        title_hint=title_hint,
+        artist_hint=artist_hint,
+        lyric_id=lyric_id,
+    )
     return song
 
 

@@ -15,6 +15,15 @@ def test_pick_lyric_result_prefers_exact_title_over_version_suffix():
     )
 
 
+def test_netease_lyrics_reject_track_that_runs_past_media(monkeypatch):
+    monkeypatch.setattr(
+        importer,
+        "fetch_lyric",
+        lambda *args, **kwargs: "[00:01.00]开头\n[04:54.00]最后一句",
+    )
+    assert importer._fetch_netease_lyrics(["123"], 178_325) is None
+
+
 def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     video = tmp_path / "mtv.mp4"
     audio_path = tmp_path / "original.mp3"
@@ -105,7 +114,44 @@ def test_search_enriches_external_hit_from_netease_lrc(monkeypatch):
     }
     search.enrich_lyric_durations([hit], "晴天 周杰伦")
     assert hit["lyrics_duration_ms"] == 239000
+    assert hit["lyrics_id"] == "123"
     assert search.annotate_duration_match(hit)["lyrics_match_score"] == 100
+
+
+def test_import_pins_external_hit_metadata_and_lyric_id(tmp_path, monkeypatch):
+    """A broad search query must not replace the selected video's lyrics."""
+    _no_mugen(monkeypatch)
+    seen_queries = []
+    monkeypatch.setattr(
+        importer,
+        "search_tonzhon",
+        lambda query, *args, **kwargs: (
+            seen_queries.append(query)
+            or [{"id": "lyric-ignored", "name": "Other song"}]
+        ),
+    )
+    monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(importer, "probe_duration_ms", lambda path: 180_000)
+    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "try_netease_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    monkeypatch.setattr(importer, "_ytdlp_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        importer,
+        "fetch_lyric",
+        lambda song_id, source="netease": "[00:01.00]selected line",
+    )
+    skeleton = importer.import_song(
+        query="broad query",
+        out_dir=tmp_path,
+        song_id="BV1selected",
+        title_hint="Selected MV",
+        artist_hint="Selected Artist",
+        lyric_id="123456",
+    )
+    assert seen_queries == ["Selected MV Selected Artist", "Selected MV"]
+    assert skeleton["source"]["bvid"] == ""
+    assert skeleton["source"]["lyric_id"] == "123456"
 
 
 def test_search_ranks_late_exact_hit_before_unknowns(monkeypatch):

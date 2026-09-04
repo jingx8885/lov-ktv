@@ -201,7 +201,7 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
             candidates = [candidate] + [
                 row for row in rows if row is not candidate
             ]
-            best: tuple[int, int] | None = None
+            best: tuple[int, int, str] | None = None
             for row in candidates[:LYRIC_DURATION_CANDIDATES]:
                 song_id = str(row.get("lyric_id") or row.get("id") or "").strip()
                 if not song_id.isdigit():
@@ -215,13 +215,18 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
                     continue
                 last_ms = max(times)
                 if not media_ms:
+                    hit["lyrics_id"] = song_id
                     return last_ms
                 mismatch = lyric_mismatch_ms(last_ms, media_ms)
                 if best is None or mismatch < best[0]:
-                    best = (mismatch, last_ms)
+                    best = (mismatch, last_ms, song_id)
                 if mismatch == 0:
                     break
             if best is not None:
+                # Keep the exact candidate alongside its duration.  Import
+                # receives this id so the lyric text cannot drift to another
+                # same-title result between search and processing.
+                hit["lyrics_id"] = best[2]
                 return best[1]
     except Exception:
         return None
