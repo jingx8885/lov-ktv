@@ -30,6 +30,7 @@ _LATIN_WORD = re.compile(r"[A-Za-z]+")
 _HIRA = re.compile(r"[\u3040-\u309f]")
 _KANJI_RUN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff々]+")
 _HAN = re.compile(r"[\u3400-\u9fff\uf900-\ufaff]")
+_JA_SCRIPT = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff]")
 _LATIN_LETTER = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ]")
 # The agent also supplies Chinese line/unit meanings. Bump the cache schema so
 # old literal glosses are regenerated after semantic-translation prompt changes.
@@ -828,7 +829,11 @@ def apply_ja_annotation(
                 cue["text"] = original
                 cue["surface"] = original
                 continue
-        if (displayed or japanese) and line_is_romaji(original):
+        # A few legacy cues contain confusable Latin characters (such as
+        # Cyrillic ``е``), so ``line_is_romaji`` is not sufficient here.  If
+        # the annotation produced Japanese and the cue surface has no
+        # Japanese script, always replace the rendered text with kana/kanji.
+        if (displayed or japanese) and not _JA_SCRIPT.search(current):
             cue["source_text"] = original
             cue["text"] = displayed or japanese
             cue["surface"] = cue["text"]

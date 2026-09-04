@@ -161,6 +161,34 @@ def test_audit_flags_romaji_cue_with_japanese_tokens():
     assert audit_timeline(timeline)["romaji_cues"] == ["sugiru hibi ni"]
 
 
+def test_apply_annotation_replaces_legacy_confusable_romaji_surface():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            _cue(
+                "egaitе kita",
+                tokens=[
+                    {"text": "描いて", "surface": "描いて", "reading": "えがいて", "romaji": "egaite"},
+                    {"text": "きた", "surface": "きた", "reading": "", "romaji": "kita"},
+                ],
+            )
+        ],
+    }
+    notes = {
+        "lines": [
+            {
+                "source": "egaitе kita",
+                "units": [
+                    {"surface": "描いて", "reading": "えがいて", "romaji": "egaite"},
+                    {"surface": "きた", "reading": "", "romaji": "kita"},
+                ],
+            }
+        ]
+    }
+    apply_ja_annotation(timeline, notes)
+    assert timeline["cues"][0]["text"] == "描いてきた"
+
+
 def test_apply_zh_translation_replaces_english_line_without_overwrite():
     timeline = {
         "language": "en",
