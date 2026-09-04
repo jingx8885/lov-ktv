@@ -9,6 +9,67 @@ from lovktv.pipeline.bounds import _voice_covers, hold_lines_until_next
 from lovktv.pipeline.constants import *
 from lovktv.pipeline.matching import vocal_phrases
 
+# A pre-timed LRC can be used without Whisper when its line starts land on
+# vocal onsets.  Keep these thresholds here so importer/worker code shares one
+# definition of "close enough".
+LRC_ENERGY_MAX_DELTA_MS = 1200
+LRC_ENERGY_MIN_RATIO = 0.72
+
+
+def lrc_energy_match(
+    lines: list[dict[str, Any]],
+    envelope: list[float],
+    hop_ms: int = HOP_MS,
+    *,
+    max_delta_ms: int = LRC_ENERGY_MAX_DELTA_MS,
+    min_ratio: float = LRC_ENERGY_MIN_RATIO,
+) -> dict[str, Any]:
+    """Compare timed LRC starts with detected vocal onsets.
+
+    The result is deliberately small and JSON-friendly so callers can record
+    the decision in processing debug data.  ``matched`` is the number of LRC
+    lines whose start is close to a vocal region onset; ``ratio`` is the
+    fraction of usable timed lines that matched.  A track with no detectable
+    vocals is never considered a match.
+    """
+    timed = [
+        int(item["ms"])
+        for item in lines
+        if isinstance(item, dict) and item.get("ms") is not None
+    ]
+    regions = vocal_regions(envelope or [], hop_ms) if envelope else []
+    if not timed or not regions:
+        return {
+            "matched": 0,
+            "total": len(timed),
+            "ratio": 0.0,
+            "max_delta_ms": None,
+            "mean_delta_ms": None,
+            "accepted": False,
+        }
+    deltas = []
+    for start_ms in timed:
+        # A line may begin in the middle of a sustained vocal region; in that
+        # case the region itself is the evidence, even though its onset is
+        # more than ``max_delta_ms`` behind the LRC stamp.
+        if any(
+            region_start <= start_ms <= region_end
+            for region_start, region_end in regions
+        ):
+            deltas.append(0)
+        else:
+            deltas.append(min(abs(start_ms - onset) for onset, _end_ms in regions))
+    matched = sum(delta <= max(0, int(max_delta_ms)) for delta in deltas)
+    ratio = matched / len(timed)
+    return {
+        "matched": matched,
+        "total": len(timed),
+        "ratio": ratio,
+        "max_delta_ms": max(deltas) if deltas else None,
+        "mean_delta_ms": sum(deltas) / len(deltas) if deltas else None,
+        "accepted": ratio >= float(min_ratio),
+    }
+
 
 def _vocal_end_near(
     start_ms: int, regions: list[tuple[int, int]], limit_ms: int = MAX_LINE_MS

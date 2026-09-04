@@ -33,6 +33,7 @@ from lovktv.catalog.mugen import (
 from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.audio import extract_envelope, probe_duration_ms, vocal_regions
 from lovktv.pipeline.bounds import pack_tokens_to_singing
+from lovktv.pipeline.energy import lrc_energy_match
 from lovktv.pipeline.language import resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,
@@ -236,7 +237,11 @@ def _refresh_audio_tracks(out_dir: Path, skeleton: dict) -> Path:
     # Karaoke Mugen dual-track files keep their video without audio. Rebuild
     # the full original by mixing the official instrumental and vocal tracks.
     mugen_src = next(
-        (path for path in (out_dir / "mugen.mp4", out_dir / "mugen.webm") if path.exists()),
+        (
+            path
+            for path in (out_dir / "mugen.mp4", out_dir / "mugen.webm")
+            if path.exists()
+        ),
         None,
     )
     if mugen_off_vocal:
@@ -301,7 +306,13 @@ def process_import(
             artist_hint=artist_hint,
             lyric_id=lyric_id,
         )
-        processing_debug.event(song_id, "fetch", files=sorted(path.name for path in out_dir.iterdir()) if out_dir.exists() else [])
+        processing_debug.event(
+            song_id,
+            "fetch",
+            files=sorted(path.name for path in out_dir.iterdir())
+            if out_dir.exists()
+            else [],
+        )
         lang = str(language or skeleton.get("language") or "")
         fields = {
             "title": skeleton.get("title") or query,
@@ -316,7 +327,13 @@ def process_import(
         if is_mugen_kid(mugen_kid):
             fields["netease_id"] = mugen_kid
         update_song(song_id, **fields)
-        processing_debug.event(song_id, "metadata", title=fields.get("title"), language=lang, audio_source=fields.get("audio_source"))
+        processing_debug.event(
+            song_id,
+            "metadata",
+            title=fields.get("title"),
+            language=lang,
+            audio_source=fields.get("audio_source"),
+        )
         src = out_dir / "original.mp3"
         if not src.exists():
             raise RuntimeError("音频下载失败，没有 original.mp3")
@@ -357,7 +374,12 @@ def process_import(
                 lang or language,
                 rebuild_mtv=not (skeleton.get("has_video") or _has_native_mtv(out_dir)),
             )
-            processing_debug.finish(song_id, "ready" if (get_song(song_id) or {}).get("status") == "ready" else "running")
+            processing_debug.finish(
+                song_id,
+                "ready"
+                if (get_song(song_id) or {}).get("status") == "ready"
+                else "running",
+            )
             return
         _finish_ready_lyrics(
             song_id,
@@ -403,9 +425,11 @@ def _native_timed_matches_media(out_dir: Path, skeleton: dict, src: Path) -> boo
     times.  If either duration cannot be probed, keep the historical Mugen
     fallback; otherwise require a small (8%, capped at 20s) difference.
     """
-    has_video = bool(skeleton.get("has_video")) or (out_dir / "mtv.mp4").exists() or (
-        out_dir / "mugen.mp4"
-    ).exists()
+    has_video = (
+        bool(skeleton.get("has_video"))
+        or (out_dir / "mtv.mp4").exists()
+        or (out_dir / "mugen.mp4").exists()
+    )
     if not has_video:
         return False
     lyrics_path = out_dir / "lyrics.json"
@@ -437,6 +461,96 @@ def _native_timed_matches_media(out_dir: Path, skeleton: dict, src: Path) -> boo
     return abs(int(media_ms) - subtitle_ms) <= tolerance
 
 
+def _is_non_mugen_video(out_dir: Path, skeleton: dict) -> bool:
+    """Whether this is an external/native video eligible for the LRC fast path."""
+    if _is_mugen_skeleton(skeleton):
+        return False
+    return bool(skeleton.get("has_video")) or (out_dir / "mtv.mp4").exists()
+
+
+def _lrc_duration_close(media_ms: int, lines: list[dict]) -> bool:
+    """Require the LRC's last timestamp to be close to the media clock."""
+    if not media_ms or not lines:
+        return False
+    last_ms = max(
+        int(item.get("end_ms") or item.get("ms") or 0)
+        for item in lines
+        if isinstance(item, dict)
+    )
+    if not last_ms:
+        return False
+    tolerance = min(20_000, max(5_000, int(media_ms * 0.08)))
+    return abs(int(media_ms) - last_ms) <= tolerance
+
+
+def _closest_lrc_candidate(
+    skeleton: dict, current_lines: list[dict], media_ms: int
+) -> tuple[list[dict], str] | None:
+    """Return the duration-closest saved LRC for the agent fallback path."""
+    if not media_ms or not current_lines:
+        return None
+    candidates: list[tuple[list[dict], str]] = [(current_lines, "selected")]
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    for item in source.get("lyric_candidates") or []:
+        if not isinstance(item, dict):
+            continue
+        raw = str(item.get("lrc") or "")
+        parsed = parse_lrc(raw) if raw.strip() else []
+        if parsed:
+            candidates.append((parsed, str(item.get("id") or "candidate")))
+    def distance(lines: list[dict]) -> int:
+        last = max(
+            int(item.get("end_ms") or item.get("ms") or 0)
+            for item in lines
+            if isinstance(item, dict)
+        )
+        return abs(int(media_ms) - last) if last else 10**12
+    return min(candidates, key=lambda pair: distance(pair[0]))
+
+
+def _select_energy_lrc(
+    out_dir: Path,
+    skeleton: dict,
+    current_lines: list[dict],
+    envelope: list[float],
+    hop_ms: int,
+    media_ms: int,
+) -> tuple[list[dict], str, dict[str, Any]] | None:
+    """Pick a duration-compatible candidate whose starts follow vocal energy."""
+    if not _is_non_mugen_video(out_dir, skeleton):
+        return None
+    candidates: list[tuple[list[dict], str]] = [(current_lines, "selected")]
+    source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    for item in source.get("lyric_candidates") or []:
+        if not isinstance(item, dict):
+            continue
+        raw = str(item.get("lrc") or "")
+        if not raw.strip():
+            continue
+        parsed = parse_lrc(raw)
+        if parsed:
+            candidates.append((parsed, str(item.get("id") or "candidate")))
+    best: tuple[list[dict], str, dict[str, Any]] | None = None
+    for lines, candidate_id in candidates:
+        if not _lrc_duration_close(media_ms, lines):
+            continue
+        score = lrc_energy_match(lines, envelope, hop_ms)
+        if not score.get("accepted"):
+            continue
+        # Prefer the highest ratio, then the smallest mean onset error.
+        rank = (
+            float(score.get("ratio") or 0),
+            -float(score.get("mean_delta_ms") or 10**9),
+        )
+        if best is None:
+            best = (lines, candidate_id, score)
+            best_rank = rank
+        elif rank > best_rank:
+            best = (lines, candidate_id, score)
+            best_rank = rank
+    return best
+
+
 def _stamp_native_video(timeline: dict, out_dir: Path) -> bool:
     if timeline.get("native_video") or _has_native_mtv(out_dir):
         timeline["native_video"] = True
@@ -454,7 +568,13 @@ def _preserve_timeline_annotations(previous: dict, timeline: dict) -> None:
     """
     if not isinstance(previous, dict) or not isinstance(timeline, dict):
         return
-    for key in ("native_video", "translation", "translation_model", "annotation", "annotation_model"):
+    for key in (
+        "native_video",
+        "translation",
+        "translation_model",
+        "annotation",
+        "annotation_model",
+    ):
         if previous.get(key) and not timeline.get(key):
             timeline[key] = previous[key]
 
@@ -480,8 +600,12 @@ def _preserve_timeline_annotations(previous: dict, timeline: dict) -> None:
         if old.get("zh") and not cue.get("zh"):
             cue["zh"] = old["zh"]
 
-        old_tokens = [token for token in old.get("tokens") or [] if isinstance(token, dict)]
-        new_tokens = [token for token in cue.get("tokens") or [] if isinstance(token, dict)]
+        old_tokens = [
+            token for token in old.get("tokens") or [] if isinstance(token, dict)
+        ]
+        new_tokens = [
+            token for token in cue.get("tokens") or [] if isinstance(token, dict)
+        ]
         if not old_tokens or not new_tokens:
             continue
         # Match repeated words in order; this handles punctuation and small
@@ -553,9 +677,10 @@ def _translate_foreign_timeline(
         try:
             import json
 
-            cache_stale = json.loads(cache_path.read_text(encoding="utf-8")).get(
-                "schema"
-            ) != TRANSLATE_SCHEMA
+            cache_stale = (
+                json.loads(cache_path.read_text(encoding="utf-8")).get("schema")
+                != TRANSLATE_SCHEMA
+            )
         except (OSError, ValueError, TypeError):
             cache_stale = True
     force = force or cache_stale
@@ -609,7 +734,9 @@ def _finish_ready_lyrics(
 
     lyrics_path = out_dir / "lyrics.json"
     timeline = json.loads(lyrics_path.read_text(encoding="utf-8"))
-    processing_debug.event(song_id, "lyrics", count=len(timeline.get("cues") or []), source="persisted")
+    processing_debug.event(
+        song_id, "lyrics", count=len(timeline.get("cues") or []), source="persisted"
+    )
     song = get_song(song_id) or {}
     blob = "".join(_cue_source(cue) for cue in timeline.get("cues") or [])
     lang = resolve_language(
@@ -654,7 +781,9 @@ def _finish_ready_lyrics(
         processing_debug.event(song_id, "compose-mtv", files=["mtv.mp4"])
         _publish_ready(song_id)
     except Exception as mtv_exc:
-        processing_debug.event(song_id, "compose-mtv", status="error", error=str(mtv_exc))
+        processing_debug.event(
+            song_id, "compose-mtv", status="error", error=str(mtv_exc)
+        )
         previous = str(song.get("error") or "").strip()
         update_song(song_id, error=f"{previous} MTV降级：{mtv_exc}".strip())
 
@@ -664,7 +793,9 @@ def process_upload(song_id: str, src: Path, language: str | None = None) -> None
     processing_debug.start(song_id, "upload")
     try:
         update_song(song_id, status="separating")
-        processing_debug.event(song_id, "separate", status="running", source=str(src.name))
+        processing_debug.event(
+            song_id, "separate", status="running", source=str(src.name)
+        )
         if not src.exists():
             raise RuntimeError("没有上传音频")
         try:
@@ -897,6 +1028,15 @@ def _align_and_mtv(
     rebuild_mtv: bool = True,
 ) -> None:
     processing_debug.event(song_id, "align", status="running")
+    skeleton: dict = {}
+    skeleton_path = out_dir / "skeleton.json"
+    if skeleton_path.exists():
+        try:
+            loaded = json.loads(skeleton_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                skeleton = loaded
+        except (OSError, json.JSONDecodeError, TypeError):
+            skeleton = {}
     previous_timeline: dict = {}
     lyrics_path = out_dir / "lyrics.json"
     if lyrics_path.exists():
@@ -917,28 +1057,122 @@ def _align_and_mtv(
     voice = _ensure_vocals(out_dir, src)
     envelope, hop_ms = extract_envelope(voice)
     energy_regions = vocal_regions(envelope, hop_ms)
-    prompt = "\n".join(str(item.get("text") or "") for item in lines[:10])
-    asr_words = transcribe_words(
-        voice,
-        lang,
-        cache_path=out_dir / "asr.json",
-        prompt=prompt,
-    )
-    processing_debug.event(song_id, "asr", count=len(asr_words or []), cache="asr.json")
-    sung = generate_sung_lyrics(
+    energy_choice = _select_energy_lrc(
+        out_dir,
+        skeleton,
         lines,
-        asr_words,
-        lang,
-        cache_path=out_dir / "agent-align.json",
-        energy_regions=energy_regions,
+        envelope,
+        hop_ms,
+        probe_duration_ms(src) or probe_duration_ms(voice),
     )
-    processing_debug.event(
-        song_id,
-        "agent-lyrics",
-        rows=len(sung.lyrics.rows) if sung else 0,
-        inferred=sum(1 for row in sung.lyrics.rows if row.status == "inferred") if sung else 0,
-        cache="agent-align.json",
-    )
+    energy_fast = energy_choice is not None
+    if energy_fast:
+        chosen_lines, candidate_id, score = energy_choice
+        lines = prepare_lyric_lines(chosen_lines, lang)
+        if candidate_id != "selected":
+            # Keep the selected clock visible to future retries and audits.
+            candidate_source = (
+                skeleton.get("source")
+                if isinstance(skeleton.get("source"), dict)
+                else {}
+            )
+            raw = next(
+                (
+                    str(item.get("lrc") or "")
+                    for item in candidate_source.get("lyric_candidates") or []
+                    if isinstance(item, dict)
+                    and str(item.get("id") or "") == candidate_id
+                ),
+                "",
+            )
+            if raw:
+                (out_dir / "lyrics.lrc").write_text(raw, encoding="utf-8")
+            source = skeleton.setdefault("source", {})
+            source["lyric_id"] = candidate_id
+            source["lyric_mismatch_ms"] = int(
+                next(
+                    (
+                        item.get("mismatch_ms") or 0
+                        for item in source.get("lyric_candidates") or []
+                        if isinstance(item, dict)
+                        and str(item.get("id") or "") == candidate_id
+                    ),
+                    0,
+                )
+            )
+        skeleton["needs_align"] = False
+        source = skeleton.setdefault("source", {})
+        source["alignment"] = "lrc-energy"
+        source["energy_match"] = score
+        skeleton_path.write_text(
+            json.dumps(skeleton, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        processing_debug.event(
+            song_id,
+            "energy-fast-path",
+            candidate=candidate_id,
+            ratio=score.get("ratio"),
+            mean_delta_ms=score.get("mean_delta_ms"),
+        )
+        asr_words = None
+        sung = None
+    else:
+        # If no candidate is close enough to energy, still hand the agent the
+        # duration-closest clock (rather than a stale first search hit).
+        closest = _closest_lrc_candidate(
+            skeleton,
+            lines,
+            probe_duration_ms(src) or probe_duration_ms(voice),
+        )
+        if closest and closest[1] != "selected":
+            lines = prepare_lyric_lines(closest[0], lang)
+            candidate_source = (
+                skeleton.get("source")
+                if isinstance(skeleton.get("source"), dict)
+                else {}
+            )
+            raw = next(
+                (
+                    str(item.get("lrc") or "")
+                    for item in candidate_source.get("lyric_candidates") or []
+                    if isinstance(item, dict)
+                    and str(item.get("id") or "") == closest[1]
+                ),
+                "",
+            )
+            if raw:
+                (out_dir / "lyrics.lrc").write_text(raw, encoding="utf-8")
+            candidate_source["lyric_id"] = closest[1]
+            skeleton["source"] = candidate_source
+            skeleton_path.write_text(
+                json.dumps(skeleton, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        prompt = "\n".join(str(item.get("text") or "") for item in lines[:10])
+        asr_words = transcribe_words(
+            voice,
+            lang,
+            cache_path=out_dir / "asr.json",
+            prompt=prompt,
+        )
+        processing_debug.event(
+            song_id, "asr", count=len(asr_words or []), cache="asr.json"
+        )
+        sung = generate_sung_lyrics(
+            lines,
+            asr_words,
+            lang,
+            cache_path=out_dir / "agent-align.json",
+            energy_regions=energy_regions,
+        )
+        processing_debug.event(
+            song_id,
+            "agent-lyrics",
+            rows=len(sung.lyrics.rows) if sung else 0,
+            inferred=sum(1 for row in sung.lyrics.rows if row.status == "inferred")
+            if sung
+            else 0,
+            cache="agent-align.json",
+        )
     if sung and not lines and str(sung.lyrics.language or "").strip():
         lang = resolve_language("", str(sung.lyrics.language))
         update_song(song_id, language=lang)
@@ -953,7 +1187,15 @@ def _align_and_mtv(
         sung_rows=sung.rows() if sung else None,
         sung_words=sung.words if sung else None,
     )
-    processing_debug.event(song_id, "timeline", cues=len(timeline.get("cues") or []), source=timeline.get("alignment_source") or "")
+    if energy_fast:
+        timeline["alignment"] = "lrc-energy"
+        timeline["alignment_source"] = "lrc-energy"
+    processing_debug.event(
+        song_id,
+        "timeline",
+        cues=len(timeline.get("cues") or []),
+        source=timeline.get("alignment_source") or "",
+    )
     _preserve_timeline_annotations(previous_timeline, timeline)
     if had_native_video:
         timeline["native_video"] = True
@@ -972,7 +1214,13 @@ def _align_and_mtv(
     if timeline.get("cues"):
         write_subtitles(timeline, out_dir)
     update_song(song_id, status="ready")
-    processing_debug.event(song_id, "ready", files=sorted(path.name for path in out_dir.iterdir()) if out_dir.exists() else [])
+    processing_debug.event(
+        song_id,
+        "ready",
+        files=sorted(path.name for path in out_dir.iterdir())
+        if out_dir.exists()
+        else [],
+    )
     _publish_ready(song_id)
     if keep_native or (not rebuild_mtv and (out_dir / "mtv.mp4").exists()):
         return
@@ -994,7 +1242,9 @@ def _align_and_mtv(
         processing_debug.event(song_id, "compose-mtv", files=["mtv.mp4"])
         _publish_ready(song_id)
     except Exception as mtv_exc:
-        processing_debug.event(song_id, "compose-mtv", status="error", error=str(mtv_exc))
+        processing_debug.event(
+            song_id, "compose-mtv", status="error", error=str(mtv_exc)
+        )
         previous = str(song.get("error") or "").strip()
         note = f"MTV降级：{mtv_exc}"
         update_song(song_id, error=f"{previous} {note}".strip())

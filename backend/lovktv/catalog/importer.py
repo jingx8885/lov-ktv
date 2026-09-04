@@ -87,7 +87,9 @@ def _netease_lyric_ids(
     except Exception:
         results = []
     picked = _pick_lyric_result(results, title_name)
-    ordered = ([picked] if picked else []) + [item for item in results if item is not picked]
+    ordered = ([picked] if picked else []) + [
+        item for item in results if item is not picked
+    ]
     for song in ordered:
         sid = str(song.get("id") or "")
         if sid.isdigit() and sid not in ids:
@@ -111,6 +113,7 @@ def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | Non
     first.
     """
     best: dict[str, Any] | None = None
+    candidates: list[dict[str, Any]] = []
     for sid in ids:
         try:
             lrc = fetch_lyric(sid)
@@ -127,10 +130,20 @@ def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | Non
             # cut (or only the first page of a multi-page Bilibili video).
             continue
         mismatch = lyric_mismatch_ms(last_ms, media_ms) if media_ms else 0
+        candidate = {"id": sid, "lrc": lrc, "lines": lines, "mismatch_ms": mismatch}
+        candidates.append(candidate)
         if best is None or mismatch < int(best["mismatch_ms"]):
-            best = {"id": sid, "lrc": lrc, "lines": lines, "mismatch_ms": mismatch}
+            best = candidate
         if mismatch == 0:
             break
+    if best is not None:
+        # Keep the alternatives for the post-separation energy check.  The
+        # selected candidate remains at the top-level for compatibility with
+        # existing callers and persisted skeletons.
+        best["candidates"] = [
+            {key: value for key, value in item.items() if key != "candidates"}
+            for item in candidates
+        ]
     return best
 
 
@@ -147,20 +160,34 @@ def _select_lyrics(
         kugou = None
     if kugou is not None and media_ms and "mismatch_ms" not in kugou:
         cues = kugou["timeline"].get("cues") or []
-        last_ms = max((int(c.get("end_ms") or c.get("start_ms") or 0) for c in cues), default=0)
-        kugou["mismatch_ms"] = lyric_mismatch_ms(last_ms, media_ms, int(kugou.get("duration_ms") or 0))
+        last_ms = max(
+            (int(c.get("end_ms") or c.get("start_ms") or 0) for c in cues), default=0
+        )
+        kugou["mismatch_ms"] = lyric_mismatch_ms(
+            last_ms, media_ms, int(kugou.get("duration_ms") or 0)
+        )
     kugou_mismatch = int((kugou or {}).get("mismatch_ms") or 0)
     if kugou is not None and (not media_ms or kugou_mismatch <= KUGOU_ACCEPT_MS):
         return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
     netease = _fetch_netease_lyrics(
         _netease_lyric_ids(chosen, title_name, preferred_lyric_id), media_ms
     )
-    if netease is not None and (kugou is None or int(netease["mismatch_ms"]) < kugou_mismatch):
-        return {"source": "netease", "netease": netease, "mismatch_ms": int(netease["mismatch_ms"])}
+    if netease is not None and (
+        kugou is None or int(netease["mismatch_ms"]) < kugou_mismatch
+    ):
+        return {
+            "source": "netease",
+            "netease": netease,
+            "mismatch_ms": int(netease["mismatch_ms"]),
+        }
     if kugou is not None:
         return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
     if netease is not None:
-        return {"source": "netease", "netease": netease, "mismatch_ms": int(netease["mismatch_ms"])}
+        return {
+            "source": "netease",
+            "netease": netease,
+            "mismatch_ms": int(netease["mismatch_ms"]),
+        }
     raise RuntimeError("歌词为空")
 
 
@@ -249,9 +276,12 @@ def import_song(
     # External search hits (notably Bilibili) carry a title/artist that can
     # differ from the user's broad query.  Use that exact hit metadata for
     # lyric lookup; otherwise a second search may select a different version.
-    lookup_query = " ".join(
-        part.strip() for part in (title_hint, artist_hint) if part and part.strip()
-    ) or query
+    lookup_query = (
+        " ".join(
+            part.strip() for part in (title_hint, artist_hint) if part and part.strip()
+        )
+        or query
+    )
     results = search_tonzhon(lookup_query)
     chosen: dict[str, Any] | None = None
     if song_id:
@@ -268,7 +298,8 @@ def import_song(
             chosen = {
                 "id": song_id,
                 "name": title_hint or (lyric_hint or {}).get("name") or query,
-                "artist": (lyric_hint or {}).get("artist") or ([artist_hint] if artist_hint else []),
+                "artist": (lyric_hint or {}).get("artist")
+                or ([artist_hint] if artist_hint else []),
                 "album": (lyric_hint or {}).get("album") or [],
                 "pic": (lyric_hint or {}).get("pic") or "",
             }
@@ -359,7 +390,9 @@ def import_song(
         # fallback for video-only sources.
         mv_audio_extracted = extract_mv_mp3(mtv_path, mp3_path)
         sync_video_to_audio(mtv_path, mp3_path)
-    media_ms = probe_duration_ms(mp3_path) or (probe_duration_ms(mtv_path) if has_video else 0)
+    media_ms = probe_duration_ms(mp3_path) or (
+        probe_duration_ms(mtv_path) if has_video else 0
+    )
 
     selected = _select_lyrics(
         title_name, artist_name, chosen, media_ms, preferred_lyric_id=lyric_id
@@ -415,6 +448,18 @@ def import_song(
             "media_ms": media_ms,
             "lyric_mismatch_ms": int(selected.get("mismatch_ms") or 0),
             "bvid": audio_bvid,
+            # Non-Mugen video imports may need to choose another lyric clock
+            # after vocal separation.  Persist the fetched alternatives so
+            # the worker can score them against real vocal energy.
+            "lyric_candidates": [
+                {
+                    "id": str(item.get("id") or ""),
+                    "lrc": str(item.get("lrc") or ""),
+                    "mismatch_ms": int(item.get("mismatch_ms") or 0),
+                }
+                for item in ((selected.get("netease") or {}).get("candidates") or [])
+                if isinstance(item, dict) and str(item.get("lrc") or "").strip()
+            ],
         },
         "audio": {
             "file": audio_file,

@@ -24,6 +24,19 @@ def test_netease_lyrics_reject_track_that_runs_past_media(monkeypatch):
     assert importer._fetch_netease_lyrics(["123"], 178_325) is None
 
 
+def test_netease_lyrics_keeps_duration_candidates_for_energy_retry(monkeypatch):
+    lyrics = {
+        "1": "[00:01.00]first\n[02:30.00]end",
+        "2": "[00:01.00]first alt\n[02:40.00]end alt",
+    }
+    monkeypatch.setattr(
+        importer, "fetch_lyric", lambda song_id, source="netease": lyrics[song_id]
+    )
+    selected = importer._fetch_netease_lyrics(["1", "2"], 180_000)
+    assert selected is not None
+    assert [item["id"] for item in selected["candidates"]] == ["1", "2"]
+
+
 def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     video = tmp_path / "mtv.mp4"
     audio_path = tmp_path / "original.mp3"
