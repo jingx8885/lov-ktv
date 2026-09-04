@@ -246,6 +246,41 @@ def _cues_from_bounds(
     return cues
 
 
+def _clip_cues_to_duration(
+    cues: list[dict[str, Any]], duration_ms: int | None
+) -> list[dict[str, Any]]:
+    """Keep persisted lyric cues and token spans inside the media clock."""
+    if not duration_ms or duration_ms <= 0:
+        return cues
+    limit = int(duration_ms)
+    clipped: list[dict[str, Any]] = []
+    for raw in cues:
+        if not isinstance(raw, dict):
+            continue
+        start = max(0, int(raw.get("start_ms") or 0))
+        if start >= limit:
+            continue
+        end = min(limit, int(raw.get("end_ms") or start))
+        if end <= start:
+            continue
+        cue = dict(raw)
+        cue["start_ms"], cue["end_ms"] = start, end
+        tokens: list[dict[str, Any]] = []
+        for token in raw.get("tokens") or []:
+            if not isinstance(token, dict):
+                continue
+            token_start = max(start, int(token.get("start_ms") or start))
+            token_end = min(end, int(token.get("end_ms") or end))
+            if token_start >= end or token_end <= token_start:
+                continue
+            item = dict(token)
+            item["start_ms"], item["end_ms"] = token_start, token_end
+            tokens.append(item)
+        cue["tokens"] = tokens
+        clipped.append(cue)
+    return clipped
+
+
 def align_lyrics(
     lines: list[dict[str, Any]],
     language: str | None = None,
@@ -282,7 +317,9 @@ def align_lyrics(
             envelope=envelope,
             hop_ms=hop_ms,
         )
-        cues = _cues_from_bounds(bounds, lang, asr_words, envelope, hop_ms)
+        cues = _clip_cues_to_duration(
+            _cues_from_bounds(bounds, lang, asr_words, envelope, hop_ms), duration_ms
+        )
         if cues:
             return {
                 "language": lang,
@@ -331,7 +368,10 @@ def align_lyrics(
                 "language": lang,
                 "alignment": "lrc" if timed else "asr",
                 "alignment_source": "official" if timed else "whisper",
-                "cues": _cues_from_bounds(bounds, lang, asr_words, envelope, hop_ms),
+                "cues": _clip_cues_to_duration(
+                    _cues_from_bounds(bounds, lang, asr_words, envelope, hop_ms),
+                    duration_ms,
+                ),
             }
 
     if envelope:
@@ -357,13 +397,16 @@ def align_lyrics(
             "language": lang,
             "alignment": "onset",
             "alignment_source": str(audio_path.name) if audio_path else "envelope",
-            "cues": _cues_from_bounds(bounds, lang, None, envelope, hop_ms),
+            "cues": _clip_cues_to_duration(
+                _cues_from_bounds(bounds, lang, None, envelope, hop_ms), duration_ms
+            ),
         }
 
     if timed and all(item.get("ms") is not None for item in lines):
         timeline = timeline_from_lrc(lines, lang, duration_ms=duration_ms)
         timeline["alignment"] = "lrc-interp"
         timeline["alignment_source"] = ""
+        timeline["cues"] = _clip_cues_to_duration(timeline.get("cues") or [], duration_ms)
         return timeline
 
     duration = duration_ms or max(len(lines) * 4000, 4000)
@@ -372,4 +415,5 @@ def align_lyrics(
     timeline = timeline_from_lrc(assigned, lang, duration_ms=duration)
     timeline["alignment"] = "duration-fallback"
     timeline["alignment_source"] = ""
+    timeline["cues"] = _clip_cues_to_duration(timeline.get("cues") or [], duration_ms)
     return timeline

@@ -107,6 +107,54 @@ def test_strip_title_and_duration():
     )
 
 
+def test_play_urls_selects_requested_page_and_exposes_page_count(monkeypatch):
+    calls = []
+
+    def fake_api_get(url, timeout=12):
+        calls.append(url)
+        if "web-interface/view" in url:
+            return {
+                "code": 0,
+                "data": {
+                    "title": "多 P",
+                    "pic": "",
+                    "pages": [
+                        {"cid": 11, "part": "开场", "duration": 178},
+                        {"cid": 22, "part": "尾声", "duration": 256},
+                    ],
+                },
+            }
+        return {
+            "code": 0,
+            "data": {
+                "dash": {
+                    "audio": [{"baseUrl": "https://example/audio"}],
+                    "video": [{"baseUrl": "https://example/video", "height": 720}],
+                }
+            },
+        }
+
+    monkeypatch.setattr(bilibili, "api_get", fake_api_get)
+    urls = bilibili.play_urls("BVmulti", page=2)
+    assert urls["page"] == 2
+    assert urls["page_count"] == 2
+    assert urls["part"] == "尾声"
+    assert urls["duration"] == 256
+    assert "cid=22" in calls[-1]
+
+
+def test_download_mv_rejects_multi_page_without_explicit_page(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        bilibili,
+        "play_urls",
+        lambda *args, **kwargs: {
+            "audio_url": "https://example/audio",
+            "page_count": 2,
+        },
+    )
+    assert not bilibili.download_mv("BVmulti", tmp_path / "original.mp3")
+
+
 def test_score_prefers_official_mv():
     official = {
         "title": "周杰伦-晴天[正版]",

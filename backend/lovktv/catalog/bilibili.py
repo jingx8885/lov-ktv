@@ -457,7 +457,9 @@ def _pick_video(items: list[dict[str, Any]]) -> dict[str, Any] | None:
     return usable[0]
 
 
-def play_urls(bvid: str, timeout: float = 12) -> dict[str, str]:
+def play_urls(
+    bvid: str, timeout: float = 12, page: int | None = None
+) -> dict[str, Any]:
     bvid = str(bvid or "").strip()
     if not bvid:
         return {}
@@ -470,7 +472,19 @@ def play_urls(bvid: str, timeout: float = 12) -> dict[str, str]:
     data = view.get("data") if int(view.get("code") or 0) == 0 else None
     if not isinstance(data, dict):
         return {}
-    cid = data.get("cid")
+    pages = data.get("pages") if isinstance(data.get("pages"), list) else []
+    page_count = len(pages) or 1
+    # Bilibili's top-level ``cid`` is silently the first page.  Keep that as
+    # the preview default, but let callers explicitly select another page and
+    # expose the fact that a result is multi-page to import callers.
+    selected_page = max(1, int(page or 1))
+    if pages:
+        selected_page = min(selected_page, len(pages))
+        selected = pages[selected_page - 1]
+        cid = selected.get("cid") if isinstance(selected, dict) else None
+    else:
+        selected = {}
+        cid = data.get("cid")
     if not cid:
         return {}
     query = urllib.parse.urlencode(
@@ -495,6 +509,12 @@ def play_urls(bvid: str, timeout: float = 12) -> dict[str, str]:
         "video_url": _dash_url(video) if video else "",
         "title": str(data.get("title") or ""),
         "cover": cover_url(str(data.get("pic") or "")),
+        "page": selected_page,
+        "page_count": page_count,
+        "part": str(selected.get("part") or "") if isinstance(selected, dict) else "",
+        "duration": int(selected.get("duration") or data.get("duration") or 0)
+        if isinstance(selected, dict)
+        else int(data.get("duration") or 0),
     }
 
 
@@ -618,8 +638,19 @@ def _to_mtv(src: Path, dest: Path, audio: Path | None = None) -> bool:
     return False
 
 
-def download_mv(bvid: str, mp3_path: Path, video_path: Path | None = None) -> bool:
-    urls = play_urls(bvid)
+def download_mv(
+    bvid: str,
+    mp3_path: Path,
+    video_path: Path | None = None,
+    *,
+    page: int | None = None,
+) -> bool:
+    urls = play_urls(bvid) if page is None else play_urls(bvid, page=page)
+    # Importing only page 1 of a multi-page result creates a different song
+    # from the one the user selected (and usually breaks lyric matching).
+    # Explicit page selection remains available for future/UI callers.
+    if int(urls.get("page_count") or 1) > 1 and page is None:
+        return False
     audio_url = urls.get("audio_url") or ""
     if not audio_url:
         return False

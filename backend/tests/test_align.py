@@ -131,6 +131,27 @@ def test_no_voice_falls_back_to_lrc_interp():
     assert tokenize("晴天", "zh") == ["晴", "天"]
 
 
+def test_timed_lrc_is_clipped_to_media_duration():
+    timeline = align_lyrics(
+        [
+            {"ms": 1_000, "text": "first line"},
+            {"ms": 177_000, "text": "last line"},
+            {"ms": 298_000, "text": "outside media"},
+        ],
+        "en",
+        envelope=[],
+        duration_ms=178_325,
+    )
+    assert timeline["cues"]
+    assert max(cue["end_ms"] for cue in timeline["cues"]) <= 178_325
+    assert all(cue["start_ms"] < 178_325 for cue in timeline["cues"])
+    assert all(
+        token["end_ms"] <= 178_325
+        for cue in timeline["cues"]
+        for token in cue.get("tokens") or []
+    )
+
+
 def test_lrc_gap_does_not_stretch_second_line():
     hop = 20
     env = _pulse(30, hop, [(1.0, 8.8), (25.0, 29.0)])
