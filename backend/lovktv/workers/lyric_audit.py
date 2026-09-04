@@ -62,6 +62,16 @@ def token_is_unrestored_romaji(token: dict[str, Any]) -> bool:
 def cue_is_unrestored_romaji(cue: dict[str, Any]) -> bool:
     if not line_is_romaji(_cue_text(cue)):
         return False
+    # Some persisted timelines have already been tokenized into Japanese, but
+    # the cue-level ``text``/``surface`` was left as the original romaji.  The
+    # player renders the cue surface, so this is still an unrestored line even
+    # though individual tokens no longer carry a romaji-looking ``text``.
+    if any(
+        _JA_SCRIPT.search(str(token.get("text") or token.get("surface") or ""))
+        for token in cue.get("tokens") or []
+        if isinstance(token, dict)
+    ):
+        return True
     return any(token_is_unrestored_romaji(token) for token in cue.get("tokens") or [])
 
 

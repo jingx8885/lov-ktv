@@ -144,6 +144,23 @@ def test_audit_flags_romaji_and_english_translations():
     assert audit_timeline(clean)["ok"] is True
 
 
+def test_audit_flags_romaji_cue_with_japanese_tokens():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            _cue(
+                "sugiru hibi ni",
+                zh="流逝的日子里",
+                tokens=[
+                    {"text": "過ぎる", "surface": "過ぎる", "reading": "すぎる"},
+                    {"text": "日々", "surface": "日々", "reading": "ひび"},
+                ],
+            )
+        ],
+    }
+    assert audit_timeline(timeline)["romaji_cues"] == ["sugiru hibi ni"]
+
+
 def test_apply_zh_translation_replaces_english_line_without_overwrite():
     timeline = {
         "language": "en",
