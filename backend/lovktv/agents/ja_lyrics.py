@@ -833,7 +833,14 @@ def apply_ja_annotation(
         # Cyrillic ``е``), so ``line_is_romaji`` is not sufficient here.  If
         # the annotation produced Japanese and the cue surface has no
         # Japanese script, always replace the rendered text with kana/kanji.
-        if (displayed or japanese) and not _JA_SCRIPT.search(current):
+        # A romaji-backed cue may already contain Japanese produced by an
+        # older annotation pass.  When a newly matched note changes those
+        # units, refresh that derived display too.  Native Japanese source
+        # lines still keep their authored kanji/kana instead of being
+        # rewritten from agent output.
+        if (displayed or japanese) and (
+            line_is_romaji(original) or not _JA_SCRIPT.search(current)
+        ):
             cue["source_text"] = original
             cue["text"] = displayed or japanese
             cue["surface"] = cue["text"]
