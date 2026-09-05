@@ -70,6 +70,20 @@ def test_job_queue_deduplicates_only_while_pending():
     queue._jobs.join()
 
 
+def test_job_queue_distinguishes_keyword_options():
+    queue = jobs.JobQueue(worker_name="test-lovktv-options")
+    release = threading.Event()
+
+    def work(song_id, force=False):
+        assert song_id == "s1"
+        release.wait(1)
+
+    assert queue.submit(work, "s1", force=False) is True
+    assert queue.submit(work, "s1", force=True) is True
+    release.set()
+    queue._jobs.join()
+
+
 def test_song_repository_is_replaceable(monkeypatch):
     class FakeSongs:
         def get(self, song_id):

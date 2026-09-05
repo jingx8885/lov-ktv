@@ -9,10 +9,11 @@ from typing import Any, Callable
 JobFn = Callable[..., Any]
 
 
-def _job_key(fn: JobFn, args: tuple[Any, ...]) -> str:
+def _job_key(fn: JobFn, args: tuple[Any, ...], kwargs: dict[str, Any]) -> str:
     name = getattr(fn, "__name__", str(fn))
     song_id = args[0] if args else ""
-    return f"{name}:{song_id}"
+    options = ",".join(f"{key}={kwargs[key]!r}" for key in sorted(kwargs))
+    return f"{name}:{song_id}:{options}"
 
 
 class JobQueue:
@@ -97,7 +98,7 @@ class JobQueue:
             }
 
     def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
-        key = _job_key(fn, args)
+        key = _job_key(fn, args, kwargs)
         with self._lock:
             if key in self._queued:
                 return False
@@ -110,6 +111,6 @@ class JobQueue:
 job_queue = JobQueue()
 
 
-def spawn(fn: JobFn, *args: Any, **kwargs: Any) -> None:
-    """Queue background work with one worker."""
-    job_queue.submit(fn, *args, **kwargs)
+def spawn(fn: JobFn, *args: Any, **kwargs: Any) -> bool:
+    """Queue background work with one worker and report duplicate suppression."""
+    return job_queue.submit(fn, *args, **kwargs)

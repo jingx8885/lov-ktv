@@ -58,6 +58,7 @@ export default {
   "api.ja_annotate_failed": "日本語注音に失敗しました：{exc}",
   "api.song_not_found": "曲が見つかりません",
   "api.retry_only_failed": "失敗した曲だけ再試行できます",
+  "api.song_job_in_progress": "この曲は処理中です",
   "api.song_admin_required": "管理者だけが曲を再処理できます",
   "api.no_lyrics": "この曲にはまだ歌詞がありません",
   "api.lyrics_not_ready": "歌詞はまだ遊べません",

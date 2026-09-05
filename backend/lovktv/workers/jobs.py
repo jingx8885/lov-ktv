@@ -166,8 +166,7 @@ def _fallback_media(src: Path, out_dir: Path) -> None:
             capture_output=True,
         )
     else:
-        shutil.copy2(src, out_dir / "karaoke.m4a")
-        shutil.copy2(src, out_dir / "guide.m4a")
+        raise RuntimeError("需要 ffmpeg 才能生成 karaoke.m4a 和 guide.m4a")
 
 
 def _is_mugen_skeleton(skeleton: dict) -> bool:

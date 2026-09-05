@@ -35,6 +35,7 @@ _EXC_KEYS = {
     "缺少 lines": "api.missing_lines",
     "歌曲不存在": "api.song_not_found",
     "只有失败的歌可以重试": "api.retry_only_failed",
+    "歌曲正在处理中": "api.song_job_in_progress",
     "只有管理员可以重新处理歌曲": "api.song_admin_required",
     "这首还没有歌词": "api.no_lyrics",
     "没有歌词": "api.no_lyrics",
