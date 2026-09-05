@@ -28,6 +28,7 @@ ALL_SEARCH = "https://api.bilibili.com/x/web-interface/search/all/v2"
 NAV_URL = "https://api.bilibili.com/x/web-interface/nav"
 VIEW_URL = "https://api.bilibili.com/x/web-interface/view"
 PLAYURL = "https://api.bilibili.com/x/player/playurl"
+PAGELIST = "https://api.bilibili.com/x/player/pagelist"
 PAGE_ORIGIN = "https://www.bilibili.com"
 WBI_MIXIN = [
     46,
@@ -463,15 +464,30 @@ def play_urls(
     bvid = str(bvid or "").strip()
     if not bvid:
         return {}
+    title = ""
+    cover = ""
     try:
         view = api_get(
             f"{VIEW_URL}?{urllib.parse.urlencode({'bvid': bvid})}", timeout=timeout
         )
+        data = view.get("data") if int(view.get("code") or 0) == 0 else None
     except Exception:
-        return {}
-    data = view.get("data") if int(view.get("code") or 0) == 0 else None
-    if not isinstance(data, dict):
-        return {}
+        data = None
+    if isinstance(data, dict):
+        title = str(data.get("title") or "")
+        cover = cover_url(str(data.get("pic") or ""))
+    else:
+        try:
+            pages_payload = api_get(
+                f"{PAGELIST}?{urllib.parse.urlencode({'bvid': bvid})}",
+                timeout=timeout,
+            )
+            pages = pages_payload.get("data")
+            if int(pages_payload.get("code") or 0) != 0 or not isinstance(pages, list):
+                return {}
+            data = {"pages": pages}
+        except Exception:
+            return {}
     pages = data.get("pages") if isinstance(data.get("pages"), list) else []
     page_count = len(pages) or 1
     # Bilibili's top-level ``cid`` is silently the first page.  Keep that as
@@ -507,8 +523,8 @@ def play_urls(
     return {
         "audio_url": audio_url,
         "video_url": _dash_url(video) if video else "",
-        "title": str(data.get("title") or ""),
-        "cover": cover_url(str(data.get("pic") or "")),
+        "title": title or str(data.get("title") or ""),
+        "cover": cover or cover_url(str(data.get("pic") or "")),
         "page": selected_page,
         "page_count": page_count,
         "part": str(selected.get("part") or "") if isinstance(selected, dict) else "",

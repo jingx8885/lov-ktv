@@ -155,6 +155,21 @@ def test_download_mv_rejects_multi_page_without_explicit_page(monkeypatch, tmp_p
     assert not bilibili.download_mv("BVmulti", tmp_path / "original.mp3")
 
 
+def test_play_urls_falls_back_to_pagelist_when_view_is_blocked(monkeypatch):
+    def fake_api_get(url, timeout=12):
+        if url.startswith(bilibili.VIEW_URL):
+            raise RuntimeError("412")
+        if url.startswith(bilibili.PAGELIST):
+            return {"code": 0, "data": [{"cid": 123, "page": 1, "duration": 160}]}
+        return {"code": 0, "data": {"dash": {"audio": [{"baseUrl": "a"}], "video": [{"baseUrl": "v", "height": 720}]}}}
+
+    monkeypatch.setattr(bilibili, "api_get", fake_api_get)
+    urls = bilibili.play_urls("BVblocked")
+    assert urls["audio_url"] == "a"
+    assert urls["video_url"] == "v"
+    assert urls["duration"] == 160
+
+
 def test_download_mv_requires_video_when_requested(monkeypatch, tmp_path):
     monkeypatch.setattr(
         bilibili,
