@@ -51,6 +51,19 @@ def test_resume_stuck_jobs_includes_queued_and_aligning(monkeypatch, tmp_path):
     assert spawned[2][1][0] == "q1"
 
 
+def test_resume_stuck_jobs_reimports_processing_song_without_audio(monkeypatch, tmp_path):
+    spawned = []
+    monkeypatch.setattr(
+        jobs,
+        "list_songs",
+        lambda: [{"id": "s1", "status": "separating", "title": "Song", "artist": "Artist"}],
+    )
+    monkeypatch.setattr(jobs, "MEDIA_DIR", tmp_path)
+    monkeypatch.setattr(jobs, "spawn", lambda fn, *args, **kwargs: spawned.append((fn.__name__, args)))
+    assert jobs.resume_stuck_jobs() == 1
+    assert spawned == [("process_import", ("s1", "Song Artist", "", None))]
+
+
 def test_job_queue_deduplicates_only_while_pending():
     queue = jobs.JobQueue(worker_name="test-lovktv-jobs")
     started = threading.Event()

@@ -1302,16 +1302,20 @@ class JobRecovery:
             has_audio = (out_dir / "original.mp3").exists() or (
                 out_dir / "vocals.wav"
             ).exists()
-            if (
-                status in {"aligning", "annotating", "composing", "separating"}
-                and has_audio
-            ):
+            if status in {"aligning", "annotating", "composing", "separating"} and has_audio:
                 if _has_ready_lyrics(out_dir):
                     pending_finish.append((song_id, out_dir, song.get("language")))
                 else:
                     pending_align.append((song_id, song.get("language")))
                 continue
-            if status in {"queued", "fetching"}:
+            if status in {
+                "queued",
+                "fetching",
+                "separating",
+                "aligning",
+                "annotating",
+                "composing",
+            }:
                 pending_import.append(
                     (
                         song_id,
