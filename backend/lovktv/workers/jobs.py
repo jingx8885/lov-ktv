@@ -518,6 +518,14 @@ def _select_energy_lrc(
     """Pick a duration-compatible candidate whose starts follow vocal energy."""
     if not _is_non_mugen_video(out_dir, skeleton):
         return None
+    first_timed = next(
+        (item for item in current_lines if item.get("ms") is not None), None
+    )
+    regions = vocal_regions(envelope or [], hop_ms) if envelope else []
+    if first_timed and regions:
+        first_ms = int(first_timed["ms"])
+        if first_ms >= 1500 and regions[0][0] - first_ms > 3000:
+            return None
     candidates: list[tuple[list[dict], str]] = [(current_lines, "selected")]
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
     for item in source.get("lyric_candidates") or []:
