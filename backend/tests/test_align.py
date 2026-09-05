@@ -252,6 +252,23 @@ def test_late_vocals_shift_official_lrc():
     assert timeline["cues"][1]["start_ms"] >= 33000
 
 
+def test_lrc_with_existing_intro_voice_does_not_apply_global_shift():
+    hop = 20
+    env = _pulse(40, hop, [(3.0, 6.0), (8.0, 11.0), (14.0, 17.0)])
+    timeline = align_lyrics(
+        [
+            {"ms": 3130, "text": "Woah"},
+            {"ms": 8404, "text": "Woah"},
+            {"ms": 15530, "text": "Woah"},
+        ],
+        "en",
+        envelope=env,
+        hop_ms=hop,
+        duration_ms=20000,
+    )
+    assert timeline["cues"][0]["start_ms"] == 3130
+
+
 def test_timeline_from_lrc_still_covers_fixtures():
     ja = timeline_from_lrc(
         [{"ms": 0, "text": "こんにちは"}, {"ms": 1000, "text": "世界"}], "ja"

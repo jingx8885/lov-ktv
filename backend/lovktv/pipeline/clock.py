@@ -47,7 +47,14 @@ def align_lines_official_clock(
     shift = 0
     if timed and phrases:
         first_ms = int(timed[0]["ms"])
-        if first_ms < 5000 and phrases[0][0] - first_ms > 3000:
+        later_alive = any(
+            _voice_covers(regions, int(item["ms"]))
+            for item in timed[1:]
+            if item.get("ms") is not None
+        )
+        if (
+            first_ms < 1000 or not _voice_covers(regions, first_ms)
+        ) and not later_alive:
             shift = estimate_lrc_offset(timed, phrases)
 
     if asr_words and timed and len(timed) >= 3:
