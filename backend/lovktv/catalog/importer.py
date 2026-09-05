@@ -39,6 +39,17 @@ from .search import (
 # A word-level Kugou track this close to the media length wins outright;
 # beyond it the NetEase LRC candidates compete on the same mismatch scale.
 KUGOU_ACCEPT_MS = 8000
+
+
+def try_bilibili_audio_with_mv_fallback(
+    bvid: str, mp3_path: Path, video_path: Path
+) -> bool:
+    """Prefer a native MV, but keep the song importable if its video expires."""
+    if try_bilibili_download(bvid, mp3_path, video_path):
+        return True
+    return try_bilibili_download(bvid, mp3_path)
+
+
 # How many NetEase lyric candidates to fetch when the media length is known.
 NETEASE_LYRIC_CANDIDATES = 6
 # A lyric track that runs substantially past the media is a different edit or
@@ -219,7 +230,7 @@ def _complete_mugen_audio(
     hit = pick_bilibili_mv(short, artist) or pick_bilibili_mv(
         clean_search_title(short), ""
     )
-    if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
+    if hit and try_bilibili_audio_with_mv_fallback(str(hit["bvid"]), mp3_path, mtv_path):
         filled = "bilibili"
         source["bvid"] = str(hit["bvid"])
         audio["title"] = str(hit.get("title") or "")
@@ -331,7 +342,7 @@ def import_song(
         or (chosen_id if is_bvid(chosen_id) else "")
         or (song_id if is_bvid(song_id or "") else "")
     )
-    if pinned_bvid and try_bilibili_download(pinned_bvid, mp3_path, mtv_path):
+    if pinned_bvid and try_bilibili_audio_with_mv_fallback(pinned_bvid, mp3_path, mtv_path):
         audio_file, audio_source, audio_title, audio_bvid, has_video = (
             "original.mp3",
             "bilibili",
@@ -357,7 +368,7 @@ def import_song(
         hit = pick_bilibili_mv(title_name, artist_name) or pick_bilibili_mv(
             clean_search_title(title_name), ""
         )
-        if hit and try_bilibili_download(str(hit["bvid"]), mp3_path, mtv_path):
+        if hit and try_bilibili_audio_with_mv_fallback(str(hit["bvid"]), mp3_path, mtv_path):
             audio_file, audio_source, audio_title, audio_bvid, has_video = (
                 "original.mp3",
                 "bilibili",

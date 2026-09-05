@@ -1,6 +1,20 @@
 from lovktv.catalog import audio, importer, search
 
 
+def test_bilibili_audio_falls_back_when_mv_download_fails(monkeypatch, tmp_path):
+    calls = []
+
+    def fake_download(bvid, mp3_path, video_path=None):
+        calls.append(video_path)
+        return video_path is None
+
+    monkeypatch.setattr(importer, "try_bilibili_download", fake_download)
+    assert importer.try_bilibili_audio_with_mv_fallback(
+        "BVtest", tmp_path / "original.mp3", tmp_path / "mtv.mp4"
+    )
+    assert calls == [tmp_path / "mtv.mp4", None]
+
+
 def test_pick_lyric_result_prefers_exact_title_over_version_suffix():
     rows = [
         {
