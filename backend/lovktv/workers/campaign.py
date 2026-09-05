@@ -547,6 +547,12 @@ def build_lesson(
             items = _listen_items(unit_id, lines, chunk, pools, rng, lang)
     elif skill == "listen":
         items = _listen_items(unit_id, lines, chunk, pools, rng, lang)
+    items = [
+        item
+        for item in items
+        if (item.get("kind") == "match" and len(item.get("pairs") or []) >= 2)
+        or len(item.get("choices") or []) >= 2
+    ]
     return {
         "schema": CAMPAIGN_SCHEMA,
         "song_id": song_id,

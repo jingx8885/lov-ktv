@@ -50,6 +50,18 @@
   animation: learn-ok-pop 420ms cubic-bezier(.2, .9, .3, 1);
 }
 .learn-choice.is-no { background: rgba(255, 69, 58, .32); }
+.learn-combo {
+  transition: color .2s ease, transform .2s ease;
+}
+.learn-combo.is-hot {
+  color: var(--gold);
+  transform: scale(1.04);
+}
+.learn-combo.is-super {
+  color: #ff4d8d;
+  text-shadow: 0 0 18px rgba(255, 77, 141, .45);
+  transform: scale(1.08);
+}
 @media (prefers-reduced-motion: reduce) {
   .learn-choice:active,
   .learn-choice.is-burst { transform: none; animation: none; }

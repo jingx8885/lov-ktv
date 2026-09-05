@@ -14,7 +14,7 @@ import {
 
 let syncRaf = 0;
 
-/** @type {LearnSession & { running: boolean, combo: number, maxCombo: number, locked: boolean, jump: number }} */
+/** @type {LearnSession & { running: boolean, combo: number, maxCombo: number, points: number, correct: number, wrong: number, answerStartedAt: number, locked: boolean, jump: number }} */
 const session = {
   quiz: null,
   line: 0,
@@ -22,6 +22,10 @@ const session = {
   running: false,
   combo: 0,
   maxCombo: 0,
+  points: 0,
+  correct: 0,
+  wrong: 0,
+  answerStartedAt: 0,
   locked: false,
   jump: -1
 };
@@ -34,6 +38,10 @@ export function resetQuiz(quiz) {
   session.running = false;
   session.combo = 0;
   session.maxCombo = 0;
+  session.points = 0;
+  session.correct = 0;
+  session.wrong = 0;
+  session.answerStartedAt = 0;
   session.locked = false;
   session.jump = -1;
 }
@@ -65,7 +73,11 @@ function lineAt(ms) {
 function paintCombo() {
   const el = $("learnQuizCombo");
   if (!el) return;
-  el.textContent = session.running ? `COMBO ${session.combo}` : t("learn.quizLive");
+  el.textContent = session.running
+    ? `COMBO ${session.combo} · ${session.points} XP`
+    : t("learn.quizLive");
+  el.classList.toggle("is-hot", session.combo >= 3);
+  el.classList.toggle("is-super", session.combo >= 5);
 }
 
 function paintMeta() {
@@ -153,6 +165,7 @@ function showLine(index) {
   session.line = index;
   const item = currentQuestion(line);
   session.locked = !!(item && session.answers[item.id] != null);
+  session.answerStartedAt = performance.now();
   paintMeta();
   paintQuestion(line);
 }
@@ -161,6 +174,7 @@ function missQuestion(item) {
   if (!item || session.answers[item.id] != null) return;
   session.answers[item.id] = -1;
   session.combo = 0;
+  session.wrong += 1;
   session.locked = true;
   if (currentQuestion(currentLine()) === item) markChoices(item, -1);
   playMissSfx();
@@ -214,10 +228,17 @@ function pickChoice(cid, btn) {
   markChoices(item, cid);
   if (cid === item.answer) {
     session.combo += 1;
+    session.correct += 1;
     session.maxCombo = Math.max(session.maxCombo, session.combo);
+    const elapsed = Math.max(0, performance.now() - (session.answerStartedAt || performance.now()));
+    const speedBonus = elapsed < 2200 ? 30 : elapsed < 5000 ? 15 : 0;
+    const comboBonus = Math.min(100, Math.max(0, session.combo - 1) * 10);
+    session.points += 100 + speedBonus + comboBonus;
+    btn.classList.add("is-burst");
     celebrateCorrect(btn, { line: true });
   } else {
     session.combo = 0;
+    session.wrong += 1;
     playMissSfx();
   }
   paintCombo();
@@ -250,6 +271,9 @@ export async function runQuiz() {
   session.answers = {};
   session.combo = 0;
   session.maxCombo = 0;
+  session.points = 0;
+  session.correct = 0;
+  session.wrong = 0;
   session.locked = false;
   session.jump = -1;
   $("learnQuizSkip").disabled = false;
@@ -315,7 +339,16 @@ export function quizScore() {
     }
   }
   const pct = total ? Math.round((ok / total) * 100) : 0;
-  return { ok, total, pct, counts, maxCombo: session.maxCombo };
+  return {
+    ok,
+    total,
+    pct,
+    counts,
+    maxCombo: session.maxCombo,
+    points: session.points,
+    correct: session.correct,
+    wrong: session.wrong
+  };
 }
 
 /** @param {LearnQuiz} pack */
@@ -365,6 +398,7 @@ export function quizScoreView(score, grade) {
   if (counts.listen && counts.listen[1])
     bits.push(t("learn.score.listen", { ok: counts.listen[0], n: counts.listen[1] }));
   if (score.maxCombo) bits.push(`COMBO ${score.maxCombo}`);
+  if (score.points) bits.push(`${score.points} XP`);
   return {
     title: t("learn.score.quiz"),
     again: t("learn.again.quiz"),

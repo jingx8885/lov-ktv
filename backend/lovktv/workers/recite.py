@@ -215,7 +215,7 @@ def build_recite_session(
         }
         for row in rows:
             card = _word_card(row, pools, lang)
-            if card:
+            if card and len(card.get("choices") or []) >= 2:
                 cards.append(card)
     return {
         "schema": RECITE_SCHEMA,

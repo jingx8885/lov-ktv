@@ -33,6 +33,7 @@ const ui = {
   pendingScore: null
 };
 let libraryLoad = 0;
+let songSelectionLoad = 0;
 
 /** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
 const MODES = {
@@ -269,22 +270,42 @@ async function loadLearnLibrary(query = "") {
 
 async function selectLearnSong(songId) {
   if (!songId || !api.loadPlayerSong) return;
+  const selectionLoad = ++songSelectionLoad;
   ui.pack = null;
+  setCampaign(null);
   syncLearnNav(true);
   await api.loadPlayerSong(songId, { play: false });
-  if (!state.playerSong || state.playerSong.id !== songId) return;
-  if (!(state.playerLyrics && state.playerLyrics.cues && state.playerLyrics.cues.length)) {
-    showToast(t("learn.needLyrics"));
+  if (
+    selectionLoad !== songSelectionLoad ||
+    !state.playerSong ||
+    state.playerSong.id !== songId ||
+    !isLearnOpen()
+  ) {
     return;
   }
+  // The player fetches lyrics from the media endpoint in parallel with audio.
+  // That request can briefly fail (for example while an OSS redirect/CORS
+  // check is settling) even though the learning API can already read the
+  // persisted timeline.  Use the campaign response as the source of truth
+  // instead of turning that transient player state into a false "no lyrics".
   showPane("learnHome");
   paintSongHead();
-  const data = await loadCampaign(true, true);
+  paintCampaign(null);
+  const data = await loadCampaign(true);
+  if (
+    selectionLoad !== songSelectionLoad ||
+    !state.playerSong ||
+    state.playerSong.id !== songId ||
+    !isLearnOpen()
+  ) {
+    return;
+  }
   if (data) paintCampaign(data);
   else paintCampaign(null);
 }
 
 function showLearnLibrary() {
+  songSelectionLoad += 1;
   stopModes();
   restoreVocal();
   resetLearnRate();

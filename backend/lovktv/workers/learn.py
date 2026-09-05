@@ -10,6 +10,7 @@ from typing import Any
 
 QUESTIONS_PER_LINE = 1
 LEARN_SCHEMA = "lovktv-learn-v1"
+QUESTION_GENERATOR_VERSION = "2026-09-05-quality-v1"
 
 _SKIP_LINE = re.compile(
     r"^(instrumental|inst\.?|間奏|间奏|前奏|间奏中|outro|intro|bridge|♪+|…+|\.+)$",
@@ -406,14 +407,13 @@ def _choices(
     rng: random.Random,
     extra: tuple[str, ...] = (),
     fallback: tuple[str, ...] | None = None,
+    *,
+    allow_fallback: bool = False,
 ) -> list[dict[str, Any]]:
     answer = _norm(correct)
     distractors: list[str] = []
     seen = {answer}
     fallback_pool = list(_FALLBACK_ZH if fallback is None else fallback)
-    # Prefer real distractors from the same semantic pool.  Fallback labels
-    # should only fill a genuinely tiny pool; mixing "—/…" into a normal word
-    # question makes the exercise look like a broken multiple-choice item.
     for item in pool + list(extra):
         text = _norm(item)
         if not text or text in seen:
@@ -422,7 +422,7 @@ def _choices(
         distractors.append(text)
         if len(distractors) >= 8:
             break
-    if len(distractors) < 3:
+    if allow_fallback and len(distractors) < 3:
         for item in fallback_pool:
             text = _norm(item)
             if not text or text in seen:
@@ -433,7 +433,7 @@ def _choices(
                 break
     rng.shuffle(distractors)
     picked = distractors[:3]
-    while len(picked) < 3:
+    while allow_fallback and len(picked) < 3:
         filler = fallback_pool[len(picked) % len(fallback_pool)] if fallback_pool else "…"
         if filler != answer and filler not in picked:
             picked.append(filler)
@@ -447,6 +447,43 @@ def _choices(
         {"id": index, "text": text, "ok": text == answer}
         for index, text in enumerate(options)
     ]
+
+
+def _real_distractor_count(correct: str, pool: list[str]) -> int:
+    answer = _norm(correct)
+    return len({text for text in (_norm(item) for item in pool) if text and text != answer})
+
+
+def _question_quality(correct: str, pool: list[str], stem: str = "") -> tuple[float, list[str]]:
+    """Score the input before it becomes a learner-facing question.
+
+    This is deliberately deterministic and provider-free.  It catches the most
+    damaging generated-question failures without pretending that a fallback
+    option is semantically valid.
+    """
+    answer = _norm(correct)
+    issues: list[str] = []
+    if not answer:
+        issues.append("empty_answer")
+    if _norm(stem) and answer and answer.casefold() in _norm(stem).casefold():
+        issues.append("answer_leak")
+    real = _real_distractor_count(answer, pool)
+    if real < 1:
+        issues.append("no_valid_distractor")
+    if real < 3:
+        issues.append("insufficient_distractors")
+    score = 1.0
+    if real < 3:
+        score -= 0.35
+    if real < 2:
+        score -= 0.2
+    if real < 1:
+        score = 0.0
+    if "answer_leak" in issues:
+        score -= 0.45
+    if "empty_answer" in issues:
+        score = 0.0
+    return max(0.0, round(score, 2)), issues
 
 
 def _question(
@@ -464,6 +501,7 @@ def _question(
         "stem": stem,
         "choices": [{"id": item["id"], "text": item["text"]} for item in choices],
         "answer": answer,
+        "generator_version": QUESTION_GENERATOR_VERSION,
     }
 
 
@@ -489,41 +527,79 @@ def build_line_questions(
     """One live question per sung line, drawn from that line's bank."""
     from lovktv.locale.i18n import translate
 
-    bank: list[dict[str, Any]] = []
+    bank: list[tuple[dict[str, Any], float, list[str]]] = []
     text = cue_text(cue)
     if has_useful_zh(cue):
-        bank.append(
-            _question(
+        quality, issues = _question_quality(cue_zh(cue), pools["zh"], text)
+        item = _question(
                 f"{index}:meaning:0",
                 "meaning",
                 translate(lang, "api.learn_meaning"),
                 text,
                 _choices(cue_zh(cue), pools["zh"], rng),
             )
-        )
+        item["quality"] = quality
+        item["quality_issues"] = issues
+        bank.append((item, quality, issues))
     for offset, word in enumerate(quiz_words(cue)):
-        bank.append(
-            _question(
+        quality, issues = _question_quality(word["zh"], pools["word"], word["text"])
+        item = _question(
                 f"{index}:word:{offset}",
                 "word",
                 translate(lang, "api.learn_word", word=word["text"]),
                 word["text"],
                 _choices(word["zh"], pools["word"], rng),
             )
-        )
+        item["quality"] = quality
+        item["quality_issues"] = issues
+        bank.append((item, quality, issues))
     if not bank and text:
-        bank.append(
-            _question(
+        quality, issues = _question_quality(text, pools["text"], "")
+        item = _question(
                 f"{index}:listen:0",
                 "listen",
                 translate(lang, "api.learn_listen"),
                 text,
                 _choices(text, pools["text"], rng),
             )
-        )
+        item["quality"] = quality
+        item["quality_issues"] = issues
+        bank.append((item, quality, issues))
     if not bank:
         return []
-    return [rng.choice(bank)]
+    # Keep one question per line for the live quiz, but choose from the best
+    # candidates and rotate ties deterministically instead of random quality.
+    bank = [item for item in bank if len(item[0].get("choices") or []) >= 2]
+    if not bank:
+        return []
+    best = max(item[1] for item in bank)
+    candidates = [item for item in bank if item[1] == best]
+    return [candidates[index % len(candidates)][0]]
+
+
+def audit_learn_quiz(quiz: dict[str, Any]) -> dict[str, Any]:
+    """Return actionable quality metrics for a generated quiz."""
+    questions = [
+        question
+        for line in quiz.get("lines") or []
+        for question in line.get("questions") or []
+    ]
+    issue_counts: dict[str, int] = {}
+    for question in questions:
+        for issue in question.get("quality_issues") or []:
+            issue_counts[issue] = issue_counts.get(issue, 0) + 1
+    low_quality = sum(1 for question in questions if float(question.get("quality") or 0) < 0.7)
+    return {
+        "total_questions": len(questions),
+        "quality_score": round(
+            sum(float(question.get("quality") or 0) for question in questions) / len(questions), 2
+        )
+        if questions
+        else 0.0,
+        "low_quality_questions": low_quality,
+        "issue_counts": issue_counts,
+        "generator_version": QUESTION_GENERATOR_VERSION,
+    }
 
 
 def _song_meta(timeline: dict[str, Any], song: dict[str, Any] | None) -> dict[str, Any]:
@@ -574,4 +650,5 @@ def build_learn_quiz(
         "questions_per_line": QUESTIONS_PER_LINE,
         "lines": lines,
         "total_questions": sum(len(line["questions"]) for line in lines),
+        "generator_version": QUESTION_GENERATOR_VERSION,
     }

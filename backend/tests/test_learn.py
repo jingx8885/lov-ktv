@@ -10,7 +10,12 @@ from lovktv.workers.campaign import (
     knowledge_words,
     singable_cues,
 )
-from lovktv.workers.learn import QUESTIONS_PER_LINE, build_learn_quiz, is_singable_cue
+from lovktv.workers.learn import (
+    QUESTIONS_PER_LINE,
+    audit_learn_quiz,
+    build_learn_quiz,
+    is_singable_cue,
+)
 
 JA_TIMELINE = {
     "language": "ja",
@@ -121,6 +126,32 @@ def test_skips_instrumental_and_mixes_meaning_with_words():
     assert [item["text"] for item in first["words"]] == ["走る", "記憶"]
     night = next(line for line in quiz["lines"] if line["text"] == "夜の風")
     assert [item["text"] for item in night["words"]] == ["夜", "の", "風"]
+
+
+def test_quiz_exposes_generator_quality_audit():
+    quiz = build_learn_quiz(
+        JA_TIMELINE,
+        {"id": "s1", "title": "群青", "artist": "YOASOBI", "language": "ja"},
+    )
+    report = audit_learn_quiz(quiz)
+    assert quiz["generator_version"]
+    assert report["generator_version"] == quiz["generator_version"]
+    assert report["total_questions"] == quiz["total_questions"]
+    assert report["quality_score"] >= 0
+    assert isinstance(report["issue_counts"], dict)
+    for line in quiz["lines"]:
+        for question in line["questions"]:
+            assert "quality" in question
+            assert "quality_issues" in question
+
+
+def test_quality_audit_flags_answer_leak_and_missing_distractors():
+    from lovktv.workers.learn import _question_quality
+
+    score, issues = _question_quality("夜晚", ["夜晚", "天空"], "夜晚是什么？")
+    assert score < 0.7
+    assert "answer_leak" in issues
+    assert "insufficient_distractors" in issues
 
 
 def test_tap_words_keeps_order_and_skips_punct():
