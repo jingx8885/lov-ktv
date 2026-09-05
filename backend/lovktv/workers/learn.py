@@ -494,6 +494,14 @@ def _question(
     choices: list[dict[str, Any]],
 ) -> dict[str, Any]:
     answer = next((item["id"] for item in choices if item.get("ok")), 0)
+    answer_text = next((item["text"] for item in choices if item.get("ok")), "")
+    fingerprint = "|".join(
+        [
+            _norm(kind).casefold(),
+            _norm(stem).casefold(),
+            _norm(answer_text).casefold(),
+        ]
+    )
     return {
         "id": qid,
         "kind": kind,
@@ -501,6 +509,8 @@ def _question(
         "stem": stem,
         "choices": [{"id": item["id"], "text": item["text"]} for item in choices],
         "answer": answer,
+        "answer_text": answer_text,
+        "fingerprint": fingerprint,
         "generator_version": QUESTION_GENERATOR_VERSION,
     }
 
@@ -585,9 +595,14 @@ def audit_learn_quiz(quiz: dict[str, Any]) -> dict[str, Any]:
         for question in line.get("questions") or []
     ]
     issue_counts: dict[str, int] = {}
+    fingerprints: dict[str, int] = {}
     for question in questions:
+        fingerprint = _norm(question.get("fingerprint"))
+        if fingerprint:
+            fingerprints[fingerprint] = fingerprints.get(fingerprint, 0) + 1
         for issue in question.get("quality_issues") or []:
             issue_counts[issue] = issue_counts.get(issue, 0) + 1
+    duplicate_questions = sum(count - 1 for count in fingerprints.values() if count > 1)
     low_quality = sum(1 for question in questions if float(question.get("quality") or 0) < 0.7)
     return {
         "total_questions": len(questions),
@@ -597,6 +612,7 @@ def audit_learn_quiz(quiz: dict[str, Any]) -> dict[str, Any]:
         if questions
         else 0.0,
         "low_quality_questions": low_quality,
+        "duplicate_questions": duplicate_questions,
         "issue_counts": issue_counts,
         "generator_version": QUESTION_GENERATOR_VERSION,
     }
@@ -623,10 +639,23 @@ def build_learn_quiz(
     pools = _line_pools(cues)
     song_id = _norm(song.get("id") or timeline.get("song_id"))
     lines: list[dict[str, Any]] = []
+    seen_fingerprints: set[str] = set()
+    duplicate_lines_removed = 0
     for index, cue in enumerate(cues):
         rng = _seeded_rng(LEARN_SCHEMA, song_id, index, cue_text(cue))
         questions = build_line_questions(cue, index, pools, rng, lang=lang)
         if not questions:
+            continue
+        unique_questions = []
+        for question in questions:
+            fingerprint = _norm(question.get("fingerprint"))
+            if fingerprint and fingerprint in seen_fingerprints:
+                duplicate_lines_removed += 1
+                continue
+            if fingerprint:
+                seen_fingerprints.add(fingerprint)
+            unique_questions.append(question)
+        if not unique_questions:
             continue
         lines.append(
             {
@@ -637,7 +666,7 @@ def build_learn_quiz(
                 "zh": cue_zh(cue),
                 "romaji": cue_romaji(cue),
                 "words": tap_words(cue),
-                "questions": questions,
+                "questions": unique_questions,
             }
         )
     return {
@@ -650,5 +679,6 @@ def build_learn_quiz(
         "questions_per_line": QUESTIONS_PER_LINE,
         "lines": lines,
         "total_questions": sum(len(line["questions"]) for line in lines),
+        "duplicate_lines_removed": duplicate_lines_removed,
         "generator_version": QUESTION_GENERATOR_VERSION,
     }

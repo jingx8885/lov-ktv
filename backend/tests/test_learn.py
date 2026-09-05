@@ -154,6 +154,29 @@ def test_quality_audit_flags_answer_leak_and_missing_distractors():
     assert "insufficient_distractors" in issues
 
 
+def test_quiz_deduplicates_repeated_lyric_questions():
+    timeline = {
+        "language": "ja",
+        "cues": [
+            {
+                "text": text,
+                "zh": gloss,
+                "start_ms": index * 1000,
+                "end_ms": index * 1000 + 800,
+                "tokens": [{"text": "光", "zh": "光", "romaji": "hikari"}],
+            }
+            for index, (text, gloss) in enumerate(
+                [("光がある", "有光"), ("光がある", "有光"), ("夜が来る", "夜晚到来")]
+            )
+        ],
+    }
+    quiz = build_learn_quiz(timeline, {"id": "repeat", "language": "ja"})
+    assert quiz["duplicate_lines_removed"] == 1
+    assert [line["text"] for line in quiz["lines"]] == ["光がある", "夜が来る"]
+    report = audit_learn_quiz(quiz)
+    assert report["duplicate_questions"] == 0
+
+
 def test_tap_words_keeps_order_and_skips_punct():
     from lovktv.workers.learn import tap_words
 
