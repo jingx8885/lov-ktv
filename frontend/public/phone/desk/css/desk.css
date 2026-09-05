@@ -871,6 +871,18 @@ body.phone .page-desk > .lyric-seg { display: none; }
     min-height: 36px;
   }
 
+  body.phone .page-desk .desk-lib #songs .desk-actions .retry-action {
+    width: auto;
+    min-width: 52px;
+    gap: 3px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  body.phone .page-desk .desk-lib #songs .desk-actions .retry-action span {
+    display: inline;
+  }
+
   body.phone .page-desk .desk-pane,
   body.phone .page-desk #queue,
   body.phone .page-desk .desk-lib,

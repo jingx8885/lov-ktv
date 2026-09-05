@@ -350,6 +350,10 @@ def api_admin_retry_song(request: Request, song_id: str) -> dict:
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
+    if song.get("status") != "failed" and not (
+        song.get("status") == "ready" and str(song.get("error") or "").strip()
+    ):
+        fail(request, 400, "api.retry_only_failed")
     update_song(song_id, status="queued", error="")
     spawn(
         process_import,

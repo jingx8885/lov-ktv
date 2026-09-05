@@ -155,6 +155,24 @@ def test_download_mv_rejects_multi_page_without_explicit_page(monkeypatch, tmp_p
     assert not bilibili.download_mv("BVmulti", tmp_path / "original.mp3")
 
 
+def test_download_mv_requires_video_when_requested(monkeypatch, tmp_path):
+    monkeypatch.setattr(
+        bilibili,
+        "play_urls",
+        lambda *args, **kwargs: {
+            "audio_url": "https://example/audio",
+            "video_url": "https://example/video",
+            "page_count": 1,
+        },
+    )
+    monkeypatch.setattr(bilibili, "_curl_download", lambda url, dest, **kwargs: True)
+    monkeypatch.setattr(bilibili, "_to_mp3", lambda src, dest: True)
+    monkeypatch.setattr(bilibili, "_to_mtv", lambda src, dest, audio: False)
+    assert not bilibili.download_mv(
+        "BVvideo", tmp_path / "original.mp3", tmp_path / "mtv.mp4"
+    )
+
+
 def test_score_prefers_official_mv():
     official = {
         "title": "周杰伦-晴天[正版]",

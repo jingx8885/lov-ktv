@@ -58,7 +58,7 @@ export function renderLibIndex(letters) {
 
 function songRow(song) {
   const canPlay = song.status === "ready";
-  const canRetry = song.status === "failed";
+  const canRetry = song.status === "failed" || (song.status === "ready" && !!String(song.error || "").trim());
   const canRecalculate = song.status === "ready" && state.songAdmin && song.can_realign !== false;
   const canDelete = song.status !== "fetching" && song.status !== "separating";
   const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
@@ -74,7 +74,7 @@ function songRow(song) {
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
             ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
             ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
-            ${canRetry ? `<button class="row-action ghost" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}</button>` : ""}
+            ${canRetry ? `<button class="row-action ghost retry-action" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}<span>${t("phone.desk.retry")}</span></button>` : ""}
             ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
           </div>
         </div>`;
@@ -204,8 +204,14 @@ function bindSongActions() {
       btn.onclick = async (event) => {
         event.stopPropagation();
         btn.disabled = true;
-        await fetch(`/api/songs/${btn.dataset.retry}/retry`, { method: "POST" });
-        loadSongs(false);
+        const result = await fetchJson(`/api/songs/${encodeURIComponent(btn.dataset.retry)}/retry`, { method: "POST" }).catch(() => null);
+        if (!result || !result.ok) {
+          showToast(result?.data?.detail || t("common.saveFailed"));
+          btn.disabled = false;
+          return;
+        }
+        showToast(t("phone.desk.retry"));
+        await loadSongs(false, true);
       };
     });
   $("songs")

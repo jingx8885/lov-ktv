@@ -441,8 +441,9 @@ def complete_json(
         if data.get("code") not in (None, 0, 200):
             raise RuntimeError(str(data.get("msg") or "agent 请求失败"))
         data = data["data"]
-    message = (data.get("choices") or [{}])[0].get("message") or {}
-    content = message.get("content") or ""
+    choice = (data.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    content = message.get("content") or choice.get("text") or ""
     if isinstance(content, list):
         content = "".join(
             part.get("text") or "" if isinstance(part, dict) else str(part)

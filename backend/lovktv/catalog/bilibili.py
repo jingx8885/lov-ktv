@@ -660,12 +660,16 @@ def download_mv(
             return False
         if not _to_mp3(audio_tmp, mp3_path):
             return False
-        video_url = (urls.get("video_url") or "") if video_path is not None else ""
-        if video_url and video_path is not None:
+        if video_path is not None:
+            video_url = urls.get("video_url") or ""
+            if not video_url:
+                return False
             video_tmp = video_path.with_suffix(".bili.m4s")
             try:
-                if _curl_download(video_url, video_tmp, timeout=300):
-                    _to_mtv(video_tmp, video_path, audio_tmp)
+                if not _curl_download(video_url, video_tmp, timeout=300):
+                    return False
+                if not _to_mtv(video_tmp, video_path, audio_tmp):
+                    return False
             finally:
                 if video_tmp.exists():
                     video_tmp.unlink()

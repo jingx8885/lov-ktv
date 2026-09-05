@@ -257,7 +257,7 @@ async function loadSongs() {
   $("songs").innerHTML = rowsHtml(
     [t("admin.tab.songs"), "", ""],
     (data.songs || []).map((song) => {
-      const retry = `<button type="button" class="btn" data-retry="${song.id}">${t("admin.retry")}</button>`;
+      const retry = song.status === "failed" || (song.status === "ready" && song.error) ? `<button type="button" class="btn" data-retry="${song.id}">${t("admin.retry")}</button>` : "";
       const songId = encodeURIComponent(song.id);
       return `<tr>
         <td>
