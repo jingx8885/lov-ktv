@@ -47,15 +47,35 @@ def align_lines_official_clock(
     shift = 0
     if timed and phrases:
         first_ms = int(timed[0]["ms"])
-        later_alive = any(
-            _voice_covers(regions, int(item["ms"]))
-            for item in timed[1:]
-            if item.get("ms") is not None
-        )
-        if (
-            first_ms < 1000 or not _voice_covers(regions, first_ms)
-        ) and not later_alive:
+        if first_ms < 5000 and phrases[0][0] - first_ms > 3000:
             shift = estimate_lrc_offset(timed, phrases)
+
+    if asr_words and timed and len(timed) >= 3:
+        probe_cursor = 0
+        probe_total = 0
+        probe_matched = 0
+        for item in timed[:8]:
+            known = normalize_lyric(str(item.get("text") or ""), language)
+            if not known:
+                continue
+            official = int(item["ms"]) + shift
+            probe_total += 1
+            probe = _best_asr_window(
+                known,
+                asr_words,
+                texts,
+                language,
+                probe_cursor,
+                official - ASR_WINDOW_BEFORE,
+                official + ASR_RESCUE_AFTER,
+                accept,
+            )
+            if probe:
+                probe_matched += 1
+                probe_cursor = probe[2]
+        if probe_total >= 3 and probe_matched / probe_total < 0.4:
+            asr_words = []
+            texts = []
 
     cursor = 0
     bounds: list[dict[str, Any]] = []

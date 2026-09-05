@@ -230,6 +230,12 @@ def test_small_lrc_jitter_does_not_shift():
     assert estimate_lrc_offset([{"ms": 1050, "text": "a"}], [(9900, 13000)]) == 8850
 
 
+def test_lrc_offset_uses_consensus_of_early_onsets():
+    lines = [{"ms": value, "text": "x"} for value in (1000, 5000, 9000, 13000)]
+    phrases = [(3500, 4500), (7500, 8500), (11500, 12500), (15500, 16500)]
+    assert estimate_lrc_offset(lines, phrases) == 2500
+
+
 def test_late_vocals_shift_official_lrc():
     hop = 20
     env = _pulse(40, hop, [(9.9, 13.2), (25.0, 29.0)])

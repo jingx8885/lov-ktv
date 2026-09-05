@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from statistics import median
 import unicodedata
 from difflib import SequenceMatcher
 from typing import Any
@@ -229,12 +230,24 @@ def vocal_phrases(
 def estimate_lrc_offset(
     lines: list[dict[str, Any]], phrases: list[tuple[int, int]]
 ) -> int:
-    """Shift official LRC only when the first vocal is clearly elsewhere."""
+    """Estimate a robust global LRC shift from the first few vocal onsets."""
     timed = [item for item in lines if item.get("ms") is not None]
     if not timed or not phrases:
         return 0
-    raw = phrases[0][0] - int(timed[0]["ms"])
+    first_expected = int(timed[0]["ms"])
+    first_onset = min(phrases, key=lambda phrase: abs(phrase[0] - first_expected))[0]
+    first_raw = first_onset - first_expected
+    samples = [first_raw]
+    for item in timed[1:5]:
+        expected = int(item["ms"])
+        target = expected + first_raw
+        onset = min(phrases, key=lambda phrase: abs(phrase[0] - target))[0]
+        samples.append(onset - expected)
+    raw = first_raw if len(samples) <= 2 else int(median(samples))
     if abs(raw) < 1500:
+        return 0
+    agreeing = sum(abs(sample - raw) <= 700 for sample in samples)
+    if len(samples) > 2 and agreeing < max(2, (len(samples) + 1) // 2):
         return 0
     return max(-2000, min(20000, raw))
 
