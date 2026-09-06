@@ -309,7 +309,18 @@ export async function startPhoneMic(opts) {
     state.phoneMic = null;
   }
   disconnectPhoneMicGraph();
-  state.phoneMic = await acquirePhoneMic();
+  try {
+    state.phoneMic = await acquirePhoneMic();
+  } catch (err) {
+    // A service stop is asynchronous on Android. If Chromium still reports
+    // a busy audio source, repeat the native shutdown and give AudioRecord a
+    // full handoff window before opening WebView capture again.
+    const raw = String((err && err.message) || err || "");
+    if (!/audio source|notreadable|source/i.test(raw) || !forceWeb) throw err;
+    await stopNativeMicForWeb();
+    await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    state.phoneMic = await acquirePhoneMic();
+  }
   applyPhoneMonitor();
   if (state.phoneIem && jack.sink) await routePhoneSink(jack.sink);
   applyPlayerVocalMix();
