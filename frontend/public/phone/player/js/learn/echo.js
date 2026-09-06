@@ -132,7 +132,14 @@ function recordWindow(stream, startMs, endMs) {
     rec.onstop = () => resolve(new Blob(chunks, { type: rec.mimeType || mime || "audio/webm" }));
     rec.onerror = () => resolve(null);
   });
-  rec.start();
+  // Mobile browsers can reject start when the microphone track was just
+  // resumed or has ended. Treat that line as unsung instead of aborting the
+  // entire challenge.
+  try {
+    rec.start();
+  } catch (err) {
+    return Promise.resolve(null);
+  }
   return playCueWindow(startMs, endMs, { vocal: false }).then((ok) => {
     if (rec.state !== "inactive") rec.stop();
     return done.then((blob) => (ok && blob && blob.size ? blob : null));
