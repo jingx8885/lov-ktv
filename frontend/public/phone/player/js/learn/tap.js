@@ -163,6 +163,8 @@ function scatterTiles(words, field) {
   const placed = [];
   words.forEach((word, i) => {
     const size = tileBox(word.text);
+    // Account for padding and narrow phone screens before placing a tile.
+    size.w = Math.min(size.w, Math.max(56, viewW - pad * 2));
     let box = null;
     for (let tryN = 0; tryN < 48; tryN += 1) {
       const next = {
@@ -178,15 +180,16 @@ function scatterTiles(words, field) {
     }
     if (!box) {
       box = {
-        left: pad + ((i * 73) % Math.max(12, viewW - size.w - pad)),
-        top: pad + ((i * 97) % Math.max(12, viewH - size.h - pad)),
+        left: Math.max(pad, Math.min(viewW - size.w - pad, pad + ((i * 73) % Math.max(1, viewW - size.w - pad * 2)))),
+        top: Math.max(pad, Math.min(viewH - size.h - pad, pad + ((i * 97) % Math.max(1, viewH - size.h - pad * 2)))),
         w: size.w,
         h: size.h
       };
     }
     placed.push({
       ...box,
-      rot: (Math.random() - 0.5) * 22,
+      // Rotation pushes the visual corners outside the field on small screens.
+      rot: 0,
       bob: -(6 + Math.random() * 10),
       delay: Math.floor(Math.random() * 1200),
       dur: 2.2 + Math.random() * 1.8,

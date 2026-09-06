@@ -48,6 +48,7 @@
 }
 .learn-tap-tile {
   appearance: none;
+  box-sizing: border-box;
   position: absolute;
   min-width: 56px;
   min-height: 48px;
