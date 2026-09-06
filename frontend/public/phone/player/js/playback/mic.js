@@ -255,7 +255,9 @@ async function stopNativeMicForWeb() {
   if (current.tv || state.phoneStartedTv || state.phoneNativeLive) {
     await nativeCall("stopTvMic").catch(() => {});
   }
-  const deadline = Date.now() + 1500;
+  // MicService reports live=false only after AudioRecord.release(). Keep a
+  // bounded grace period for older APKs that still clear it early.
+  const deadline = Date.now() + 3000;
   while (Date.now() < deadline) {
     const next = nativeMicState();
     if (!next.tv && !next.iem) break;
@@ -266,7 +268,7 @@ async function stopNativeMicForWeb() {
   // MicService flips its live flag before AudioRecord.release() completes.
   // Leave a small handoff gap so Chromium does not race that release.
   await new Promise((resolve) => {
-    window.setTimeout(resolve, 250);
+    window.setTimeout(resolve, 350);
   });
   state.phoneNativeLive = false;
   state.phoneStartedTv = false;

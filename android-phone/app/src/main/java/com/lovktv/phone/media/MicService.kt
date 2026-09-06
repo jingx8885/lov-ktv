@@ -70,7 +70,6 @@ class MicService : Service() {
 
     override fun onDestroy() {
         running = false
-        live = false
         try {
             record?.stop()
         } catch (_: Exception) {
@@ -82,6 +81,10 @@ class MicService : Service() {
         releaseIem()
         thread?.join(400)
         thread = null
+        // Keep the service marked live until AudioRecord.release() has
+        // completed. The WebView uses this flag to avoid opening a second
+        // capture device while Android is still tearing the first one down.
+        live = false
         super.onDestroy()
     }
 
