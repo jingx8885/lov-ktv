@@ -569,7 +569,10 @@ def build_line_questions(
                 f"{index}:listen:0",
                 "listen",
                 translate(lang, "api.learn_listen"),
-                text,
+                # Listening questions must not print the sentence being
+                # asked for. With no translation/token gloss available this
+                # fallback used to put the answer in the stem verbatim.
+                "",
                 _choices(text, pools["text"], rng),
             )
         item["quality"] = quality
