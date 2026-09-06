@@ -506,7 +506,10 @@ def _sentence_items(
                 f"{unit_id}:listen:{offset}",
                 "listen",
                 translate(lang, "api.learn_listen"),
-                line["text"],
+                # The sentence is delivered as audio for listening drills;
+                # printing it in the stem would reveal the answer before the
+                # learner hears it.
+                "",
                 _choices(line["text"], pools["text"], rng),
                 knowledge,
             )
