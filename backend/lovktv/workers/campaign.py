@@ -425,7 +425,23 @@ def _sentence_items(
     lang: str,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
-    glossed = [line for line, cue in zip(lines, cues) if has_useful_zh(cue)]
+    # Matching needs distinct left/right labels. Repeated chorus lines are
+    # common in lyrics and otherwise render as duplicate buttons that cannot
+    # be meaningfully paired.
+    glossed: list[dict[str, Any]] = []
+    seen_pairs: set[tuple[str, str]] = set()
+    seen_left: set[str] = set()
+    seen_right: set[str] = set()
+    for line, cue in zip(lines, cues):
+        if not has_useful_zh(cue):
+            continue
+        pair_key = (_norm(line["text"]).casefold(), _norm(line["zh"]).casefold())
+        if not pair_key[0] or pair_key in seen_pairs or pair_key[0] in seen_left or pair_key[1] in seen_right:
+            continue
+        seen_pairs.add(pair_key)
+        seen_left.add(pair_key[0])
+        seen_right.add(pair_key[1])
+        glossed.append(line)
     if len(glossed) >= 2:
         picked = glossed[:4]
         items.append(
