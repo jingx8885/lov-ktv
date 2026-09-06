@@ -123,7 +123,18 @@ function waitReview() {
 /** @param {MediaStream} stream @param {number} startMs @param {number} endMs */
 function recordWindow(stream, startMs, endMs) {
   const mime = recMime();
-  const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  let rec = null;
+  try {
+    rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+  } catch (err) {
+    // Some Android WebViews advertise a codec but reject it when the audio
+    // source is opened. Let the platform choose its default recorder format.
+    try {
+      rec = new MediaRecorder(stream);
+    } catch (fallbackErr) {
+      return Promise.resolve(null);
+    }
+  }
   const chunks = [];
   rec.ondataavailable = (event) => {
     if (event.data && event.data.size) chunks.push(event.data);

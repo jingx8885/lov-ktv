@@ -78,12 +78,20 @@ export async function acquirePhoneMic() {
   }
   return withTimeout(async () => {
     let last = null;
-    for (const audio of phoneMicAudioConstraints()) {
-      try {
-        return await navigator.mediaDevices.getUserMedia({ audio, video: false });
-      } catch (err) {
-        last = err;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      for (const audio of phoneMicAudioConstraints()) {
+        try {
+          return await navigator.mediaDevices.getUserMedia({ audio, video: false });
+        } catch (err) {
+          last = err;
+        }
       }
+      const raw = String((last && last.message) || last || "");
+      if (!/audio source|notreadable|source/i.test(raw)) break;
+      // Android may need a short handoff after AudioRecord.release().
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, 350);
+      });
     }
     throw last || new Error(t("phone.mic.fail"));
   }, MIC_WAIT_MS);
@@ -241,7 +249,6 @@ async function startNativePhoneMic() {
 async function stopNativeMicForWeb() {
   if (!hasNativeMic()) return;
   const current = nativeMicState();
-  if (!state.phoneNativeLive && !current.tv && !current.iem) return;
   if (current.iem || state.phoneNativeLive) {
     await nativeCall("stopIem").catch(() => {});
   }
