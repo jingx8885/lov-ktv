@@ -88,9 +88,11 @@ def test_learn_prompt_follows_locale():
             }
         ],
     }
+    # A lone gloss has no real distractors and must not generate a fake quiz.
+    assert build_learn_quiz(timeline, {"id": "s1"}, lang="en")["lines"] == []
+    for i, (text, gloss) in enumerate([("青い空", "蓝色天空"), ("夜の風", "夜晚的风"), ("夢を見る", "做梦")], 1):
+        timeline["cues"].append({"text": text, "zh": gloss, "start_ms": i * 2000, "end_ms": i * 2000 + 1000, "tokens": []})
     quiz = build_learn_quiz(timeline, {"id": "s1"}, lang="en")
-    prompt = quiz["lines"][0]["questions"][0]["prompt"]
-    assert prompt in {
-        translate("en", "api.learn_meaning"),
-        translate("en", "api.learn_word", word="走る"),
-    }
+    questions = [q for line in quiz["lines"] for q in line["questions"]]
+    assert questions
+    assert any(q["prompt"] == translate("en", "api.learn_meaning") for q in questions)

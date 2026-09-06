@@ -258,6 +258,7 @@ interface LearnEchoClip {
 }
 
 interface LearnEchoSession {
+  vocal: boolean;
   lines: LearnLine[];
   index: number;
   clips: LearnEchoClip[];

@@ -202,7 +202,7 @@ def test_tap_words_keeps_order_and_skips_punct():
     assert [item["text"] for item in chars] == list("我从草原来")
 
 
-def test_campaign_is_one_song_with_locked_path():
+def test_campaign_has_independent_skills_within_unit():
     song = {"id": "s1", "title": "群青", "language": "ja"}
     campaign = build_campaign(JA_TIMELINE, song)
     assert campaign["schema"] == "lovktv-learn-campaign-v1"
@@ -210,7 +210,7 @@ def test_campaign_is_one_song_with_locked_path():
     skills = [item["id"] for item in campaign["units"][0]["skills"]]
     assert skills == ["word", "sentence", "listen", "read", "sing"]
     assert campaign["units"][0]["skills"][0]["status"] == "ready"
-    assert {item["status"] for item in campaign["units"][0]["skills"][1:]} == {"locked"}
+    assert {item["status"] for item in campaign["units"][0]["skills"][1:]} == {"ready"}
     assert campaign["goal"]["words"]["total"] == len(knowledge_words(singable_cues(JA_TIMELINE)))
     assert campaign["goal"]["sentences"]["total"] == 3
     assert campaign["goal"]["cleared"] is False
@@ -226,7 +226,7 @@ def test_campaign_is_one_song_with_locked_path():
 
 def test_campaign_chunks_long_songs():
     cues = []
-    for index in range(8):
+    for index in range(16):
         cues.append(
             {
                 "text": f"行{index}走る",
@@ -240,7 +240,7 @@ def test_campaign_chunks_long_songs():
             }
         )
     units = chunk_units(cues)
-    assert [len(unit) for unit in units] == [4, 4]
+    assert [len(unit) for unit in units] == [8, 8]
     campaign = build_campaign({"cues": cues}, {"id": "long"})
     assert len(campaign["units"]) == 2
     assert campaign["units"][1]["skills"][0]["status"] == "locked"
@@ -263,7 +263,7 @@ def test_campaign_chunks_long_songs():
     assert progressed["goal"]["sing"]["done"] == 1
 
 
-def test_word_lesson_covers_every_word_in_dense_unit():
+def test_word_lesson_samples_eight_unique_words_from_dense_unit():
     cues = []
     for index in range(4):
         cues.append(
@@ -285,7 +285,8 @@ def test_word_lesson_covers_every_word_in_dense_unit():
         for item in lesson["items"]
         if item.get("kind") == "word"
     }
-    assert keys == {f"w{index}{suffix}" for index in range(4) for suffix in "abc"}
+    assert len(lesson["items"]) == len(keys) == 8
+    assert keys <= {f"w{index}{suffix}" for index in range(4) for suffix in "abc"}
 
 
 def test_japanese_word_lesson_drills_kana_not_chinese_gloss():
@@ -542,7 +543,7 @@ def test_phone_learn_shell_is_wired():
     assert "playbackRate" in play
     assert "export function paintLearnLine" in play
     assert 'hold: "confirm"' in play
-    assert "hold: 5000" in play
+    assert 'normal: { id: "normal", rate: 1, hold: "confirm" }' in play
     assert "rate: 1.25" not in play
     assert "export function holdAfterLine" in play
     assert "needsLineHold" in quiz
@@ -662,7 +663,7 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
         assert path["goal"]["sentences"]["total"] == 3
         assert path["goal"]["read"]["total"] == 1
         assert path["units"][0]["skills"][0]["status"] == "ready"
-        assert path["units"][0]["skills"][1]["status"] == "locked"
+        assert path["units"][0]["skills"][1]["status"] == "ready"
         lesson = client.get(f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=word")
         assert lesson.status_code == 200
         body = lesson.json()
@@ -756,7 +757,7 @@ def test_learn_submit_rejects_empty_score_and_locked_unit(tmp_path, monkeypatch)
             "end_ms": i * 1000 + 900,
             "tokens": [{"text": f"w{i}", "zh": f"词{i}"}],
         }
-        for i in range(4)
+        for i in range(16)
     ]
     (folder / "lyrics.json").write_text(json.dumps({"cues": cues}), encoding="utf8")
     with TestClient(main.app) as client:
@@ -765,7 +766,9 @@ def test_learn_submit_rejects_empty_score_and_locked_unit(tmp_path, monkeypatch)
             json={"unit_id": "u0", "skill": "word", "pct": 100, "answers": []},
         )
         assert empty.status_code == 400
-        locked = client.get(
+        available = client.get(
             f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=sentence"
         )
+        assert available.status_code == 200
+        locked = client.get(f"/api/songs/{song['id']}/learn/lesson?unit=u1&skill=word")
         assert locked.status_code == 403
