@@ -299,6 +299,21 @@
   color: rgba(255, 255, 255, .34);
   cursor: not-allowed;
 }
+.learn-node.is-loading {
+  cursor: progress;
+  color: rgba(255, 255, 255, .9);
+  animation: none;
+}
+.learn-node.is-loading::after {
+  content: "";
+  width: 22px;
+  height: 22px;
+  border: 3px solid rgba(255, 255, 255, .35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: learn-node-loading .7s linear infinite;
+}
+@keyframes learn-node-loading { to { transform: rotate(360deg); } }
 .learn-node.is-current {
   animation: learn-node-pulse 1.9s ease-out infinite;
 }
@@ -335,6 +350,23 @@
   margin-left: -6px;
   background: #fff;
   clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.learn-node.is-current.is-loading::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 3px solid rgba(255, 255, 255, .35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: none;
+  animation: learn-node-loading .7s linear infinite;
 }
 .learn-node:active:not(.is-locked) {
   transform: translateY(4px);

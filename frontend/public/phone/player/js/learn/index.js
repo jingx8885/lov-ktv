@@ -35,6 +35,7 @@ const ui = {
 let libraryLoad = 0;
 let songSelectionLoad = 0;
 let pendingSongId = "";
+let pendingSkillKey = "";
 
 /** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
 const MODES = {
@@ -115,6 +116,7 @@ export function exitLearn() {
   if (!isLearnOpen()) return;
   songSelectionLoad += 1;
   pendingSongId = "";
+  pendingSkillKey = "";
   paintSongSelection();
   ui.generation += 1;
   stopModes();
@@ -321,6 +323,7 @@ async function selectLearnSong(songId) {
 function showLearnLibrary() {
   songSelectionLoad += 1;
   pendingSongId = "";
+  pendingSkillKey = "";
   stopModes();
   restoreVocal();
   resetLearnRate();
@@ -449,27 +452,44 @@ async function startMode(mode, pack) {
 
 async function startSkill(unitId, skill) {
   const song = state.playerSong;
-  if (!song) return;
+  if (!song || pendingSkillKey) return;
   const generation = ui.generation;
-  const { ok, status, data } = await fetchJson(
-    `/api/songs/${song.id}/learn/lesson?unit=${encodeURIComponent(unitId)}&skill=${encodeURIComponent(skill)}`
-  );
-  if (!ok || generation !== ui.generation || !isLearnOpen()) {
-    if (!ok) showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
-    return;
+  const key = `${unitId}:${skill}`;
+  pendingSkillKey = key;
+  paintSkillSelection();
+  try {
+    const { ok, status, data } = await fetchJson(
+      `/api/songs/${song.id}/learn/lesson?unit=${encodeURIComponent(unitId)}&skill=${encodeURIComponent(skill)}`
+    );
+    if (!ok || generation !== ui.generation || !isLearnOpen()) {
+      if (!ok) showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
+      return;
+    }
+    ui.run = { unitId, skill };
+    ui.lesson = data;
+    if (data.play_mode === "tap" || data.play_mode === "echo") {
+      const pack = await loadPack();
+      if (!pack || generation !== ui.generation || !isLearnOpen()) return;
+      return startMode(data.play_mode, scopedPack(data.lines || pack.lines));
+    }
+    await startLessonRun(data);
+  } finally {
+    if (pendingSkillKey === key) {
+      pendingSkillKey = "";
+      paintSkillSelection();
+    }
   }
-  if (!ok) {
-    showToast((data && data.detail) || (status === 409 ? t("learn.cant") : t("learn.loadFail")));
-    return;
-  }
-  ui.run = { unitId, skill };
-  ui.lesson = data;
-  if (data.play_mode === "tap" || data.play_mode === "echo") {
-    const pack = await loadPack();
-    if (!pack || generation !== ui.generation || !isLearnOpen()) return;
-    return startMode(data.play_mode, scopedPack(data.lines || pack.lines));
-  }
-  await startLessonRun(data);
+}
+
+function paintSkillSelection() {
+  document.querySelectorAll("#learnPath [data-skill]").forEach((btn) => {
+    const loading = `${btn.dataset.unit}:${btn.dataset.skill}` === pendingSkillKey;
+    btn.disabled = loading;
+    btn.classList.toggle("is-loading", loading);
+    btn.setAttribute("aria-busy", String(loading));
+    if (loading) btn.setAttribute("aria-label", t("common.loading"));
+    else btn.setAttribute("aria-label", btn.dataset.label || "");
+  });
 }
 
 async function startLessonRun(lesson) {

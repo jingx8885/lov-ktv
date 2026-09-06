@@ -98,7 +98,7 @@ function nodesView(unit, ready) {
         skill.status
       )}" data-start="${escapeHtml(t("learn.start"))}" aria-label="${label}" ${
         skill.status === "locked" ? 'aria-disabled="true"' : ""
-      }>${nodeIcon(skill.id)}</button><em class="learn-node-tag">${label}</em></div>`;
+      } data-label="${label}">${nodeIcon(skill.id)}</button><em class="learn-node-tag">${label}</em></div>`;
     })
     .join("");
 }
