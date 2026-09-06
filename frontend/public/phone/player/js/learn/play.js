@@ -100,13 +100,13 @@ export function loadLearnDiff() {
 }
 
 /** @param {number} startMs @param {number} endMs @param {{ vocal?: boolean }} [opts] */
-export function playCueWindow(startMs, endMs, opts) {
+export async function playCueWindow(startMs, endMs, opts) {
   const gen = ++playGen;
   const audio = $("playerAudio");
   if (!audio) return Promise.resolve(false);
   if (opts && opts.vocal != null) {
     state.playerVocal = opts.vocal ? 1 : 0;
-    switchPlayerTrack(state.playerVocal);
+    await switchPlayerTrack(state.playerVocal, false);
   }
   return new Promise((resolve) => {
     const start = Math.max(0, Number(startMs) || 0) / 1000;

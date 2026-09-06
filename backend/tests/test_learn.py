@@ -550,6 +550,8 @@ def test_phone_learn_shell_is_wired():
     assert "needsLineHold" in tap
     assert "holdAfterLine" in quiz
     assert "holdAfterLine" in tap
+    assert "session.vocal" in echo
+    assert "switchPlayerTrack" in play
     rtc = (root / "phone" / "room" / "js" / "room" / "rtc.js").read_text(
         encoding="utf-8"
     )
