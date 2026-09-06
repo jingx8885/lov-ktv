@@ -438,6 +438,8 @@ function pick(cid, btn) {
   const card = currentCard();
   if (!card || run.locked) return;
   run.locked = true;
+  const cardId = card.card_id;
+  const roundGen = run.gen;
   const ok = cid === card.answer;
   const box = $("reciteQs");
   if (box) {
@@ -451,7 +453,10 @@ function pick(cid, btn) {
   record(card, ok);
   if (ok) {
     celebrateCorrect(btn || $("reciteSrc"), { line: true });
-    window.setTimeout(() => advance(), 520);
+    window.setTimeout(() => {
+      // Ignore a stale timer if the run was restarted or the card changed.
+      if (run.active && run.gen === roundGen && currentCard()?.card_id === cardId) advance();
+    }, 520);
     return;
   }
   playMissSfx();
@@ -462,7 +467,9 @@ function pick(cid, btn) {
     void shell.offsetWidth;
     shell.classList.add("recite-shake");
   }
-  window.setTimeout(() => showDetail(card), 420);
+  window.setTimeout(() => {
+    if (run.active && run.gen === roundGen && currentCard()?.card_id === cardId) showDetail(card);
+  }, 420);
 }
 
 function admitUnknown() {
