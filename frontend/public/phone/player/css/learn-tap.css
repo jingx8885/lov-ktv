@@ -141,3 +141,20 @@
   .learn-tap-tile.is-burst,
   .learn-tap-tile.is-miss { transform: none; animation: none; }
 }
+
+.learn-tap-actions {
+  display: flex;
+  justify-content: center;
+  margin: 2px 0 4px;
+}
+.learn-tap-actions .btn {
+  min-height: 34px;
+  padding: 6px 16px;
+}
+.learn-tap-tile b {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: center;
+}

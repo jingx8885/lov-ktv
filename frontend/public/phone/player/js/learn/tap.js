@@ -101,8 +101,10 @@ function paintHint(line) {
     src: "learnTapSrc",
     roma: "learnTapRoma",
     zh: "learnTapZh",
-    text: line ? line.text : "",
-    romaji: line ? line.romaji : "",
+    // Keep the answer hidden during the word-order exercise. The learner
+    // should retrieve the sentence from sound and the tiles, not read it above.
+    text: "",
+    romaji: "",
     zhText: (line && (line.translation || line.zh)) || ""
   });
 }
@@ -533,7 +535,15 @@ export function tapScoreView(score, grade) {
   };
 }
 
+export function replayTapLine() {
+  const line = currentLine();
+  if (!session.running || !line) return;
+  playCueWindow(line.start_ms, line.end_ms, { vocal: true });
+}
+
 export function bindTap() {
   $("learnTapSkip").onclick = () => skipTapLine();
+  const replay = $("learnTapReplay");
+  if (replay) replay.onclick = () => replayTapLine();
   if ($("learnTapNext")) $("learnTapNext").onclick = () => confirmLineHold();
 }
