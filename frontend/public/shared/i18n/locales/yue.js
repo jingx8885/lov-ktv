@@ -322,7 +322,7 @@ export default {
   "learn.diff.easy": "輕鬆",
   "learn.diff.easyMeta": "0.8× · 確認",
   "learn.diff.normal": "標準",
-  "learn.diff.normalMeta": "1.0× · 5秒",
+  "learn.diff.normalMeta": "1.0× · 確認",
   "learn.diff.hard": "困難",
   "learn.diff.hardMeta": "1.0× · 不停",
   "learn.quiz": "歌詞測驗",

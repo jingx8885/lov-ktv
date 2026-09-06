@@ -327,7 +327,7 @@ export default {
   "learn.diff.easy": "Easy",
   "learn.diff.easyMeta": "0.8× · confirm",
   "learn.diff.normal": "Normal",
-  "learn.diff.normalMeta": "1.0× · 5s",
+  "learn.diff.normalMeta": "1.0× · Confirm",
   "learn.diff.hard": "Hard",
   "learn.diff.hardMeta": "1.0× · no pause",
   "learn.quiz": "Lyric quiz",

@@ -326,7 +326,7 @@ export default {
   "learn.diff.easy": "ゆっくり",
   "learn.diff.easyMeta": "0.8× · 確認",
   "learn.diff.normal": "標準",
-  "learn.diff.normalMeta": "1.0× · 5秒",
+  "learn.diff.normalMeta": "1.0× · 確認",
   "learn.diff.hard": "むずかしい",
   "learn.diff.hardMeta": "1.0× · 止まらない",
   "learn.quiz": "歌詞クイズ",

@@ -390,7 +390,7 @@ export default {
   "learn.diff.easy": "轻松",
   "learn.diff.easyMeta": "0.8× · 确认",
   "learn.diff.normal": "标准",
-  "learn.diff.normalMeta": "1.0× · 5秒",
+  "learn.diff.normalMeta": "1.0× · 确认",
   "learn.diff.hard": "困难",
   "learn.diff.hardMeta": "1.0× · 不停",
   "learn.quiz": "歌词测验",

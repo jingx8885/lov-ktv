@@ -39,7 +39,10 @@ export function paintLearnLine(opts) {
 
 export const LEARN_DIFFS = {
   easy: { id: "easy", rate: 0.8, hold: "confirm" },
-  normal: { id: "normal", rate: 1, hold: 5000 },
+  // Let the learner finish tapping after the vocal line. A fixed countdown
+  // expires while the board is still in use and makes the game feel broken;
+  // the learner advances explicitly once ready.
+  normal: { id: "normal", rate: 1, hold: "confirm" },
   hard: { id: "hard", rate: 1, hold: "" }
 };
 
