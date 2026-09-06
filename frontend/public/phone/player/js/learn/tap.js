@@ -442,15 +442,17 @@ export async function runTap() {
         const line = list[i];
         const played = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
         if (!session.running) return null;
-        finishLine(i);
         if (session.jump >= 0) continue;
         if (!played) return null;
+        // Keep the tiles active during the post-line countdown so the player
+        // can finish tapping the sentence. Only score leftovers afterward.
         if (i < list.length - 1) {
           const go = await holdAfterLine({ button: $("learnTapNext"), restore: t("learn.next") });
           if (!session.running) return null;
           if (session.jump >= 0) continue;
           if (!go) return null;
         }
+        finishLine(i);
       }
     }
     if (!session.running) return null;
