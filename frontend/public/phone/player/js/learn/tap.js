@@ -45,7 +45,7 @@ const session = {
 };
 let tapSync = 0;
 // Give players a short grace period after each lyric line to finish tapping.
-const TAP_LINE_GRACE_MS = 2200;
+const TAP_LINE_GRACE_MS = 6000;
 
 /** @param {LearnLine[]} lines */
 export function resetTap(lines) {
@@ -362,7 +362,14 @@ function onClock(ms) {
     if (ms >= line.end_ms + TAP_LINE_GRACE_MS) finishLine(i);
   });
   const idx = lineAt(ms);
-  if (idx >= 0 && idx !== session.index && !session.done.has(idx)) enterLine(idx);
+  // Keep the current word board until it is completed. Audio timing should
+  // guide the player, but must not wipe an unfinished line when the next one
+  // starts.
+  const current = currentLine();
+  const currentComplete = current && session.cursor >= (current.words || []).length;
+  if (idx >= 0 && idx !== session.index && !session.done.has(idx) && (currentComplete || session.done.has(session.index))) {
+    enterLine(idx);
+  }
   paintClock(ms);
   paintProgress();
 }
