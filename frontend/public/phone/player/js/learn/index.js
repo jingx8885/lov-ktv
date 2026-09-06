@@ -420,7 +420,11 @@ async function startMode(mode, pack) {
       return;
     }
   }
-  const go = await runCountdown();
+  // Quiz and tap paint interactive controls before run() flips their session
+  // to running. A pre-game countdown therefore shows live-looking controls
+  // that reject every tap (and lesson mode has the same lifecycle). Echo has
+  // no tappable answer board, so it can keep the short spoken lead-in.
+  const go = ui.mode === "echo" ? await runCountdown() : true;
   if (!go || boot !== ui.boot || ui.mode !== mode) return;
   const score = await spec.run();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
@@ -471,7 +475,9 @@ async function startLessonRun(lesson) {
       : String(Date.now()) + "-" + String(Math.random());
   showPane("learnLesson");
   startLesson(lesson);
-  const go = await runCountdown();
+  // The lesson choices are painted before runLesson() marks the session live;
+  // showing a countdown here makes the buttons visibly tappable but inert.
+  const go = true;
   if (!go || boot !== ui.boot || generation !== ui.generation || ui.mode !== "lesson" || !isLearnOpen()) return;
   const score = await runLesson();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
