@@ -234,6 +234,10 @@ async function startNativePhoneMic() {
 
 export async function startPhoneMic(opts) {
   const restart = !!(opts && opts.restart);
+  // Echo recording needs a real MediaStream for MediaRecorder. Android's
+  // native mic mode only forwards PCM to the TV and exposes no stream, so
+  // callers can force the WebView getUserMedia path.
+  const forceWeb = !!(opts && opts.forceWeb);
   if (!restart && state.roomRtc && state.roomRtc.isLive()) {
     await state.roomRtc.stopMic();
     if ($("micHint")) $("micHint").textContent = "";
@@ -249,7 +253,8 @@ export async function startPhoneMic(opts) {
     });
     if (!go) throw new Error(t("phone.mic.headphoneNeed"));
   }
-  if (hasNativeMic()) {
+  // Native karaoke mic routing intentionally exposes no MediaStream.
+  if (hasNativeMic() && !forceWeb) {
     await startNativePhoneMic();
     return;
   }

@@ -379,7 +379,7 @@ export async function runEcho() {
   $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = false;
   try {
-    if (!state.phoneMic) await startPhoneMic();
+    if (!state.phoneMic) await startPhoneMic({ forceWeb: true });
     const stream = state.phoneMic;
     if (!stream) throw new Error(t("learn.noRec"));
     for (session.index = 0; session.index < session.lines.length; session.index += 1) {

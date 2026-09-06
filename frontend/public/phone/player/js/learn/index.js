@@ -410,7 +410,7 @@ async function startMode(mode, pack) {
   spec.setup(loaded);
   if (ui.mode === "echo") {
     try {
-      await startPhoneMic();
+      await startPhoneMic({ forceWeb: true });
     } catch (err) {
       showToast((err && err.message) || t("learn.noRec"));
       restoreVocal();
