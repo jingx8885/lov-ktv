@@ -232,6 +232,39 @@ async function startNativePhoneMic() {
   }
 }
 
+/**
+ * The Android bridge captures the microphone with AudioRecord.  A cover
+ * challenge needs WebView getUserMedia instead, because MediaRecorder needs a
+ * MediaStream.  Release the native recorder first; otherwise Chromium reports
+ * "Can not start audio source" while AudioRecord is still tearing down.
+ */
+async function stopNativeMicForWeb() {
+  if (!hasNativeMic()) return;
+  const current = nativeMicState();
+  if (!state.phoneNativeLive && !current.tv && !current.iem) return;
+  if (current.iem || state.phoneNativeLive) {
+    await nativeCall("stopIem").catch(() => {});
+  }
+  if (current.tv || state.phoneStartedTv || state.phoneNativeLive) {
+    await nativeCall("stopTvMic").catch(() => {});
+  }
+  const deadline = Date.now() + 1500;
+  while (Date.now() < deadline) {
+    const next = nativeMicState();
+    if (!next.tv && !next.iem) break;
+    await new Promise((resolve) => {
+      window.setTimeout(resolve, 50);
+    });
+  }
+  // MicService flips its live flag before AudioRecord.release() completes.
+  // Leave a small handoff gap so Chromium does not race that release.
+  await new Promise((resolve) => {
+    window.setTimeout(resolve, 250);
+  });
+  state.phoneNativeLive = false;
+  state.phoneStartedTv = false;
+}
+
 export async function startPhoneMic(opts) {
   const restart = !!(opts && opts.restart);
   // Echo recording needs a real MediaStream for MediaRecorder. Android's
@@ -253,6 +286,7 @@ export async function startPhoneMic(opts) {
     });
     if (!go) throw new Error(t("phone.mic.headphoneNeed"));
   }
+  if (forceWeb) await stopNativeMicForWeb();
   // Native karaoke mic routing intentionally exposes no MediaStream.
   if (hasNativeMic() && !forceWeb) {
     await startNativePhoneMic();
