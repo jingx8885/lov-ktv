@@ -182,20 +182,20 @@ def build_campaign(
         start = sum(len(part) for part in units_raw[:unit_index])
         end = start + len(chunk)
         skills: list[dict[str, Any]] = []
-        prev_skill_ok = prev_unit_done
+        # Skills within a unit are independent practice modes. Locking
+        # sentence/listen/read/sing behind one another turns game mechanics
+        # into artificial prerequisites; only the next unit depends on the
+        # current unit being completed.
         unit_all_ok = True
         for skill in SKILLS:
             row = saved.get((uid, skill))
             if _passed(row):
                 status = str(row.get("status") or "passed")
-            elif prev_skill_ok:
+            elif prev_unit_done:
                 status = "ready"
             else:
                 status = "locked"
-            if status in {"passed", "mastered"}:
-                prev_skill_ok = True
-            else:
-                prev_skill_ok = False
+            if status not in {"passed", "mastered"}:
                 unit_all_ok = False
             if skill == "read" and _passed(row):
                 read_done += 1
