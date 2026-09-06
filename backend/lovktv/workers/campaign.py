@@ -385,6 +385,11 @@ def _word_items(
             choice_answer = answer
             choice_pool = variant_pool
             question_stem = stem
+            # A kana token without a persisted gloss/reading would produce a
+            # question whose prompt is exactly its answer. It carries no
+            # learning signal, so leave it out of the lesson.
+            if not _norm(question_stem) or _norm(question_stem).casefold() == _norm(choice_answer).casefold():
+                continue
         # Do not offer the other script of the same token as a competing
         # answer; it is a useful distractor only for a different token.
         own_forms = {answer}
@@ -413,7 +418,10 @@ def _word_items(
             item["romaji"] = ""
         items.append(item)
     rng.shuffle(items)
-    return items
+    # Keep lessons short and predictable. A dense unit can contain dozens of
+    # unique tokens; presenting all of them makes the word drill feel
+    # endless and blocks progression to the other skills.
+    return items[:LESSON_SIZE]
 
 
 def _sentence_items(
@@ -455,27 +463,44 @@ def _sentence_items(
                 _knowledge("sentence", _norm(picked[0]["text"]), picked[0]["text"], picked[0]["zh"]),
             )
         )
+    seen_questions: set[tuple[str, str, str]] = set()
     for offset, (line, cue) in enumerate(zip(lines, cues)):
         knowledge = _knowledge("sentence", _norm(line["text"]), line["text"], line["zh"])
         if has_useful_zh(cue):
-            item = _mc(
-                f"{unit_id}:meaning:{offset}",
-                "meaning",
-                translate(lang, "api.learn_meaning"),
-                line["text"],
-                _choices(line["zh"], pools["zh"], rng),
-                knowledge,
-            )
-            items.append(_attach_line(item, line))
-            reverse = _mc(
-                f"{unit_id}:reverse:{offset}",
-                "reverse",
-                translate(lang, "api.learn_reverse"),
-                line["zh"],
-                _choices(line["text"], pools["text"], rng),
-                knowledge,
-            )
-            items.append(_attach_line(reverse, line))
+            candidates = [
+                (
+                    "meaning",
+                    translate(lang, "api.learn_meaning"),
+                    line["text"],
+                    line["zh"],
+                    pools["zh"],
+                ),
+                (
+                    "reverse",
+                    translate(lang, "api.learn_reverse"),
+                    line["zh"],
+                    line["text"],
+                    pools["text"],
+                ),
+            ]
+            for kind, prompt, stem, answer, pool in candidates:
+                stem_norm = _norm(stem)
+                answer_norm = _norm(answer)
+                fingerprint = (kind, stem_norm.casefold(), answer_norm.casefold())
+                if not stem_norm or not answer_norm or stem_norm.casefold() == answer_norm.casefold():
+                    continue
+                if fingerprint in seen_questions:
+                    continue
+                seen_questions.add(fingerprint)
+                item = _mc(
+                    f"{unit_id}:{kind}:{offset}",
+                    kind,
+                    prompt,
+                    stem,
+                    _choices(answer, pool, rng),
+                    knowledge,
+                )
+                items.append(_attach_line(item, line))
         else:
             item = _mc(
                 f"{unit_id}:listen:{offset}",

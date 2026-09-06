@@ -412,22 +412,24 @@ def _choices(
 ) -> list[dict[str, Any]]:
     answer = _norm(correct)
     distractors: list[str] = []
-    seen = {answer}
+    seen = {answer.casefold()}
     fallback_pool = list(_FALLBACK_ZH if fallback is None else fallback)
     for item in pool + list(extra):
         text = _norm(item)
-        if not text or text in seen:
+        key = text.casefold()
+        if not text or key in seen:
             continue
-        seen.add(text)
+        seen.add(key)
         distractors.append(text)
         if len(distractors) >= 8:
             break
     if allow_fallback and len(distractors) < 3:
         for item in fallback_pool:
             text = _norm(item)
-            if not text or text in seen:
+            key = text.casefold()
+            if not text or key in seen:
                 continue
-            seen.add(text)
+            seen.add(key)
             distractors.append(text)
             if len(distractors) >= 3:
                 break
@@ -435,7 +437,7 @@ def _choices(
     picked = distractors[:3]
     while allow_fallback and len(picked) < 3:
         filler = fallback_pool[len(picked) % len(fallback_pool)] if fallback_pool else "…"
-        if filler != answer and filler not in picked:
+        if filler.casefold() != answer.casefold() and all(filler.casefold() != p.casefold() for p in picked):
             picked.append(filler)
         else:
             from lovktv.locale.i18n import translate
