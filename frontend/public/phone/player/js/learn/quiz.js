@@ -295,15 +295,18 @@ export async function runQuiz() {
         const line = list[i];
         const played = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
         if (!session.running) return null;
-        flushEnded(line.end_ms);
         if (session.jump >= 0) continue;
         if (!played) return null;
+        // Normal mode pauses here to let the player answer. Marking the line
+        // ended before the five-second hold used to record a miss and disable
+        // every choice, so the entire advertised answer window was inert.
         if (i < list.length - 1) {
           const go = await holdAfterLine({ button: $("learnQuizNext"), restore: t("learn.next") });
           if (!session.running) return null;
           if (session.jump >= 0) continue;
           if (!go) return null;
         }
+        flushEnded(line.end_ms);
       }
     }
     if (!session.running) return null;
