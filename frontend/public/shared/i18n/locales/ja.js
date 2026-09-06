@@ -317,6 +317,7 @@ export default {
   "learn.again.lesson": "もう一度練習",
   "learn.score.lesson": "関のスコア",
   "learn.score.lessonHint": "間違いはノートに入りました",
+  "learn.loadingSong": "曲のデータを読み込み中…",
   "learn.retry": "再読み込み",
   "learn.cleared": "単語と行を覚えてクリア",
   "learn.book": "復習ノート",

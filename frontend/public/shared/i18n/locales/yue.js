@@ -314,6 +314,7 @@ export default {
   "learn.again.lesson": "再練一次",
   "learn.score.lesson": "今關得分",
   "learn.score.lessonHint": "答錯嘅已入錯題本",
+  "learn.loadingSong": "正在載入歌曲資源…",
   "learn.retry": "重新載入",
   "learn.cleared": "通關要詞句都識",
   "learn.book": "錯題本",

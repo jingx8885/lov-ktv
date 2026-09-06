@@ -18,7 +18,8 @@ const session = {
   running: false,
   review: null,
   previewUrl: "",
-  skipped: false
+  skipped: false,
+  vocal: true
 };
 
 /** @type {HTMLAudioElement | null} */
@@ -34,6 +35,7 @@ export function resetEcho(lines) {
   session.running = false;
   session.review = null;
   session.skipped = false;
+  session.vocal = true;
 }
 
 export function echoBusy() {
@@ -409,7 +411,7 @@ export async function runEcho() {
       $("learnEchoSkip").hidden = false;
       $("learnEchoSkip").disabled = false;
       session.skipped = false;
-      const heard = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
+      const heard = await playCueWindow(line.start_ms, line.end_ms, { vocal: session.vocal });
       if (!session.running) break;
       if (session.skipped || !heard) {
         session.clips[session.index] = {
@@ -476,6 +478,8 @@ export function paintEchoHome() {
   showReviewDock(false);
   $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = true;
+  const vocal = $("learnEchoVocal");
+  if (vocal) { vocal.textContent = "原唱：开"; vocal.setAttribute("aria-pressed", "true"); }
 }
 
 /** @param {LearnQuiz} pack */
@@ -503,4 +507,11 @@ export function bindEcho() {
   };
   $("learnEchoRetry").onclick = () => finishReview("retry");
   $("learnEchoNext").onclick = () => finishReview("next");
+  $("learnEchoStop").onclick = () => stopEcho();
+  $("learnEchoVocal").onclick = () => {
+    session.vocal = !session.vocal;
+    const btn = $("learnEchoVocal");
+    btn.textContent = session.vocal ? "原唱：开" : "伴唱：开";
+    btn.setAttribute("aria-pressed", String(session.vocal));
+  };
 }

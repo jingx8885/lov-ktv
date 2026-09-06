@@ -318,6 +318,7 @@ export default {
   "learn.again.lesson": "Practice again",
   "learn.score.lesson": "Stage score",
   "learn.score.lessonHint": "Missed items went to your notebook",
+  "learn.loadingSong": "Loading song resources…",
   "learn.retry": "Retry",
   "learn.cleared": "Know every word and line to clear",
   "learn.book": "Review notebook",

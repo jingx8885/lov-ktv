@@ -328,6 +328,7 @@ export default {
   "learn.libraryLead": "先选一首歌，再继续上次的进度。",
   "learn.searchPh": "快捷搜索已入库的歌",
   "learn.searchClear": "清除搜索",
+  "learn.loadingSong": "正在加载歌曲资源…",
   "learn.retry": "重新加载",
   "learn.searchMore": "搜歌入库",
   "learn.addedSongs": "已添加的歌",

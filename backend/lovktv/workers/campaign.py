@@ -25,7 +25,7 @@ from lovktv.workers.learn import (
 )
 
 CAMPAIGN_SCHEMA = "lovktv-learn-campaign-v1"
-LINES_PER_UNIT = 8
+LINES_PER_UNIT = 4
 SKILLS = ("word", "sentence", "listen", "read", "sing")
 PASS_PCT = 70
 LESSON_SIZE = 8
@@ -191,7 +191,7 @@ def build_campaign(
             row = saved.get((uid, skill))
             if _passed(row):
                 status = str(row.get("status") or "passed")
-            elif prev_unit_done:
+            elif prev_unit_done and (skill == "word" or all(_passed(saved.get((uid, prior))) for prior in SKILLS[:SKILLS.index(skill)])):
                 status = "ready"
             else:
                 status = "locked"
@@ -421,7 +421,7 @@ def _word_items(
     # Keep lessons short and predictable. A dense unit can contain dozens of
     # unique tokens; presenting all of them makes the word drill feel
     # endless and blocks progression to the other skills.
-    return items[:LESSON_SIZE]
+    return items
 
 
 def _sentence_items(
@@ -552,7 +552,7 @@ def _listen_items(
             )
             items.append(_attach_line(meaning, line))
     rng.shuffle(items)
-    return items[:LESSON_SIZE]
+    return items
 
 
 def build_lesson(

@@ -34,6 +34,7 @@ const ui = {
 };
 let libraryLoad = 0;
 let songSelectionLoad = 0;
+let pendingSongId = "";
 
 /** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
 const MODES = {
@@ -54,13 +55,7 @@ const PANES = [
   ...RECITE_PANES
 ];
 /** Panes that own the whole screen — the lyric strip has nothing to show under them. */
-const NO_LYRIC_PANES = new Set([
-  "learnLibrary",
-  "learnHome",
-  "learnScore",
-  "learnBook",
-  ...RECITE_PANES
-]);
+const NO_LYRIC_PANES = new Set(["learnLibrary", "learnHome", "learnScore", "learnBook", ...RECITE_PANES]);
 
 function showPane(id) {
   PANES.forEach((name) => {
@@ -118,6 +113,9 @@ function stopModes() {
 
 export function exitLearn() {
   if (!isLearnOpen()) return;
+  songSelectionLoad += 1;
+  pendingSongId = "";
+  paintSongSelection();
   ui.generation += 1;
   stopModes();
   clearLearnFx();
@@ -222,11 +220,12 @@ function paintLearnSongList(songs, campaigns) {
       const current = state.playerSong && state.playerSong.id === song.id;
       return `<button type="button" class="learn-song-row${progress.done ? " is-complete" : ""}${current ? " is-current" : ""}" data-learn-song="${escapeHtml(song.id)}">
         <span class="learn-song-cover">${progress.done ? "✓" : "♪"}</span>
-        <span class="learn-song-copy"><b>${escapeHtml(songTitle(song))}</b><small>${escapeHtml(songArtist(song) || t("common.unknownArtist"))}</small></span>
+        <span class="learn-song-copy"><b>${escapeHtml(songTitle(song))}</b><small>${escapeHtml(songArtist(song) || t("common.unknownArtist"))}</small><span class="learn-song-status" role="status" hidden></span></span>
         <span class="learn-song-progress"><i style="--pct:${progress.pct}%"></i><em>${progress.done ? escapeHtml(t("learn.completed")) : `${progress.pct}%`}</em></span>
       </button>`;
     })
     .join("");
+  paintSongSelection();
   list.querySelectorAll("[data-learn-song]").forEach((btn) => {
     btn.onclick = () => selectLearnSong(btn.dataset.learnSong);
   });
@@ -268,44 +267,60 @@ async function loadLearnLibrary(query = "") {
   paintLearnSongList(songs, campaigns);
 }
 
+function paintSongSelection() {
+  $("learnSongList")
+    ?.querySelectorAll("[data-learn-song]")
+    .forEach((btn) => {
+      const loading = btn.dataset.learnSong === pendingSongId;
+      btn.disabled = loading;
+      btn.classList.toggle("is-loading", loading);
+      btn.setAttribute("aria-busy", String(loading));
+      const status = btn.querySelector(".learn-song-status");
+      if (status) {
+        status.hidden = !loading;
+        status.textContent = loading ? t("learn.loadingSong") : "";
+      }
+    });
+}
+
 async function selectLearnSong(songId) {
-  if (!songId || !api.loadPlayerSong) return;
+  if (!songId || !api.loadPlayerSong || pendingSongId === songId) return;
   const selectionLoad = ++songSelectionLoad;
+  pendingSongId = songId;
+  paintSongSelection();
   ui.pack = null;
   setCampaign(null);
   syncLearnNav(true);
-  await api.loadPlayerSong(songId, { play: false });
-  if (
-    selectionLoad !== songSelectionLoad ||
-    !state.playerSong ||
-    state.playerSong.id !== songId ||
-    !isLearnOpen()
-  ) {
-    return;
+  try {
+    await api.loadPlayerSong(songId, { play: false });
+    if (selectionLoad !== songSelectionLoad || !isLearnOpen()) return;
+    if (!state.playerSong || state.playerSong.id !== songId) {
+      showToast(t("common.loadFailed"));
+      return;
+    }
+    // Audio and lyrics may need downloading; keep feedback on the visible
+    // library until the player finishes, then show campaign loading in place.
+    // Campaign data remains authoritative if the media lyrics request failed.
+    showPane("learnHome");
+    paintSongHead();
+    paintCampaign(null);
+    const data = await loadCampaign(true);
+    if (selectionLoad !== songSelectionLoad || !state.playerSong || state.playerSong.id !== songId || !isLearnOpen())
+      return;
+    paintCampaign(data || null);
+  } catch (err) {
+    if (selectionLoad === songSelectionLoad && isLearnOpen()) showToast(t("common.loadFailed"));
+  } finally {
+    if (selectionLoad === songSelectionLoad) {
+      pendingSongId = "";
+      paintSongSelection();
+    }
   }
-  // The player fetches lyrics from the media endpoint in parallel with audio.
-  // That request can briefly fail (for example while an OSS redirect/CORS
-  // check is settling) even though the learning API can already read the
-  // persisted timeline.  Use the campaign response as the source of truth
-  // instead of turning that transient player state into a false "no lyrics".
-  showPane("learnHome");
-  paintSongHead();
-  paintCampaign(null);
-  const data = await loadCampaign(true);
-  if (
-    selectionLoad !== songSelectionLoad ||
-    !state.playerSong ||
-    state.playerSong.id !== songId ||
-    !isLearnOpen()
-  ) {
-    return;
-  }
-  if (data) paintCampaign(data);
-  else paintCampaign(null);
 }
 
 function showLearnLibrary() {
   songSelectionLoad += 1;
+  pendingSongId = "";
   stopModes();
   restoreVocal();
   resetLearnRate();

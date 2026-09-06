@@ -439,3 +439,15 @@
     box-shadow: 0 6px 0 #b8830a, 0 0 0 4px rgba(255, 201, 60, .3);
   }
 }
+
+.learn-song-row.is-loading { cursor: progress; box-shadow: inset 0 0 0 1.5px var(--gold); }
+.learn-song-row.is-loading .learn-song-cover { font-size: 0; }
+.learn-song-row.is-loading .learn-song-cover::after {
+  content: ""; width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%; animation: learn-song-loading .8s linear infinite;
+}
+.learn-song-status { color: var(--gold); font-size: 12px; line-height: 1.5; }
+@keyframes learn-song-loading { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .learn-song-row.is-loading .learn-song-cover::after { animation: none; }
+}
