@@ -95,6 +95,10 @@ export default {
   "api.learn_meaning": "呢句係咩意思？",
   "api.learn_word": "「{word}」係咩意思？",
   "api.learn_listen": "頭先唱嘅係邊一句？",
+
+  "api.learn_match": "將句子同意思配對",
+  "api.learn_reverse": "邊一句係呢個意思？",
+  "api.learn_listen_meaning": "頭先聽到嗰句係咩意思？",
   "api.learn_option": "選項{n}",
   "api.recite_meaning": "「{word}」係咩意思？",
   "api.recite_reverse": "邊個字係呢個意思？",

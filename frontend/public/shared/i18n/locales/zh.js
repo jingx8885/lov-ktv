@@ -95,6 +95,10 @@ export default {
   "api.learn_meaning": "这句是什么意思？",
   "api.learn_word": "「{word}」是什么意思？",
   "api.learn_listen": "刚才唱的是哪一句？",
+
+  "api.learn_match": "把句子和意思配对",
+  "api.learn_reverse": "哪一句是这个意思？",
+  "api.learn_listen_meaning": "刚才听到的这句是什么意思？",
   "api.learn_option": "选项{n}",
   "api.recite_meaning": "「{word}」是什么意思？",
   "api.recite_reverse": "哪个词是这个意思？",

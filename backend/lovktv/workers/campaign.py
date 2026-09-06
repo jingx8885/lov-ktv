@@ -25,7 +25,7 @@ from lovktv.workers.learn import (
 )
 
 CAMPAIGN_SCHEMA = "lovktv-learn-campaign-v1"
-LINES_PER_UNIT = 4
+LINES_PER_UNIT = 8
 SKILLS = ("word", "sentence", "listen", "read", "sing")
 PASS_PCT = 70
 LESSON_SIZE = 8
@@ -492,7 +492,7 @@ def _listen_items(
             f"{unit_id}:listen:{offset}",
             "listen",
             translate(lang, "api.learn_listen"),
-            line["text"],
+            "",
             _choices(line["text"], pools["text"], rng),
             knowledge,
         )

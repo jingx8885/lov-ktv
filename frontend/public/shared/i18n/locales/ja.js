@@ -95,6 +95,10 @@ export default {
   "api.learn_meaning": "この行はどういう意味？",
   "api.learn_word": "「{word}」はどういう意味？",
   "api.learn_listen": "いま歌ったのはどの行？",
+
+  "api.learn_match": "文と意味を組み合わせてください",
+  "api.learn_reverse": "この意味の文はどれ？",
+  "api.learn_listen_meaning": "聞こえた文はどういう意味？",
   "api.learn_option": "選択肢{n}",
   "api.recite_meaning": "「{word}」の意味は？",
   "api.recite_reverse": "この意味の単語はどれ？",

@@ -96,6 +96,10 @@ export default {
   "api.learn_meaning": "What does this line mean?",
   "api.learn_word": "What does “{word}” mean?",
   "api.learn_listen": "Which line was just sung?",
+
+  "api.learn_match": "Match each line with its meaning",
+  "api.learn_reverse": "Which line means this?",
+  "api.learn_listen_meaning": "What does the line you heard mean?",
   "api.learn_option": "Option {n}",
   "api.recite_meaning": "What does “{word}” mean?",
   "api.recite_reverse": "Which word means this?",

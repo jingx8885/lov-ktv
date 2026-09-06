@@ -44,6 +44,8 @@ const session = {
   jump: -1
 };
 let tapSync = 0;
+// Give players a short grace period after each lyric line to finish tapping.
+const TAP_LINE_GRACE_MS = 2200;
 
 /** @param {LearnLine[]} lines */
 export function resetTap(lines) {
@@ -357,7 +359,7 @@ function enterLine(index) {
 function onClock(ms) {
   if (!session.running) return;
   session.lines.forEach((line, i) => {
-    if (ms >= line.end_ms) finishLine(i);
+    if (ms >= line.end_ms + TAP_LINE_GRACE_MS) finishLine(i);
   });
   const idx = lineAt(ms);
   if (idx >= 0 && idx !== session.index && !session.done.has(idx)) enterLine(idx);
