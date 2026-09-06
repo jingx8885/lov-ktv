@@ -40,6 +40,28 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 - 成品媒体上阿里云 OSS（`lovktv/` 前缀），没配 OSS 就回退读本地 `data/media`。不要把曲库打进镜像或提交进 git。
 - 43 的 `~/lov-ktv/.env` 复用 `/etc/lovbrowser/production.env` 里的 `ALIYUN_OSS_*`，并设 `LOVKTV_OSS_PREFIX=lovktv`，不要用 lovbrowser 的 `installPackage`。
 
+### 标准上线顺序
+
+1. 本地先确认工作树只包含本次改动，提交并推送 `master`：
+
+   ```bash
+   git status --short
+   git add <files>
+   git commit -m "<message>"
+   git push origin HEAD
+   ```
+
+2. 生产机只从刚推送的 commit 更新并重建镜像；不要在容器里直接改代码作为最终状态：
+
+   ```bash
+   ssh ubuntu@43.134.133.185
+   cd ~/lov-ktv
+   git pull --ff-only origin master
+   sudo docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d --build
+   ```
+
+3. 从公网验收落地页、`/tv.html`、`/m.html` 和 `/api/host`。本机 Cloudflare 请求失败时，从 43 上执行 `curl`，不要据此改 Nginx 或 DNS。
+
 ## App 发版
 
 - 版本写在仓库根 `VERSION`：`name=` 给人看，格式为 `YYYY.M.D.N`；其中 `N` 是当天的发版序号，每个自然日从 `1` 重新计数，不能沿用前一天的序号。`code=` 给 Android `versionCode`，格式为 `YYYYMMDDNN`，日期变化时每日序号归零但整体仍必须保持递增。
@@ -48,8 +70,9 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 
 ```bash
 python scripts/version.py          # 看当前 name/code/tag
-python scripts/version.py tag      # git tag -a v2026.8.30
-git push origin HEAD --tags
+python scripts/version.py tag      # 按 VERSION 创建 annotated tag
+git push origin HEAD
+git push origin v2026.8.30    # 替换为本次实际 tag
 ```
 
 - APK 不进 git、不进镜像。落在生产机 `data/apps/`，落地页读 `GET /api/apps`。电视/手机设置页显示 APK `versionName`。
@@ -63,12 +86,14 @@ python scripts/publish-apps.py
 
 未指定 `--version` 时用 `VERSION` 的 `name`。未指定路径时用 Gradle 产物：电视 `android-tv/.../debug/app-debug.apk`，手机 `android-phone/.../release/app-release.apk`。
 - 接口：`POST /api/apps/{tv|phone}`，`Authorization: Bearer`，multipart 字段 `file`，可选 `version`。默认 `https://ktv.lovbrowser.com`。
-- 本机 Clash 掐 Cloudflare 时，只加一条隧道打同一接口（生产只绑 `127.0.0.1:8790`），不要改成别的办法：
+- 本机 Clash 掐 Cloudflare 时，优先用一条隧道打同一接口（生产只绑 `127.0.0.1:8790`）：
 
 ```bash
 ssh -o ExitOnForwardFailure=yes -N -L 18790:127.0.0.1:8790 ubuntu@43.134.133.185
 python scripts/publish-apps.py --base http://127.0.0.1:18790
 ```
+
+  如果隧道在发送大 APK 时长时间不返回，仍调用同一个上传接口，从 43 上运行 `curl` 并把本地 APK 通过标准输入流入请求；不要 scp、不要拷数据卷、不要另写上传接口。上传可能需要几分钟，必须等待接口返回 JSON。
 
 - 电视 APK 会烤进 `frontend/public`。重打前对 `android-tv` 跑 `:app:copyWebAssets assembleDebug --rerun-tasks`。
 
@@ -91,6 +116,62 @@ gradle --no-daemon :app:assembleRelease
 ```
 
 - 构建完成后用 Android SDK 的 `aapt dump badging` 核对两个 APK 的 `versionName` / `versionCode`，再按“App 发版”章节通过接口上传；APK 不提交 git。若 Gradle 仍报 loopback 错误，先确认终端已重启并实际使用 `gradle --version` 显示的 8.9。
+
+### 标准 App 发版顺序
+
+1. 先看当前版本、当天已有 tag 和最近一次发版；同一天的 `N` 必须递增，跨自然日重置为 `1`。每次发版都先改根目录 `VERSION`，再把代码和版本一起提交，最后创建并推送**本次 tag**：
+
+   ```bash
+   python scripts/version.py
+   # 编辑 VERSION，例如 name=2026.9.6.2、code=2026090602
+   git add VERSION <files>
+   git commit -m "chore: release 2026.9.6.2"
+   python scripts/version.py tag
+   git push origin HEAD
+   git push origin v2026.9.6.2
+   ```
+
+   不要直接 `git push origin HEAD --tags`：仓库中已有旧 tag 时，旧 tag 会被拒绝，容易误以为本次 tag 没推上去；只推本次新 tag 即可。
+
+2. 电视端先同步 Web 资源再打包，手机端打 Release；然后用 `aapt dump badging` 确认两个产物的 `versionName` 和 `versionCode` 与 `VERSION` 完全一致：
+
+   ```bash
+   cd android-tv
+   ./gradlew --no-daemon :app:copyWebAssets assembleDebug --rerun-tasks
+   cd ../android-phone
+   ./gradlew --no-daemon :app:assembleRelease
+   ```
+
+3. APK 只能通过 `POST /api/apps/tv` 和 `POST /api/apps/phone` 上传，不能 scp 或把 APK 放进 git/镜像。先尝试脚本：
+
+   ```bash
+   LOVKTV_APP_UPLOAD_TOKEN="<从 43 的 .env 临时读取，不要打印>" \
+     python scripts/publish-apps.py
+   ```
+
+   本机访问 Cloudflare 不通时，用一条 SSH 隧道把请求仍打到生产端口：
+
+   ```bash
+   ssh -o ExitOnFailure=yes -o ExitOnForwardFailure=yes -N \
+     -L 18790:127.0.0.1:8790 ubuntu@43.134.133.185
+   python scripts/publish-apps.py --base http://127.0.0.1:18790
+   ```
+
+   若隧道在发送大 APK 时长时间不返回，仍调用同一接口，但从 43 上执行 `curl`，把本地 APK 通过标准输入流入请求；这不是 scp，也不要改写上传接口：
+
+   ```bash
+   cat android-tv/app/build/outputs/apk/debug/app-debug.apk | \
+     ssh ubuntu@43.134.133.185 'TOKEN=$(grep "^LOVKTV_APP_UPLOAD_TOKEN=" ~/lov-ktv/.env | cut -d= -f2-); \
+       curl --fail-with-body --max-time 300 -sS -X POST \
+       -H "Authorization: Bearer $TOKEN" \
+       -F "version=<VERSION name>" \
+       -F "file=@-;filename=app-debug.apk;type=application/vnd.android.package-archive" \
+       http://127.0.0.1:8790/api/apps/tv'
+   ```
+
+   手机端同理调用 `/api/apps/phone`。上传较大的电视 APK 可能需要几分钟，必须等待接口返回 JSON 成功结果，不能中途按 `Ctrl-C`。
+
+4. 上传后从 43 查询 `curl -fsS http://127.0.0.1:8790/api/apps`，确认 `tv`、`phone` 的 `version`、文件大小和 URL 均为本次发版；公网下载地址应为 `/apps/tv.apk` 和 `/apps/phone.apk`。
 
 ## 产品边界
 
