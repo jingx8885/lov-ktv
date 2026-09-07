@@ -202,7 +202,10 @@ export function paintLyricMode(mode, language) {
   // Room polling calls paintMix every two seconds. Rebuilding the whole desk
   // lyric list on every unchanged snapshot is especially expensive in the
   // Android WebView; repaint it only when the effective mode/script changed.
-  if ((previousMode !== next || previousScript !== script) && api.paintDeskLyrics) api.paintDeskLyrics();
+  if (previousMode !== next || previousScript !== script) {
+    if (api.paintDeskLyrics) api.paintDeskLyrics();
+    if (api.syncLearnLyricMode) api.syncLearnLyricMode();
+  }
 }
 
 export function paintMix(room) {

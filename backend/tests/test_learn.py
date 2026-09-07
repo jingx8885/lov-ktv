@@ -626,6 +626,42 @@ def test_phone_learn_shell_is_wired():
     assert '"learn.recite.playAudio"' in zh
 
 
+def test_learn_lyric_mode_switches_roma_and_keeps_tap_tiles_apart():
+    """Phone quiz/tap must honor the top lyric-mode strip and not stack tiles."""
+    root = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    css = (root / "phone" / "player" / "css" / "learn.css").read_text(encoding="utf-8")
+    tap_css = (root / "phone" / "player" / "css" / "learn-tap.css").read_text(
+        encoding="utf-8"
+    )
+    tap = (root / "phone" / "player" / "js" / "learn" / "tap.js").read_text(
+        encoding="utf-8"
+    )
+    shell = (root / "phone" / "player" / "js" / "learn" / "index.js").read_text(
+        encoding="utf-8"
+    )
+    mix = (root / "phone" / "room" / "js" / "room" / "mix.js").read_text(
+        encoding="utf-8"
+    )
+    install = (root / "phone" / "install.js").read_text(encoding="utf-8")
+    # Switching to 罗马音 has to hide the Japanese source line; otherwise the
+    # stem never changes and the control looks dead.
+    assert 'body[data-lyric-mode="roma"] .learn-line .learn-src' in css
+    assert 'body[data-lyric-mode="roma"] .learn-line .learn-roma' in css
+    # Tap tiles must swap their face with the lyric mode, not always paint
+    # Japanese plus a spilling romaji subtitle.
+    assert "function tileLabel" in tap
+    assert 'mode === "roma"' in tap
+    assert "export function syncTapLyricMode" in tap
+    assert "syncLearnLyricMode" in shell
+    assert "api.syncLearnLyricMode" in mix
+    assert "syncLearnLyricMode" in install
+    # Packed rows, not the overlapping modular fallback.
+    assert "function packTapTiles" in tap
+    assert "i * 73" not in tap
+    assert "overflow-wrap: anywhere" in tap_css
+    assert ".learn-tap-tile small" in tap_css
+
+
 def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv import main

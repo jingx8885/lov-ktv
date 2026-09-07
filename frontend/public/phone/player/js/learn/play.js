@@ -21,7 +21,8 @@ export function paintLearnLine(opts) {
   const roma = node(opts.roma);
   const zh = node(opts.zh);
   const text = opts.hideSrc ? "" : String(opts.text || "");
-  const romaji = opts.hideSrc ? "" : String(opts.romaji || "");
+  const mode = document.body.dataset.lyricMode || state.lyricMode || "all";
+  const romaji = opts.hideSrc ? "" : String(opts.romaji || "") || (mode === "roma" ? text : "");
   const gloss = opts.hideZh ? "" : String(opts.zhText || "");
   if (src) {
     src.textContent = text;

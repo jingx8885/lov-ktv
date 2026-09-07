@@ -10,9 +10,9 @@ import { applyPlayerVocalMix, pausePlayer, unlockPlayerGesture } from "../playba
 import { kickPlayerPaint } from "../playback/lyrics.js";
 import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./play.js";
 import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./fx.js";
-import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView } from "./quiz.js";
+import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView, syncQuizLyricMode } from "./quiz.js";
 import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js";
-import { bindTap, runTap, startTap, stopTap, tapScoreView } from "./tap.js";
+import { bindTap, runTap, startTap, stopTap, syncTapLyricMode, tapScoreView } from "./tap.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
 import { RECITE_PANES, bindRecite, openRecite, reciteBack, stopRecite } from "./recite.js";
@@ -88,6 +88,12 @@ function paintDiff() {
 
 export function isLearnOpen() {
   return document.body.classList.contains("learn-on");
+}
+
+export function syncLearnLyricMode() {
+  if (!isLearnOpen()) return;
+  if ($("learnTap") && !$("learnTap").hidden) syncTapLyricMode();
+  if ($("learnQuiz") && !$("learnQuiz").hidden) syncQuizLyricMode();
 }
 
 function syncLearnNav(active) {

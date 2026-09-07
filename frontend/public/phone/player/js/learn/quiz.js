@@ -73,9 +73,7 @@ function lineAt(ms) {
 function paintCombo() {
   const el = $("learnQuizCombo");
   if (!el) return;
-  el.textContent = session.running
-    ? `COMBO ${session.combo} · ${session.points} XP`
-    : t("learn.quizLive");
+  el.textContent = session.running ? `COMBO ${session.combo} · ${session.points} XP` : t("learn.quizLive");
   el.classList.toggle("is-hot", session.combo >= 3);
   el.classList.toggle("is-super", session.combo >= 5);
 }
@@ -414,4 +412,10 @@ export function quizScoreView(score, grade) {
 export function bindQuiz() {
   $("learnQuizSkip").onclick = () => skipQuizLine();
   if ($("learnQuizNext")) $("learnQuizNext").onclick = () => confirmLineHold();
+}
+
+export function syncQuizLyricMode() {
+  const line = currentLine();
+  if (line) paintQuestion(line);
+  else paintLearnLine({ src: "learnQuizSrc", roma: "learnQuizRoma", hideZh: true });
 }

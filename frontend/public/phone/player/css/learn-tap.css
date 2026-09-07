@@ -52,6 +52,7 @@
   position: absolute;
   min-width: 56px;
   min-height: 48px;
+  overflow: hidden;
   padding: 8px 10px;
   border: 0;
   border-radius: 16px;
@@ -82,6 +83,10 @@
 .learn-tap-tile small {
   color: inherit;
   opacity: .72;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-align: center;
   font-size: 11px;
   line-height: 1.1;
 }

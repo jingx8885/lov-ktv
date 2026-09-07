@@ -10,6 +10,7 @@ interface PhoneApi {
   showPage(name: string, songId?: string | null, push?: boolean): void;
   showDeskPane(name: string): void;
   paintDeskLyrics(): void;
+  syncLearnLyricMode(): void;
   loadSongs(append?: boolean, force?: boolean): Promise<void>;
   loadRoom(opts?: { quiet?: boolean; room?: Room }): Promise<void>;
   runSearch(page: number, append?: boolean): Promise<void>;

@@ -184,7 +184,14 @@
 body[data-lyric-mode="ja"] .learn-line .learn-roma,
 body[data-lyric-mode="ja"] .learn-line .learn-zh { display: none !important; }
 body[data-lyric-mode="zh"] .learn-line .learn-roma { display: none !important; }
+body[data-lyric-mode="roma"] .learn-line .learn-src,
 body[data-lyric-mode="roma"] .learn-line .learn-zh { display: none !important; }
+body[data-lyric-mode="roma"] .learn-line .learn-roma {
+  margin-top: 0;
+  color: inherit;
+  font-size: clamp(20px, 6vw, 28px);
+  font-weight: 650;
+}
 .learn-combo {
   margin: 2px 0 0;
   text-align: center;

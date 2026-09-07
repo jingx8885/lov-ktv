@@ -96,6 +96,22 @@ function paintProgress() {
   $("learnTapCombo").textContent = session.running ? `COMBO ${session.combo}` : t("learn.tapHintLine");
 }
 
+function lyricMode() {
+  return document.body.dataset.lyricMode || state.lyricMode || "all";
+}
+
+/** @param {LearnWord} word */
+function tileLabel(word) {
+  const mode = lyricMode();
+  const text = String((word && word.text) || "");
+  const roma = String((word && word.romaji) || "").trim();
+  const zh = String((word && (word.translation || word.zh)) || "").trim();
+  if (mode === "roma") return { main: roma || text, sub: "" };
+  if (mode === "zh") return { main: zh || text, sub: "" };
+  if (mode === "ja") return { main: text, sub: "" };
+  return { main: text, sub: roma && roma !== text ? roma : "" };
+}
+
 function paintHint(line) {
   paintLearnLine({
     src: "learnTapSrc",
@@ -126,20 +142,13 @@ function clearBoard() {
   if (strip) strip.innerHTML = "";
 }
 
-function overlaps(a, b, gap) {
-  return !(
-    a.left + a.w + gap < b.left ||
-    b.left + b.w + gap < a.left ||
-    a.top + a.h + gap < b.top ||
-    b.top + b.h + gap < a.top
-  );
-}
-
-function tileBox(text) {
-  const len = Math.max(1, Array.from(text || "").length);
+function tileBox(label) {
+  const main = String((label && label.main) || "");
+  const sub = String((label && label.sub) || "");
+  const len = Math.max(1, Array.from(main).length, Math.ceil(Array.from(sub).length * 0.7));
   return {
-    w: Math.min(156, Math.max(58, 32 + len * 20 + Math.random() * 18)),
-    h: 50 + (Math.random() < 0.4 ? 10 : 0)
+    w: Math.min(168, Math.max(58, 28 + len * 14)),
+    h: sub ? 64 : 50
   };
 }
 
@@ -154,47 +163,73 @@ function shuffle(list) {
   return out;
 }
 
+/** @param {{ i: number, w: number, h: number }[]} items @param {number} viewW @param {number} viewH */
+function packTapTiles(items, viewW, viewH) {
+  const pad = 8;
+  const gap = 8;
+  const innerW = Math.max(56, viewW - pad * 2);
+  const innerH = Math.max(48, viewH - pad * 2);
+  const rows = [];
+  let row = [];
+  let rowW = 0;
+  items.forEach((item) => {
+    const w = Math.min(item.w, innerW);
+    item.w = w;
+    if (row.length && rowW + gap + w > innerW) {
+      rows.push(row);
+      row = [];
+      rowW = 0;
+    }
+    row.push(item);
+    rowW += (row.length > 1 ? gap : 0) + w;
+  });
+  if (row.length) rows.push(row);
+  const rowHeights = rows.map((group) => Math.max(...group.map((item) => item.h)));
+  const totalH = rowHeights.reduce((sum, h) => sum + h, 0) + gap * Math.max(0, rows.length - 1);
+  const yScale = totalH > innerH ? innerH / totalH : 1;
+  const placed = new Array(items.length);
+  let y = pad;
+  rows.forEach((group, rowIndex) => {
+    const rowH = rowHeights[rowIndex] * yScale;
+    const used = group.reduce((sum, item) => sum + item.w, 0) + gap * Math.max(0, group.length - 1);
+    let x = pad + Math.max(0, (innerW - used) / 2);
+    group.forEach((item) => {
+      placed[item.i] = {
+        left: x,
+        top: y,
+        w: item.w,
+        h: Math.max(40, item.h * yScale)
+      };
+      x += item.w + gap;
+    });
+    y += rowH + gap * yScale;
+  });
+  return placed;
+}
+
 /** @param {LearnWord[]} words @param {HTMLElement} field */
 function scatterTiles(words, field) {
   const viewW = field.clientWidth || 320;
   const viewH = Math.max(field.clientHeight || 280, 220);
   const pad = 8;
   const skins = shuffle(TILE_SKINS);
-  const placed = [];
-  words.forEach((word, i) => {
-    const size = tileBox(word.text);
-    // Account for padding and narrow phone screens before placing a tile.
+  const order = shuffle(words.map((_, i) => i));
+  const items = order.map((i) => {
+    const size = tileBox(tileLabel(words[i]));
     size.w = Math.min(size.w, Math.max(56, viewW - pad * 2));
-    let box = null;
-    for (let tryN = 0; tryN < 48; tryN += 1) {
-      const next = {
-        left: pad + Math.random() * Math.max(12, viewW - size.w - pad * 2),
-        top: pad + Math.random() * Math.max(12, viewH - size.h - pad * 2),
-        w: size.w,
-        h: size.h
-      };
-      if (!placed.some((item) => overlaps(next, item, 12))) {
-        box = next;
-        break;
-      }
-    }
-    if (!box) {
-      box = {
-        left: Math.max(pad, Math.min(viewW - size.w - pad, pad + ((i * 73) % Math.max(1, viewW - size.w - pad * 2)))),
-        top: Math.max(pad, Math.min(viewH - size.h - pad, pad + ((i * 97) % Math.max(1, viewH - size.h - pad * 2)))),
-        w: size.w,
-        h: size.h
-      };
-    }
-    placed.push({
+    return { i, w: size.w, h: size.h };
+  });
+  const packed = packTapTiles(items, viewW, viewH);
+  const placed = words.map((_, i) => {
+    const box = packed[i] || { left: pad, top: pad, w: 56, h: 50 };
+    return {
       ...box,
-      // Rotation pushes the visual corners outside the field on small screens.
       rot: 0,
-      bob: -(6 + Math.random() * 10),
+      bob: -(2 + Math.random() * 4),
       delay: Math.floor(Math.random() * 1200),
       dur: 2.2 + Math.random() * 1.8,
       skin: skins[i % skins.length]
-    });
+    };
   });
   return placed;
 }
@@ -255,13 +290,13 @@ function stopTapFx() {
   if (tapFx) tapFx.clear();
 }
 
-/** @param {LearnLine} line */
-function spawnTiles(line) {
+/** @param {LearnLine} line @param {{ keepStrip?: boolean }} [opts] */
+function spawnTiles(line, opts) {
   const field = $("learnTapField");
   const strip = $("learnTapStrip");
   if (!field) return;
   field.innerHTML = "";
-  if (strip) strip.innerHTML = "";
+  if (strip && !(opts && opts.keepStrip)) strip.innerHTML = "";
   const words = line.words || [];
   const slots = scatterTiles(words, field);
   burstTapFx();
@@ -275,6 +310,7 @@ function spawnTiles(line) {
     tile.style.left = `${Math.max(4, slot.left)}px`;
     tile.style.top = `${Math.max(4, slot.top)}px`;
     tile.style.width = `${slot.w}px`;
+    tile.style.height = `${slot.h}px`;
     tile.style.setProperty("--tile-bg", slot.skin.bg);
     tile.style.setProperty("--tile-line", slot.skin.line);
     tile.style.setProperty("--tile-ink", slot.skin.ink);
@@ -282,12 +318,42 @@ function spawnTiles(line) {
     tile.style.setProperty("--tile-bob", `${slot.bob}px`);
     tile.style.setProperty("--float-delay", `${slot.delay}ms`);
     tile.style.setProperty("--float-dur", `${slot.dur}s`);
-    tile.innerHTML = `<b>${escapeHtml(word.text)}</b>${word.romaji ? `<small>${escapeHtml(word.romaji)}</small>` : ""}`;
+    paintTileFace(tile, word);
     tile.addEventListener("pointerdown", (event) => {
       event.preventDefault();
       onTap(tile);
     });
     field.appendChild(tile);
+  });
+}
+
+/** @param {HTMLButtonElement} tile @param {LearnWord} word */
+function paintTileFace(tile, word) {
+  const label = tileLabel(word);
+  tile.innerHTML = `<b>${escapeHtml(label.main)}</b>${label.sub ? `<small>${escapeHtml(label.sub)}</small>` : ""}`;
+}
+
+export function syncTapLyricMode() {
+  const line = currentLine();
+  paintHint(line);
+  const field = $("learnTapField");
+  if (!field || !line) return;
+  const tiles = field.querySelectorAll(".learn-tap-tile");
+  if (!tiles.length) return;
+  const hits = new Set();
+  const leftover = new Set();
+  tiles.forEach((tile) => {
+    const i = Number(tile.dataset.i);
+    if (tile.classList.contains("is-hit")) hits.add(i);
+    if (tile.classList.contains("is-left")) leftover.add(i);
+  });
+  spawnTiles(line, { keepStrip: true });
+  field.querySelectorAll(".learn-tap-tile").forEach((tile) => {
+    const i = Number(tile.dataset.i);
+    if (hits.has(i) || leftover.has(i)) {
+      tile.classList.add(hits.has(i) ? "is-hit" : "is-left");
+      tile.setAttribute("aria-disabled", "true");
+    }
   });
 }
 
@@ -372,7 +438,12 @@ function onClock(ms) {
   // starts.
   const current = currentLine();
   const currentComplete = current && session.cursor >= (current.words || []).length;
-  if (idx >= 0 && idx !== session.index && !session.done.has(idx) && (currentComplete || session.done.has(session.index))) {
+  if (
+    idx >= 0 &&
+    idx !== session.index &&
+    !session.done.has(idx) &&
+    (currentComplete || session.done.has(session.index))
+  ) {
     enterLine(idx);
   }
   paintClock(ms);
