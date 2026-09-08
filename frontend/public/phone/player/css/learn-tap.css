@@ -102,6 +102,12 @@
 .learn-tap-tile.is-burst {
   animation: learn-ok-pop 420ms cubic-bezier(.2, .9, .3, 1);
 }
+.learn-tap-tile.is-burst.is-combo {
+  animation: learn-combo-pop 500ms cubic-bezier(.2, .9, .3, 1);
+}
+.learn-tap-tile.is-burst.is-combo-super {
+  animation: learn-combo-super 620ms cubic-bezier(.2, .9, .3, 1);
+}
 .learn-tap-tile.is-miss {
   animation: learn-tap-miss 220ms ease;
   background: rgba(255, 69, 58, .34);
@@ -145,6 +151,8 @@
   .learn-tap-tile,
   .learn-tap-tile:active,
   .learn-tap-tile.is-burst,
+  .learn-tap-tile.is-burst.is-combo,
+  .learn-tap-tile.is-burst.is-combo-super,
   .learn-tap-tile.is-miss { transform: none; animation: none; }
 }
 

@@ -233,7 +233,7 @@ function pickChoice(cid, btn) {
     const comboBonus = Math.min(100, Math.max(0, session.combo - 1) * 10);
     session.points += 100 + speedBonus + comboBonus;
     btn.classList.add("is-burst");
-    celebrateCorrect(btn, { line: true });
+    celebrateCorrect(btn, { line: true, combo: session.combo });
   } else {
     session.combo = 0;
     session.wrong += 1;

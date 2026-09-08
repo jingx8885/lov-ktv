@@ -51,6 +51,12 @@
 .learn-choice.is-burst {
   animation: learn-ok-pop 420ms cubic-bezier(.2, .9, .3, 1);
 }
+.learn-choice.is-burst.is-combo {
+  animation: learn-combo-pop 500ms cubic-bezier(.2, .9, .3, 1);
+}
+.learn-choice.is-burst.is-combo-super {
+  animation: learn-combo-super 620ms cubic-bezier(.2, .9, .3, 1);
+}
 .learn-choice.is-no { background: rgba(255, 69, 58, .32); }
 .learn-combo {
   transition: color .2s ease, transform .2s ease;
@@ -66,5 +72,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .learn-choice:active,
-  .learn-choice.is-burst { transform: none; animation: none; }
+  .learn-choice.is-burst,
+  .learn-choice.is-burst.is-combo,
+  .learn-choice.is-burst.is-combo-super { transform: none; animation: none; }
 }

@@ -1,9 +1,9 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
-import { celebrateCorrect, playMissSfx } from "./fx.js";
+import { celebrateCorrect, playMissSfx, playSelectSfx } from "./fx.js";
 import { cancelCueWindow, paintLearnLine, playCueWindow } from "./play.js";
 
-/** @type {{ lesson: any, index: number, answers: any[], locked: boolean, running: boolean, missed: boolean, matchLeft: number | null, matched: Set<number>, matchMisses: number, done: ((score: any) => void) | null }} */
+/** @type {{ lesson: any, index: number, answers: any[], locked: boolean, running: boolean, missed: boolean, streak: number, matchLeft: number | null, matched: Set<number>, matchMisses: number, done: ((score: any) => void) | null }} */
 const session = {
   lesson: null,
   index: 0,
@@ -11,6 +11,7 @@ const session = {
   locked: false,
   running: false,
   missed: false,
+  streak: 0,
   matchLeft: null,
   matched: new Set(),
   matchMisses: 0,
@@ -45,7 +46,25 @@ function paintBar() {
   const total = items().length || 1;
   if (bar) bar.style.width = `${Math.round((session.index / total) * 100)}%`;
   const combo = $("learnLessonCombo");
-  if (combo) combo.textContent = items().length ? `${session.index + 1} / ${items().length}` : "";
+  if (combo) {
+    combo.textContent = items().length
+      ? `${session.index + 1} / ${items().length}${session.streak > 1 ? ` · ${t("learn.feedback.streak", { n: session.streak })}` : ""}`
+      : "";
+  }
+}
+
+function paintFeedback(message, isNo = false) {
+  const el = $("learnLessonFeedback");
+  if (!el) return;
+  el.hidden = !message;
+  el.classList.toggle("is-no", !!isNo);
+  el.textContent = message || "";
+  // Restart the entrance animation when feedback changes between items.
+  if (message) {
+    el.style.animation = "none";
+    void el.offsetWidth;
+    el.style.animation = "";
+  }
 }
 
 function playItem(item) {
@@ -142,6 +161,7 @@ function paintItem() {
   session.matchLeft = null;
   session.matched = new Set();
   session.matchMisses = 0;
+  paintFeedback("");
   paintBar();
   if (!item || !box) {
     if (box) box.innerHTML = "";
@@ -202,6 +222,16 @@ function finishItem(ok, extra) {
   const item = current();
   if (!item || session.locked) return;
   session.locked = true;
+  session.streak = ok ? session.streak + 1 : 0;
+  paintBar();
+  paintFeedback(
+    ok
+      ? session.streak > 1
+        ? t("learn.feedback.combo", { n: session.streak })
+        : t("learn.feedback.correct")
+      : t("learn.feedback.wrong"),
+    !ok
+  );
   session.answers.push(
     answerPayload(item, ok, {
       ...(extra || {}),
@@ -211,7 +241,7 @@ function finishItem(ok, extra) {
   );
   const next = $("learnLessonNext");
   if (ok) {
-    celebrateCorrect($("learnLessonSrc") || $("learnLessonPrompt"), { line: true });
+    celebrateCorrect($("learnLessonSrc") || $("learnLessonPrompt"), { line: true, combo: session.streak });
     window.setTimeout(() => advance(), 700);
   } else if (next) {
     next.hidden = false;
@@ -254,10 +284,12 @@ function pickMatch(btn) {
   const side = btn.dataset.side;
   if (session.matched.has(pid) && side) return;
   if (side === "left") {
+    if (session.matchLeft === pid) return;
     $("learnLessonQs")
       .querySelectorAll('[data-side="left"]')
       .forEach((node) => node.classList.toggle("is-on", node === btn));
     session.matchLeft = pid;
+    playSelectSfx();
     return;
   }
   if (session.matchLeft == null) return;
@@ -275,6 +307,7 @@ function pickMatch(btn) {
   session.missed = true;
   session.matchMisses += 1;
   playMissSfx();
+  paintFeedback(t("learn.feedback.tryAgain"), true);
   btn.classList.add("is-no");
   window.setTimeout(() => btn.classList.remove("is-no"), 420);
 }
@@ -304,6 +337,7 @@ export function startLesson(lesson) {
   session.lesson = lesson;
   session.index = 0;
   session.answers = [];
+  session.streak = 0;
   session.running = false;
   session.locked = false;
   session.done = null;

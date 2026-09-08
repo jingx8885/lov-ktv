@@ -5,8 +5,8 @@ import { ensurePhoneCtx } from "../playback/mic.js";
 export const SFX_GAIN = 0.068;
 const COLORS = ["#f5c16c", "#ffe8bc", "#ff4d8d", "#ffffff", "#6ec8ff"];
 
-/** @type {{ dots: LearnFxDot[], rings: LearnFxRing[], raf: number }} */
-const fx = { dots: [], rings: [], raf: 0 };
+/** @type {{ dots: LearnFxDot[], rings: LearnFxRing[], raf: number, timers: Set<number> }} */
+const fx = { dots: [], rings: [], raf: 0, timers: new Set() };
 
 function reduced() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -132,6 +132,65 @@ function kickDraw() {
   if (!fx.raf) fx.raf = requestAnimationFrame(tick);
 }
 
+/** Add a short-lived state class and keep it cancellable with clearLearnFx. */
+function flashClass(el, name, ms = 460) {
+  if (!el) return;
+  el.classList.remove(name);
+  void el.offsetWidth;
+  el.classList.add(name);
+  const timer = window.setTimeout(() => {
+    el.classList.remove(name);
+    fx.timers.delete(timer);
+  }, ms);
+  fx.timers.add(timer);
+}
+
+/** A tiny selection tick for choices that have not been judged yet (matching). */
+export function playSelectSfx() {
+  const ctx = fxCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+  const bus = ctx.createGain();
+  bus.gain.setValueAtTime(0.026, now);
+  bus.connect(ctx.destination);
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(660, now);
+  osc.frequency.exponentialRampToValueAtTime(880, now + 0.07);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(0.28, now + 0.008);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.085);
+  osc.connect(gain);
+  gain.connect(bus);
+  osc.start(now);
+  osc.stop(now + 0.1);
+}
+
+function playComboSfx(combo) {
+  const ctx = fxCtx();
+  if (!ctx || ![3, 5, 10].includes(combo)) return;
+  const now = ctx.currentTime;
+  const bus = ctx.createGain();
+  bus.gain.setValueAtTime(0.038, now);
+  bus.connect(ctx.destination);
+  const notes = combo >= 10 ? [880, 1175, 1568, 2093] : combo >= 5 ? [784, 1047, 1319] : [698, 880];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    const t0 = now + i * 0.045;
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.3 / (1 + i * 0.18), t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
+    osc.connect(gain);
+    gain.connect(bus);
+    osc.start(t0);
+    osc.stop(t0 + 0.15);
+  });
+}
+
 /** Quiet sparkle on a side bus. Never touches karaoke gain. */
 function playOkSfx(kind) {
   const ctx = fxCtx();
@@ -189,15 +248,21 @@ export function playMissSfx() {
 
 /**
  * @param {HTMLElement | null} el
- * @param {{ line?: boolean }} [opts]
+ * @param {{ line?: boolean, combo?: number }} [opts]
  */
 export function celebrateCorrect(el, opts) {
   const kind = opts && opts.line ? "line" : "hit";
   playOkSfx(kind);
+  const combo = Number(opts && opts.combo) || 0;
+  if (combo >= 3) {
+    const comboClass = combo >= 5 ? "is-combo-super" : "is-combo";
+    flashClass(el, comboClass, combo >= 5 ? 620 : 500);
+    flashClass($("learnQuizCombo") || $("learnTapCombo") || $("learnLessonCombo"), comboClass, combo >= 5 ? 620 : 500);
+    playComboSfx(combo);
+  }
   haptic();
   if (!el) return;
-  el.classList.add("is-burst");
-  window.setTimeout(() => el.classList.remove("is-burst"), 460);
+  flashClass(el, "is-burst");
   if (reduced()) return;
   const { x, y } = originOf(el);
   spawnBurst(x, y, kind);
@@ -275,6 +340,13 @@ export function runCountdown() {
 
 export function clearLearnFx() {
   cancelCountdown();
+  fx.timers.forEach((timer) => window.clearTimeout(timer));
+  fx.timers.clear();
+  // Exiting a lesson can cancel the timer before it removes the visual state.
+  // Clear those classes now so the next lesson never inherits a stale glow.
+  document.querySelectorAll(".is-burst, .is-combo, .is-combo-super").forEach((el) => {
+    el.classList.remove("is-burst", "is-combo", "is-combo-super");
+  });
   fx.dots = [];
   fx.rings = [];
   if (fx.raf) cancelAnimationFrame(fx.raf);

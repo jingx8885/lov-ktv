@@ -371,7 +371,7 @@ function onTap(tile) {
     appendStrip(tile.dataset.text || "");
     const line = currentLine();
     const last = line && session.cursor === (line.words || []).length;
-    celebrateCorrect(tile, { line: !!last });
+    celebrateCorrect(tile, { line: !!last, combo: session.combo });
     paintProgress();
     return;
   }

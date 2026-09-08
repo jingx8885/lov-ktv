@@ -527,6 +527,7 @@
             <p class="learn-lead" data-i18n="learn.lead">
               一首歌是一大关。通关要词句都认识，并且能读能唱。每关从这首歌抽知识点，打错的会进错题本。
             </p>
+            <div class="learn-daily" id="learnDailyGoal" role="status" aria-live="polite"></div>
             <div class="learn-goals" id="learnGoals" hidden></div>
             <button type="button" class="learn-book-card" id="learnBookBtn" hidden>
               <b data-i18n="learn.book">错题本</b>
@@ -648,8 +649,9 @@
           </div>
           <div class="learn-body is-play" id="learnLesson" hidden>
             <div class="learn-progress" aria-hidden="true"><i id="learnLessonBar"></i></div>
-            <p class="learn-combo" id="learnLessonCombo"></p>
+            <p class="learn-combo" id="learnLessonCombo" aria-live="polite"></p>
             <p class="learn-prompt" id="learnLessonPrompt"></p>
+            <p class="learn-feedback" id="learnLessonFeedback" role="status" aria-live="polite" hidden></p>
             <div class="learn-line">
               <p class="learn-src" id="learnLessonSrc"></p>
               <p class="learn-roma" id="learnLessonRoma"></p>

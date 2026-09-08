@@ -36,6 +36,8 @@ let libraryLoad = 0;
 let songSelectionLoad = 0;
 let pendingSongId = "";
 let pendingSkillKey = "";
+let pendingMode = "";
+let modeLoad = 0;
 
 /** @type {Record<string, { pane: string, setup: (pack: LearnQuiz) => any, run: () => Promise<any>, stop: () => void, score: (score: any, grade: (pct: number) => string) => LearnScoreView }>} */
 const MODES = {
@@ -123,7 +125,10 @@ export function exitLearn() {
   songSelectionLoad += 1;
   pendingSongId = "";
   pendingSkillKey = "";
+  pendingMode = "";
+  modeLoad += 1;
   paintSongSelection();
+  paintModeSelection();
   ui.generation += 1;
   stopModes();
   clearLearnFx();
@@ -164,6 +169,66 @@ function paintSongHead() {
   $("learnMeta").textContent = song ? songArtist(song) : "";
 }
 
+const DAILY_GOAL = 1;
+const DAILY_KEY = "lovktv.learn.daily.v1";
+
+function dayKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function readDaily() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DAILY_KEY) || "{}");
+    return raw && raw.days && typeof raw.days === "object" ? raw : { days: {} };
+  } catch (_) {
+    return { days: {} };
+  }
+}
+
+function dailySnapshot() {
+  const data = readDaily();
+  const today = dayKey();
+  const days = data.days || {};
+  let streak = 0;
+  const cursor = new Date();
+  // A streak counts backwards from today; if today is not done yet, keep the
+  // chain alive from yesterday so the banner feels encouraging before practice.
+  if (!Number(days[today])) cursor.setDate(cursor.getDate() - 1);
+  while (Number(days[dayKey(cursor)]) > 0) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return { count: Number(days[today] || 0), streak };
+}
+
+function paintDailyGoal() {
+  const el = $("learnDailyGoal");
+  if (!el) return;
+  const snap = dailySnapshot();
+  const done = snap.count >= DAILY_GOAL;
+  el.classList.toggle("is-done", done);
+  el.textContent = done
+    ? t("learn.daily.done", { streak: Math.max(1, snap.streak) })
+    : t("learn.daily.goal", { done: snap.count, goal: DAILY_GOAL, streak: snap.streak });
+}
+
+function markDailyPractice() {
+  const data = readDaily();
+  const today = dayKey();
+  data.days[today] = Number(data.days[today] || 0) + 1;
+  // Keep local state tiny while retaining enough history for a useful streak.
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 120);
+  Object.keys(data.days).forEach((key) => {
+    if (key < dayKey(cutoff)) delete data.days[key];
+  });
+  try { localStorage.setItem(DAILY_KEY, JSON.stringify(data)); } catch (_) {}
+  paintDailyGoal();
+}
+
 function gradeLabel(pct) {
   if (pct >= 90) return t("learn.grade.s");
   if (pct >= 75) return t("learn.grade.a");
@@ -196,6 +261,7 @@ function goHome() {
   ui.pendingScore = null;
   showPane("learnHome");
   paintSongHead();
+  paintDailyGoal();
   paintDiff();
   loadCampaign(true).then((data) => {
     if (data) paintCampaign(data);
@@ -311,6 +377,7 @@ async function selectLearnSong(songId) {
     // Campaign data remains authoritative if the media lyrics request failed.
     showPane("learnHome");
     paintSongHead();
+    paintDailyGoal();
     paintCampaign(null);
     const data = await loadCampaign(true);
     if (selectionLoad !== songSelectionLoad || !state.playerSong || state.playerSong.id !== songId || !isLearnOpen())
@@ -330,6 +397,9 @@ function showLearnLibrary() {
   songSelectionLoad += 1;
   pendingSongId = "";
   pendingSkillKey = "";
+  pendingMode = "";
+  modeLoad += 1;
+  paintModeSelection();
   stopModes();
   restoreVocal();
   resetLearnRate();
@@ -417,8 +487,20 @@ async function submitRun(score) {
 
 async function startMode(mode, pack) {
   const spec = MODES[mode] || MODES.quiz;
+  const modeName = MODES[mode] ? mode : "quiz";
   const generation = ui.generation;
-  const loaded = pack || (await loadPack());
+  const loadId = ++modeLoad;
+  pendingMode = modeName;
+  paintModeSelection();
+  let loaded;
+  try {
+    loaded = pack || (await loadPack());
+  } finally {
+    if (loadId === modeLoad) {
+      pendingMode = "";
+      paintModeSelection();
+    }
+  }
   if (!loaded || generation !== ui.generation || !isLearnOpen()) return;
   stopModes();
   const boot = ui.boot;
@@ -452,8 +534,11 @@ async function startMode(mode, pack) {
   if (!go || boot !== ui.boot || ui.mode !== mode) return;
   const score = await spec.run();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
-  if (score && ui.run) await submitRun(score);
-  if (score) showScore(score);
+  if (score) {
+    markDailyPractice();
+    if (ui.run) await submitRun(score);
+    showScore(score);
+  }
 }
 
 async function startSkill(unitId, skill) {
@@ -485,6 +570,17 @@ async function startSkill(unitId, skill) {
       paintSkillSelection();
     }
   }
+}
+
+function paintModeSelection() {
+  document.querySelectorAll("[data-learn-mode]").forEach((btn) => {
+    const loading = !!pendingMode && btn.dataset.learnMode === pendingMode;
+    btn.disabled = !!pendingMode;
+    btn.classList.toggle("is-loading", loading);
+    btn.setAttribute("aria-busy", String(loading));
+    if (loading) btn.setAttribute("aria-label", t("common.loading"));
+    else btn.removeAttribute("aria-label");
+  });
 }
 
 function paintSkillSelection() {
@@ -522,8 +618,11 @@ async function startLessonRun(lesson) {
   if (!go || boot !== ui.boot || generation !== ui.generation || ui.mode !== "lesson" || !isLearnOpen()) return;
   const score = await runLesson();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
-  if (score) await submitRun(score);
-  if (score) showScore(score);
+  if (score) {
+    markDailyPractice();
+    await submitRun(score);
+    showScore(score);
+  }
 }
 
 export async function openStudyBook(kind = "") {
