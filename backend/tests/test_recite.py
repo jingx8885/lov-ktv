@@ -208,16 +208,22 @@ def test_cards_degrade_when_the_word_is_thin(tmp_path, monkeypatch):
     _boot(tmp_path, monkeypatch)
     from lovktv.storage import recite as recite_store
 
-    # No gloss, no timing, no source line: only a bare word. Rather than ship a
-    # broken cloze at box 4, the deck falls back to what it has.
+    # No gloss, no timing, no source line: only a bare word. A one-option
+    # question is unplayable, so with no distractor the card is withheld;
+    # once another word can sit beside it, the deck ships a meaning card.
     bare = recite_store.upsert_card(
         "u:1", _card(text="ゆめ", zh="", line_text="", start_ms=0, end_ms=0)
     )
+    session = recite_worker.build_recite_session("word", [dict(bare, stage=4)], pool=[bare])
+    assert session["cards"] == []
+
+    sibling = recite_store.upsert_card("u:1", _card(text="そら", zh="天空"))
     session = recite_worker.build_recite_session(
-        "word", [dict(bare, stage=4)], pool=[bare]
+        "word", [dict(bare, stage=4)], pool=[bare, sibling]
     )
     card = session["cards"][0]
     assert card["kind"] == "meaning"
+    assert len(card["choices"]) >= 2
     assert card["answer"] in [choice["id"] for choice in card["choices"]]
 
 

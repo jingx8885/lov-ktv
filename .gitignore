@@ -30,3 +30,14 @@ android-phone/local.properties
 *.apk
 *.iml
 .idea/
+# Local tooling artifacts (not part of the documented build)
+.claude/
+.playwright-cli/
+output/
+:memory:.ses
+android-tv/gradlew
+android-tv/gradlew.bat
+android-tv/gradle/
+android-phone/gradlew
+android-phone/gradlew.bat
+android-phone/gradle/

@@ -12,7 +12,13 @@ def test_song_admin_marker_and_realign_gate(tmp_path, monkeypatch):
     song = store.create_song("晴天", "周杰伦", "zh")
     store.update_song(song["id"], status="ready")
     spawned = []
-    monkeypatch.setattr("lovktv.routers.songs.spawn", lambda *args, **kwargs: spawned.append((args, kwargs)))
+    spawn_ok = [True]
+
+    def _spawn(*args, **kwargs):
+        spawned.append((args, kwargs))
+        return spawn_ok[0]
+
+    monkeypatch.setattr("lovktv.routers.songs.spawn", _spawn)
 
     with TestClient(main.app) as client:
         ordinary = client.post(
@@ -34,4 +40,9 @@ def test_song_admin_marker_and_realign_gate(tmp_path, monkeypatch):
         assert detail["can_realign"] is True
         assert client.post(f"/api/songs/{song['id']}/realign", json={}).status_code == 200
 
-    assert spawned and spawned[0][0][1] == song["id"]
+        # A full queue rejects a second job: the endpoint reports the conflict
+        # instead of pretending the work was queued.
+        spawn_ok[0] = False
+        assert client.post(f"/api/songs/{song['id']}/realign", json={}).status_code == 409
+
+    assert len(spawned) == 2 and spawned[0][0][1] == song["id"]
