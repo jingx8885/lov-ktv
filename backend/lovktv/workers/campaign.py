@@ -26,13 +26,13 @@ from lovktv.workers.learn import (
 
 CAMPAIGN_SCHEMA = "lovktv-learn-campaign-v1"
 LINES_PER_UNIT = 8
-SKILLS = ("word", "sentence", "listen", "read", "sing")
+SKILLS = ("word", "sentence", "listen", "read")
 PASS_PCT = 70
 LESSON_SIZE = 8
 REVIEW_SIZE = 12
 MASTERY_STREAK = 2
 
-_SKILL_PLAY = {"read": "tap", "sing": "echo"}
+_SKILL_PLAY = {"read": "tap"}
 
 
 def _has_kanji(text: str) -> bool:
@@ -176,14 +176,13 @@ def build_campaign(
     prev_unit_done = True
     units: list[dict[str, Any]] = []
     read_done = 0
-    sing_done = 0
     for unit_index, chunk in enumerate(units_raw):
         uid = unit_id_for(unit_index)
         start = sum(len(part) for part in units_raw[:unit_index])
         end = start + len(chunk)
         skills: list[dict[str, Any]] = []
         # Skills within a unit are independent practice modes. Locking
-        # sentence/listen/read/sing behind one another turns game mechanics
+        # sentence/listen/read behind one another turns game mechanics
         # into artificial prerequisites; only the next unit depends on the
         # current unit being completed.
         unit_all_ok = True
@@ -199,8 +198,6 @@ def build_campaign(
                 unit_all_ok = False
             if skill == "read" and _passed(row):
                 read_done += 1
-            if skill == "sing" and _passed(row):
-                sing_done += 1
             skills.append(
                 {
                     "id": skill,
@@ -229,13 +226,7 @@ def build_campaign(
     sent_done = sum(1 for item in sentences if item["key"] in mastered_sents)
     words_ok = (not word_total) or word_done >= word_total
     sents_ok = sent_total > 0 and sent_done >= sent_total
-    cleared = bool(
-        unit_total
-        and words_ok
-        and sents_ok
-        and read_done >= unit_total
-        and sing_done >= unit_total
-    )
+    cleared = bool(unit_total and words_ok and sents_ok and read_done >= unit_total)
     return {
         "schema": CAMPAIGN_SCHEMA,
         "song_id": _norm(song.get("id") or timeline.get("song_id")),
@@ -247,7 +238,6 @@ def build_campaign(
             "words": {"done": word_done, "total": word_total},
             "sentences": {"done": sent_done, "total": sent_total},
             "read": {"done": read_done, "total": unit_total},
-            "sing": {"done": sing_done, "total": unit_total},
             "cleared": cleared,
         },
         "mistakes": int(mistakes),

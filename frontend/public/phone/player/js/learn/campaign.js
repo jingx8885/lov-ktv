@@ -55,8 +55,7 @@ const SKILL_ICO = {
   sentence: "M4 5h16v2.4H4V5Zm0 5.8h16v2.4H4v-2.4ZM4 16.6h10V19H4v-2.4Z",
   listen:
     "M12 3a8 8 0 0 0-8 8v6a3 3 0 0 0 3 3h1a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H6.4A5.6 5.6 0 0 1 12 5.4 5.6 5.6 0 0 1 17.6 12H16a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1a3 3 0 0 0 3-3v-6a8 8 0 0 0-8-8Z",
-  read: "M12 6.2C10.3 4.9 8.1 4.3 5.6 4.3c-.9 0-1.8.1-2.6.3v13.6c.8-.2 1.7-.3 2.6-.3 2.5 0 4.7.6 6.4 1.9 1.7-1.3 3.9-1.9 6.4-1.9.9 0 1.8.1 2.6.3V4.6c-.8-.2-1.7-.3-2.6-.3-2.5 0-4.7.6-6.4 1.9Z",
-  sing: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3ZM5 11.5a1 1 0 0 1 2 0 5 5 0 0 0 10 0 1 1 0 0 1 2 0 7 7 0 0 1-6 6.9V21h2.5a1 1 0 0 1 0 2h-7a1 1 0 0 1 0-2H11v-2.6a7 7 0 0 1-6-6.9Z"
+  read: "M12 6.2C10.3 4.9 8.1 4.3 5.6 4.3c-.9 0-1.8.1-2.6.3v13.6c.8-.2 1.7-.3 2.6-.3 2.5 0 4.7.6 6.4 1.9 1.7-1.3 3.9-1.9 6.4-1.9.9 0 1.8.1 2.6.3V4.6c-.8-.2-1.7-.3-2.6-.3-2.5 0-4.7.6-6.4 1.9Z"
 };
 
 function nodeIcon(skill) {
@@ -65,7 +64,7 @@ function nodeIcon(skill) {
 }
 
 /**
- * A song can chunk into a dozen units × 5 skills. Painting all 60 nodes buries
+ * A song can chunk into a dozen units × 4 skills. Painting all 48 nodes buries
  * the one unlocked node under nine screens of grey, so only the unit being
  * worked on is drawn in full; cleared units fold to a single row and the locked
  * tail collapses to a count. Both fold-outs stay reachable by tap.
@@ -203,7 +202,6 @@ export function paintCampaign(data) {
     words: { done: 0, total: 0 },
     sentences: { done: 0, total: 0 },
     read: { done: 0, total: 0 },
-    sing: { done: 0, total: 0 },
     cleared: false
   };
   if (goals) {
@@ -214,7 +212,6 @@ export function paintCampaign(data) {
       goalView("words", goal.words) +
       goalView("sentences", goal.sentences) +
       goalView("read", goal.read) +
-      goalView("sing", goal.sing) +
       `</div>`;
   }
   if (path) path.innerHTML = pathView(pack);

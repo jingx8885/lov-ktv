@@ -208,7 +208,9 @@ def test_campaign_has_independent_skills_within_unit():
     assert campaign["schema"] == "lovktv-learn-campaign-v1"
     assert len(campaign["units"]) == 1
     skills = [item["id"] for item in campaign["units"][0]["skills"]]
-    assert skills == ["word", "sentence", "listen", "read", "sing"]
+    assert skills == ["word", "sentence", "listen", "read"]
+    assert "sing" not in skills
+    assert "sing" not in campaign["goal"]
     assert campaign["units"][0]["skills"][0]["status"] == "ready"
     assert {item["status"] for item in campaign["units"][0]["skills"][1:]} == {"ready"}
     assert campaign["goal"]["words"]["total"] == len(knowledge_words(singable_cues(JA_TIMELINE)))
@@ -255,12 +257,12 @@ def test_campaign_chunks_long_songs():
                 "score": 80,
                 "attempts": 1,
             }
-            for skill in ("word", "sentence", "listen", "read", "sing")
+            for skill in ("word", "sentence", "listen", "read")
         ],
     )
     assert progressed["units"][1]["skills"][0]["status"] == "ready"
     assert progressed["goal"]["read"]["done"] == 1
-    assert progressed["goal"]["sing"]["done"] == 1
+    assert "sing" not in progressed["goal"]
 
 
 def test_word_lesson_samples_eight_unique_words_from_dense_unit():
@@ -514,6 +516,12 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnGoals"' in html
     assert 'id="learnPath"' in html
     assert 'id="learnBook"' in html
+    campaign_js = (root / "phone" / "player" / "js" / "learn" / "campaign.js").read_text(
+        encoding="utf-8"
+    )
+    assert 'goalView("sing"' not in campaign_js
+    assert "SKILL_ICO" in campaign_js
+    assert "sing:" not in campaign_js.split("const SKILL_ICO", 1)[1].split("};", 1)[0]
     # Song-scoped vocabulary: the entry card, the word-picking pane, and its
     # stylesheet. The pane must also be routable and reachable by the back
     # chain, which is hand-rolled in the learn shell.
@@ -610,9 +618,9 @@ def test_phone_learn_shell_is_wired():
     # Campaign node labels and unit headers are built from dynamic keys
     # ("learn.skill." + id, "learn.goal." + key). A missing entry renders the
     # raw key on screen, so every skill and goal must stay translated.
-    for skill in ("word", "sentence", "listen", "read", "sing"):
+    for skill in ("word", "sentence", "listen", "read"):
         assert f'"learn.skill.{skill}"' in zh
-    for goal in ("words", "sentences", "read", "sing"):
+    for goal in ("words", "sentences", "read"):
         assert f'"learn.goal.{goal}"' in zh
     assert '"learn.unit"' in zh
     assert '"learn.unitLines"' in zh
@@ -723,8 +731,17 @@ def test_learn_api_reads_lyrics_json(tmp_path, monkeypatch):
         assert path["goal"]["words"]["total"] == 6
         assert path["goal"]["sentences"]["total"] == 3
         assert path["goal"]["read"]["total"] == 1
+        assert "sing" not in path["goal"]
+        assert [item["id"] for item in path["units"][0]["skills"]] == [
+            "word",
+            "sentence",
+            "listen",
+            "read",
+        ]
         assert path["units"][0]["skills"][0]["status"] == "ready"
         assert path["units"][0]["skills"][1]["status"] == "ready"
+        rejected = client.get(f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=sing")
+        assert rejected.status_code == 400
         lesson = client.get(f"/api/songs/{song['id']}/learn/lesson?unit=u0&skill=word")
         assert lesson.status_code == 200
         body = lesson.json()

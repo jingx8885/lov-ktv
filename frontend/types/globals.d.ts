@@ -430,7 +430,6 @@ interface LearnCampaignGoal {
   words: LearnCampaignGoalSlice;
   sentences: LearnCampaignGoalSlice;
   read: LearnCampaignGoalSlice;
-  sing: LearnCampaignGoalSlice;
   cleared: boolean;
 }
 interface LearnCampaignSkill {

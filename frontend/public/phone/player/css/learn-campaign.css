@@ -6,7 +6,7 @@
 }
 .learn-goals-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
 }
 .learn-goal {
@@ -234,7 +234,7 @@
 .learn-unit-row strong { flex: 0 0 auto; color: var(--muted); font-size: 20px; font-weight: 400; }
 .learn-unit-row.is-done { background: rgba(72, 220, 160, .08); }
 .learn-unit-row.is-more b { color: var(--muted); font-weight: 550; }
-/* The path is a curve, not a column: a full sine period across the five skills
+/* The path is a curve, not a column: a half-sine across the four skills
    reads as a deliberate route, where the old +-28px zigzag just looked crooked.
    Duolingo draws no connector between bubbles, so neither do we. */
 .learn-nodes {
