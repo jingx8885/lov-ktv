@@ -514,6 +514,19 @@ def test_phone_learn_shell_is_wired():
     assert 'id="learnGoals"' in html
     assert 'id="learnPath"' in html
     assert 'id="learnBook"' in html
+    # Song-scoped vocabulary: the entry card, the word-picking pane, and its
+    # stylesheet. The pane must also be routable and reachable by the back
+    # chain, which is hand-rolled in the learn shell.
+    assert 'id="learnSongWordsBtn"' in html
+    assert 'id="learnWords"' in html
+    assert 'id="learnWordsList"' in html
+    assert 'id="learnWordsGo"' in html
+    # Cutting is the only per-word action: everything is included by default and
+    # the user removes what they already know, so there is no select-all pair.
+    assert 'id="learnWordsRestoreAll"' in html
+    assert 'id="learnWordsAll"' not in html
+    assert 'id="learnWordsNone"' not in html
+    assert "learn-words.css" in html
     assert 'id="learnLesson"' in html
     assert "learn-campaign.css" in html
     assert 'id="learnLyricMode"' in html
@@ -523,6 +536,16 @@ def test_phone_learn_shell_is_wired():
     assert "data-learn-diff" in html
     assert "runCountdown" in fx
     assert "kickPlayerPaint" in shell
+    words = (root / "phone" / "player" / "js" / "learn" / "words.js").read_text(
+        encoding="utf-8"
+    )
+    assert "openSongWords" in shell
+    assert "WORDS_PANES" in shell
+    assert "learn/words/setup" in words
+    assert "learn.words.cut" in words
+    assert "selectAll" not in words
+    # A pane the back button cannot leave would strand the user in it.
+    assert "learnWords" in shell
     paint = (root / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
     assert "clusterTokens" in paint
     assert "isKanjiText(reading)" in paint

@@ -13,6 +13,10 @@
   gap: 8px;
   margin: 4px 0 2px;
 }
+/* 有砍掉的词时多一格，四格挤成五格比换行好读。 */
+.recite-stats.has-skipped {
+  grid-template-columns: repeat(5, 1fr);
+}
 .recite-stat {
   display: grid;
   justify-items: center;
@@ -177,6 +181,37 @@
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
+}
+
+/* 砍掉的词留在列表里（砍词可逆），但压暗表示它不会出题。 */
+.recite-item.is-skipped {
+  opacity: .55;
+}
+.recite-box.is-skipped {
+  color: var(--muted);
+  background: rgba(255, 255, 255, .06);
+}
+.recite-restore {
+  appearance: none;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--gold);
+  background: rgba(245, 193, 108, .16);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.recite-restore:active {
+  transform: scale(.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .recite-restore:active {
+    transform: none;
+  }
 }
 
 /* 卡片流 */

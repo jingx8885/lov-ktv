@@ -318,7 +318,7 @@ export async function startPhoneMic(opts) {
     const raw = String((err && err.message) || err || "");
     if (!/audio source|notreadable|source/i.test(raw) || !forceWeb) throw err;
     await stopNativeMicForWeb();
-    await new Promise((resolve) => window.setTimeout(resolve, 1000));
+    await new Promise((resolve) => { window.setTimeout(resolve, 1000); });
     state.phoneMic = await acquirePhoneMic();
   }
   applyPhoneMonitor();

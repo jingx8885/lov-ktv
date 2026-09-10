@@ -372,10 +372,24 @@ def test_word_deck_api_round_trip(tmp_path, monkeypatch):
         # The answered card is a day out now; only the untouched one is left.
         assert body["deck"]["due"] == 1
 
+        # DELETE sets a word aside rather than erasing it: the row keeps its
+        # history so it can be restored, so `total` is unchanged and only the
+        # actionable counts move.
         dropped = client.delete(f"/api/learn/cards/{cid}", headers=head)
         assert dropped.status_code == 200
-        assert dropped.json()["total"] == 1
-        assert client.delete(f"/api/learn/cards/{cid}", headers=head).status_code == 404
+        assert dropped.json()["total"] == 2
+        after_drop = client.get("/api/learn/deck", headers=head).json()
+        assert after_drop["skipped"] == 1
+        assert after_drop["due"] == 1
+        assert next(row for row in after_drop["cards"] if row["card_id"] == cid)["skipped"]
+        # Setting aside is idempotent, and an unknown id is still a 404.
+        assert client.delete(f"/api/learn/cards/{cid}", headers=head).status_code == 200
+        assert client.delete("/api/learn/cards/nosuchword", headers=head).status_code == 404
+        restored = client.post(
+            "/api/learn/words/restore", json={"word_id": cid}, headers=head
+        )
+        assert restored.status_code == 200
+        assert restored.json()["deck"]["skipped"] == 0
 
 
 def test_deck_api_rejects_junk(tmp_path, monkeypatch):

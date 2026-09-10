@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from lovktv.core.db import adapt_sql, dialect, is_postgres_url, table_columns
 from lovktv.core.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
 
@@ -21,6 +23,9 @@ def test_schema_covers_current_tables():
         "learn_mistakes",
         "learn_cards",
         "learn_recite_days",
+        "learn_words",
+        "learn_word_sources",
+        "learn_migrations",
     }
     assert TABLES["songs"] == (
         "id",
@@ -78,6 +83,20 @@ def test_postgres_ddl_uses_bigint_for_epoch_ms():
     assert "vocal_mix DOUBLE PRECISION" in POSTGRES_DDL
     assert "CREATE TABLE IF NOT EXISTS songs" in POSTGRES_DDL
     assert "CREATE TABLE IF NOT EXISTS login_tickets" in SQLITE_DDL
+
+
+def test_supabase_sql_file_matches_the_ddl():
+    """`docs/schema.postgres.sql` is what a human pastes into the Supabase SQL
+    editor, so a table that exists only in code never gets created there. It had
+    already drifted seven tables behind once; keep the two in lockstep."""
+    path = Path(__file__).resolve().parents[2] / "docs" / "schema.postgres.sql"
+    text = path.read_text(encoding="utf-8")
+    assert text.rstrip().endswith(POSTGRES_DDL.strip().splitlines()[-1])
+    for name in TABLES:
+        assert f"CREATE TABLE IF NOT EXISTS {name} " in text, name
+    assert text.count("CREATE TABLE") == POSTGRES_DDL.count("CREATE TABLE")
+    # Every statement in the canonical DDL must appear verbatim in the file.
+    assert POSTGRES_DDL.strip() in text
 
 
 def test_adapt_sql_switches_placeholders():

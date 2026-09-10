@@ -5,22 +5,23 @@ import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { showToast } from "../../../ui/js/toast.js";
-import { startPhoneMic } from "../playback/mic.js";
 import { applyPlayerVocalMix, pausePlayer, unlockPlayerGesture } from "../playback/controls.js";
 import { kickPlayerPaint } from "../playback/lyrics.js";
 import { applyLearnRate, cancelCueWindow, loadLearnDiff, resetLearnRate, setLearnDiff } from "./play.js";
-import { cancelCountdown, celebrateCorrect, clearLearnFx, runCountdown } from "./fx.js";
+import { cancelCountdown, celebrateCorrect, clearLearnFx } from "./fx.js";
 import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView, syncQuizLyricMode } from "./quiz.js";
-import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js";
 import { bindTap, runTap, startTap, stopTap, syncTapLyricMode, tapScoreView } from "./tap.js";
+import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js";
 import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
-import { RECITE_PANES, bindRecite, openRecite, reciteBack, stopRecite } from "./recite.js";
+import { RECITE_PANES, bindRecite, openRecite, reciteBack, reciteSongId, stopRecite } from "./recite.js";
+import { WORDS_PANES, bindSongWords, openSongWords, stopSongWords } from "./words.js";
 import { getStudyWords } from "../../../desk/js/lyrics.js";
 
 export { openRecite } from "./recite.js";
+export { openSongWords } from "./words.js";
 
-/** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any }} */
+/** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any, standalone: boolean }} */
 const ui = {
   mode: "",
   pack: null,
@@ -30,7 +31,8 @@ const ui = {
   run: null,
   lesson: null,
   attemptId: "",
-  pendingScore: null
+  pendingScore: null,
+  standalone: false
 };
 let libraryLoad = 0;
 let songSelectionLoad = 0;
@@ -45,7 +47,7 @@ const MODES = {
   tap: { pane: "learnTap", setup: startTap, run: runTap, stop: stopTap, score: tapScoreView },
   echo: { pane: "learnEcho", setup: startEcho, run: runEcho, stop: stopEcho, score: echoScoreView }
 };
-const CYCLE = ["quiz", "tap", "echo"];
+const CYCLE = ["quiz", "tap"];
 const PANES = [
   "learnLibrary",
   "learnHome",
@@ -55,10 +57,18 @@ const PANES = [
   "learnScore",
   "learnLesson",
   "learnBook",
+  ...WORDS_PANES,
   ...RECITE_PANES
 ];
 /** Panes that own the whole screen — the lyric strip has nothing to show under them. */
-const NO_LYRIC_PANES = new Set(["learnLibrary", "learnHome", "learnScore", "learnBook", ...RECITE_PANES]);
+const NO_LYRIC_PANES = new Set([
+  "learnLibrary",
+  "learnHome",
+  "learnScore",
+  "learnBook",
+  ...WORDS_PANES,
+  ...RECITE_PANES
+]);
 
 function showPane(id) {
   PANES.forEach((name) => {
@@ -117,6 +127,7 @@ function stopModes() {
   Object.values(MODES).forEach((mode) => mode.stop());
   stopLesson();
   stopRecite();
+  stopSongWords();
   cancelCueWindow();
 }
 
@@ -139,6 +150,7 @@ export function exitLearn() {
   ui.lesson = null;
   ui.attemptId = "";
   ui.pendingScore = null;
+  ui.standalone = false;
   document.body.classList.remove("learn-on");
   $("playerLearn").hidden = true;
   $("topTitle").textContent = t("phone.nav.player");
@@ -229,6 +241,30 @@ function markDailyPractice() {
   paintDailyGoal();
 }
 
+/** 歌曲专属背词入口的副标题。没挑过词时提示先挑词，挑过之后报进度，
+ *  免得用户点进去才知道今天没有要背的。 */
+let songWordsLoad = 0;
+
+async function paintSongWordsCard() {
+  const meta = $("learnSongWordsMeta");
+  const song = state.playerSong;
+  if (!meta || !song) return;
+  const loadId = ++songWordsLoad;
+  const { ok, data } = await fetchJson(
+    `/api/learn/deck?deck=word&cards=0&song_id=${encodeURIComponent(song.id)}`,
+    { cache: "no-store" }
+  ).catch(() => ({ ok: false, data: null }));
+  if (loadId !== songWordsLoad || !ok || !data) return;
+  if (!state.playerSong || state.playerSong.id !== song.id) return;
+  const total = Number(data.total || 0);
+  if (!total) {
+    meta.textContent = t("learn.songWordsSetupMeta");
+    return;
+  }
+  const kept = Number(data.new || 0) + Number(data.learning || 0);
+  meta.textContent = t("learn.songWordsMeta", { kept, due: Number(data.due || 0) });
+}
+
 function gradeLabel(pct) {
   if (pct >= 90) return t("learn.grade.s");
   if (pct >= 75) return t("learn.grade.a");
@@ -245,7 +281,6 @@ function otherLabel(mode) {
   if (ui.run) return ui.run.review ? t("learn.go.book") : t("learn.backPath");
   const next = nextMode(mode);
   if (next === "tap") return t("learn.go.tap");
-  if (next === "echo") return t("learn.go.echo");
   return t("learn.go.quiz");
 }
 
@@ -262,6 +297,7 @@ function goHome() {
   showPane("learnHome");
   paintSongHead();
   paintDailyGoal();
+  paintSongWordsCard();
   paintDiff();
   loadCampaign(true).then((data) => {
     if (data) paintCampaign(data);
@@ -271,7 +307,7 @@ function goHome() {
 function campaignProgress(data) {
   const goal = data && data.goal;
   if (!goal) return { pct: 0, done: false };
-  const slices = [goal.words, goal.sentences, goal.read, goal.sing].filter(Boolean);
+  const slices = [goal.words, goal.sentences, goal.read].filter(Boolean);
   const total = slices.reduce((sum, item) => sum + Number(item.total || 0), 0);
   const done = slices.reduce((sum, item) => sum + Math.min(Number(item.done || 0), Number(item.total || 0)), 0);
   return { pct: total ? Math.round((done / total) * 100) : 0, done: !!goal.cleared };
@@ -378,6 +414,7 @@ async function selectLearnSong(songId) {
     showPane("learnHome");
     paintSongHead();
     paintDailyGoal();
+    paintSongWordsCard();
     paintCampaign(null);
     const data = await loadCampaign(true);
     if (selectionLoad !== songSelectionLoad || !state.playerSong || state.playerSong.id !== songId || !isLearnOpen())
@@ -514,29 +551,12 @@ async function startMode(mode, pack) {
       : String(Date.now()) + "-" + String(Math.random());
   showPane(spec.pane);
   spec.setup(loaded);
-  if (ui.mode === "echo") {
-    try {
-      await startPhoneMic({ forceWeb: true });
-    } catch (err) {
-      showToast((err && err.message) || t("learn.noRec"));
-      restoreVocal();
-      resetLearnRate();
-      ui.mode = "";
-      showPane("learnHome");
-      return;
-    }
-  }
-  // Quiz and tap paint interactive controls before run() flips their session
-  // to running. A pre-game countdown therefore shows live-looking controls
-  // that reject every tap (and lesson mode has the same lifecycle). Echo has
-  // no tappable answer board, so it can keep the short spoken lead-in.
-  const go = ui.mode === "echo" ? await runCountdown() : true;
-  if (!go || boot !== ui.boot || ui.mode !== mode) return;
+  if (boot !== ui.boot || ui.mode !== mode) return;
   const score = await spec.run();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
   if (score) {
     markDailyPractice();
-    if (ui.run) await submitRun(score);
+    if (ui.run && !ui.standalone) await submitRun(score);
     showScore(score);
   }
 }
@@ -558,7 +578,7 @@ async function startSkill(unitId, skill) {
     }
     ui.run = { unitId, skill };
     ui.lesson = data;
-    if (data.play_mode === "tap" || data.play_mode === "echo") {
+    if (data.play_mode === "tap") {
       const pack = await loadPack();
       if (!pack || generation !== ui.generation || !isLearnOpen()) return;
       return startMode(data.play_mode, scopedPack(data.lines || pack.lines));
@@ -705,6 +725,7 @@ async function startReview() {
 }
 
 export async function enterLearn() {
+  ui.standalone = false;
   openLearnShell();
   // 从听歌页进入时直接打开当前歌曲，避免再让用户重新挑歌。
   if (state.playerSong) {
@@ -714,7 +735,16 @@ export async function enterLearn() {
   }
 }
 
+export async function enterCover() {
+  if (!state.playerSong) return showToast(t("learn.noSong"));
+  ui.standalone = true;
+  openLearnShell();
+  await startMode("echo");
+}
+
 export function bindLearn() {
+  const cover = $("playerEchoBtn");
+  if (cover) cover.onclick = () => enterCover();
   document.querySelectorAll("[data-enter-learn]").forEach((btn) => {
     btn.onclick = () => {
       if (state.currentPage !== "player") api.showPage("player");
@@ -725,8 +755,17 @@ export function bindLearn() {
     // 背诵牌组自己消化一层返回：卡片流 / 结算 → 牌组首页。
     if (reciteBack()) return;
     if ($("learnRecite") && !$("learnRecite").hidden) {
+      // 歌曲专属牌组是从学习首页进来的，回到那首歌，不要甩回学习中心。
+      const songId = reciteSongId();
       stopRecite();
-      showLearnLibrary();
+      if (songId && state.playerSong && state.playerSong.id === songId) goHome();
+      else showLearnLibrary();
+      return;
+    }
+    if ($("learnWords") && !$("learnWords").hidden) {
+      stopSongWords();
+      if (state.playerSong) goHome();
+      else showLearnLibrary();
       return;
     }
     if ($("learnLibrary").hidden && $("learnHome").hidden) {
@@ -764,13 +803,17 @@ export function bindLearn() {
     onSkill: (unitId, skill) => startSkill(unitId, skill),
     onBook: () => openStudyBook()
   });
-  bindRecite({
+  const learnHead = {
     showPane,
     setHead: (title, meta) => {
       $("learnTitle").textContent = title;
       $("learnMeta").textContent = meta || "";
     }
-  });
+  };
+  bindRecite(learnHead);
+  bindSongWords(learnHead);
+  const songWordsBtn = $("learnSongWordsBtn");
+  if (songWordsBtn) songWordsBtn.onclick = () => openSongWords();
   const songSearch = $("learnSongSearch");
   const songSearchClear = $("learnSongSearchClear");
   if (songSearch) {
@@ -825,7 +868,7 @@ export function bindLearn() {
     $("learnMix").pause();
     if (ui.run && ui.run.review) return startReview();
     if (ui.run && ui.mode === "lesson") return startSkill(ui.run.unitId, ui.run.skill);
-    if (ui.run && (ui.mode === "tap" || ui.mode === "echo")) return startSkill(ui.run.unitId, ui.run.skill);
+    if (ui.run && ui.mode === "tap") return startSkill(ui.run.unitId, ui.run.skill);
     startMode(ui.mode);
   };
   $("learnOther").onclick = () => {

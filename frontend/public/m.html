@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="/phone/player/css/learn-echo.css" />
     <link rel="stylesheet" href="/phone/player/css/learn-campaign.css" />
     <link rel="stylesheet" href="/phone/player/css/learn-recite.css" />
+    <link rel="stylesheet" href="/phone/player/css/learn-words.css" />
     <link rel="stylesheet" href="/phone/sheets/css/sheets.css" />
     <link rel="stylesheet" href="/shared/ads/css/ads.css" />
   </head>
@@ -409,6 +410,10 @@
             <button class="icon-btn" id="playerNextBtn" type="button" data-i18n-aria="common.next">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6v12l8.5-6zm9.5 0h2.5v12h-2.5z" /></svg>
             </button>
+            <button class="icon-btn" id="playerEchoBtn" type="button" data-i18n-aria="learn.echo">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5z" /></svg>
+              <em class="vh" data-i18n="learn.echo">翻唱</em>
+            </button>
             <button
               class="icon-btn"
               id="playerLearnBtn"
@@ -532,6 +537,10 @@
             <button type="button" class="learn-book-card" id="learnBookBtn" hidden>
               <b data-i18n="learn.book">错题本</b>
               <span id="learnBookMeta"></span>
+            </button>
+            <button type="button" class="learn-book-card is-song-words" id="learnSongWordsBtn">
+              <b data-i18n="learn.songWords">背这首歌的词</b>
+              <span id="learnSongWordsMeta" data-i18n="learn.songWordsHint">挑出要背的词，按记忆曲线复习</span>
             </button>
             <div class="learn-path" id="learnPath"></div>
             <details class="learn-free" id="learnFree">
@@ -679,6 +688,26 @@
             <div class="learn-dock learn-dock-col">
               <button class="btn" id="learnSaveRetry" type="button" hidden data-i18n="learn.saveRetry">重试保存</button>
               <button class="btn primary" id="learnBookGo" type="button" data-i18n="learn.bookGo">练错题</button>
+            </div>
+          </div>
+          <div class="learn-body learn-words" id="learnWords" hidden>
+            <p class="learn-lead" id="learnWordsLead" data-i18n="learn.words.lead">
+              默认全部要背。已经会的点「砍」，它就不会再出题，之后还能恢复。
+            </p>
+            <p class="tiny learn-words-thin" id="learnWordsThin" hidden data-i18n="learn.words.thin">
+              这首歌词太少，可能凑不满四选一。
+            </p>
+            <div class="learn-words-bar">
+              <span id="learnWordsCount" role="status" aria-live="polite"></span>
+              <span class="learn-words-bulk">
+                <button type="button" id="learnWordsRestoreAll" hidden data-i18n="learn.words.restoreAll">
+                  全部放回
+                </button>
+              </span>
+            </div>
+            <div class="learn-words-list" id="learnWordsList"></div>
+            <div class="learn-dock">
+              <button class="btn primary" id="learnWordsGo" type="button"></button>
             </div>
           </div>
           <div class="learn-body recite-home" id="learnRecite" hidden>

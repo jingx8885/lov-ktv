@@ -62,6 +62,9 @@ TABLES: dict[str, tuple[str, ...]] = {
     "learn_mistakes": ("owner", "song_id", "qkind", "item_key", "prompt", "stem", "answer_text", "payload", "wrong_count", "correct_streak", "last_wrong_at", "resolved_at", "stage", "reps", "lapses", "due_at"),
     "learn_cards": ("owner", "card_id", "song_id", "song_title", "item_key", "text", "zh", "romaji", "line_text", "start_ms", "end_ms", "stage", "reps", "lapses", "due_at", "last_at", "created_at", "retired_at"),
     "learn_recite_days": ("owner", "deck", "day", "done", "created_at"),
+    "learn_words": ("owner", "word_id", "language", "norm", "text", "zh", "romaji", "stage", "reps", "lapses", "due_at", "last_at", "created_at", "retired_at", "skipped_at"),
+    "learn_word_sources": ("owner", "word_id", "song_id", "song_title", "line_text", "start_ms", "end_ms", "created_at"),
+    "learn_migrations": ("owner", "kind", "created_at"),
 }
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
@@ -230,6 +233,29 @@ CREATE TABLE IF NOT EXISTS learn_recite_days (
   done INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (owner, deck, day)
 );
+CREATE TABLE IF NOT EXISTS learn_words (
+  owner TEXT NOT NULL, word_id TEXT NOT NULL, language TEXT NOT NULL DEFAULT '',
+  norm TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '',
+  zh TEXT NOT NULL DEFAULT '', romaji TEXT NOT NULL DEFAULT '',
+  stage INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0, due_at INTEGER NOT NULL DEFAULT 0,
+  last_at INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL DEFAULT 0,
+  retired_at INTEGER NOT NULL DEFAULT 0, skipped_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, word_id)
+);
+CREATE INDEX IF NOT EXISTS learn_words_due ON learn_words (owner, skipped_at, retired_at, due_at);
+CREATE TABLE IF NOT EXISTS learn_word_sources (
+  owner TEXT NOT NULL, word_id TEXT NOT NULL, song_id TEXT NOT NULL,
+  song_title TEXT NOT NULL DEFAULT '', line_text TEXT NOT NULL DEFAULT '',
+  start_ms INTEGER NOT NULL DEFAULT 0, end_ms INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, word_id, song_id)
+);
+CREATE INDEX IF NOT EXISTS learn_word_sources_song ON learn_word_sources (owner, song_id);
+CREATE TABLE IF NOT EXISTS learn_migrations (
+  owner TEXT NOT NULL, kind TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, kind)
+);
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
@@ -396,6 +422,29 @@ CREATE TABLE IF NOT EXISTS learn_recite_days (
   owner TEXT NOT NULL, deck TEXT NOT NULL, day TEXT NOT NULL,
   done INTEGER NOT NULL DEFAULT 0, created_at BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (owner, deck, day)
+);
+CREATE TABLE IF NOT EXISTS learn_words (
+  owner TEXT NOT NULL, word_id TEXT NOT NULL, language TEXT NOT NULL DEFAULT '',
+  norm TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '',
+  zh TEXT NOT NULL DEFAULT '', romaji TEXT NOT NULL DEFAULT '',
+  stage INTEGER NOT NULL DEFAULT 0, reps INTEGER NOT NULL DEFAULT 0,
+  lapses INTEGER NOT NULL DEFAULT 0, due_at BIGINT NOT NULL DEFAULT 0,
+  last_at BIGINT NOT NULL DEFAULT 0, created_at BIGINT NOT NULL DEFAULT 0,
+  retired_at BIGINT NOT NULL DEFAULT 0, skipped_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, word_id)
+);
+CREATE INDEX IF NOT EXISTS learn_words_due ON learn_words (owner, skipped_at, retired_at, due_at);
+CREATE TABLE IF NOT EXISTS learn_word_sources (
+  owner TEXT NOT NULL, word_id TEXT NOT NULL, song_id TEXT NOT NULL,
+  song_title TEXT NOT NULL DEFAULT '', line_text TEXT NOT NULL DEFAULT '',
+  start_ms BIGINT NOT NULL DEFAULT 0, end_ms BIGINT NOT NULL DEFAULT 0,
+  created_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, word_id, song_id)
+);
+CREATE INDEX IF NOT EXISTS learn_word_sources_song ON learn_word_sources (owner, song_id);
+CREATE TABLE IF NOT EXISTS learn_migrations (
+  owner TEXT NOT NULL, kind TEXT NOT NULL, created_at BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (owner, kind)
 );
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,

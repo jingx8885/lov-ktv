@@ -1,5 +1,7 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
+import { songTitle } from "../../../../shared/ui/js/song.js";
+import { state } from "../../../state.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { showToast } from "../../../ui/js/toast.js";
 import { celebrateCorrect, playMissSfx } from "./fx.js";
@@ -18,12 +20,22 @@ const MAX_REDRILL = 3;
 /** @type {{ showPane: (id: string) => void, setHead: (title: string, meta: string) => void }} */
 let hooks = { showPane: () => {}, setHead: () => {} };
 
-/** @type {{ deck: string, size: number, summary: any, cards: any[], loading: boolean, gen: number }} */
-const view = { deck: "word", size: 0, summary: null, cards: [], loading: false, gen: 0 };
+/** @type {{ deck: string, songId: string, songTitle: string, size: number, summary: any, cards: any[], loading: boolean, gen: number }} */
+const view = {
+  deck: "word",
+  songId: "",
+  songTitle: "",
+  size: 0,
+  summary: null,
+  cards: [],
+  loading: false,
+  gen: 0
+};
 
-/** @type {{ deck: string, queue: any[], pos: number, total: number, verdict: Map<string, boolean>, tries: Map<string, number>, locked: boolean, gen: number, active: boolean }} */
+/** @type {{ deck: string, songId: string, queue: any[], pos: number, total: number, verdict: Map<string, boolean>, tries: Map<string, number>, locked: boolean, gen: number, active: boolean }} */
 const run = {
   deck: "",
+  songId: "",
   queue: [],
   pos: 0,
   total: 0,
@@ -107,11 +119,18 @@ function playSnippet(detail, btn) {
 /* ------------------------------------------------------------- deck home */
 
 function deckTitle(deck) {
-  return deck === "mistake" ? t("learn.recite.mistakeTitle") : t("learn.recite.wordTitle");
+  if (deck === "mistake") return t("learn.recite.mistakeTitle");
+  // 歌曲专属牌组顶栏点名这首歌，免得跟跨歌牌组看起来一模一样。
+  return view.songId ? t("learn.recite.songTitle") : t("learn.recite.wordTitle");
 }
 
 function paintHead() {
-  hooks.setHead(deckTitle(view.deck), "");
+  hooks.setHead(deckTitle(view.deck), view.songId ? view.songTitle : "");
+}
+
+/** 歌曲范围只在词牌组有意义；错题本仍是跨歌的。 */
+function scopeQuery(deck, songId) {
+  return deck === "word" && songId ? `&song_id=${encodeURIComponent(songId)}` : "";
 }
 
 function statCell(value, label, tone) {
@@ -120,6 +139,7 @@ function statCell(value, label, tone) {
 }
 
 function boxBadge(card, now) {
+  if (card.skipped) return { cls: "is-skipped", text: t("learn.recite.statSkipped") };
   if (card.retired) return { cls: "is-mastered", text: t("learn.recite.boxMastered") };
   if (!card.reps) return { cls: "is-new", text: t("learn.recite.boxNew") };
   if (Number(card.due_at || 0) <= now) return { cls: "is-due", text: t("learn.recite.boxDue") };
@@ -144,21 +164,30 @@ function paintList() {
       .map((card) => {
         const badge = boxBadge(card, now);
         const sub = card.zh || card.romaji || card.song_title || "";
-        return `<div class="recite-item">
+        // 砍掉的词换成「恢复」：砍词是可逆状态，不是删除。
+        const action = !removable
+          ? `<span></span>`
+          : card.skipped
+            ? `<button class="recite-restore" type="button" data-restore="${escapeHtml(
+                card.card_id
+              )}" aria-label="${escapeHtml(t("learn.recite.restore"))}">${escapeHtml(
+                t("learn.recite.restore")
+              )}</button>`
+            : `<button class="recite-drop" type="button" data-drop="${escapeHtml(card.card_id)}" title="${escapeHtml(
+                t("learn.recite.remove")
+              )}" aria-label="${escapeHtml(t("learn.recite.remove"))}">×</button>`;
+        return `<div class="recite-item${card.skipped ? " is-skipped" : ""}">
           <span class="recite-item-copy"><b>${escapeHtml(card.text || "")}</b><span>${escapeHtml(sub)}</span></span>
           <span class="recite-box ${badge.cls}">${escapeHtml(badge.text)}</span>
-          ${
-            removable
-              ? `<button class="recite-drop" type="button" data-drop="${escapeHtml(card.card_id)}" title="${escapeHtml(
-                  t("learn.recite.remove")
-                )}" aria-label="${escapeHtml(t("learn.recite.remove"))}">×</button>`
-              : `<span></span>`
-          }
+          ${action}
         </div>`;
       })
       .join("");
   list.querySelectorAll("[data-drop]").forEach((btn) => {
     btn.addEventListener("click", () => dropCard(btn.getAttribute("data-drop") || ""));
+  });
+  list.querySelectorAll("[data-restore]").forEach((btn) => {
+    btn.addEventListener("click", () => restoreCard(btn.getAttribute("data-restore") || ""));
   });
 }
 
@@ -218,31 +247,47 @@ function paintDeck() {
         ? t("learn.recite.todayDone", { n: summary.today })
         : t("learn.recite.streakNone");
   }
+  const setAside = Number(summary.skipped || 0);
   if (stats) {
     stats.hidden = bare;
+    stats.classList.toggle("has-skipped", !!setAside);
     stats.innerHTML = bare
       ? ""
       : statCell(summary.due, t("learn.recite.statDue"), "is-due") +
         statCell(summary.new, t("learn.recite.statNew"), "") +
         statCell(summary.learning, t("learn.recite.statLearning"), "") +
-        statCell(summary.mastered, t("learn.recite.statMastered"), "");
+        statCell(summary.mastered, t("learn.recite.statMastered"), "") +
+        (setAside ? statCell(setAside, t("learn.recite.statSkipped"), "") : "");
   }
+  // 队列空掉有两种，别混成一句话：词真的全背熟了（mastered 覆盖了在背的词），
+  // 还是只是今天该背的都背完、明天到期再来。后者说「背完了」是在骗人。
+  const learnable = Number(summary.new || 0) + Number(summary.learning || 0);
+  const idle = !bare && !Number(summary.due || 0) && !!view.songId;
+  const allMastered = idle && !learnable;
   if (empty) {
-    empty.hidden = !bare;
+    empty.hidden = !bare && !idle;
     const title = $("reciteEmptyTitle");
     const hint = $("reciteEmptyHint");
     if (title)
-      title.textContent =
-        view.deck === "mistake" ? t("learn.recite.emptyMistake") : t("learn.recite.emptyWord");
+      title.textContent = allMastered
+        ? t("learn.recite.allDone")
+        : idle
+          ? t("learn.recite.dayClear")
+          : view.deck === "mistake"
+            ? t("learn.recite.emptyMistake")
+            : t("learn.recite.emptyWord");
     if (hint)
-      hint.textContent =
-        view.deck === "mistake"
-          ? t("learn.recite.emptyMistakeHint")
-          : t("learn.recite.emptyWordHint");
+      hint.textContent = allMastered
+        ? t("learn.recite.allDoneHint")
+        : idle
+          ? t("learn.recite.dayClearHint")
+          : view.deck === "mistake"
+            ? t("learn.recite.emptyMistakeHint")
+            : t("learn.recite.emptyWordHint");
   }
-  if (sizes) sizes.hidden = bare;
-  if (start) start.hidden = bare;
-  if (!bare) {
+  if (sizes) sizes.hidden = bare || idle;
+  if (start) start.hidden = bare || idle;
+  if (!bare && !idle) {
     paintSizes();
     paintStart();
   }
@@ -283,9 +328,10 @@ function applyDeck(payload) {
 async function loadDeck() {
   const gen = ++view.gen;
   view.loading = true;
-  const { ok, data } = await fetchJson(`/api/learn/deck?deck=${encodeURIComponent(view.deck)}`, {
-    cache: "no-store"
-  }).catch(() => ({ ok: false, data: null }));
+  const { ok, data } = await fetchJson(
+    `/api/learn/deck?deck=${encodeURIComponent(view.deck)}${scopeQuery(view.deck, view.songId)}`,
+    { cache: "no-store" }
+  ).catch(() => ({ ok: false, data: null }));
   view.loading = false;
   if (gen !== view.gen) return null;
   if (!ok || !data) {
@@ -306,6 +352,21 @@ async function dropCard(cardId) {
     return;
   }
   showToast(t("learn.recite.removed"));
+  await loadDeck();
+}
+
+async function restoreCard(cardId) {
+  if (!cardId) return;
+  const { ok } = await fetchJson("/api/learn/words/restore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ word_id: cardId })
+  }).catch(() => ({ ok: false }));
+  if (!ok) {
+    showToast(t("learn.recite.restoreFail"));
+    return;
+  }
+  showToast(t("learn.recite.restored"));
   await loadDeck();
 }
 
@@ -501,7 +562,7 @@ async function finishRound() {
   const { ok, data } = await fetchJson("/api/learn/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ deck: run.deck, answers })
+    body: JSON.stringify({ deck: run.deck, song_id: run.songId || "", answers })
   }).catch(() => ({ ok: false, data: null }));
   if (gen !== run.gen) return;
   if (!ok || !data) {
@@ -521,16 +582,27 @@ async function finishRound() {
 async function startRound() {
   const gen = ++run.gen;
   const deck = view.deck;
+  const songId = view.songId;
   const { ok, status, data } = await fetchJson(
-    `/api/learn/session?deck=${encodeURIComponent(deck)}&size=${view.size || 10}`,
+    `/api/learn/session?deck=${encodeURIComponent(deck)}&size=${view.size || 10}${scopeQuery(
+      deck,
+      songId
+    )}`,
     { cache: "no-store" }
   ).catch(() => ({ ok: false, status: 0, data: null }));
   if (gen !== run.gen) return;
   if (!ok || !data || !(data.cards || []).length) {
-    showToast(status === 409 ? t("learn.recite.nothingDue") : t("learn.loadFail"));
+    // 409 是语义信号（今天没到期的），不是错误；重画一次让首页显示完成态。
+    if (status === 409) {
+      showToast(t("learn.recite.nothingDue"));
+      await loadDeck();
+      return;
+    }
+    showToast(t("learn.loadFail"));
     return;
   }
   run.deck = deck;
+  run.songId = songId;
   run.queue = data.cards.slice();
   run.total = run.queue.length;
   run.pos = 0;
@@ -553,24 +625,31 @@ export function stopRecite() {
   stopSnippet();
 }
 
-/** @param {"word" | "mistake"} [deck] */
-export async function openRecite(deck = "word") {
+/** @param {"word" | "mistake"} [deck] @param {string} [songId] */
+export async function openRecite(deck = "word", songId = "") {
   stopRecite();
   view.deck = deck === "mistake" ? "mistake" : "word";
+  view.songId = view.deck === "word" ? String(songId || "") : "";
+  view.songTitle = view.songId ? songTitle(state.playerSong) : "";
   view.summary = null;
   view.cards = [];
   hooks.showPane("learnRecite");
   paintHead();
   paintDeck();
   const data = await loadDeck();
-  if (data && view.deck === "word") await importLocalWords();
+  // 本地那份收藏是跨歌的，只在跨歌牌组里补导入，别在歌曲范围里混进别的歌。
+  if (data && view.deck === "word" && !view.songId) await importLocalWords();
+}
+
+export function reciteSongId() {
+  return view.songId;
 }
 
 /** Deck home is the natural "back" target from the run and result panes. */
 export function reciteBack() {
   if (!$("learnReciteRun")?.hidden || !$("learnReciteDone")?.hidden) {
     stopRecite();
-    openRecite(/** @type {"word" | "mistake"} */ (view.deck));
+    openRecite(/** @type {"word" | "mistake"} */ (view.deck), view.songId);
     return true;
   }
   return false;
@@ -600,5 +679,6 @@ export function bindRecite(deps) {
   const again = $("reciteDoneAgain");
   if (again) again.onclick = () => startRound();
   const back = $("reciteDoneBack");
-  if (back) back.onclick = () => openRecite(/** @type {"word" | "mistake"} */ (view.deck));
+  if (back)
+    back.onclick = () => openRecite(/** @type {"word" | "mistake"} */ (view.deck), view.songId);
 }

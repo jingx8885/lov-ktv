@@ -37,7 +37,15 @@ import { loadPlayerList, playNextSong } from "./player/js/playback/queue.js";
 import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/song.js";
 import { cueIndexAt } from "./player/js/playback/lyrics.js";
 import { setPlayerSheet } from "./player/js/playback/sheet.js";
-import { enterLearn, exitLearn, openRecite, openStudyBook, syncLearnLyricMode } from "./player/js/learn/index.js";
+import {
+  enterLearn,
+  enterCover,
+  exitLearn,
+  openRecite,
+  openSongWords,
+  openStudyBook,
+  syncLearnLyricMode
+} from "./player/js/learn/index.js";
 import { paintDeskLyrics } from "./desk/js/lyrics.js";
 
 installApi({
@@ -92,9 +100,11 @@ installApi({
   cueIndexAt,
   setPlayerSheet,
   enterLearn,
+  enterCover,
   exitLearn,
   openStudyBook,
   openRecite,
+  openSongWords,
   paintDeskLyrics,
   syncLearnLyricMode
 });

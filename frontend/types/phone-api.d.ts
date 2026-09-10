@@ -52,8 +52,10 @@ interface PhoneApi {
   cueIndexAt(t: number): number;
   setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
   enterLearn(): Promise<void> | void;
+  enterCover(): Promise<void> | void;
   openStudyBook(kind?: "words" | "mistakes" | ""): Promise<void> | void;
-  openRecite(deck?: "word" | "mistake"): Promise<void> | void;
+  openRecite(deck?: "word" | "mistake", songId?: string): Promise<void> | void;
+  openSongWords(songId?: string): Promise<void> | void;
   exitLearn(): void;
 }
 

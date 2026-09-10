@@ -353,3 +353,24 @@ def api_learn(request: Request, song_id: str) -> dict:
     if not quiz["lines"]:
         fail(request, 409, "api.no_learn_lines")
     return quiz
+
+
+@router.get("/api/songs/{song_id}/cover")
+def api_cover(request: Request, song_id: str) -> dict:
+    """Timed singing lines, independent of quizzes and learning progress."""
+    from lovktv.workers.campaign import line_record, singable_cues
+
+    song = get_song(song_id)
+    if not song:
+        fail(request, 404, "api.song_not_found")
+    path = media_root() / song_id / "lyrics.json"
+    if not path.exists():
+        fail(request, 409, "api.no_lyrics")
+    try:
+        timeline = normalize_timeline(json.loads(path.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, ValueError):
+        fail(request, 409, "api.lyrics_not_ready")
+    lines = [line_record(cue, i) for i, cue in enumerate(singable_cues(timeline, song))]
+    if not lines:
+        fail(request, 409, "api.no_learn_lines")
+    return {"song_id": song_id, "lines": lines}

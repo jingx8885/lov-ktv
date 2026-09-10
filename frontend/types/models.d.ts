@@ -197,6 +197,78 @@ interface LoadPlayerOpts {
   refreshPlayerCatalog?: boolean;
 }
 
+/** One row of the vocabulary deck. `card_id` carries the word id — the field
+ *  name predates the unified word table and stays for the mistake deck, which
+ *  packs a composite reference into the same slot. */
+interface ReciteCard {
+  card_id: string;
+  song_id: string;
+  song_title: string;
+  text: string;
+  zh: string;
+  romaji: string;
+  line_text: string;
+  start_ms: number;
+  end_ms: number;
+  stage: number;
+  reps: number;
+  due_at: number;
+  retired: boolean;
+  skipped?: boolean;
+  wrong_count?: number;
+}
+
+interface ReciteDeck {
+  deck: "word" | "mistake";
+  song_id?: string;
+  total: number;
+  due: number;
+  new: number;
+  learning: number;
+  mastered: number;
+  skipped?: number;
+  streak: number;
+  today: number;
+  day: string;
+  sizes: number[];
+  cards: ReciteCard[];
+}
+
+/** A candidate word on the song's filter screen: the song's own extraction
+ *  overlaid with the user's global state for that word. */
+interface SongWord {
+  word_id: string;
+  language: string;
+  norm: string;
+  text: string;
+  zh: string;
+  romaji: string;
+  line_text: string;
+  start_ms: number;
+  end_ms: number;
+  stage: number;
+  reps: number;
+  due_at: number;
+  mastered: boolean;
+  skipped: boolean;
+  known: boolean;
+}
+
+interface SongWordsPack {
+  song_id: string;
+  title: string;
+  language: string;
+  /** False once the user has confirmed a list, which sends them straight to review. */
+  first_setup: boolean;
+  total: number;
+  kept: number;
+  skipped: number;
+  mastered: number;
+  new: number;
+  due: number;
+  words: SongWord[];
+}
+
 interface LearnChoice {
   id: number;
   text: string;

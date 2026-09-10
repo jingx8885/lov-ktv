@@ -20,6 +20,9 @@
 | `point_ledger` | 积分流水 |
 | `ad_sessions` | 开屏 / 等待广告观看 |
 | `point_claims` | 注册 / 下载一次性奖励 |
+| `learn_words` | 全局词状态：熟练度、砍词、掌握 |
+| `learn_word_sources` | 词与歌的来源关联 |
+| `learn_migrations` | 旧 `learn_cards` 惰性合并标记 |
 
 ### songs
 
@@ -117,6 +120,20 @@
 （owner, song_id, unit_id, skill），掌握主键为（owner, song_id, kind, item_key），
 错题主键为（owner, song_id, qkind, item_key），提交主键为
 （owner, song_id, attempt_id）。attempt_id 用于防止同一轮练习重复计入。
+
+### learn_words / learn_word_sources / learn_migrations
+
+背词的唯一词库。`learn_words` 主键为（owner, word_id），`word_id` 是
+`sha1(语言 + 规范化词形)`，**不含 song_id**——同一个词在不同歌之间共享熟练度
+（stage / reps / due_at）和砍词状态（`skipped_at`），达到最后一个盒子后写
+`retired_at` 表示已掌握，不再出题。砍词是持久状态而不是删除，可以恢复。
+
+`learn_word_sources` 主键为（owner, word_id, song_id），保存歌词行与时间区间。
+歌曲专属复习靠它做范围过滤，跨歌牌组用最近一条做听辨题和详情卡的锚点。
+
+`learn_cards` 降级为只读历史。首次访问词库时按 owner 惰性合并一次，同一个词的
+多张旧卡取 `max(stage)` / `max(reps)` / `min(due_at)`，合并过的 owner 记在
+`learn_migrations`（kind 为 `cards_to_words`）。
 
 ### point_wallets / point_ledger / ad_sessions / point_claims
 

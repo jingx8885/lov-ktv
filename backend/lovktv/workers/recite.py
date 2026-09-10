@@ -248,7 +248,10 @@ def deck_summary(
     now: int | None = None,
 ) -> dict[str, Any]:
     cutoff = srs.end_of_day(now)
-    live = [state for state in states if not state["retired"]]
+    # A set-aside word stays in `total` but leaves every actionable count: the
+    # deck should read "12 set aside", not offer them as today's queue.
+    kept = [state for state in states if not state.get("skipped")]
+    live = [state for state in kept if not state["retired"]]
     info = day_info or {}
     return {
         "deck": deck if deck in ("word", "mistake") else "word",
@@ -256,7 +259,8 @@ def deck_summary(
         "due": sum(1 for state in live if state["due_at"] <= cutoff),
         "new": sum(1 for state in live if not state["reps"]),
         "learning": sum(1 for state in live if state["reps"]),
-        "mastered": sum(1 for state in states if state["retired"]),
+        "mastered": sum(1 for state in kept if state["retired"]),
+        "skipped": sum(1 for state in states if state.get("skipped")),
         "streak": int(info.get("streak") or 0),
         "today": int(info.get("today") or 0),
         "day": str(info.get("day") or srs.day_key(now)),

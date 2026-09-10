@@ -15,6 +15,15 @@
 | POST | `/api/rooms/{code}/bump` | `{id}` 顶歌 |
 | POST | `/api/rooms/{code}/skip` | 切歌 |
 | POST | `/api/rooms/{code}/mix` | `{vocal_mix,volume}` |
+| GET | `/api/songs/{id}/learn/words` | 这首歌的词表 + 全局词状态；`first_setup` 决定先砍词还是直接复习 |
+| POST | `/api/songs/{id}/learn/words/setup` | `{keep,skip}` 保存砍词结果，幂等；只接受本首歌的 word_id |
+| GET | `/api/learn/deck` | `?deck=word\|mistake&cards=0\|1&song_id=` 牌组概览；`song_id` 限定到一首歌 |
+| GET | `/api/learn/session` | `?deck=&size=&song_id=` 取一轮到期的卡；没有到期的返回 409 |
+| POST | `/api/learn/session` | `{deck,song_id,answers}` 提交一轮；`song_id` 给定时校验卡片归属 |
+| POST | `/api/learn/cards` | 歌词页点词收藏，按词幂等 |
+| DELETE | `/api/learn/cards/{word_id}` | 砍词（持久状态，可恢复），不删除历史 |
+| GET | `/api/learn/words` | `?state=all\|active\|skipped\|mastered` 词库管理 |
+| POST | `/api/learn/words/restore` | `{word_id}` 把砍掉或已掌握的词放回队列 |
 | GET | `/api/auth/status` | 微信 / 扫码 / 密码登录是否可用；`guest_limit` |
 | GET | `/api/auth/me` | 当前用户 + `quota` + `points` |
 | POST | `/api/auth/login` | `{username,password}` 一键登录 |

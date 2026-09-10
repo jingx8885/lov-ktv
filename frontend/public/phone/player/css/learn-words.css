@@ -1,0 +1,166 @@
+/* 砍词页：进入歌曲专属背词前，默认整首歌都要背，用户把已经会的词砍掉。
+   每行右侧一个「砍」按钮，砍过的行压暗并换成「撤销」。
+   题卡本体沿用 learn-quiz.css 与 learn-recite.css，这里只加砍词特有的部分。 */
+
+.learn-words {
+  gap: 10px;
+}
+
+.learn-words-thin {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-m, 14px);
+  color: var(--gold, #f5c16c);
+  background: rgba(245, 193, 108, .12);
+  box-shadow: inset 0 0 0 1px rgba(245, 193, 108, .22);
+}
+
+/* 计数与全选/全不选：一行放下，计数在左、批量操作贴右。 */
+.learn-words-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted, rgba(255, 255, 255, .62));
+}
+
+.learn-words-bulk {
+  display: flex;
+  gap: 6px;
+}
+
+.learn-words-bulk button {
+  appearance: none;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  color: inherit;
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
+  font: inherit;
+  cursor: pointer;
+}
+
+.learn-words-bulk button:active {
+  transform: scale(.98);
+}
+
+.learn-words-list {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 一行：词面/读音/译文 + 歌词上下文、状态角标、右侧「砍」按钮。 */
+.learn-word-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-m, 14px);
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
+}
+
+/* 砍掉的词压暗，一眼看出它不会出题；行还留着，因为随时能撤销。 */
+.learn-word-row.is-cut {
+  opacity: .5;
+}
+
+/* 「砍」是这一页唯一的操作，但它是减法，别做成比「开始背」还抢眼的主按钮。 */
+.learn-word-cut {
+  appearance: none;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted, rgba(255, 255, 255, .62));
+  background: rgba(255, 255, 255, .06);
+  box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.learn-word-cut:active {
+  transform: scale(.96);
+}
+
+.learn-word-cut.is-undo {
+  color: var(--gold, #f5c16c);
+  background: rgba(245, 193, 108, .16);
+  box-shadow: none;
+}
+
+.learn-word-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.learn-word-copy b {
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.learn-word-copy span {
+  color: var(--muted, rgba(255, 255, 255, .62));
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 歌词上下文：目标词高亮，让用户判断这个词值不值得背。 */
+.learn-word-line {
+  color: rgba(255, 255, 255, .42);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.learn-word-line em {
+  color: var(--gold, #f5c16c);
+  font-style: normal;
+  font-weight: 700;
+}
+
+.learn-word-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--muted, rgba(255, 255, 255, .62));
+  background: rgba(255, 255, 255, .06);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.learn-word-badge.is-mastered {
+  color: #b9f6c8;
+  background: rgba(64, 214, 122, .16);
+}
+
+.learn-word-badge.is-known {
+  color: var(--gold, #f5c16c);
+  background: rgba(245, 193, 108, .16);
+}
+
+.learn-word-badge.is-skipped {
+  color: rgba(255, 255, 255, .5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .learn-words-bulk button:active,
+  .learn-word-cut:active {
+    transform: none;
+  }
+}

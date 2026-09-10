@@ -14,6 +14,7 @@ from lovktv.locale.i18n import request_lang
 from lovktv.platform.runtime import media_root
 from lovktv.services.http import fail
 from lovktv.storage import learn as learn_store
+from lovktv.storage import words as words_store
 from lovktv.storage.store import get_song
 from lovktv.workers.campaign import (
     PASS_PCT,
@@ -25,6 +26,7 @@ from lovktv.workers.campaign import (
     singable_cues,
 )
 from lovktv.workers.learn import build_learn_quiz
+from lovktv.workers.song_words import merge_state, song_words, words_summary
 
 router = APIRouter()
 
@@ -283,3 +285,74 @@ def api_learn_review_submit(
     payload["unit_id"] = "review"
     payload["skill"] = "review"
     return api_learn_lesson_submit(request, song_id, payload)
+
+
+MAX_SETUP = 2000
+
+
+def _song_word_pack(request: Request, song_id: str) -> tuple[dict, list[dict], list[dict]]:
+    """This song's vocabulary, overlaid with the user's global word state."""
+    song, timeline = load_song_timeline(request, song_id)
+    owner = learn_owner(request)
+    words_store.migrate_cards(owner)
+    extracted = song_words(timeline, song)
+    if not extracted:
+        fail(request, 409, "api.no_song_words")
+    saved = words_store.get_words(owner, [word["word_id"] for word in extracted])
+    return song, extracted, merge_state(extracted, saved)
+
+
+@router.get("/api/songs/{song_id}/learn/words")
+def api_song_words(request: Request, song_id: str) -> dict:
+    """The filter screen's payload. `first_setup` tells the phone whether to ask
+    the user to trim the list or to go straight into review."""
+    owner = learn_owner(request)
+    song, _extracted, rows = _song_word_pack(request, song_id)
+    return {
+        "song_id": song_id,
+        "title": song.get("title") or "",
+        "language": song.get("language") or "",
+        "first_setup": not words_store.has_song_setup(owner, song_id),
+        **words_summary(rows),
+        "words": rows,
+    }
+
+
+@router.post("/api/songs/{song_id}/learn/words/setup")
+def api_song_words_setup(
+    request: Request, song_id: str, body: dict = Body(default_factory=dict)
+) -> dict:
+    """Save which of this song's words to learn. Idempotent.
+
+    Ids are checked against the song's own extracted list: a word the user never
+    saw here cannot be credited or cut through this route.
+    """
+    owner = learn_owner(request)
+    _song, extracted, _rows = _song_word_pack(request, song_id)
+    catalog = {word["word_id"]: word for word in extracted}
+    payload = body if isinstance(body, dict) else {}
+    keep_ids = payload.get("keep")
+    skip_ids = payload.get("skip")
+    if not isinstance(keep_ids, list) or not isinstance(skip_ids, list):
+        fail(request, 400, "api.song_words_bad_setup")
+    seen: set[str] = set()
+    picked: dict[str, list[dict]] = {"keep": [], "skip": []}
+    for name, raw in (("keep", keep_ids), ("skip", skip_ids)):
+        for item in raw[:MAX_SETUP]:
+            wid = str(item or "").strip()
+            word = catalog.get(wid)
+            if not word or wid in seen:
+                fail(request, 400, "api.song_words_bad_setup")
+            seen.add(wid)
+            picked[name].append(word)
+    if not picked["keep"] and not picked["skip"]:
+        fail(request, 400, "api.song_words_bad_setup")
+    result = words_store.setup_song(owner, song_id, picked["keep"], picked["skip"])
+    saved = words_store.get_words(owner, [word["word_id"] for word in extracted])
+    rows = merge_state(extracted, saved)
+    return {
+        "song_id": song_id,
+        "first_setup": False,
+        **result,
+        **words_summary(rows),
+    }
