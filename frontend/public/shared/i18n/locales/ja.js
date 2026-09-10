@@ -742,7 +742,7 @@ export default {
   "learn.songWordsSetupMeta": "まず覚える単語を選ぶ",
   "learn.words.title": "覚える単語を選ぶ",
   "learn.words.lead":
-    "初期状態はすべて対象です。もう知っている単語は「除く」を押すと出題されなくなり、あとで戻せます。",
+    "初期状態はすべて対象です。もう知っている単語は「除く」を押すとその行が消え、出題されなくなります。「すべて戻す」で一括復元できます。",
   "learn.words.count": "{n} 語を学習 · {cut} 語は既知",
   "learn.words.restoreAll": "すべて戻す",
   "learn.words.undoAria": "「{word}」を学習する単語に戻す",

@@ -1,5 +1,5 @@
 /* 砍词页：进入歌曲专属背词前，默认整首歌都要背，用户把已经会的词砍掉。
-   每行右侧一个「砍」按钮，砍过的行压暗并换成「撤销」。
+   每行右侧一个「砍」按钮，砍过的行立刻离场；「全部放回」把它们一齐还原。
    题卡本体沿用 learn-quiz.css 与 learn-recite.css，这里只加砍词特有的部分。 */
 
 .learn-words {
@@ -66,11 +66,6 @@
   box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
 }
 
-/* 砍掉的词压暗，一眼看出它不会出题；行还留着，因为随时能撤销。 */
-.learn-word-row.is-cut {
-  opacity: .5;
-}
-
 /* 「砍」是这一页唯一的操作，但它是减法，别做成比「开始背」还抢眼的主按钮。 */
 .learn-word-cut {
   appearance: none;
@@ -89,12 +84,6 @@
 
 .learn-word-cut:active {
   transform: scale(.96);
-}
-
-.learn-word-cut.is-undo {
-  color: var(--gold, #f5c16c);
-  background: rgba(245, 193, 108, .16);
-  box-shadow: none;
 }
 
 .learn-word-copy {
@@ -152,10 +141,6 @@
 .learn-word-badge.is-known {
   color: var(--gold, #f5c16c);
   background: rgba(245, 193, 108, .16);
-}
-
-.learn-word-badge.is-skipped {
-  color: rgba(255, 255, 255, .5);
 }
 
 @media (prefers-reduced-motion: reduce) {

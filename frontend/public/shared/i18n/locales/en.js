@@ -753,7 +753,7 @@ export default {
   "learn.songWordsSetupMeta": "Pick your words first",
   "learn.words.title": "Pick words to learn",
   "learn.words.lead":
-    "Everything is included by default. Cut the ones you already know — they stop coming up, and you can put them back.",
+    "Everything is included by default. Cut a word you already know and that row disappears. Put all back if you change your mind.",
   "learn.words.count": "{n} to learn · {cut} already known",
   "learn.words.restoreAll": "Put all back",
   "learn.words.undoAria": "Put \u201c{word}\u201d back into the list",

@@ -48,7 +48,7 @@ function paintCount() {
       : t("learn.words.confirm", { n: keptCount() });
 }
 
-/** 已掌握 / 学习中的角标；砍掉的词由行样式和撤销按钮表达，不再叠角标。 */
+/** 已掌握 / 学习中的角标。砍掉的词直接离场，不再叠「已会了」。 */
 function badge(word) {
   if (word.mastered) return { cls: "is-mastered", text: t("learn.words.mastered") };
   if (word.known) return { cls: "is-known", text: t("learn.words.known") };
@@ -66,22 +66,21 @@ function lineHtml(word) {
 }
 
 function rowHtml(word) {
-  const cut = view.cut.has(word.word_id);
-  const mark = cut ? { cls: "is-skipped", text: t("learn.words.skipped") } : badge(word);
+  const mark = badge(word);
   const sub = [word.zh, word.romaji].filter(Boolean).join(" · ");
   const line = lineHtml(word);
-  const label = t(cut ? "learn.words.undoAria" : "learn.words.cutAria", { word: word.text || "" });
+  const label = t("learn.words.cutAria", { word: word.text || "" });
   // word_id 是 sha1 十六进制，放进属性是安全的；词面只进文本节点。
-  return `<div class="learn-word-row${cut ? " is-cut" : ""}" data-row="${escapeHtml(word.word_id)}">
+  return `<div class="learn-word-row" data-row="${escapeHtml(word.word_id)}">
       <span class="learn-word-copy">
         <b>${escapeHtml(word.text || "")}</b>
         ${sub ? `<span>${escapeHtml(sub)}</span>` : ""}
         ${line ? `<span class="learn-word-line">${line}</span>` : ""}
       </span>
       ${mark ? `<span class="learn-word-badge ${mark.cls}">${escapeHtml(mark.text)}</span>` : "<span></span>"}
-      <button type="button" class="learn-word-cut${cut ? " is-undo" : ""}" data-cut="${escapeHtml(
+      <button type="button" class="learn-word-cut" data-cut="${escapeHtml(
         word.word_id
-      )}" aria-label="${escapeHtml(label)}">${escapeHtml(t(cut ? "learn.words.undo" : "learn.words.cut"))}</button>
+      )}" aria-label="${escapeHtml(label)}">${escapeHtml(t("learn.words.cut"))}</button>
     </div>`;
 }
 
@@ -94,22 +93,11 @@ function bindRows(scope) {
 function paintList() {
   const list = $("learnWordsList");
   if (!list) return;
-  list.innerHTML = view.words.map(rowHtml).join("");
+  list.innerHTML = view.words
+    .filter((word) => !view.cut.has(word.word_id))
+    .map(rowHtml)
+    .join("");
   bindRows(list);
-}
-
-/** 只重画动过的那一行：长歌几十行，整表重绘会把滚动位置甩回顶部。 */
-function repaintRow(wordId) {
-  const list = $("learnWordsList");
-  const row = list && list.querySelector(`[data-row="${wordId}"]`);
-  const word = view.words.find((item) => item.word_id === wordId);
-  if (!row || !word) {
-    paintList();
-    return;
-  }
-  row.outerHTML = rowHtml(word);
-  const fresh = list.querySelector(`[data-row="${wordId}"]`);
-  if (fresh) bindRows(fresh);
 }
 
 function paintThin() {
@@ -125,10 +113,12 @@ function paint() {
 }
 
 function toggleCut(wordId) {
-  if (!wordId || view.saving) return;
-  if (view.cut.has(wordId)) view.cut.delete(wordId);
-  else view.cut.add(wordId);
-  repaintRow(wordId);
+  if (!wordId || view.saving || view.cut.has(wordId)) return;
+  view.cut.add(wordId);
+  const list = $("learnWordsList");
+  const row = list && list.querySelector(`[data-row="${wordId}"]`);
+  if (row) row.remove();
+  else paintList();
   paintCount();
 }
 

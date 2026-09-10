@@ -397,7 +397,7 @@ export default {
   "learn.songWordsMeta": "{kept} 个在背 · {due} 个待背",
   "learn.songWordsSetupMeta": "先挑要背的词",
   "learn.words.title": "挑要背的词",
-  "learn.words.lead": "默认全部要背。已经会的点「砍」，它就不会再出题，之后还能恢复。",
+  "learn.words.lead": "默认全部要背。已经会的点「砍」，那一行会消失、不再出题。点「全部放回」还能恢复。",
   "learn.words.count": "要背 {n} 个 · 已会 {cut} 个",
   "learn.words.restoreAll": "全部放回",
   "learn.words.undoAria": "把「{word}」放回要背的词",

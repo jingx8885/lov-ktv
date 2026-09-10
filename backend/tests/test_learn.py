@@ -552,6 +552,10 @@ def test_phone_learn_shell_is_wired():
     assert "learn/words/setup" in words
     assert "learn.words.cut" in words
     assert "selectAll" not in words
+    # Cut rows leave the list immediately; restore-all is how they come back.
+    assert "row.remove()" in words
+    assert "!view.cut.has(word.word_id)" in words
+    assert "learn.words.undo" not in words
     # A pane the back button cannot leave would strand the user in it.
     assert "learnWords" in shell
     paint = (root / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")

@@ -736,7 +736,7 @@ export default {
   "learn.songWordsMeta": "{kept} 個喺背 · {due} 個等緊",
   "learn.songWordsSetupMeta": "先揀要背嘅詞",
   "learn.words.title": "揀要背嘅詞",
-  "learn.words.lead": "預設全部都要背。已經識嘅點「砍」，之後唔會再出題，仲可以放返。",
+  "learn.words.lead": "預設全部都要背。已經識嘅點「砍」，嗰行會消失、唔再出題。點「全部放返」仲可以放返。",
   "learn.words.count": "要背 {n} 個 · 已識 {cut} 個",
   "learn.words.restoreAll": "全部放返",
   "learn.words.undoAria": "將「{word}」放返要背嘅詞",
