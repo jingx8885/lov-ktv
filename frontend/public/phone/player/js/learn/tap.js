@@ -359,9 +359,13 @@ export function syncTapLyricMode() {
 
 /** @param {HTMLButtonElement} tile */
 function onTap(tile) {
-  if (!session.running || tile.classList.contains("is-hit")) return;
+  if (!session.running || session.done.has(session.index) || tile.classList.contains("is-hit")) return;
   const idx = Number(tile.dataset.i);
-  if (idx === session.cursor) {
+  const line = currentLine();
+  const expected = line && line.words[session.cursor];
+  const picked = line && line.words[idx];
+  // Tile positions distinguish occurrences, but identical words are interchangeable.
+  if (expected && picked && picked.text === expected.text) {
     session.cursor += 1;
     session.hits += 1;
     session.combo += 1;
@@ -369,8 +373,11 @@ function onTap(tile) {
     tile.classList.add("is-hit");
     tile.setAttribute("aria-disabled", "true");
     appendStrip(tile.dataset.text || "");
-    const line = currentLine();
     const last = line && session.cursor === (line.words || []).length;
+    if (last && $("learnTapNext")) {
+      $("learnTapNext").hidden = false;
+      $("learnTapNext").disabled = false;
+    }
     celebrateCorrect(tile, { line: !!last, combo: session.combo });
     paintProgress();
     return;
@@ -423,12 +430,19 @@ function enterLine(index) {
   session.index = index;
   session.cursor = 0;
   session.lineMisses = 0;
+  if ($("learnTapNext")) $("learnTapNext").hidden = true;
   paintTapLine();
   spawnTiles(session.lines[index]);
 }
 
 function onClock(ms) {
   if (!session.running) return;
+  // In paced mode runTap owns the board. Audio can seek during replay and
+  // must not advance or expire questions while the learner is answering.
+  if (needsLineHold()) {
+    paintClock(ms);
+    return;
+  }
   session.lines.forEach((line, i) => {
     if (ms >= line.end_ms + TAP_LINE_GRACE_MS) finishLine(i);
   });
@@ -508,26 +522,24 @@ export async function runTap() {
       const playing = playCueWindow(list[0].start_ms, list[list.length - 1].end_ms, { vocal: true });
       await playing;
     } else {
-      for (let i = 0; i < list.length; i += 1) {
+      for (let i = 0; i < list.length || session.jump >= 0; i += 1) {
         if (!session.running) return null;
         if (session.jump >= 0) {
           i = session.jump;
           session.jump = -1;
         }
-        enterLine(i);
+        if (i >= list.length) break;
+        if (i !== session.index) enterLine(i);
         const line = list[i];
         const played = await playCueWindow(line.start_ms, line.end_ms, { vocal: true });
         if (!session.running) return null;
         if (session.jump >= 0) continue;
         if (!played) return null;
-        // Keep the tiles active during the post-line countdown so the player
-        // can finish tapping the sentence. Only score leftovers afterward.
-        if (i < list.length - 1) {
-          const go = await holdAfterLine({ button: $("learnTapNext"), restore: t("learn.next") });
-          if (!session.running) return null;
-          if (session.jump >= 0) continue;
-          if (!go) return null;
-        }
+        // The last sentence needs the same answer window as every other one.
+        const go = await holdAfterLine({ button: $("learnTapNext"), restore: t("learn.next") });
+        if (!session.running) return null;
+        if (session.jump >= 0) continue;
+        if (!go) return null;
         finishLine(i);
       }
     }
@@ -550,6 +562,7 @@ export async function runTap() {
     session.jump = -1;
     stopTapClock();
     cancelLineHold();
+    cancelCueWindow();
     $("learnTapSkip").textContent = t("learn.skip");
     $("learnTapSkip").disabled = true;
     if ($("learnTapNext")) $("learnTapNext").hidden = true;
@@ -566,7 +579,7 @@ export function skipTapLine() {
   const audio = $("playerAudio");
   const ms = ((audio && audio.currentTime) || 0) * 1000;
   const live = lineAt(ms);
-  const idx = live >= 0 ? live : Math.max(0, session.index);
+  const idx = needsLineHold() ? session.index : live >= 0 ? live : Math.max(0, session.index);
   finishLine(idx);
   if (needsLineHold()) {
     session.jump = idx + 1;
@@ -612,6 +625,12 @@ export function tapScoreView(score, grade) {
 export function replayTapLine() {
   const line = currentLine();
   if (!session.running || !line) return;
+  if (needsLineHold() && !isLineHold()) {
+    // Restart the loop's playback without ending the run or clearing hits.
+    session.jump = session.index;
+    cancelCueWindow();
+    return;
+  }
   playCueWindow(line.start_ms, line.end_ms, { vocal: true });
 }
 
@@ -619,5 +638,5 @@ export function bindTap() {
   $("learnTapSkip").onclick = () => skipTapLine();
   const replay = $("learnTapReplay");
   if (replay) replay.onclick = () => replayTapLine();
-  if ($("learnTapNext")) $("learnTapNext").onclick = () => confirmLineHold();
+  if ($("learnTapNext")) $("learnTapNext").onclick = () => skipTapLine();
 }
