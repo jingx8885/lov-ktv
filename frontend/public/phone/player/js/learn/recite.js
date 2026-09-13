@@ -218,9 +218,7 @@ function paintStart() {
   if (!btn) return;
   const due = Number((view.summary && view.summary.due) || 0);
   btn.disabled = !due;
-  btn.textContent = due
-    ? t("learn.recite.start", { n: Math.min(due, view.size || 10) })
-    : t("learn.recite.startDone");
+  btn.textContent = due ? t("learn.recite.start", { n: Math.min(due, view.size || 10) }) : t("learn.recite.startDone");
 }
 
 function paintDeck() {
@@ -383,9 +381,7 @@ function paintProgress() {
   if (bar) bar.style.width = `${Math.round((run.pos / span) * 100)}%`;
   if (count) {
     count.textContent =
-      run.pos < run.total
-        ? t("learn.recite.count", { i: run.pos + 1, n: run.total })
-        : t("learn.recite.redrill");
+      run.pos < run.total ? t("learn.recite.count", { i: run.pos + 1, n: run.total }) : t("learn.recite.redrill");
   }
 }
 
@@ -459,7 +455,9 @@ function showDetail(card) {
     const target = info.text || "";
     line.innerHTML =
       text && target && text.includes(target)
-        ? escapeHtml(text).split(escapeHtml(target)).join(`<em>${escapeHtml(target)}</em>`)
+        ? escapeHtml(text)
+            .split(escapeHtml(target))
+            .join(`<em>${escapeHtml(target)}</em>`)
         : escapeHtml(text || target);
   }
   const play = $("reciteDetailPlay");
@@ -573,9 +571,7 @@ async function finishRound() {
   if (note) {
     const streak = Number((data.deck && data.deck.streak) || 0);
     const left = Number((data.deck && data.deck.due) || 0);
-    note.textContent = left
-      ? t("learn.recite.doneLeft", { n: left })
-      : t("learn.recite.doneStreak", { n: streak });
+    note.textContent = left ? t("learn.recite.doneLeft", { n: left }) : t("learn.recite.doneStreak", { n: streak });
   }
 }
 
@@ -584,10 +580,7 @@ async function startRound() {
   const deck = view.deck;
   const songId = view.songId;
   const { ok, status, data } = await fetchJson(
-    `/api/learn/session?deck=${encodeURIComponent(deck)}&size=${view.size || 10}${scopeQuery(
-      deck,
-      songId
-    )}`,
+    `/api/learn/session?deck=${encodeURIComponent(deck)}&size=${view.size || 10}${scopeQuery(deck, songId)}`,
     { cache: "no-store" }
   ).catch(() => ({ ok: false, status: 0, data: null }));
   if (gen !== run.gen) return;
@@ -679,6 +672,5 @@ export function bindRecite(deps) {
   const again = $("reciteDoneAgain");
   if (again) again.onclick = () => startRound();
   const back = $("reciteDoneBack");
-  if (back)
-    back.onclick = () => openRecite(/** @type {"word" | "mistake"} */ (view.deck), view.songId);
+  if (back) back.onclick = () => openRecite(/** @type {"word" | "mistake"} */ (view.deck), view.songId);
 }

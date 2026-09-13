@@ -128,11 +128,12 @@ async function runWhoPass(mode) {
 
 export function bindWho() {
   const tabWho = $("tabWho");
-  if (tabWho) tabWho.onclick = () => {
-    tabWho.classList.add("on");
-    openOverlay("whoSheet");
-    fillUsername();
-  };
+  if (tabWho)
+    tabWho.onclick = () => {
+      tabWho.classList.add("on");
+      openOverlay("whoSheet");
+      fillUsername();
+    };
   $("whoLogout").onclick = async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     await loadWho();

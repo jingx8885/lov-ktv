@@ -237,7 +237,9 @@ function markDailyPractice() {
   Object.keys(data.days).forEach((key) => {
     if (key < dayKey(cutoff)) delete data.days[key];
   });
-  try { localStorage.setItem(DAILY_KEY, JSON.stringify(data)); } catch (_) {}
+  try {
+    localStorage.setItem(DAILY_KEY, JSON.stringify(data));
+  } catch (_) {}
   paintDailyGoal();
 }
 
@@ -250,10 +252,9 @@ async function paintSongWordsCard() {
   const song = state.playerSong;
   if (!meta || !song) return;
   const loadId = ++songWordsLoad;
-  const { ok, data } = await fetchJson(
-    `/api/learn/deck?deck=word&cards=0&song_id=${encodeURIComponent(song.id)}`,
-    { cache: "no-store" }
-  ).catch(() => ({ ok: false, data: null }));
+  const { ok, data } = await fetchJson(`/api/learn/deck?deck=word&cards=0&song_id=${encodeURIComponent(song.id)}`, {
+    cache: "no-store"
+  }).catch(() => ({ ok: false, data: null }));
   if (loadId !== songWordsLoad || !ok || !data) return;
   if (!state.playerSong || state.playerSong.id !== song.id) return;
   const total = Number(data.total || 0);

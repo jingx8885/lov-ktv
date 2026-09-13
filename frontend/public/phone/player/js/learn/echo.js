@@ -479,7 +479,10 @@ export function paintEchoHome() {
   $("learnEchoSkip").hidden = false;
   $("learnEchoSkip").disabled = true;
   const vocal = $("learnEchoVocal");
-  if (vocal) { vocal.textContent = "原唱：开"; vocal.setAttribute("aria-pressed", "true"); }
+  if (vocal) {
+    vocal.textContent = "原唱：开";
+    vocal.setAttribute("aria-pressed", "true");
+  }
 }
 
 /** @param {LearnQuiz} pack */

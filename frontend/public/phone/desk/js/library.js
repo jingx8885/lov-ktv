@@ -204,7 +204,9 @@ function bindSongActions() {
       btn.onclick = async (event) => {
         event.stopPropagation();
         btn.disabled = true;
-        const result = await fetchJson(`/api/songs/${encodeURIComponent(btn.dataset.retry)}/retry`, { method: "POST" }).catch(() => null);
+        const result = await fetchJson(`/api/songs/${encodeURIComponent(btn.dataset.retry)}/retry`, {
+          method: "POST"
+        }).catch(() => null);
         if (!result || !result.ok) {
           showToast(result?.data?.detail || t("common.saveFailed"));
           btn.disabled = false;
