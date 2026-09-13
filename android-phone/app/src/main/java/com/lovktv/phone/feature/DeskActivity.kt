@@ -8,6 +8,7 @@ import com.lovktv.phone.network.LanHttp
 import com.lovktv.phone.platform.Prefs
 import com.lovktv.phone.platform.PhoneBridge
 import com.lovktv.phone.platform.PhoneNotificationController
+import com.lovktv.phone.billing.PlayBillingManager
 import com.lovktv.phone.room.JoinLink
 import com.lovktv.phone.room.RoomConnect
 import com.lovktv.phone.ui.DeskPage
@@ -63,6 +64,7 @@ class DeskActivity : Activity() {
     private lateinit var notificationController: PhoneNotificationController
     private var pendingNotificationPage = ""
     private var pendingNotificationAction = ""
+    private lateinit var playBilling: PlayBillingManager
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +80,9 @@ class DeskActivity : Activity() {
         webView = findViewById(R.id.webview)
         active = WeakReference(this)
         notificationController = PhoneNotificationController(this)
+        playBilling = PlayBillingManager(this) { payload ->
+            runOnUiThread { webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('lovktv-play-billing',{detail:$payload}))", null) }
+        }
         pendingNotificationPage = intent.getStringExtra(EXTRA_NOTIFICATION_PAGE).orEmpty()
         pendingNotificationAction = intent.getStringExtra(EXTRA_NOTIFICATION_ACTION).orEmpty()
         bindWebView()
@@ -597,6 +602,10 @@ class DeskActivity : Activity() {
         }
     }
 
+    fun playBillingProducts(): String = if (::playBilling.isInitialized) playBilling.productsJson() else "{\"ready\":false}"
+    fun playBillingRefresh(): String = if (::playBilling.isInitialized) playBilling.refresh() else "{\"ready\":false}"
+    fun playBillingBuy(productId: String): String = if (::playBilling.isInitialized) playBilling.buy(productId) else "{\"ok\":false}"
+
     private fun publicDeskUrl(): String {
         return DeskPage.url(server.ifBlank { Prefs.DEFAULT_SERVER }, roomCode, "")
     }
@@ -676,6 +685,7 @@ class DeskActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::playBilling.isInitialized) playBilling.close()
         hideFullscreenView()
         watching = false
         watch.removeCallbacksAndMessages(null)

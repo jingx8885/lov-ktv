@@ -713,6 +713,8 @@ def update_billing_user(user_id: str, **fields: Any) -> dict[str, Any] | None:
             "plan_status",
             "stripe_customer_id",
             "stripe_subscription_id",
+            "google_play_product_id",
+            "google_play_purchase_token",
             "plan_expires_at",
         }
     }

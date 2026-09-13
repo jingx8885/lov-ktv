@@ -37,6 +37,24 @@ Webhook 地址：`https://ktv.lovbrowser.com/api/billing/webhook`。至少勾选
 
 Webhook 使用签名校验和事件去重表，重复投递不会重复开通权益。用户可从 `/billing.html` 进入 Stripe Customer Portal 管理订阅和付款方式。
 
+## Android Google Play 订阅
+
+Google Play 分发的手机 App 使用 Play Billing，产品 ID 固定为：
+
+- `starter_monthly`：$5 / 月
+- `pro_monthly`：$20 / 月
+
+在 Play Console 中为每个产品创建月度 base plan。手机 App 会查询产品、拉起 Google Play 购买页、确认购买并把 purchase token 发到 `/api/billing/google-play/verify`。服务端必须使用 Google Play Developer API 校验 token，不能只信任客户端回调。
+
+生产环境配置：
+
+```text
+GOOGLE_PLAY_PACKAGE=com.lovktv.phone
+GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json
+```
+
+服务账号只授予 Play Console 的订阅查看权限，不要把 JSON 密钥提交到 Git 或写进镜像。续费、退款、暂停和取消应再接入 Google Play Real-time Developer Notifications（Pub/Sub），定期同步订阅状态。
+
 ## Google 登录
 
 在 Google Cloud Console 创建 Web client，配置授权来源为正式站点，并设置：

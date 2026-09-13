@@ -125,6 +125,8 @@ CREATE TABLE IF NOT EXISTS users (
   plan_status TEXT NOT NULL DEFAULT 'active',
   stripe_customer_id TEXT NOT NULL DEFAULT '',
   stripe_subscription_id TEXT NOT NULL DEFAULT '',
+  google_play_product_id TEXT NOT NULL DEFAULT '',
+  google_play_purchase_token TEXT NOT NULL DEFAULT '',
   plan_expires_at INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
@@ -328,6 +330,8 @@ CREATE TABLE IF NOT EXISTS users (
   plan_status TEXT NOT NULL DEFAULT 'active',
   stripe_customer_id TEXT NOT NULL DEFAULT '',
   stripe_subscription_id TEXT NOT NULL DEFAULT '',
+  google_play_product_id TEXT NOT NULL DEFAULT '',
+  google_play_purchase_token TEXT NOT NULL DEFAULT '',
   plan_expires_at BIGINT NOT NULL DEFAULT 0,
   created_at BIGINT NOT NULL
 );
@@ -502,6 +506,8 @@ USER_MIGRATIONS = (
     ("plan_status", "TEXT NOT NULL DEFAULT 'active'"),
     ("stripe_customer_id", "TEXT NOT NULL DEFAULT ''"),
     ("stripe_subscription_id", "TEXT NOT NULL DEFAULT ''"),
+    ("google_play_product_id", "TEXT NOT NULL DEFAULT ''"),
+    ("google_play_purchase_token", "TEXT NOT NULL DEFAULT ''"),
     ("plan_expires_at", "BIGINT NOT NULL DEFAULT 0"),
 )
 

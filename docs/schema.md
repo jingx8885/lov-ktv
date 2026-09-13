@@ -74,6 +74,8 @@
 | username_key | TEXT | 小写用户名，非空时唯一 |
 | password_hash | TEXT | `pbkdf2_sha256`，无密码账号为空 |
 | language | TEXT | 注册时的界面语言：`zh` / `yue` / `en` / `ja` |
+| google_play_product_id | TEXT | Google Play 当前订阅产品 ID |
+| google_play_purchase_token | TEXT | Google Play 购买凭证（服务端校验用） |
 | created_at | BIGINT | 纪元毫秒 |
 
 ### sessions

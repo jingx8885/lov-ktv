@@ -59,6 +59,11 @@
 | POST | `/api/admin/logout` | 退出管理 |
 | POST | `/api/auth/logout` | 退出 |
 | POST | `/api/auth/device` | `{device_id,nickname}` 本机身份（无微信凭证时） |
+| GET | `/api/auth/google/config` | Google 登录 Client ID 和启用状态 |
+| POST | `/api/auth/google` | `{credential}` Google Identity Services 登录 |
+| GET | `/api/billing/plans` | Stripe 网页套餐信息 |
+| POST | `/api/billing/checkout` | 创建网页 Stripe Checkout；Android App 使用 Play Billing |
+| POST | `/api/billing/google-play/verify` | `{product_id,purchase_token}` 服务端校验 Android 订阅 |
 | GET | `/api/auth/wechat/login` | 微信登录；`quick=1` 为微信内快捷登录 |
 | GET | `/api/auth/wechat/callback` | 微信 OAuth 回调 |
 | POST | `/api/auth/qr` | 电视扫码票 `{room}` |

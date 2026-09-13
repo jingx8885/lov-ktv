@@ -52,4 +52,13 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun notification(payload: String) {
         activity.updateNotification(payload)
     }
+
+    @JavascriptInterface
+    fun playBillingProducts(): String = activity.playBillingProducts()
+
+    @JavascriptInterface
+    fun playBillingRefresh(): String = activity.playBillingRefresh()
+
+    @JavascriptInterface
+    fun playBillingBuy(productId: String): String = activity.playBillingBuy(productId)
 }

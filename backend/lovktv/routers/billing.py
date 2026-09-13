@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import hmac
 import json
+import pathlib
 import secrets
 import string
 import time
+from datetime import datetime
 
 import httpx
 from fastapi import APIRouter, Body, HTTPException
@@ -16,6 +19,9 @@ from starlette.requests import Request
 
 from lovktv.core.config import (
     GOOGLE_CLIENT_ID,
+    GOOGLE_PLAY_PACKAGE,
+    GOOGLE_PLAY_SERVICE_ACCOUNT_FILE,
+    GOOGLE_PLAY_SERVICE_ACCOUNT_JSON,
     STRIPE_PRICE_5,
     STRIPE_PRICE_20,
     STRIPE_SECRET_KEY,
@@ -64,6 +70,104 @@ PLANS = {
         "features": ["每月 1000 首处理额度", "优先音频处理", "最多 5 个房间"],
     },
 }
+
+PLAY_PRODUCTS = {
+    "starter_monthly": "starter",
+    "pro_monthly": "pro",
+}
+
+
+def _play_service_account() -> dict:
+    raw = GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+    if not raw and GOOGLE_PLAY_SERVICE_ACCOUNT_FILE:
+        raw = pathlib.Path(GOOGLE_PLAY_SERVICE_ACCOUNT_FILE).read_text(encoding="utf-8")
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        try:
+            data = json.loads(base64.b64decode(raw).decode("utf-8"))
+        except Exception:
+            return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _play_access_token(account: dict) -> str:
+    """Mint a short-lived Google OAuth token without a heavyweight SDK."""
+    from Crypto.Hash import SHA256
+    from Crypto.PublicKey import RSA
+    from Crypto.Signature import pkcs1_15
+
+    if not account.get("client_email") or not account.get("private_key"):
+        raise HTTPException(503, "Google Play 服务账号配置不完整")
+    now = int(time.time())
+    header = {"alg": "RS256", "typ": "JWT"}
+    claim = {
+        "iss": account["client_email"],
+        "scope": "https://www.googleapis.com/auth/androidpublisher",
+        "aud": "https://oauth2.googleapis.com/token",
+        "iat": now,
+        "exp": now + 3600,
+    }
+    enc = lambda obj: base64.urlsafe_b64encode(
+        json.dumps(obj, separators=(",", ":")).encode()
+    ).rstrip(b"=").decode()
+    unsigned = f"{enc(header)}.{enc(claim)}"
+    signature = pkcs1_15.new(RSA.import_key(account["private_key"])).sign(
+        SHA256.new(unsigned.encode())
+    )
+    assertion = unsigned + "." + base64.urlsafe_b64encode(signature).rstrip(b"=").decode()
+    with httpx.Client(timeout=15, trust_env=False) as client:
+        response = client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+                "assertion": assertion,
+            },
+        )
+    response.raise_for_status()
+    return str(response.json().get("access_token") or "")
+
+
+def _verify_play_purchase(product_id: str, purchase_token: str) -> dict:
+    account = _play_service_account()
+    if not account or not GOOGLE_PLAY_PACKAGE:
+        raise HTTPException(503, "Google Play 验证尚未配置")
+    if product_id not in PLAY_PRODUCTS or not purchase_token:
+        raise HTTPException(400, "Google Play 购买信息无效")
+    token = _play_access_token(account)
+    url = (
+        "https://androidpublisher.googleapis.com/androidpublisher/v3/applications/"
+        f"{GOOGLE_PLAY_PACKAGE}/purchases/subscriptionsv2/tokens/{purchase_token}"
+    )
+    with httpx.Client(timeout=15, trust_env=False) as client:
+        response = client.get(url, headers={"Authorization": f"Bearer {token}"})
+    if response.status_code >= 400:
+        raise HTTPException(401, "Google Play 购买凭证无效")
+    data = response.json()
+    items = data.get("lineItems") or []
+    item = next((x for x in items if x.get("productId") == product_id), None)
+    if not item or data.get("subscriptionState") not in {
+        "SUBSCRIPTION_STATE_ACTIVE",
+        "SUBSCRIPTION_STATE_IN_GRACE_PERIOD",
+        "SUBSCRIPTION_STATE_CANCELED",
+    }:
+        raise HTTPException(402, "Google Play 订阅未处于有效状态")
+    expiry = str(item.get("expiryTime") or "")
+    expires_ms = 0
+    if expiry:
+        try:
+            expires_ms = int(datetime.fromisoformat(expiry.replace("Z", "+00:00")).timestamp() * 1000)
+        except (TypeError, ValueError, OverflowError):
+            expires_ms = 0
+    return {
+        "plan": PLAY_PRODUCTS[product_id],
+        "status": "active" if expires_ms > int(time.time() * 1000) else "expired",
+        "expires_at": expires_ms,
+        "product_id": product_id,
+        "purchase_token": purchase_token,
+    }
 
 
 def _require_user(request):
@@ -161,6 +265,23 @@ def portal(request: Request):
     except StripeError as exc:
         raise HTTPException(502, "Stripe 管理页面创建失败") from exc
     return {"url": session.url}
+
+
+@router.post("/api/billing/google-play/verify")
+def verify_google_play(request: Request, payload: dict = Body(default={} )):
+    user = _require_user(request)
+    product_id = str(payload.get("product_id") or "").strip()
+    purchase_token = str(payload.get("purchase_token") or "").strip()
+    result = _verify_play_purchase(product_id, purchase_token)
+    updated = update_billing_user(
+        user["id"],
+        plan=result["plan"],
+        plan_status=result["status"],
+        plan_expires_at=result["expires_at"],
+        google_play_product_id=result["product_id"],
+        google_play_purchase_token=result["purchase_token"],
+    )
+    return {"ok": True, "plan": result["plan"], "status": result["status"], "expires_at": result["expires_at"], "user": updated}
 
 
 @router.post("/api/billing/webhook")

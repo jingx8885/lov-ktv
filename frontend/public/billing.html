@@ -1,1 +1,84 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>选择 lov-ktv 套餐</title><link rel="stylesheet" href="/shared/ui/css/base.css"><style>body{background:#08080d;color:#fff;font-family:system-ui;padding:32px}.wrap{max-width:900px;margin:auto}.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.plan{padding:26px;border:1px solid #333;border-radius:18px;background:#15131d}.price{font-size:42px;font-weight:800}.plan button,.manage{width:100%;padding:13px;border:0;border-radius:10px;background:#ff375f;color:#fff;font-weight:700;cursor:pointer}.muted{color:#aaa}.current{padding:14px;background:#171622;border-radius:10px;margin:18px 0}</style></head><body><div class="wrap"><h1>选择你的唱歌方案</h1><p class="muted">安全跳转 Stripe，支持银行卡、Apple Pay、Google Pay。</p><div id="current" class="current">正在读取当前订阅…</div><div id="plans" class="plans"></div><p id="msg" class="muted"></p></div><script>async function load(){const r=await fetch('/api/billing/plans');const d=await r.json();document.querySelector('#plans').innerHTML=Object.entries(d.plans).map(([k,p])=>`<article class="plan"><h2>${p.name}</h2><div class="price">$${p.price}<small>/月</small></div><ul>${p.features.map(x=>`<li>${x}</li>`).join('')}</ul><button onclick="buy('${k}')">立即订阅</button></article>`).join('');const me=await fetch('/api/billing/me',{credentials:'same-origin'});if(me.ok){const x=await me.json();const quota=x.quota.unlimited?'无限':x.quota.used+' / '+x.quota.limit;const manage=x.plan==='starter'||x.plan==='pro'?'<br><button class="manage" onclick="manageSubscription()">管理订阅</button>':'';document.querySelector('#current').innerHTML='当前套餐：<b>'+x.plan+'</b> · 本月额度 '+quota+manage}else document.querySelector('#current').textContent='登录后可订阅和查看用量'}async function buy(plan){const r=await fetch('/api/billing/checkout',{method:'POST',headers:{'content-type':'application/json'},credentials:'same-origin',body:JSON.stringify({plan})});const d=await r.json();if(r.status===401){location.href='/login.html?next=/billing.html';return}if(d.url) location.href=d.url; else document.querySelector('#msg').textContent=d.detail||'暂时无法创建支付'}async function manageSubscription(){const r=await fetch('/api/billing/portal',{method:'POST',credentials:'same-origin'});const d=await r.json();if(d.url)location.href=d.url;else document.querySelector('#msg').textContent=d.detail||'无法打开管理页面'}load()</script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>选择 lov-ktv 套餐</title>
+  <link rel="stylesheet" href="/shared/ui/css/base.css">
+  <style>
+    body{background:#08080d;color:#fff;font-family:system-ui;padding:32px}.wrap{max-width:900px;margin:auto}.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}.plan{padding:26px;border:1px solid #333;border-radius:18px;background:#15131d}.price{font-size:42px;font-weight:800}.plan button,.manage{width:100%;padding:13px;border:0;border-radius:10px;background:#ff375f;color:#fff;font-weight:700;cursor:pointer}.plan button:disabled{opacity:.55;cursor:wait}.muted{color:#aaa}.current{padding:14px;background:#171622;border-radius:10px;margin:18px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>选择你的唱歌方案</h1>
+    <p id="paymentHint" class="muted">安全跳转 Stripe，支持银行卡、Apple Pay、Google Pay。</p>
+    <div id="current" class="current">正在读取当前订阅…</div>
+    <div id="plans" class="plans"></div>
+    <p id="msg" class="muted"></p>
+  </div>
+  <script>
+    const nativeBilling = window.LovKtvPhone && typeof window.LovKtvPhone.playBillingBuy === "function" ? window.LovKtvPhone : null;
+    const productForPlan = { starter: "starter_monthly", pro: "pro_monthly" };
+    let playProducts = {};
+    function escaped(value) { return String(value).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+    async function verifyPlayPurchase(detail) {
+      const response = await fetch("/api/billing/google-play/verify", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ product_id: detail.product_id, purchase_token: detail.purchase_token }) });
+      const data = await response.json();
+      if (response.ok) { document.querySelector("#msg").textContent = "订阅已确认，权益正在生效。"; await load(); }
+      else document.querySelector("#msg").textContent = data.detail || "Google Play 订阅验证失败";
+    }
+    function renderPlans(plans) {
+      document.querySelector("#plans").innerHTML = Object.entries(plans).map(([key, p]) => {
+        const product = playProducts[productForPlan[key]];
+        const price = product && product.price ? product.price : "$" + p.price + "/月";
+        const label = nativeBilling ? "通过 Google Play 订阅" : "立即订阅";
+        return `<article class="plan"><h2>${escaped(p.name)}</h2><div class="price">${escaped(price)}</div><ul>${p.features.map((x) => `<li>${escaped(x)}</li>`).join("")}</ul><button data-plan="${key}">${label}</button></article>`;
+      }).join("");
+      document.querySelectorAll("[data-plan]").forEach((button) => { button.onclick = () => buy(button.dataset.plan, button); });
+    }
+    async function buy(plan, button) {
+      if (nativeBilling) {
+        button.disabled = true;
+        const result = JSON.parse(nativeBilling.playBillingBuy(productForPlan[plan]) || "{}");
+        if (!result.ok) { button.disabled = false; document.querySelector("#msg").textContent = "Google Play 购买页暂时不可用，请稍后重试。"; }
+        return;
+      }
+      const response = await fetch("/api/billing/checkout", { method: "POST", headers: { "content-type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ plan }) });
+      const data = await response.json();
+      if (response.status === 401) { location.href = "/login.html?next=/billing.html"; return; }
+      if (data.url) location.href = data.url; else document.querySelector("#msg").textContent = data.detail || "暂时无法创建支付";
+    }
+    async function manageSubscription() {
+      const response = await fetch("/api/billing/portal", { method: "POST", credentials: "same-origin" });
+      const data = await response.json();
+      if (data.url) location.href = data.url; else document.querySelector("#msg").textContent = data.detail || "无法打开管理页面";
+    }
+    async function load() {
+      const response = await fetch("/api/billing/plans");
+      const data = await response.json();
+      window.__plans = data.plans || {};
+      renderPlans(window.__plans);
+      const me = await fetch("/api/billing/me", { credentials: "same-origin" });
+      if (me.ok) {
+        const x = await me.json();
+        const quota = x.quota.unlimited ? "无限" : x.quota.used + " / " + x.quota.limit;
+        const manage = x.plan === "starter" || x.plan === "pro" ? "<br><button class=\"manage\" onclick=\"manageSubscription()\">管理订阅</button>" : "";
+        document.querySelector("#current").innerHTML = "当前套餐：<b>" + escaped(x.plan) + "</b> · 本月额度 " + escaped(quota) + manage;
+      } else document.querySelector("#current").textContent = "登录后可订阅和查看用量";
+    }
+    window.addEventListener("lovktv-play-billing", (event) => {
+      const detail = event.detail || {};
+      if (detail.products) { playProducts = Object.fromEntries(detail.products.map((p) => [p.id, p])); renderPlans(window.__plans || {}); }
+      if (detail.type === "purchase" && detail.purchase_token) verifyPlayPurchase(detail);
+    });
+    (async () => {
+      if (nativeBilling) {
+        document.querySelector("#paymentHint").textContent = "通过 Google Play 安全订阅，支持本地支付方式。";
+        try { const state = JSON.parse(nativeBilling.playBillingProducts() || "{}"); if (state.products) playProducts = Object.fromEntries(state.products.map((p) => [p.id, p])); nativeBilling.playBillingRefresh(); } catch (_) {}
+      }
+      await load();
+    })();
+  </script>
+</body>
+</html>
