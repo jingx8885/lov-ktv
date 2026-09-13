@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS songs (
 CREATE TABLE IF NOT EXISTS rooms (
   code TEXT PRIMARY KEY,
   created_at BIGINT NOT NULL,
+  owner_user_id TEXT NOT NULL DEFAULT '',
   vocal_mix DOUBLE PRECISION NOT NULL DEFAULT 1,
   volume INTEGER NOT NULL DEFAULT 80,
   mic_gain INTEGER NOT NULL DEFAULT 80,
@@ -46,6 +47,13 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL DEFAULT '',
   username_key TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL DEFAULT '',
+  google_sub TEXT NOT NULL DEFAULT '',
+  email TEXT NOT NULL DEFAULT '',
+  plan TEXT NOT NULL DEFAULT 'free',
+  plan_status TEXT NOT NULL DEFAULT 'active',
+  stripe_customer_id TEXT NOT NULL DEFAULT '',
+  stripe_subscription_id TEXT NOT NULL DEFAULT '',
+  plan_expires_at BIGINT NOT NULL DEFAULT 0,
   created_at BIGINT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS sessions (
@@ -189,4 +197,10 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_at BIGINT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub <> '';
+CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email <> '';
+CREATE TABLE IF NOT EXISTS billing_events (
+  event_id TEXT PRIMARY KEY,
+  created_at BIGINT NOT NULL
 );

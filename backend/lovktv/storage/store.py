@@ -199,15 +199,21 @@ def _user_row(row: Any) -> dict[str, Any] | None:
     user_id = str(data["id"])
     username = str(data.get("username") or "")
     wechat = bool(data.get("wechat_openid"))
+    google = bool(data.get("google_sub"))
     return {
         "id": user_id,
         "sid": user_id[:6].upper(),
         "nickname": data.get("nickname") or username or f"ID {user_id[:6].upper()}",
         "avatar": data.get("avatar") or "",
         "wechat": wechat,
+        "google": google,
+        "email": data.get("email") or "",
+        "plan": data.get("plan") or "free",
+        "plan_status": data.get("plan_status") or "active",
+        "plan_expires_at": int(data.get("plan_expires_at") or 0),
         "username": username,
-        "account": bool(username or wechat),
-        "admin": is_song_admin({"username": username}),
+        "account": bool(username or wechat or google),
+        "admin": is_song_admin({"username": username, "email": data.get("email") or ""}),
         "created_at": int(data.get("created_at") or 0),
     }
 
@@ -512,6 +518,21 @@ def increment_guest_song(key: str, day: str) -> int:
     return nxt
 
 
+def consume_song_quota(key: str, period: str, limit: int) -> bool:
+    """Atomically consume one monthly/daily unit, enforcing the limit in SQL."""
+    if not key or not period or limit <= 0:
+        return False
+    with _LOCK, connect() as conn:
+        result = execute(
+            conn,
+            """INSERT INTO guest_song_counts (guest_key, day, used) VALUES (?,?,1)
+               ON CONFLICT(guest_key, day) DO UPDATE SET used=guest_song_counts.used+1
+               WHERE guest_song_counts.used < ?""",
+            (key, period, int(limit)),
+        )
+    return bool(result.rowcount)
+
+
 def create_login_ticket(ttl_ms: int | None = None) -> dict[str, Any]:
     ttl_ms = QR_TTL_MS if ttl_ms is None else ttl_ms
     ticket = uuid.uuid4().hex[:10]
@@ -610,3 +631,72 @@ def upsert_songs(rows: list[dict[str, Any]]) -> int:
                 values,
             )
     return len(rows)
+
+
+def upsert_google_user(
+    sub: str, email: str, name: str = "", avatar: str = ""
+) -> dict[str, Any]:
+    sub, email = str(sub).strip(), str(email).strip().lower()
+    if not sub or not email:
+        raise ValueError("Google 账号资料不完整")
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn,
+            "SELECT * FROM users WHERE google_sub=? OR email=? LIMIT 1",
+            (sub, email),
+        ).fetchone()
+        now = now_ms()
+        if row:
+            uid = row["id"]
+            execute(
+                conn,
+                "UPDATE users SET google_sub=?, email=?, nickname=?, avatar=? WHERE id=?",
+                (sub, email, name or row["nickname"], avatar or row["avatar"], uid),
+            )
+        else:
+            uid = new_id()
+            execute(
+                conn,
+                "INSERT INTO users (id,google_sub,email,nickname,avatar,created_at) VALUES (?,?,?,?,?,?)",
+                (uid, sub, email, name or email.split("@")[0], avatar, now),
+            )
+    return get_user(uid) or {}
+
+
+def update_billing_user(user_id: str, **fields: Any) -> dict[str, Any] | None:
+    allowed = {
+        k: v
+        for k, v in fields.items()
+        if k
+        in {
+            "plan",
+            "plan_status",
+            "stripe_customer_id",
+            "stripe_subscription_id",
+            "plan_expires_at",
+        }
+    }
+    if allowed:
+        with _LOCK, connect() as conn:
+            execute(
+                conn,
+                f"UPDATE users SET {', '.join(k + '=?' for k in allowed)} WHERE id=?",
+                (*allowed.values(), user_id),
+            )
+    return get_user(user_id)
+
+
+def claim_billing_event(event_id: str) -> bool:
+    """Atomically claim a Stripe event so webhook retries are harmless."""
+    if not event_id:
+        return False
+    with _LOCK, connect() as conn:
+        try:
+            execute(
+                conn,
+                "INSERT INTO billing_events (event_id, created_at) VALUES (?,?)",
+                (event_id, now_ms()),
+            )
+            return True
+        except Exception:
+            return False

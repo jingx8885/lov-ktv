@@ -48,3 +48,10 @@ ALIYUN_OSS_DOWNLOAD_DOMAIN = (
     os.environ.get("ALIYUN_OSS_DOWNLOAD_DOMAIN") or ""
 ).rstrip("/")
 HTTPS_PROXY = (os.environ.get("LOVKTV_HTTPS_PROXY") or "").strip()
+
+# Billing / Google OAuth
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+STRIPE_PRICE_5 = os.environ.get("STRIPE_PRICE_5", "").strip()
+STRIPE_PRICE_20 = os.environ.get("STRIPE_PRICE_20", "").strip()
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()

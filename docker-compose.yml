@@ -34,6 +34,11 @@ services:
       LOVKTV_OSS_PREFIX: ${LOVKTV_OSS_PREFIX:-lovktv}
       LOVKTV_HTTPS_PROXY: ${LOVKTV_HTTPS_PROXY:-}
       LOVKTV_DATABASE_URL: ${LOVKTV_DATABASE_URL:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_5: ${STRIPE_PRICE_5:-}
+      STRIPE_PRICE_20: ${STRIPE_PRICE_20:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8787/healthz >/dev/null && curl -fsS http://127.0.0.1:8787/api/host >/dev/null"]

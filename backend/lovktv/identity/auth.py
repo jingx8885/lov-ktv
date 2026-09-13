@@ -7,6 +7,7 @@ from urllib.parse import quote, urlencode
 import httpx
 
 from lovktv.core.config import (
+    GOOGLE_CLIENT_ID,
     PUBLIC_URL,
     WECHAT_APP_ID,
     WECHAT_APP_SECRET,
@@ -31,6 +32,7 @@ def auth_status() -> dict:
         "wechat_quick": wechat_ready("mp"),
         "qr": True,
         "password": True,
+        "google": bool(GOOGLE_CLIENT_ID),
         "guest_limit": GUEST_SONG_LIMIT,
     }
 

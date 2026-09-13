@@ -76,6 +76,8 @@ export default {
   "api.username_taken": "That username is taken",
   "api.login_failed": "Wrong username or password",
   "api.guest_limit": "Guests can queue {limit} songs a day. Sign in to continue.",
+  "api.plan_quota_exhausted":
+    "This month's plan quota of {limit} songs has been used. Upgrade or wait until next month.",
   "api.need_points":
     "Not enough points (need {cost}, have {have}). Watch a 30s ad for +1, or register / download the app for +10.",
   "api.ad_too_soon": "Watch the ad for 30 seconds first",
@@ -88,6 +90,7 @@ export default {
   "api.admin_need_owner": "Find an account first",
   "api.admin_bad_delta": "Invalid points amount",
   "api.room_not_found": "Room not found",
+  "api.room_plan_limit": "Your plan has reached its room limit. Upgrade to add another room.",
   "api.unnamed": "Untitled",
   "api.sep_degrade": "Split fallback: ",
   "api.ann_degrade": "Reading fallback: ",

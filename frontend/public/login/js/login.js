@@ -67,14 +67,17 @@ function paintLead() {
   if (signedIn()) {
     $("heading").textContent = t("login.done");
     $("lead").textContent = ticket ? t("login.doneTv") : t("login.doneId");
-    if (meUser.wechat) $("meHint").textContent = t("login.wechatLock");
+    if (meUser.google && meUser.email) $("meHint").textContent = meUser.email;
+    else if (meUser.wechat) $("meHint").textContent = t("login.wechatLock");
     else if (meUser.username) $("meHint").textContent = meUser.username;
     else $("meHint").textContent = t("login.deviceId");
     return;
   }
   $("heading").textContent = t("login.heading");
   $("panelKicker").textContent = t(authMode === "register" ? "login.registerKicker" : "login.panelKicker");
-  $("lead").textContent = scanLead ? t("login.leadScan") : t(authMode === "register" ? "login.registerLead" : "login.lead");
+  $("lead").textContent = scanLead
+    ? t("login.leadScan")
+    : t(authMode === "register" ? "login.registerLead" : "login.lead");
   paintQuota();
 }
 

@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from lovktv.api.models import RoomCommandPayload, RoomLanPayload
 from lovktv.domain.room_contract import normalize_playback_event
+from lovktv.identity.plans import PLAN_ROOM_LIMITS, effective_plan
 from lovktv.identity.points import charge_queue
 from lovktv.locale.i18n import (
     localize_error_text,
@@ -16,7 +17,7 @@ from lovktv.locale.i18n import (
 )
 from lovktv.platform.runtime import _mics, _peers, _rooms
 from lovktv.rooms.service import RoomCommand, room_service
-from lovktv.services.http import fail, set_host_cookie
+from lovktv.services.http import current_user, fail, set_host_cookie
 from lovktv.services.room_runtime import (
     bind_host,
     broadcast,
@@ -26,7 +27,13 @@ from lovktv.services.room_runtime import (
     run_command,
 )
 from lovktv.storage import store
-from lovktv.storage.room_store import ensure_room_for_host, room_for_hosts, set_room_lan
+from lovktv.storage.room_store import (
+    count_user_rooms,
+    ensure_room_for_host,
+    room_for_hosts,
+    set_room_lan,
+    set_room_owner,
+)
 from lovktv.storage.store import get_song, host_keys
 
 router = APIRouter()
@@ -49,7 +56,17 @@ def api_create_room(request: Request) -> JSONResponse:
     ua = request.headers.get("user-agent") or ""
     machine = host_machine(request)
     token = machine if len(machine) >= 8 else store.new_id()
-    room = ensure_room_for_host(host_keys(token, ua, request_ip(request)), ua)
+    keys = host_keys(token, ua, request_ip(request))
+    user = current_user(request)
+    known_room = room_for_hosts(keys)
+    if user and user.get("account") and not known_room:
+        plan = effective_plan(user)
+        room_limit = PLAN_ROOM_LIMITS.get(plan, 1)
+        if room_limit is not None and count_user_rooms(str(user["id"])) >= room_limit:
+            fail(request, 402, "api.room_plan_limit")
+    room = ensure_room_for_host(keys, ua)
+    if user and user.get("account"):
+        set_room_owner(room["code"], str(user["id"]))
     return set_host_cookie(
         JSONResponse(room_view(room["code"], lang=request_lang(request))),
         request,
@@ -88,7 +105,9 @@ async def api_enqueue(request: Request, code: str, payload: RoomCommandPayload) 
     song_id = str(payload.song_id or "")
     if not get_song(song_id):
         fail(request, 404, "api.song_not_found")
-    queued = {item.get("song_id") for item in room_service.snapshot(code).get("queue") or []}
+    queued = {
+        item.get("song_id") for item in room_service.snapshot(code).get("queue") or []
+    }
     if song_id not in queued:
         charge_queue(request, song_id)
     try:

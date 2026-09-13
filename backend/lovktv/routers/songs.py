@@ -21,6 +21,7 @@ from lovktv.catalog.index import (
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
+from lovktv.identity.plans import processing_priority
 from lovktv.identity.points import charge_process
 from lovktv.identity.quota import learn_owner
 from lovktv.identity.song_admin import is_song_admin
@@ -133,6 +134,7 @@ def api_import(request: Request, payload: dict) -> dict:
         title_hint=title_hint,
         artist_hint=artist_hint,
         lyric_id=lyric_id,
+        priority=processing_priority(current_user(request)),
     )
     return song
 
@@ -157,7 +159,13 @@ async def api_upload(
         shutil.copyfileobj(file.file, handle)
     if lyrics.strip():
         (media_root() / song["id"] / "lyrics.lrc").write_text(lyrics, encoding="utf-8")
-    spawn(process_upload, song["id"], dest, language)
+    spawn(
+        process_upload,
+        song["id"],
+        dest,
+        language,
+        priority=processing_priority(current_user(request)),
+    )
     return song
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lovktv.identity.quota import guest_key, is_account, quota_payload
+from lovktv.identity.song_admin import is_unrestricted_admin
 from lovktv.services.http import current_user, fail
 from lovktv.storage import points as store
 from lovktv.storage import settings
@@ -15,6 +16,7 @@ REGISTER_BONUS = 10
 DOWNLOAD_BONUS = 10
 AD_DAY_LIMIT = 40
 POINTS_ENFORCED = False
+
 
 def _setting(key: str):
     if key == "points_enabled" and POINTS_ENFORCED:
@@ -76,19 +78,27 @@ def grant_register(request, user: dict) -> dict:
 
 
 def charge_process(request) -> dict:
-    if not _setting("points_enabled"):
-        return {"free": True, "skipped": True, "points": points_payload(request)}
     user = current_user(request)
-    if not is_account(user):
-        quota = quota_payload(request, user)
-        if quota["remaining"] > 0:
-            from lovktv.identity.quota import consume_guest_song
+    quota = quota_payload(request, user)
+    if quota["unlimited"]:
+        return {"free": True, "skipped": True, "points": points_payload(request)}
+    if quota["remaining"] is not None and quota["remaining"] > 0:
+        from lovktv.identity.quota import consume_guest_song
 
-            return {"free": True, "quota": consume_guest_song(request)}
-    return {"free": False, "points": spend(request, _setting("process_cost"), "process")}
+        return {"free": True, "quota": consume_guest_song(request)}
+    if is_account(user) and str(user.get("plan") or "free") in {"starter", "pro"}:
+        fail(request, 429, "api.plan_quota_exhausted", limit=quota["limit"])
+    if not _setting("points_enabled"):
+        fail(request, 429, "api.guest_limit", limit=quota["limit"])
+    return {
+        "free": False,
+        "points": spend(request, _setting("process_cost"), "process"),
+    }
 
 
 def charge_queue(request, song_id: str = "") -> dict:
+    if is_unrestricted_admin(current_user(request)):
+        return points_payload(request)
     if not _setting("points_enabled"):
         return points_payload(request)
     return spend(request, _setting("queue_cost"), "queue", song_id)

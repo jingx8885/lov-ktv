@@ -27,6 +27,7 @@ class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
             "/m.html",
             "/tv.html",
             "/login.html",
+            "/billing.html",
         }:
             response.headers["Cache-Control"] = "no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
@@ -80,6 +81,7 @@ from lovktv.routers import (  # noqa: E402
     admin,
     ads,
     auth,
+    billing,
     learn,
     media,
     misc,
@@ -90,6 +92,7 @@ from lovktv.routers import (  # noqa: E402
 
 app.include_router(misc.router)
 app.include_router(auth.router)
+app.include_router(billing.router)
 app.include_router(ads.router)
 app.include_router(admin.router)
 app.include_router(songs.router)

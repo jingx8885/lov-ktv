@@ -116,6 +116,10 @@ def init_schema(conn: Any) -> None:
     for name, decl in USER_MIGRATIONS:
         if name not in user_cols:
             conn.execute(f"ALTER TABLE users ADD COLUMN {name} {decl}")
+    # These indexes must be created after the additive migrations above; old
+    # installations have a users table without the Google/billing columns.
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub <> ''")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email <> ''")
     mistake_cols = table_columns(conn, "learn_mistakes")
     for name, decl in MISTAKE_MIGRATIONS:
         if name not in mistake_cols:

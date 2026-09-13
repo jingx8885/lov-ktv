@@ -1,15 +1,17 @@
-"""Guest song quota. Logged-in accounts are unlimited."""
+"""Monthly processing quota for guests and paid accounts."""
 
 from __future__ import annotations
 
 import hashlib
 from datetime import datetime, timedelta, timezone
 
+from lovktv.identity.plans import PLAN_LIMITS, effective_plan
 from lovktv.services.http import current_user, fail
 from lovktv.services.room_runtime import request_ip
 from lovktv.storage import store
 
 GUEST_SONG_LIMIT = 5
+FREE_ACCOUNT_LIMIT = 20
 _SHANGHAI = timezone(timedelta(hours=8))
 
 
@@ -53,12 +55,60 @@ def learn_owner(request, user: dict | None = None) -> str:
 def quota_payload(request, user: dict | None = None) -> dict:
     user = user if user is not None else current_user(request)
     if is_account(user):
+        raw_plan = str(user.get("plan") or "free")
+        status = str(user.get("plan_status") or "active")
+        plan = effective_plan(user)
+        # Existing free accounts retain the original unlimited behavior. A
+        # previously paid account that has lapsed is explicitly downgraded to
+        # the free monthly allowance by Stripe webhook state.
+        if raw_plan == "free" and status not in {"canceled", "past_due", "unpaid"}:
+            return {
+                "unlimited": True,
+                "limit": None,
+                "used": 0,
+                "remaining": None,
+                "account": True,
+                "plan": plan,
+            }
+        if (
+            raw_plan in {"starter", "pro"}
+            or status in {"canceled", "past_due", "unpaid"}
+        ) and plan == "free":
+            period = datetime.fromtimestamp(
+                store.now_ms() / 1000, tz=_SHANGHAI
+            ).strftime("%Y-%m")
+            used = store.guest_song_used("u:" + str(user["id"]), "month:" + period)
+            return {
+                "unlimited": False,
+                "limit": FREE_ACCOUNT_LIMIT,
+                "used": used,
+                "remaining": max(0, FREE_ACCOUNT_LIMIT - used),
+                "account": True,
+                "plan": "free",
+                "period": period,
+            }
+        limit = PLAN_LIMITS[plan]
+        if limit is None:
+            return {
+                "unlimited": True,
+                "limit": None,
+                "used": 0,
+                "remaining": None,
+                "account": True,
+                "plan": plan,
+            }
+        period = datetime.fromtimestamp(store.now_ms() / 1000, tz=_SHANGHAI).strftime(
+            "%Y-%m"
+        )
+        used = store.guest_song_used("u:" + str(user["id"]), "month:" + period)
         return {
-            "unlimited": True,
-            "limit": GUEST_SONG_LIMIT,
-            "used": 0,
-            "remaining": None,
+            "unlimited": False,
+            "limit": limit,
+            "used": used,
+            "remaining": max(0, limit - used),
             "account": True,
+            "plan": plan,
+            "period": period,
         }
     used = store.guest_song_used(guest_key(request, user), shanghai_day())
     remaining = max(0, GUEST_SONG_LIMIT - used)
@@ -77,6 +127,9 @@ def consume_guest_song(request) -> dict:
     if quota["unlimited"]:
         return quota
     if quota["remaining"] <= 0:
-        fail(request, 429, "api.guest_limit", limit=GUEST_SONG_LIMIT)
-    store.increment_guest_song(guest_key(request, user), shanghai_day())
+        fail(request, 429, "api.guest_limit", limit=quota["limit"])
+    key = "u:" + str(user["id"]) if is_account(user) else guest_key(request, user)
+    day = "month:" + quota["period"] if is_account(user) else shanghai_day()
+    if not store.consume_song_quota(key, day, int(quota["limit"])):
+        fail(request, 429, "api.guest_limit", limit=quota["limit"])
     return quota_payload(request, user)

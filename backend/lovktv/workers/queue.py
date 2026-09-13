@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import queue
 import threading
 from typing import Any, Callable
@@ -20,9 +21,10 @@ class JobQueue:
     """Small single-worker queue with duplicate suppression."""
 
     def __init__(self, worker_name: str = "lovktv-jobs") -> None:
-        self._jobs: queue.Queue[tuple[JobFn, tuple[Any, ...], dict[str, Any], str]] = (
-            queue.Queue()
-        )
+        self._jobs: queue.PriorityQueue[
+            tuple[int, int, JobFn, tuple[Any, ...], dict[str, Any], str]
+        ] = queue.PriorityQueue()
+        self._sequence = itertools.count()
         self._queued: set[str] = set()
         self._lock = threading.Lock()
         self._worker_started = False
@@ -33,7 +35,9 @@ class JobQueue:
     def _worker(self) -> None:
         while not self._stop_event.is_set():
             try:
-                fn, args, kwargs, key = self._jobs.get(timeout=0.2)
+                _priority, _sequence, fn, args, kwargs, key = self._jobs.get(
+                    timeout=0.2
+                )
             except queue.Empty:
                 continue
             try:
@@ -77,7 +81,7 @@ class JobQueue:
             return False
         while True:
             try:
-                _fn, _args, _kwargs, key = self._jobs.get_nowait()
+                _priority, _sequence, _fn, _args, _kwargs, key = self._jobs.get_nowait()
             except queue.Empty:
                 break
             with self._lock:
@@ -97,13 +101,15 @@ class JobQueue:
                 "pending": self._jobs.qsize(),
             }
 
-    def submit(self, fn: JobFn, *args: Any, **kwargs: Any) -> bool:
+    def submit(self, fn: JobFn, *args: Any, priority: int = 0, **kwargs: Any) -> bool:
         key = _job_key(fn, args, kwargs)
         with self._lock:
             if key in self._queued:
                 return False
             self._queued.add(key)
-            self._jobs.put((fn, args, kwargs, key))
+            self._jobs.put(
+                (-int(priority), next(self._sequence), fn, args, kwargs, key)
+            )
         self.start()
         return True
 
@@ -111,6 +117,6 @@ class JobQueue:
 job_queue = JobQueue()
 
 
-def spawn(fn: JobFn, *args: Any, **kwargs: Any) -> bool:
+def spawn(fn: JobFn, *args: Any, priority: int = 0, **kwargs: Any) -> bool:
     """Queue background work with one worker and report duplicate suppression."""
-    return job_queue.submit(fn, *args, **kwargs)
+    return job_queue.submit(fn, *args, priority=priority, **kwargs)

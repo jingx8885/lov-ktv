@@ -88,6 +88,7 @@
           <div class="card scan-card" id="loginBox" hidden>
             <div class="divider"><span data-i18n="login.or">或者</span></div>
             <a class="btn wechat auth-submit" id="wechatScan" href="/api/auth/scan"><span class="wechat-mark" aria-hidden="true">◉</span><span data-i18n="login.wechatBtn">微信扫码认号</span></a>
+            <div id="googleLogin" style="margin-top:10px"></div>
             <p class="tiny scan-hint" id="wechatHint" data-i18n="login.wechatHint">扫电视上的码即可，不用输入密码</p>
             <button class="btn device-btn" id="deviceLogin" type="button" hidden data-i18n="login.deviceBtn">使用本机身份</button>
           </div>
@@ -95,6 +96,7 @@
           <div class="panel-footer">
             <p class="footer-note" data-i18n="login.footerNote">登录即代表你同意 lov-ktv 的使用规则</p>
             <div class="quick-links">
+              <a class="quick-link" href="/billing.html"><span class="quick-icon">$</span><span>升级套餐</span><span aria-hidden="true">↗</span></a>
               <a class="quick-link" id="toMobile" href="/m.html"><span class="quick-icon">▣</span><span data-i18n="login.toPhone">去手机点歌</span><span aria-hidden="true">↗</span></a>
               <a class="quick-link" id="toTv" href="/tv.html"><span class="quick-icon">▤</span><span data-i18n="login.toTv">打开电视</span><span aria-hidden="true">↗</span></a>
             </div>
@@ -105,6 +107,6 @@
 
     <footer class="auth-bottom"><span>lov-ktv</span><span class="bottom-dot">·</span><span data-i18n="login.bottom">让每一首歌，都有现场。</span></footer>
   </div>
-  <script type="module" src="/login/js/login.js"></script>
+  <script>window.initGoogleLogin=()=>fetch("/api/auth/google/config").then(r=>r.json()).then(c=>{if(!c.enabled||!window.google)return;google.accounts.id.initialize({client_id:c.client_id,callback:async x=>{const r=await fetch("/api/auth/google",{method:"POST",headers:{"content-type":"application/json"},credentials:"same-origin",body:JSON.stringify({credential:x.credential})});if(r.ok)location.reload()}});google.accounts.id.renderButton(document.getElementById("googleLogin"),{theme:"outline",size:"large",width:360,text:"signin_with"})}).catch(()=>{});</script><script src="https://accounts.google.com/gsi/client" async defer onload="window.initGoogleLogin()"></script><script type="module" src="/login/js/login.js"></script>
 </body>
 </html>

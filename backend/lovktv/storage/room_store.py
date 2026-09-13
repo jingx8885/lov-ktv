@@ -159,6 +159,25 @@ def ensure_room_for_host(keys: list[str], ua: str = "") -> dict[str, Any]:
     return room
 
 
+def count_user_rooms(user_id: str) -> int:
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT COUNT(*) AS n FROM rooms WHERE owner_user_id=?",
+            (str(user_id),),
+        ).fetchone()
+    return int(dict(row).get("n") or 0) if row else 0
+
+
+def set_room_owner(code: str, user_id: str) -> None:
+    with _LOCK, connect() as conn:
+        execute(
+            conn,
+            "UPDATE rooms SET owner_user_id=? WHERE code=? AND owner_user_id=''",
+            (str(user_id), str(code).upper()),
+        )
+
+
 def _private_ipv4(host: str) -> bool:
     name = str(host or "").strip().lower()
     if name == "localhost" or name.endswith(".local"):
@@ -266,7 +285,9 @@ def bump(code: str, item_id: str) -> dict[str, Any]:
     items.insert(int(snap["now_index"]) + 1, item)
     with _LOCK, connect() as conn:
         for position, row in enumerate(items, start=1):
-            execute(conn, "UPDATE queue SET position=? WHERE id=?", (position, row["id"]))
+            execute(
+                conn, "UPDATE queue SET position=? WHERE id=?", (position, row["id"])
+            )
     return room_snapshot(code)
 
 

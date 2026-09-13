@@ -76,6 +76,8 @@ export default {
   "api.username_taken": "このユーザー名は使われています",
   "api.login_failed": "ユーザー名またはパスワードが違います",
   "api.guest_limit": "未ログインは1日{limit}曲まで。ユーザー名とパスワードで続けられます",
+  "api.plan_quota_exhausted":
+    "今月のプラン上限 {limit} 曲を使い切りました。アップグレードするか、来月までお待ちください",
   "api.need_points": "ポイント不足（必要 {cost}、所持 {have}）。30秒広告で+1、登録またはアプリダウンロードで+10。",
   "api.ad_too_soon": "広告を30秒見てください",
   "api.ad_invalid": "この広告は無効です。別の広告を見てください",
@@ -87,6 +89,7 @@ export default {
   "api.admin_need_owner": "先にアカウントを指定してください",
   "api.admin_bad_delta": "ポイント数が無効です",
   "api.room_not_found": "部屋が見つかりません",
+  "api.room_plan_limit": "現在のプランのルーム数上限に達しました。アップグレードしてください",
   "api.unnamed": "無題",
   "api.sep_degrade": "分離フォールバック：",
   "api.ann_degrade": "注音フォールバック：",
