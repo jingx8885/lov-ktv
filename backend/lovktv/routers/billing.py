@@ -99,6 +99,8 @@ def billing_me(request: Request):
 @router.post("/api/billing/checkout")
 def checkout(request: Request, payload: dict = Body(default={})):
     user = _require_user(request)
+    if effective_plan(user) == "admin":
+        raise HTTPException(400, "管理员账号无需订阅")
     key = str(payload.get("plan") or "starter")
     plan = PLANS.get(key)
     if not plan or not plan["price_id"]:
