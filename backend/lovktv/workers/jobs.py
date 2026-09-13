@@ -34,7 +34,7 @@ from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.audio import extract_envelope, probe_duration_ms, vocal_regions
 from lovktv.pipeline.bounds import pack_tokens_to_singing
 from lovktv.pipeline.energy import lrc_energy_match
-from lovktv.pipeline.language import resolve_language
+from lovktv.pipeline.language import normalize_target_language, resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,
     prepare_lyric_lines,
@@ -290,6 +290,7 @@ def process_import(
     title_hint: str = "",
     artist_hint: str = "",
     lyric_id: str = "",
+    target_language: str | None = None,
 ) -> None:
     out_dir = MEDIA_DIR / song_id
     processing_debug.start(song_id, "import")
@@ -305,6 +306,11 @@ def process_import(
             artist_hint=artist_hint,
             lyric_id=lyric_id,
         )
+        if target_language:
+            skeleton["target_language"] = normalize_target_language(target_language)
+            (out_dir / "skeleton.json").write_text(
+                json.dumps(skeleton, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
         processing_debug.event(
             song_id,
             "fetch",
@@ -396,6 +402,19 @@ def process_import(
 
 def _cue_source(cue: dict) -> str:
     return str(cue.get("source_text") or cue.get("text") or "")
+
+
+def _target_language(out_dir: Path, fallback: str | None = None) -> str:
+    """Read the persisted display target, defaulting to Chinese for legacy songs."""
+    path = out_dir / "skeleton.json"
+    if path.exists():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and data.get("target_language"):
+                return normalize_target_language(str(data["target_language"]))
+        except (OSError, ValueError, TypeError):
+            pass
+    return normalize_target_language(fallback)
 
 
 def _has_native_mtv(out_dir: Path) -> bool:
@@ -664,6 +683,7 @@ def _translate_foreign_timeline(
     out_dir: Path,
     timeline: dict,
     language: str | None,
+    target_language: str | None = None,
     *,
     force: bool = False,
 ) -> bool:
@@ -671,13 +691,22 @@ def _translate_foreign_timeline(
     if not cues:
         return False
     language_key = str(language or timeline.get("language") or "").strip().lower()
-    if is_chinese_lang(language_key):
+    target_key = normalize_target_language(target_language)
+    source_key = normalize_target_language(language_key)
+    target_changed = timeline.get("target_language") != target_key
+    timeline["target_language"] = target_key
+    # Chinese and Cantonese timelines may contain embedded English words that
+    # still need a Chinese gloss. Keep that mixed-line pass even though both
+    # locales normalize to the same display target.
+    if source_key == target_key and not is_chinese_lang(language_key):
+        return target_changed
+    if is_chinese_lang(language_key) and target_key == "zh":
         # Chinese/Cantonese lines normally need no translation.  Mixed lines
         # still need the same word-level glosses as English runs in Japanese
         # lyrics (for example ``我嘅 My jealous 心情``), so let the translator
         # handle only those cues and keep pure-CJK lines agent-free.
         if not any(re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", _cue_source(cue)) for cue in cues):
-            return False
+            return target_changed
     cache_path = out_dir / "zh-translate.json"
     cache_stale = False
     if cache_path.exists():
@@ -762,7 +791,9 @@ def _finish_ready_lyrics(
         processing_debug.event(song_id, "annotation", status="running", language=lang)
         wrote = _annotate_ja_timeline(song_id, out_dir, timeline)
     if timeline.get("cues") and not burned:
-        wrote = _translate_foreign_timeline(song_id, out_dir, timeline, lang) or wrote
+        wrote = _translate_foreign_timeline(
+            song_id, out_dir, timeline, lang, _target_language(out_dir, "zh")
+        ) or wrote
         processing_debug.event(song_id, "translation", language=lang)
     if wrote or (timeline.get("native_video") and not burned):
         write_subtitles(timeline, out_dir)
@@ -795,7 +826,12 @@ def _finish_ready_lyrics(
         update_song(song_id, error=f"{previous} MTV降级：{mtv_exc}".strip())
 
 
-def process_upload(song_id: str, src: Path, language: str | None = None) -> None:
+def process_upload(
+    song_id: str,
+    src: Path,
+    language: str | None = None,
+    target_language: str | None = None,
+) -> None:
     out_dir = MEDIA_DIR / song_id
     processing_debug.start(song_id, "upload")
     try:
@@ -810,7 +846,14 @@ def process_upload(song_id: str, src: Path, language: str | None = None) -> None
         except Exception as sep_exc:
             update_song(song_id, error=f"分离降级：{sep_exc}")
             _fallback_media(src, out_dir)
-        _align_and_mtv(song_id, out_dir, src, language, rebuild_mtv=True)
+        _align_and_mtv(
+            song_id,
+            out_dir,
+            src,
+            language,
+            rebuild_mtv=True,
+            target_language=target_language,
+        )
         processing_debug.finish(song_id, "ready")
     except Exception as exc:  # noqa: BLE001
         update_song(song_id, status="failed", error=str(exc))
@@ -896,7 +939,9 @@ def apply_locked_manual(song_id: str, rebuild_mtv: bool = False) -> None:
     if voice.exists():
         envelope, hop_ms = extract_envelope(voice)
         pack_tokens_to_singing(timeline["cues"], envelope, hop_ms)
-    _translate_foreign_timeline(song_id, out_dir, timeline, lang)
+    _translate_foreign_timeline(
+        song_id, out_dir, timeline, lang, _target_language(out_dir, "zh")
+    )
     write_subtitles(timeline, out_dir)
     write_manual_lrc(out_dir, timeline["cues"])
     update_song(song_id, language=lang, status="ready")
@@ -1033,6 +1078,7 @@ def _align_and_mtv(
     src: Path,
     language: str | None,
     rebuild_mtv: bool = True,
+    target_language: str | None = None,
 ) -> None:
     processing_debug.event(song_id, "align", status="running")
     skeleton: dict = {}
@@ -1214,7 +1260,13 @@ def _align_and_mtv(
             timeline["native_video"] = True
     if timeline.get("cues"):
         update_song(song_id, status="annotating")
-        _translate_foreign_timeline(song_id, out_dir, timeline, lang)
+        _translate_foreign_timeline(
+            song_id,
+            out_dir,
+            timeline,
+            lang,
+            _target_language(out_dir, target_language),
+        )
         processing_debug.event(song_id, "translation", language=lang)
         if keep_native:
             timeline["native_video"] = True

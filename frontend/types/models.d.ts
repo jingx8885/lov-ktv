@@ -13,6 +13,7 @@ interface SearchHit {
   title: string;
   artist?: string;
   language?: string;
+  target_language?: string;
   source?: string;
   is_mv?: boolean;
   duration?: number;
@@ -132,6 +133,7 @@ interface AuthUser {
   username?: string;
   account?: boolean;
   admin?: boolean;
+  language?: string;
 }
 
 interface AuthQuota {

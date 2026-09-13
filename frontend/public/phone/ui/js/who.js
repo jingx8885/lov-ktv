@@ -1,6 +1,6 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { t } from "../../../shared/i18n/js/i18n.js";
+import { t, lang } from "../../../shared/i18n/js/i18n.js";
 import { isAccount, submitAccount } from "../../../shared/ui/js/account.js";
 import { paintTopWho } from "./icons.js";
 import { showToast } from "./toast.js";
@@ -115,7 +115,7 @@ async function runWhoPass(mode) {
     $("whoPassword").focus();
     return;
   }
-  const { ok, data } = await submitAccount(mode, username, password);
+  const { ok, data } = await submitAccount(mode, username, password, lang());
   if (!ok) {
     showWhoError(data.detail || t("login.deviceFail"));
     return;

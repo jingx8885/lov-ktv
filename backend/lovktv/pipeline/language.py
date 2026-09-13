@@ -19,6 +19,20 @@ _YUE_HINTS = {
 }
 WHISPER_LANGS = {"zh", "ja", "en", "yue"}
 CJK_LANGS = {"zh", "ja", "yue"}
+TARGET_LANGUAGES = {"zh", "en", "ja"}
+
+
+def normalize_target_language(language: str | None) -> str:
+    """Map UI locales to the three lyric target languages we support."""
+    value = str(language or "").strip().lower()
+    if value.startswith("ja"):
+        return "ja"
+    if value.startswith("en"):
+        return "en"
+    # Cantonese and all Chinese UI variants use the Chinese target for now.
+    if value.startswith("zh") or value.startswith("yue") or value in {"cmn", "chinese"}:
+        return "zh"
+    return "zh"
 
 
 def whisper_language(language: str | None) -> str:

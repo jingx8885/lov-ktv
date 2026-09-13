@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT NOT NULL DEFAULT '',
   username_key TEXT NOT NULL DEFAULT '',
   password_hash TEXT NOT NULL DEFAULT '',
+  language TEXT NOT NULL DEFAULT 'zh',
   google_sub TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
   plan TEXT NOT NULL DEFAULT 'free',

@@ -27,6 +27,7 @@ from lovktv.identity.quota import learn_owner
 from lovktv.identity.song_admin import is_song_admin
 from lovktv.locale.i18n import localize_exc, localize_song, request_lang
 from lovktv.locale.i18n import t as i18n_t
+from lovktv.pipeline.language import normalize_target_language
 from lovktv.pipeline.lyrics import validate_timeline, write_manual_lrc, write_subtitles
 from lovktv.platform.runtime import media_root
 from lovktv.services.http import current_user, fail
@@ -116,6 +117,8 @@ def api_import(request: Request, payload: dict) -> dict:
     artist_hint = str(payload.get("artist") or "").strip()
     lyric_id = str(payload.get("lyrics_id") or payload.get("lyric_id") or "").strip()
     language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
+    user = current_user(request)
+    target_language = normalize_target_language((user or {}).get("language"))
     song = create_song(
         title=str(payload.get("title") or query),
         artist=str(payload.get("artist") or ""),
@@ -134,7 +137,8 @@ def api_import(request: Request, payload: dict) -> dict:
         title_hint=title_hint,
         artist_hint=artist_hint,
         lyric_id=lyric_id,
-        priority=processing_priority(current_user(request)),
+        target_language=target_language,
+        priority=processing_priority(user),
     )
     return song
 
@@ -164,6 +168,7 @@ async def api_upload(
         song["id"],
         dest,
         language,
+        normalize_target_language((current_user(request) or {}).get("language")),
         priority=processing_priority(current_user(request)),
     )
     return song

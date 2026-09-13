@@ -9,12 +9,13 @@ export function isAccount(user) {
  * @param {"login" | "register"} mode
  * @param {string} username
  * @param {string} password
+ * @param {string} [language]
  */
-export function submitAccount(mode, username, password) {
+export function submitAccount(mode, username, password, language = "") {
   const path = mode === "register" ? "/api/auth/register" : "/api/auth/login";
   return fetchJson(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password })
+    body: JSON.stringify({ username, password, ...(language ? { language } : {}) })
   });
 }

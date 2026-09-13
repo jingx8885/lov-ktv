@@ -27,7 +27,7 @@
 | GET | `/api/auth/status` | 微信 / 扫码 / 密码登录是否可用；`guest_limit` |
 | GET | `/api/auth/me` | 当前用户 + `quota` + `points` |
 | POST | `/api/auth/login` | `{username,password}` 一键登录 |
-| POST | `/api/auth/register` | `{username,password}` 一键注册并登录；送 10 积分 |
+| POST | `/api/auth/register` | `{username,password,language?}` 一键注册并登录；记录界面语言，送 10 积分 |
 | GET | `/api/points` | 积分余额与规则 |
 | GET | `/api/ads?placement=` | `splash` / `wait` 广告 |
 | POST | `/api/ads/start` | `{placement}` 开一条广告，看 30 秒 |

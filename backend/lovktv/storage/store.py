@@ -19,6 +19,7 @@ from lovktv.identity.passwords import (
     verify_password,
 )
 from lovktv.identity.song_admin import is_song_admin
+from lovktv.locale.i18n import parse_lang
 from lovktv.storage.media import (
     media_flags as _media_flags,
 )
@@ -212,10 +213,16 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         "plan_status": data.get("plan_status") or "active",
         "plan_expires_at": int(data.get("plan_expires_at") or 0),
         "username": username,
+        "language": normalize_user_language(data.get("language")),
         "account": bool(username or wechat or google),
         "admin": is_song_admin({"username": username, "email": data.get("email") or ""}),
         "created_at": int(data.get("created_at") or 0),
     }
+
+
+def normalize_user_language(value: Any) -> str:
+    """Return one of the UI locale codes persisted for an account."""
+    return parse_lang(str(value or "")) or "zh"
 
 
 def get_user(user_id: str) -> dict[str, Any] | None:
@@ -255,7 +262,11 @@ def list_users(query: str = "", limit: int = 80) -> list[dict[str, Any]]:
 
 
 def upsert_wechat_user(
-    openid: str, unionid: str = "", nickname: str = "", avatar: str = ""
+    openid: str,
+    unionid: str = "",
+    nickname: str = "",
+    avatar: str = "",
+    language: str | None = None,
 ) -> dict[str, Any]:
     openid = (openid or "").strip()
     if not openid:
@@ -269,11 +280,12 @@ def upsert_wechat_user(
             user_id = row["id"]
             execute(
                 conn,
-                "UPDATE users SET wechat_unionid=?, nickname=?, avatar=? WHERE id=?",
+                "UPDATE users SET wechat_unionid=?, nickname=?, avatar=?, language=? WHERE id=?",
                 (
                     unionid or row["wechat_unionid"],
                     nickname or row["nickname"],
                     avatar or row["avatar"],
+                    normalize_user_language(language) if language else normalize_user_language(row["language"]),
                     user_id,
                 ),
             )
@@ -281,13 +293,14 @@ def upsert_wechat_user(
             user_id = new_id()
             execute(
                 conn,
-                "INSERT INTO users (id, wechat_openid, wechat_unionid, nickname, avatar, created_at) VALUES (?,?,?,?,?,?)",
+                "INSERT INTO users (id, wechat_openid, wechat_unionid, nickname, avatar, language, created_at) VALUES (?,?,?,?,?,?,?)",
                 (
                     user_id,
                     openid,
                     unionid,
                     nickname or f"ID {user_id[:6].upper()}",
                     avatar,
+                    normalize_user_language(language),
                     now,
                 ),
             )
@@ -297,7 +310,9 @@ def upsert_wechat_user(
     return user
 
 
-def upsert_device_user(device_id: str, nickname: str = "") -> dict[str, Any]:
+def upsert_device_user(
+    device_id: str, nickname: str = "", language: str | None = None
+) -> dict[str, Any]:
     device_id = (device_id or "").strip()[:64]
     if len(device_id) < 8:
         raise ValueError("无效的设备")
@@ -312,12 +327,18 @@ def upsert_device_user(device_id: str, nickname: str = "") -> dict[str, Any]:
                 execute(
                     conn, "UPDATE users SET nickname=? WHERE id=?", (nickname, user_id)
                 )
+            if language:
+                execute(
+                    conn,
+                    "UPDATE users SET language=? WHERE id=?",
+                    (normalize_user_language(language), user_id),
+                )
         else:
             user_id = new_id()
             execute(
                 conn,
-                "INSERT INTO users (id, device_id, nickname, created_at) VALUES (?,?,?,?)",
-                (user_id, device_id, nickname or f"ID {user_id[:6].upper()}", now),
+                "INSERT INTO users (id, device_id, nickname, language, created_at) VALUES (?,?,?,?,?)",
+                (user_id, device_id, nickname or f"ID {user_id[:6].upper()}", normalize_user_language(language), now),
             )
     user = get_user(user_id)
     if not user:
@@ -402,12 +423,16 @@ def get_user_by_username(name: str) -> dict[str, Any] | None:
 
 
 def register_password_user(
-    name: str, password: str, attach_user_id: str = ""
+    name: str,
+    password: str,
+    attach_user_id: str = "",
+    language: str | None = None,
 ) -> dict[str, Any]:
     username = normalize_username(name)
     key = username_key(username)
     hashed = hash_password(password)
     now = now_ms()
+    user_language = normalize_user_language(language)
     with _LOCK, connect() as conn:
         taken = execute(
             conn, "SELECT id FROM users WHERE username_key=?", (key,)
@@ -423,12 +448,13 @@ def register_password_user(
         if attached and not str(attached.get("username") or ""):
             execute(
                 conn,
-                "UPDATE users SET username=?, username_key=?, password_hash=?, nickname=? WHERE id=?",
+                "UPDATE users SET username=?, username_key=?, password_hash=?, nickname=?, language=? WHERE id=?",
                 (
                     username,
                     key,
                     hashed,
                     username,
+                    user_language,
                     attach_user_id,
                 ),
             )
@@ -437,8 +463,8 @@ def register_password_user(
             user_id = new_id()
             execute(
                 conn,
-                "INSERT INTO users (id, username, username_key, password_hash, nickname, created_at) VALUES (?,?,?,?,?,?)",
-                (user_id, username, key, hashed, username, now),
+                "INSERT INTO users (id, username, username_key, password_hash, nickname, language, created_at) VALUES (?,?,?,?,?,?,?)",
+                (user_id, username, key, hashed, username, user_language, now),
             )
     user = get_user(user_id)
     if not user:

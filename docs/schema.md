@@ -73,6 +73,7 @@
 | username | TEXT | 登录名，可空；房间号或自定义 |
 | username_key | TEXT | 小写用户名，非空时唯一 |
 | password_hash | TEXT | `pbkdf2_sha256`，无密码账号为空 |
+| language | TEXT | 注册时的界面语言：`zh` / `yue` / `en` / `ja` |
 | created_at | BIGINT | 纪元毫秒 |
 
 ### sessions

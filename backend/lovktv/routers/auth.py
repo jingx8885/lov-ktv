@@ -18,9 +18,9 @@ from lovktv.identity.auth import (
     wechat_ready,
 )
 from lovktv.identity.points import grant_register, points_payload
+from lovktv.identity.quota import guest_key, quota_payload
 from lovktv.identity.song_admin import is_song_admin
-from lovktv.identity.quota import quota_payload
-from lovktv.locale.i18n import localize_exc
+from lovktv.locale.i18n import localize_exc, request_lang
 from lovktv.services.http import (
     clear_session,
     current_user,
@@ -28,6 +28,7 @@ from lovktv.services.http import (
     request_base,
     set_session,
 )
+from lovktv.storage import favorites as favorite_store
 from lovktv.storage.store import (
     confirm_login_ticket,
     consume_confirmed_ticket,
@@ -41,8 +42,6 @@ from lovktv.storage.store import (
     upsert_device_user,
     upsert_wechat_user,
 )
-from lovktv.storage import favorites as favorite_store
-from lovktv.identity.quota import guest_key
 
 router = APIRouter()
 
@@ -107,6 +106,7 @@ def api_auth_register(
             str(payload.get("username") or ""),
             str(payload.get("password") or ""),
             attach_id,
+            str(payload.get("language") or request_lang(request)),
         )
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
@@ -128,7 +128,9 @@ def api_auth_logout(request: Request):
 def api_auth_device(request: Request, payload: dict = Body(default={})) -> JSONResponse:
     try:
         user = upsert_device_user(
-            str(payload.get("device_id") or ""), str(payload.get("nickname") or "")
+            str(payload.get("device_id") or ""),
+            str(payload.get("nickname") or ""),
+            str(payload.get("language") or request_lang(request)),
         )
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
@@ -213,6 +215,7 @@ def api_wechat_callback(
             info.get("unionid") or "",
             info.get("nickname") or "",
             info.get("avatar") or "",
+            request_lang(request),
         )
     except ValueError as exc:
         return RedirectResponse(

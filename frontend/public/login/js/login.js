@@ -1,4 +1,4 @@
-import { t, bootI18n, onLangChange, applyDom } from "../../shared/i18n/js/i18n.js";
+import { t, lang, bootI18n, onLangChange, applyDom } from "../../shared/i18n/js/i18n.js";
 import { $ } from "../../shared/ui/js/dom.js";
 import { fetchJson } from "../../shared/ui/js/http.js";
 import { isAccount, submitAccount } from "../../shared/ui/js/account.js";
@@ -165,7 +165,7 @@ async function runPass(mode) {
     $("password").focus();
     return;
   }
-  const { ok, data } = await submitAccount(mode, username, password);
+  const { ok, data } = await submitAccount(mode, username, password, lang());
   if (!ok) {
     showError(data.detail || t("login.deviceFail"));
     return;
