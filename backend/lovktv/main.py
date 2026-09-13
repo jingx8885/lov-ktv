@@ -28,6 +28,8 @@ class NoStoreHtmlMiddleware(BaseHTTPMiddleware):
             "/tv.html",
             "/login.html",
             "/billing.html",
+            "/privacy.html",
+            "/terms.html",
         }:
             response.headers["Cache-Control"] = "no-store, max-age=0"
             response.headers["Pragma"] = "no-cache"
