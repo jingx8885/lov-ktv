@@ -19,6 +19,8 @@ MEDIA_REV_NAMES = (
     "mtv.mp4",
     "original.mp3",
     "skeleton.json",
+    "en-translate.json",
+    "ja-translate.json",
 )
 
 

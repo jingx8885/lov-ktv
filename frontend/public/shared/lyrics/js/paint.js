@@ -1,4 +1,5 @@
 import { escapeHtml } from "../../ui/js/dom.js";
+import { lang } from "../../i18n/js/i18n.js";
 
 /** @type {readonly LyricMode[]} */
 export const LYRIC_MODES = ["ja", "zh", "roma", "all"];
@@ -100,11 +101,33 @@ export function sanitizeLyricCues(cues) {
   return out;
 }
 
+function applySupplementalTranslation(payload, cues) {
+  const current = lang();
+  const target = current === "yue" ? "zh" : current;
+  const rows = payload && payload.translations && payload.translations[target];
+  if (!Array.isArray(rows)) return cues;
+  return cues.map((cue, index) => {
+    const row = rows[index];
+    if (!row) return cue;
+    const tokens = (cue.tokens || []).map((token, tokenIndex) => {
+      const extra = row.tokens && row.tokens[tokenIndex];
+      return extra && extra.translation
+        ? Object.assign({}, token, { translation: extra.translation, zh: extra.translation })
+        : token;
+    });
+    const translation = String(row.translation || "");
+    return translation
+      ? Object.assign({}, cue, { translation, zh: translation, tokens })
+      : Object.assign({}, cue, { tokens });
+  });
+}
+
 /** @param {unknown} data */
 export function sanitizeLyrics(data) {
   if (!data || typeof data !== "object") return { cues: [] };
   const payload = /** @type {LyricsDoc} */ (data);
-  return Object.assign({}, payload, { cues: sanitizeLyricCues(payload.cues) });
+  const cues = sanitizeLyricCues(payload.cues);
+  return Object.assign({}, payload, { cues: applySupplementalTranslation(payload, cues) });
 }
 
 /** @param {LyricCue | null | undefined} cue */

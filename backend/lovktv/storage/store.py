@@ -105,6 +105,20 @@ def get_song(song_id: str) -> dict[str, Any] | None:
     return _row(row)
 
 
+def find_song_by_source(source_id: str) -> dict[str, Any] | None:
+    """Find the newest library copy for a provider/source id."""
+    source_id = str(source_id or "").strip()
+    if not source_id:
+        return None
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT * FROM songs WHERE netease_id=? ORDER BY created_at DESC, id DESC LIMIT 1",
+            (source_id,),
+        ).fetchone()
+    return _row(row)
+
+
 def media_rev(song_id: str) -> str:
     return _media_rev(song_id, MEDIA_DIR)
 

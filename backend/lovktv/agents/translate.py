@@ -75,6 +75,12 @@ Rules:
 10. Before returning, compare every unit gloss with the completed `zh` line. Remove or revise any gloss that is a literal dictionary substitute but does not express that unit's role in this line.
 """
 
+_TARGET_NAMES = {"zh": "Simplified Chinese", "en": "English", "ja": "Japanese"}
+
+
+def _target_name(target_language: str | None) -> str:
+    return _TARGET_NAMES.get(str(target_language or "zh").lower(), "Simplified Chinese")
+
 
 def is_chinese_lang(language: str | None) -> bool:
     return str(language or "").strip().lower() in CHINESE_LANGS
@@ -119,25 +125,30 @@ def line_needs_zh(source: str) -> bool:
     return bool(_TRANSLATABLE.search(str(source or "")))
 
 
-def translation_is_invalid(item: dict[str, Any]) -> bool:
+def translation_is_invalid(item: dict[str, Any], target_language: str = "zh") -> bool:
     """True when the agent did not answer this line in Chinese."""
     source = str(item.get("source") or "")
     if not line_needs_zh(source):
         return False
-    return not has_han(item.get("translation") or item.get("zh") or "")
+    value = str(item.get("translation") or item.get("zh") or "").strip()
+    if str(target_language or "zh").lower() in {"en", "ja"}:
+        return not value
+    return not has_han(value)
 
 
 def _request_translation(
-    chunk: list[str], title: str, artist: str, lang: str, note: str = ""
+    chunk: list[str], title: str, artist: str, lang: str, note: str = "", target_language: str = "zh"
 ) -> list[dict[str, Any]]:
     numbered = "\n".join(f"{index + 1}. {line}" for index, line in enumerate(chunk))
     user = (
         f"Song: {title} / {artist}\n"
-        f"Language: {lang}\n"
+        f"Language: {lang}\nTarget output language: {_target_name(target_language)}\n"
         "Translate every line below. First understand the batch and its recurring imagery/voice; then make a faithful, clear translation of each line in context. Keep source exactly the same. The Chinese line matters more than literal per-word glosses. Units must follow words; every contiguous English run, including one embedded in a mixed-language line, is one unit per word. Do not group English words.\n"
         + (f"{note}\n" if note else "")
         + f"\n{numbered}"
     )
+    if str(target_language or "zh").lower() != "zh":
+        user += f"\nIMPORTANT: write every line and unit translation in {_target_name(target_language)}, not Chinese."
     payload = complete_json(
         [
             {"role": "system", "content": SYSTEM},
@@ -148,7 +159,7 @@ def _request_translation(
 
 
 def _translate_chunk(
-    chunk: list[str], title: str, artist: str, lang: str, note: str = ""
+    chunk: list[str], title: str, artist: str, lang: str, note: str = "", target_language: str = "zh"
 ) -> list[dict[str, Any]]:
     """Translate one batch, retrying errors and unusable/missing lines.
 
@@ -166,7 +177,7 @@ def _translate_chunk(
     for attempt in range(1, _TRANSLATION_MAX_ATTEMPTS + 1):
         note = _NOT_CHINESE_NOTE if invalid_answer else ""
         try:
-            items = _request_translation(pending, title, artist, lang, note)
+            items = _request_translation(pending, title, artist, lang, note, target_language)
         except Exception as exc:  # noqa: BLE001 - retry the agent boundary
             last_error = exc
             if attempt >= _TRANSLATION_MAX_ATTEMPTS:
@@ -190,7 +201,7 @@ def _translate_chunk(
             line
             for line in chunk
             if (item := merged.get(lyric_source_key(line))) is None
-            or translation_is_invalid(item)
+            or translation_is_invalid(item, target_language)
         ]
         if not pending:
             return [merged[key] for key in requested]
@@ -232,6 +243,7 @@ def repair_notes(
     artist: str = "",
     language: str = "",
     chunk_size: int = 24,
+    target_language: str = "zh",
 ) -> int:
     """Re-translate every cached line that is not Chinese. Returns fixed count."""
     lang = str(language or notes.get("language") or "").strip() or "unknown"
@@ -239,7 +251,7 @@ def repair_notes(
         [
             lyric_source_key(item.get("source") or "")
             for item in notes.get("lines") or []
-            if isinstance(item, dict) and translation_is_invalid(item)
+            if isinstance(item, dict) and translation_is_invalid(item, target_language)
         ]
     )
     if not bad:
@@ -254,13 +266,14 @@ def repair_notes(
             artist,
             lang,
             _NOT_CHINESE_NOTE,
+            target_language,
         )
         for item in repaired_items:
             repaired[lyric_source_key(item.get("source") or "")] = item
     fixed = 0
     lines = notes.get("lines") or []
     for index, item in enumerate(lines):
-        if not isinstance(item, dict) or not translation_is_invalid(item):
+        if not isinstance(item, dict) or not translation_is_invalid(item, target_language):
             continue
         replacement = repaired.get(lyric_source_key(item.get("source") or ""))
         if replacement:
@@ -277,6 +290,7 @@ def translate_lines(
     cache_path: Path | None = None,
     chunk_size: int = 24,
     force: bool = False,
+    target_language: str = "zh",
 ) -> dict[str, Any]:
     texts = [str(line or "") for line in lines]
     digest = _source_hash(texts, title, artist)
@@ -292,7 +306,7 @@ def translate_lines(
         ):
             # An old cache may hold English answers; re-ask only those lines
             # instead of throwing away the whole song.
-            if repair_notes(cached, title, artist, language, chunk_size):
+            if repair_notes(cached, title, artist, language, chunk_size, target_language):
                 _write_cache(cache_path, cached)
             return cached
     if not agent_enabled():
@@ -302,7 +316,7 @@ def translate_lines(
     lang = str(language or "").strip() or "unknown"
     for start in range(0, len(unique), chunk_size):
         collected.extend(
-            _translate_chunk(unique[start : start + chunk_size], title, artist, lang)
+            _translate_chunk(unique[start : start + chunk_size], title, artist, lang, target_language=target_language)
         )
     result = {
         "schema": TRANSLATE_SCHEMA,
@@ -311,6 +325,7 @@ def translate_lines(
         "title": title,
         "artist": artist,
         "language": lang,
+        "target_language": target_language,
         "lines": collected,
     }
     _write_cache(cache_path, result)
@@ -333,8 +348,9 @@ def _unit_surface(unit: dict[str, Any]) -> str:
     return str(unit.get("surface") or unit.get("sing") or "").strip()
 
 
-def _unit_translation(unit: dict[str, Any]) -> str:
-    return valid_zh(unit.get("translation") or unit.get("zh") or "")
+def _unit_translation(unit: dict[str, Any], target_language: str = "zh") -> str:
+    value = str(unit.get("translation") or unit.get("zh") or "").strip()
+    return value if str(target_language or "zh").lower() in {"en", "ja"} else valid_zh(value)
 
 
 def _english_unit_map(
@@ -426,7 +442,7 @@ _EN_FUNCTION_GLOSSES = {
 
 
 def apply_zh_translation(
-    timeline: dict[str, Any], notes: dict[str, Any], *, overwrite: bool = False
+    timeline: dict[str, Any], notes: dict[str, Any], *, overwrite: bool = False, target_language: str = "zh"
 ) -> dict[str, Any]:
     by_source: dict[str, dict[str, Any]] = {}
     for item in notes.get("lines") or []:
@@ -439,12 +455,14 @@ def apply_zh_translation(
         item = by_source.get(original) or by_source.get(text)
         if not item:
             continue
-        line_zh = valid_zh(item.get("translation") or item.get("zh") or "")
+        line_zh = str(item.get("translation") or item.get("zh") or "").strip()
+        if str(target_language or "zh").lower() == "zh":
+            line_zh = valid_zh(line_zh)
         if line_zh and (overwrite or not valid_zh(cue.get("zh") or "")):
             cue["zh"] = line_zh
             cue["translation"] = line_zh
         units = [unit for unit in item.get("units") or [] if isinstance(unit, dict)]
-        glosses = [_unit_translation(unit) for unit in units]
+        glosses = [_unit_translation(unit, target_language) for unit in units]
         tokens = list(cue.get("tokens") or [])
         if not tokens or not glosses:
             continue
@@ -520,6 +538,6 @@ def apply_zh_translation(
             if gloss:
                 token["zh"] = gloss
                 token["translation"] = gloss
-    timeline["translation"] = "lovjpn-zh"
+    timeline["translation"] = "lovjpn-" + (str(target_language or "zh").lower() or "zh")
     timeline["translation_model"] = str(notes.get("model") or agent_model())
     return timeline

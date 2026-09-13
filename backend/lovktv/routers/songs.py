@@ -35,13 +35,20 @@ from lovktv.storage import favorites as favorite_store
 from lovktv.storage.store import (
     create_song,
     delete_song,
+    find_song_by_source,
     get_song,
     list_songs,
     retry_query,
     update_song,
     with_media_flags,
 )
-from lovktv.workers.jobs import process_import, process_realign, process_upload, spawn
+from lovktv.workers.jobs import (
+    process_import,
+    process_realign,
+    process_supplemental_translation,
+    process_upload,
+    spawn,
+)
 from lovktv.workers.learn import build_learn_quiz
 
 router = APIRouter()
@@ -119,6 +126,17 @@ def api_import(request: Request, payload: dict) -> dict:
     language = str(payload.get("language") or ("ja" if is_mugen_kid(raw_id) else "zh"))
     user = current_user(request)
     target_language = normalize_target_language((user or {}).get("language"))
+    existing = find_song_by_source(raw_id)
+    if existing and existing.get("status") == "ready":
+        favorite_store.set_favorite(learn_owner(request), existing["id"], True)
+        existing["favorite"] = True
+        spawn(
+            process_supplemental_translation,
+            existing["id"],
+            target_language,
+            priority=processing_priority(user),
+        )
+        return existing
     song = create_song(
         title=str(payload.get("title") or query),
         artist=str(payload.get("artist") or ""),

@@ -305,7 +305,7 @@ def api_admin_song_debug(request: Request, song_id: str) -> dict:
     trace = processing_debug.snapshot(song_id) if processing_debug.enabled() else None
     artifacts = []
     intermediates = []
-    inspectable = {"skeleton.json", "lyrics.lrc", "lyrics.json", "asr.json", "agent-align.json", "zh-translate.json", "ja-annotate.json"}
+    inspectable = {"skeleton.json", "lyrics.lrc", "lyrics.json", "asr.json", "agent-align.json", "zh-translate.json", "en-translate.json", "ja-translate.json", "ja-annotate.json"}
     if folder.exists():
         for path in sorted(folder.iterdir(), key=lambda item: item.name):
             if not path.is_file() or path.name.startswith("."):

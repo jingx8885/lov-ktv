@@ -307,7 +307,9 @@ def process_import(
             lyric_id=lyric_id,
         )
         if target_language:
-            skeleton["target_language"] = normalize_target_language(target_language)
+            target_key = normalize_target_language(target_language)
+            skeleton["target_language"] = target_key
+            skeleton["target_languages"] = [target_key]
             (out_dir / "skeleton.json").write_text(
                 json.dumps(skeleton, ensure_ascii=False, indent=2), encoding="utf-8"
             )
@@ -398,6 +400,31 @@ def process_import(
         update_song(song_id, status="failed", error=str(exc))
         processing_debug.event(song_id, "failed", status="error", error=str(exc))
         processing_debug.finish(song_id, "failed", str(exc))
+
+
+def process_supplemental_translation(song_id: str, target_language: str) -> None:
+    """Translate an existing timeline into one new target language only."""
+    out_dir = MEDIA_DIR / song_id
+    path = out_dir / "lyrics.json"
+    if not path.exists():
+        return
+    try:
+        timeline = json.loads(path.read_text(encoding="utf-8"))
+        lang = str(timeline.get("language") or (get_song(song_id) or {}).get("language") or "")
+        if _translate_foreign_timeline(song_id, out_dir, timeline, lang, target_language, force=False):
+            write_subtitles(timeline, out_dir)
+            skeleton_path = out_dir / "skeleton.json"
+            try:
+                skeleton = json.loads(skeleton_path.read_text(encoding="utf-8")) if skeleton_path.exists() else {}
+            except (OSError, ValueError, TypeError):
+                skeleton = {}
+            targets = {normalize_target_language(item) for item in (skeleton.get("target_languages") or [])}
+            targets.add(normalize_target_language(target_language))
+            skeleton["target_languages"] = sorted(targets)
+            skeleton_path.write_text(json.dumps(skeleton, ensure_ascii=False, indent=2), encoding="utf-8")
+            _publish_ready(song_id)
+    except (OSError, ValueError, TypeError) as exc:
+        update_song(song_id, error=f"翻译降级：{exc}")
 
 
 def _cue_source(cue: dict) -> str:
@@ -707,7 +734,7 @@ def _translate_foreign_timeline(
         # handle only those cues and keep pure-CJK lines agent-free.
         if not any(re.search(r"[A-Za-zÀ-ÖØ-öø-ÿ]", _cue_source(cue)) for cue in cues):
             return target_changed
-    cache_path = out_dir / "zh-translate.json"
+    cache_path = out_dir / ("zh-translate.json" if target_key == "zh" else f"{target_key}-translate.json")
     cache_stale = False
     if cache_path.exists():
         try:
@@ -720,7 +747,7 @@ def _translate_foreign_timeline(
         except (OSError, ValueError, TypeError):
             cache_stale = True
     force = force or cache_stale
-    if not force and all(valid_zh(cue.get("zh") or "") for cue in cues):
+    if target_key == "zh" and not force and all(valid_zh(cue.get("zh") or "") for cue in cues):
         # A cached line translation can coexist with an untranslated English
         # token (most commonly a contraction such as ``'Cause``/``it's``).
         # Re-enter the lightweight translation pass so token-level fallbacks
@@ -746,8 +773,40 @@ def _translate_foreign_timeline(
             language=str(language or timeline.get("language") or ""),
             cache_path=cache_path,
             force=force,
+            target_language=target_key,
         )
-        apply_zh_translation(timeline, notes, overwrite=force)
+        if target_key == "zh":
+            apply_zh_translation(timeline, notes, overwrite=force, target_language=target_key)
+        else:
+            # Supplemental translations are kept beside the canonical lyric
+            # instead of overwriting it. This lets a later user language add
+            # one target without rebuilding alignment or losing old targets.
+            snapshots = [
+                (cue.get("translation"), cue.get("zh"), [
+                    (token.get("translation"), token.get("zh"))
+                    for token in (cue.get("tokens") or [])
+                ])
+                for cue in cues
+            ]
+            for cue in cues:
+                cue["translation"], cue["zh"] = "", ""
+                for token in cue.get("tokens") or []:
+                    token["translation"], token["zh"] = "", ""
+            apply_zh_translation(timeline, notes, overwrite=True, target_language=target_key)
+            supplements = []
+            for cue in cues:
+                supplements.append({
+                    "translation": str(cue.get("translation") or cue.get("zh") or ""),
+                    "tokens": [
+                        {"translation": str(token.get("translation") or token.get("zh") or "")}
+                        for token in (cue.get("tokens") or [])
+                    ],
+                })
+            timeline.setdefault("translations", {})[target_key] = supplements
+            for cue, (translation, zh, tokens) in zip(cues, snapshots):
+                cue["translation"], cue["zh"] = translation, zh
+                for token, (token_translation, token_zh) in zip(cue.get("tokens") or [], tokens):
+                    token["translation"], token["zh"] = token_translation, token_zh
         previous = str((get_song(song_id) or {}).get("error") or "")
         if "翻译降级" in previous:
             update_song(song_id, error="")

@@ -4,7 +4,7 @@
 |---|---|---|
 | GET | `/api/host` | 局域网入口 `{origin,process_origin,mode,phone_path,cache_ready,database}` |
 | GET | `/api/search?q=` | tonzhon / 网易搜歌 |
-| POST | `/api/songs/import` | `{query,id,title,artist,language}` 下载入库 |
+| POST | `/api/songs/import` | `{query,id,title,artist,language}` 下载入库；已登录用户的语言作为歌词目标语言 |
 | POST | `/api/songs` | multipart 本地上传（后备） |
 | GET | `/api/songs` | 曲库 |
 | GET | `/api/songs/{id}` | 含文件列表 |

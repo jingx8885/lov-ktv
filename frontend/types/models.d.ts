@@ -14,6 +14,7 @@ interface SearchHit {
   artist?: string;
   language?: string;
   target_language?: string;
+  translations?: Record<string, Array<{ translation?: string; tokens?: Array<{ translation?: string }> }>>;
   source?: string;
   is_mv?: boolean;
   duration?: number;
