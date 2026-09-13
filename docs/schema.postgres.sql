@@ -198,8 +198,6 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL,
   updated_at BIGINT NOT NULL
 );
-CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub <> '';
-CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email <> '';
 CREATE TABLE IF NOT EXISTS billing_events (
   event_id TEXT PRIMARY KEY,
   created_at BIGINT NOT NULL
