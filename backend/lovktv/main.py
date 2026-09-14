@@ -3,6 +3,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -69,6 +70,13 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization"],
     allow_credentials=False,
 )
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    """Serve the shared app icon for browsers that request the conventional path."""
+    icon = WEB / "brand" / "icon.png"
+    return FileResponse(icon, media_type="image/png")
 
 
 @app.get("/healthz", include_in_schema=False)
