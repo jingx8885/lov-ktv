@@ -39,6 +39,13 @@ services:
       STRIPE_PRICE_5: ${STRIPE_PRICE_5:-}
       STRIPE_PRICE_20: ${STRIPE_PRICE_20:-}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      LOVBROWSER_OIDC_ISSUER: ${LOVBROWSER_OIDC_ISSUER:-https://lovbrowser.com/api}
+      LOVBROWSER_OIDC_CLIENT_ID: ${LOVBROWSER_OIDC_CLIENT_ID:-}
+      LOVBROWSER_OIDC_CLIENT_SECRET: ${LOVBROWSER_OIDC_CLIENT_SECRET:-}
+      LOVBROWSER_OIDC_DISCOVERY_URL: ${LOVBROWSER_OIDC_DISCOVERY_URL:-}
+      LOVBROWSER_OIDC_STATE_SECRET: ${LOVBROWSER_OIDC_STATE_SECRET:-}
+      LOVBROWSER_OIDC_SCOPES: ${LOVBROWSER_OIDC_SCOPES:-openid profile email}
+      LOVKTV_CORS_ORIGINS: ${LOVKTV_CORS_ORIGINS:-https://ktv.lovbrowser.com,https://lovbrowser.com,https://www.lovbrowser.com}
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8787/healthz >/dev/null && curl -fsS http://127.0.0.1:8787/api/host >/dev/null"]
