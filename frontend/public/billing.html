@@ -21,6 +21,8 @@
     const nativeBilling = window.LovKtvPhone && typeof window.LovKtvPhone.playBillingBuy === "function" ? window.LovKtvPhone : null;
     const productForPlan = { starter: "starter_monthly", pro: "pro_monthly" };
     let playProducts = {};
+    let billingReady = false;
+    let isAdmin = false;
     function escaped(value) { return String(value).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
     async function verifyPlayPurchase(detail) {
       const response = await fetch("/api/billing/google-play/verify", { method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" }, body: JSON.stringify({ product_id: detail.product_id, purchase_token: detail.purchase_token }) });
@@ -58,18 +60,34 @@
       const response = await fetch("/api/billing/plans");
       const data = await response.json();
       window.__plans = data.plans || {};
-      renderPlans(window.__plans);
       const me = await fetch("/api/billing/me", { credentials: "same-origin" });
       if (me.ok) {
         const x = await me.json();
+        if (x.plan === "admin") {
+          isAdmin = true;
+          billingReady = true;
+          document.querySelector("#plans").hidden = true;
+          document.querySelector("#paymentHint").hidden = true;
+          document.querySelector("#current").innerHTML = "当前套餐：<b>管理员</b> · 本月额度 无限";
+          return;
+        }
+        billingReady = true;
+        renderPlans(window.__plans);
         const quota = x.quota.unlimited ? "无限" : x.quota.used + " / " + x.quota.limit;
         const manage = x.plan === "starter" || x.plan === "pro" ? "<br><button class=\"manage\" onclick=\"manageSubscription()\">管理订阅</button>" : "";
         document.querySelector("#current").innerHTML = "当前套餐：<b>" + escaped(x.plan) + "</b> · 本月额度 " + escaped(quota) + manage;
-      } else document.querySelector("#current").textContent = "登录后可订阅和查看用量";
+      } else {
+        billingReady = true;
+        renderPlans(window.__plans);
+        document.querySelector("#current").textContent = "登录后可订阅和查看用量";
+      }
     }
     window.addEventListener("lovktv-play-billing", (event) => {
       const detail = event.detail || {};
-      if (detail.products) { playProducts = Object.fromEntries(detail.products.map((p) => [p.id, p])); renderPlans(window.__plans || {}); }
+      if (detail.products) {
+        playProducts = Object.fromEntries(detail.products.map((p) => [p.id, p]));
+        if (billingReady && !isAdmin) renderPlans(window.__plans || {});
+      }
       if (detail.type === "purchase" && detail.purchase_token) verifyPlayPurchase(detail);
     });
     (async () => {
