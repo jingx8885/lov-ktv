@@ -319,6 +319,91 @@ def test_auth_me_renews_long_lived_session(tmp_path, monkeypatch):
         assert int(row["expires_at"]) > store.now_ms() + 20 * 86400_000
 
 
+def test_lovbrowser_oidc_state_is_signed_and_local_next_only(monkeypatch):
+    from lovktv.identity import lovbrowser
+
+    monkeypatch.setattr(lovbrowser.config, "LOVBROWSER_OIDC_STATE_SECRET", "test-secret")
+    state, verifier = lovbrowser.make_state("/m.html?room=EABAB5")
+    assert verifier
+    assert lovbrowser.verify_state(state, state) == "/m.html?room=EABAB5"
+    try:
+        lovbrowser.verify_state(state + "x", state)
+        raise AssertionError("tampered state must fail")
+    except ValueError:
+        pass
+    external, _ = lovbrowser.make_state("https://evil.example/")
+    assert lovbrowser.verify_state(external, external) == "/"
+
+
+def test_lovbrowser_oidc_login_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+    _init(store, tmp_path)
+    from lovktv.identity import lovbrowser
+    monkeypatch.setattr(lovbrowser.config, "LOVBROWSER_OIDC_CLIENT_ID", "ktv-client")
+    monkeypatch.setattr(lovbrowser.config, "LOVBROWSER_OIDC_CLIENT_SECRET", "secret")
+    monkeypatch.setattr(lovbrowser.config, "LOVBROWSER_OIDC_STATE_SECRET", "test-secret")
+
+    class FakeResponse:
+        def __init__(self, body): self.body = body
+        def raise_for_status(self): pass
+        def json(self): return self.body
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs): pass
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def request(self, method, url, **kwargs):
+            if method == "GET" and "well-known" in url:
+                return FakeResponse({"authorization_endpoint": "https://lovbrowser.com/api/oauth2/authorize", "token_endpoint": "https://lovbrowser.com/api/oauth2/token", "userinfo_endpoint": "https://lovbrowser.com/api/userinfo"})
+            if method == "POST": return FakeResponse({"access_token": "at"})
+            return FakeResponse({"sub": "user-1", "email": "u@example.com", "name": "U"})
+
+    monkeypatch.setattr(lovbrowser.httpx, "Client", FakeClient)
+    from lovktv.main import app
+    with TestClient(app, base_url="https://ktv.lovbrowser.com") as client:
+        start = client.get("/api/auth/lovbrowser/login?next=/m.html", follow_redirects=False)
+        assert start.status_code == 302
+        callback = client.get("/api/auth/lovbrowser/callback?code=one&state=" + start.cookies.get("lovktv_lovbrowser_state", ""), follow_redirects=False)
+        assert callback.status_code == 302
+        assert callback.headers["location"] == "https://ktv.lovbrowser.com/m.html"
+        assert client.get("/api/auth/me").json()["user"]["lovbrowser"] is True
+        client.post("/api/auth/logout")
+        assert client.get("/api/auth/me").json()["user"] is None
+
+
+def test_cors_does_not_allow_wildcard_credentials():
+    from lovktv.main import app
+    with TestClient(app) as client:
+        allowed = client.options(
+            "/api/auth/me",
+            headers={"Origin": "https://lovbrowser.com", "Access-Control-Request-Method": "GET"},
+        )
+        denied = client.options(
+            "/api/auth/me",
+            headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"},
+        )
+        assert allowed.headers.get("access-control-allow-origin") == "https://lovbrowser.com"
+        assert denied.headers.get("access-control-allow-origin") is None
+
+
+def test_lovbrowser_identity_never_rebinds_to_another_subject(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    from lovktv.storage import store
+    _init(store, tmp_path)
+    first = store.upsert_lovbrowser_user("sub-1", "same@example.com", "一号")
+    second = store.upsert_lovbrowser_user("sub-2", "other@example.com", "二号")
+    # A subject refresh may change profile email, but must not steal another
+    # user's verified email or mutate the other subject's row.
+    try:
+        store.upsert_lovbrowser_user("sub-1", "other@example.com", "一号")
+        raise AssertionError("email collision must be rejected")
+    except ValueError as exc:
+        assert "邮箱" in str(exc)
+    assert store.get_user(first["id"])["email"] == "same@example.com"
+    assert store.get_user(second["id"])["lovbrowser"] is True
+
+
 def test_guest_song_quota_then_login_unlimited(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from lovktv.routers import songs

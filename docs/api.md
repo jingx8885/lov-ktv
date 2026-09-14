@@ -25,6 +25,8 @@
 | GET | `/api/learn/words` | `?state=all\|active\|skipped\|mastered` 词库管理 |
 | POST | `/api/learn/words/restore` | `{word_id}` 把砍掉或已掌握的词放回队列 |
 | GET | `/api/auth/status` | 微信 / 扫码 / 密码登录是否可用；`guest_limit` |
+| GET | `/api/auth/lovbrowser/login?next=/` | 跳转 LovBrowser OIDC（服务端 Authorization Code + PKCE） |
+| GET | `/api/auth/lovbrowser/callback` | OIDC 回调；校验 state、交换 code 并建立 `lovktv_session` |
 | GET | `/api/auth/me` | 当前用户 + `quota` + `points` |
 | POST | `/api/auth/login` | `{username,password}` 一键登录 |
 | POST | `/api/auth/register` | `{username,password,language?}` 一键注册并登录；记录界面语言，送 10 积分 |
@@ -74,6 +76,6 @@
 
 管理端：`/admin.html`。用 `LOVKTV_ADMIN_TOKEN`（没有则用 `LOVKTV_APP_UPLOAD_TOKEN`）进入。积分加减尤其是扣分走这里。
 
-登录页：`/login.html`。Cookie：`lovktv_session`。主路是用户名 + 密码，用户名默认可填房间号。积分扣费默认关闭（`LOVKTV_POINTS=1` 才扣：处理歌 5 分、点歌 1 分）。看 30 秒广告 +1，注册或下载 App 各 +10。广告外链默认关闭（`LOVKTV_ADS_OPEN=1` 才跳落地页）。未配置微信时仍可用本机身份 + 电视扫码。微信需 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`，公众号快捷登录另配 `WECHAT_MP_APP_ID` / `WECHAT_MP_APP_SECRET`，公网回调 `LOVKTV_PUBLIC_URL`。
+登录页：`/login.html`。Cookie：`lovktv_session`。主路是用户名 + 密码，用户名默认可填房间号。配置 `LOVBROWSER_OIDC_CLIENT_ID/SECRET` 后可用 LovBrowser 统一登录；issuer 默认 `https://lovbrowser.com/api`，主站需登记精确回调 `https://ktv.lovbrowser.com/api/auth/lovbrowser/callback`。KTV 只保存 OIDC `sub`、邮箱和展示资料，不直接访问主站数据库；主站数据库表结构/迁移不作为 KTV 前置条件。`LOVBROWSER_OIDC_STATE_SECRET` 必须是稳定随机值，用于多实例回调的 state 校验。积分扣费默认关闭（`LOVKTV_POINTS=1` 才扣：处理歌 5 分、点歌 1 分）。看 30 秒广告 +1，注册或下载 App 各 +10。广告外链默认关闭（`LOVKTV_ADS_OPEN=1` 才跳落地页）。未配置微信时仍可用本机身份 + 电视扫码。微信需 `WECHAT_APP_ID` / `WECHAT_APP_SECRET`，公众号快捷登录另配 `WECHAT_MP_APP_ID` / `WECHAT_MP_APP_SECRET`，公网回调 `LOVKTV_PUBLIC_URL`。
 
 媒体目录：`data/media/{song_id}/original.mp3`、`lyrics.lrc`、`lyrics.json`、`karaoke.m4a`、`guide.m4a`。

@@ -226,6 +226,14 @@ $("togglePassword").onclick = () => {
   const statusHit = await fetchJson("/api/auth/status").catch(() => ({ data: {} }));
   const status = statusHit.data;
   const wechatOn = !!(status.wechat || status.wechat_quick);
+  if (status.lovbrowser) {
+    const link = document.createElement("a");
+    link.className = "btn auth-submit";
+    link.href = "/api/auth/lovbrowser/login?next=" + encodeURIComponent(next || "/");
+    link.textContent = "使用 LovBrowser 账号登录";
+    link.dataset.test = "lovbrowser-login";
+    $("loginBox").prepend(link);
+  }
   if (status.guest_limit && !meQuota) {
     meQuota = { limit: status.guest_limit, remaining: status.guest_limit, unlimited: false };
   }

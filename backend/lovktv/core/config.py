@@ -60,3 +60,12 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_PLAY_PACKAGE = os.environ.get("GOOGLE_PLAY_PACKAGE", "com.lovktv.phone").strip()
 GOOGLE_PLAY_SERVICE_ACCOUNT_JSON = os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_JSON", "").strip()
 GOOGLE_PLAY_SERVICE_ACCOUNT_FILE = os.environ.get("GOOGLE_PLAY_SERVICE_ACCOUNT_FILE", "").strip()
+
+# LovBrowser OIDC (optional; disabled unless client credentials are present).
+LOVBROWSER_OIDC_ISSUER = (os.environ.get("LOVBROWSER_OIDC_ISSUER") or "https://lovbrowser.com/api").strip().rstrip("/")
+LOVBROWSER_OIDC_CLIENT_ID = os.environ.get("LOVBROWSER_OIDC_CLIENT_ID", "").strip()
+LOVBROWSER_OIDC_CLIENT_SECRET = os.environ.get("LOVBROWSER_OIDC_CLIENT_SECRET", "").strip()
+LOVBROWSER_OIDC_DISCOVERY_URL = os.environ.get("LOVBROWSER_OIDC_DISCOVERY_URL", "").strip()
+LOVBROWSER_OIDC_STATE_SECRET = os.environ.get("LOVBROWSER_OIDC_STATE_SECRET", "").strip()
+LOVBROWSER_OIDC_SCOPES = (os.environ.get("LOVBROWSER_OIDC_SCOPES") or "openid profile email").strip()
+LOVKTV_CORS_ORIGINS = (os.environ.get("LOVKTV_CORS_ORIGINS") or "https://ktv.lovbrowser.com,https://lovbrowser.com,https://www.lovbrowser.com").strip()

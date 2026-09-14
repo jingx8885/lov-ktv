@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.requests import Request
 
+from lovktv.identity import lovbrowser
 from lovktv.identity.auth import (
     SESSION_COOKIE,
     auth_status,
@@ -40,15 +41,62 @@ from lovktv.storage.store import (
     refresh_session,
     register_password_user,
     upsert_device_user,
+    upsert_lovbrowser_user,
     upsert_wechat_user,
 )
 
 router = APIRouter()
+OIDC_STATE_COOKIE = "lovktv_lovbrowser_state"
+OIDC_VERIFIER_COOKIE = "lovktv_lovbrowser_verifier"
 
 
 @router.get("/api/auth/status")
 def api_auth_status() -> dict:
-    return auth_status()
+    return {**auth_status(), "lovbrowser": lovbrowser.enabled()}
+
+
+@router.get("/api/auth/lovbrowser/login")
+def api_lovbrowser_login(request: Request, next: str = "/") -> RedirectResponse:
+    if not lovbrowser.enabled():
+        raise HTTPException(404, "LovBrowser 登录未配置")
+    state, verifier = lovbrowser.make_state(next)
+    redirect_uri = f"{request_base(request)}/api/auth/lovbrowser/callback"
+    try:
+        url = lovbrowser.authorization_url(redirect_uri, state, verifier)
+    except ValueError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    response = RedirectResponse(url, status_code=302)
+    secure = request.url.scheme == "https" or request.headers.get("x-forwarded-proto", "").split(",")[0].strip().lower() == "https"
+    for name, value in ((OIDC_STATE_COOKIE, state), (OIDC_VERIFIER_COOKIE, verifier)):
+        response.set_cookie(name, value, max_age=600, httponly=True, samesite="lax", secure=secure, path="/")
+    return response
+
+
+@router.get("/api/auth/lovbrowser/callback")
+def api_lovbrowser_callback(request: Request, code: str = "", state: str = "", error: str = "") -> RedirectResponse:
+    base = request_base(request)
+    expected = request.cookies.get(OIDC_STATE_COOKIE) or ""
+    verifier = request.cookies.get(OIDC_VERIFIER_COOKIE) or ""
+    if error:
+        raise HTTPException(400, "LovBrowser 登录被取消")
+    try:
+        next_path = lovbrowser.verify_state(state, expected)
+        if not verifier:
+            raise ValueError("LovBrowser 登录状态已过期")
+        claims = lovbrowser.exchange_code(code, f"{base}/api/auth/lovbrowser/callback", verifier)
+        verified_email = str(claims.get("email") or "") if claims.get("email_verified") is True else ""
+        user = upsert_lovbrowser_user(
+            str(claims.get("sub") or ""), verified_email,
+            str(claims.get("name") or claims.get("preferred_username") or ""),
+            str(claims.get("picture") or ""),
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    response = RedirectResponse(f"{base}{next_path}", status_code=302)
+    response.delete_cookie(OIDC_STATE_COOKIE, path="/")
+    response.delete_cookie(OIDC_VERIFIER_COOKIE, path="/")
+    set_session(response, create_session(user["id"]), request)
+    return response
 
 
 @router.get("/api/auth/me")

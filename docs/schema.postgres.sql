@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL DEFAULT '',
   language TEXT NOT NULL DEFAULT 'zh',
   google_sub TEXT NOT NULL DEFAULT '',
+  lovbrowser_sub TEXT NOT NULL DEFAULT '',
   email TEXT NOT NULL DEFAULT '',
   plan TEXT NOT NULL DEFAULT 'free',
   plan_status TEXT NOT NULL DEFAULT 'active',

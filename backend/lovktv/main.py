@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from lovktv.core.config import ROOT
+from lovktv.core.config import LOVKTV_CORS_ORIGINS, ROOT
 from lovktv.media.assets import VersionedStaticFiles
 from lovktv.storage.store import init_db
 from lovktv.workers.jobs import job_queue
@@ -63,7 +63,11 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="lov-ktv", lifespan=lifespan)
 app.add_middleware(NoStoreHtmlMiddleware)
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in LOVKTV_CORS_ORIGINS.split(",") if origin.strip()],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
+    allow_credentials=False,
 )
 
 

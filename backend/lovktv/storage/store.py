@@ -215,6 +215,7 @@ def _user_row(row: Any) -> dict[str, Any] | None:
     username = str(data.get("username") or "")
     wechat = bool(data.get("wechat_openid"))
     google = bool(data.get("google_sub"))
+    lovbrowser = bool(data.get("lovbrowser_sub"))
     return {
         "id": user_id,
         "sid": user_id[:6].upper(),
@@ -222,13 +223,14 @@ def _user_row(row: Any) -> dict[str, Any] | None:
         "avatar": data.get("avatar") or "",
         "wechat": wechat,
         "google": google,
+        "lovbrowser": lovbrowser,
         "email": data.get("email") or "",
         "plan": data.get("plan") or "free",
         "plan_status": data.get("plan_status") or "active",
         "plan_expires_at": int(data.get("plan_expires_at") or 0),
         "username": username,
         "language": normalize_user_language(data.get("language")),
-        "account": bool(username or wechat or google),
+        "account": bool(username or wechat or google or lovbrowser),
         "admin": is_song_admin({"username": username, "email": data.get("email") or ""}),
         "created_at": int(data.get("created_at") or 0),
     }
@@ -699,6 +701,55 @@ def upsert_google_user(
                 conn,
                 "INSERT INTO users (id,google_sub,email,nickname,avatar,created_at) VALUES (?,?,?,?,?,?)",
                 (uid, sub, email, name or email.split("@")[0], avatar, now),
+            )
+    return get_user(uid) or {}
+
+
+def upsert_lovbrowser_user(
+    sub: str, email: str = "", name: str = "", avatar: str = ""
+) -> dict[str, Any]:
+    """Link an OIDC subject to a local user without importing LovBrowser tables."""
+    sub = str(sub or "").strip()
+    email = str(email or "").strip().lower()
+    if not sub:
+        raise ValueError("LovBrowser 账号缺少 subject")
+    with _LOCK, connect() as conn:
+        # Subject is the identity key.  Only an unlinked local row may be
+        # claimed by a verified email; never let an email refresh rebind a
+        # subject to another OIDC identity.
+        row = execute(
+            conn,
+            "SELECT * FROM users WHERE lovbrowser_sub=? LIMIT 1",
+            (sub,),
+        ).fetchone()
+        if not row and email:
+            row = execute(
+                conn, "SELECT * FROM users WHERE email=? AND email<>'' LIMIT 1", (email,)
+            ).fetchone()
+            if row and str(row["lovbrowser_sub"] or ""):
+                raise ValueError("邮箱已绑定其他 LovBrowser 账号")
+        now = now_ms()
+        if row:
+            uid = row["id"]
+            if email:
+                conflict = execute(
+                    conn,
+                    "SELECT id, lovbrowser_sub FROM users WHERE email=? AND id<>? LIMIT 1",
+                    (email, uid),
+                ).fetchone()
+                if conflict:
+                    raise ValueError("邮箱已绑定其他账号")
+            execute(
+                conn,
+                "UPDATE users SET lovbrowser_sub=?, email=?, nickname=?, avatar=? WHERE id=?",
+                (sub, email or row["email"], name or row["nickname"], avatar or row["avatar"], uid),
+            )
+        else:
+            uid = new_id()
+            execute(
+                conn,
+                "INSERT INTO users (id,lovbrowser_sub,email,nickname,avatar,created_at) VALUES (?,?,?,?,?,?)",
+                (uid, sub, email, name or (email.split("@")[0] if email else f"ID {uid[:6].upper()}"), avatar, now),
             )
     return get_user(uid) or {}
 
