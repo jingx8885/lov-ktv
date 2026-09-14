@@ -81,6 +81,8 @@ export async function loadWho() {
     : t("phone.who.hint");
   $("whoPassForm").hidden = signed;
   $("whoLogin").hidden = signed;
+  const accountLogin = $("whoAccountLogin");
+  if (accountLogin) accountLogin.hidden = signed;
   $("whoLogin").href = loginQs();
   $("whoLogout").hidden = !signed;
   paintQuotaBar(data.quota, signed);
