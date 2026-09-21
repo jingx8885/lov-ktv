@@ -347,6 +347,21 @@ function karaokeSpan(text, p) {
   return `<span class="rb"><span class="rb-base">${safe}</span><span class="rb-fill" style="width:${p}%">${safe}</span></span>`;
 }
 
+function isLatinSurface(text) {
+  return /^[A-Za-z0-9']/.test(String(text || ""));
+}
+
+/** Insert a word gap only between Latin tokens, or at a CJK/Latin boundary. */
+function tokenGapHtml(surface, nextSurface, script) {
+  if (!nextSurface) return "";
+  if (/^[.,!?;:'")\]]/.test(nextSurface)) return "";
+  const latin = isLatinSurface(surface);
+  const nextLatin = isLatinSurface(nextSurface);
+  if (latin && nextLatin) return `<span class="tok-space"> </span>`;
+  if (script === "zh" && latin !== nextLatin) return `<span class="tok-space"> </span>`;
+  return "";
+}
+
 /** @param {LyricCue} cue @param {number} t @param {LyricMode} [mode] */
 export function renderCue(cue, t, mode) {
   const view = normLyricMode(mode);
@@ -356,7 +371,9 @@ export function renderCue(cue, t, mode) {
   const script = pageLyricScript();
   const showExtra = view === "all";
   const keepRoma = showExtra && (script === "ja" || !script);
-  const keepGloss = showExtra;
+  // Chinese / Cantonese keep a single line translation; per-character gloss
+  // would both invent a fake word row and shove a gap between every Han.
+  const keepGloss = showExtra && script !== "zh";
   const keepZh = showExtra;
   // Japanese mode keeps the source line readable with furigana, while the
   // complete view mirrors the TV subtitle stack. Other scripts do not have
@@ -376,10 +393,10 @@ export function renderCue(cue, t, mode) {
       const romaHtml = keepRoma ? `<span class="roma">${escapeHtml(roma)}</span>` : "";
       const gloss = keepGloss ? String(tok.translation || tok.zh || "") : "";
       const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
-      const latin = /^[A-Za-z0-9']/.test(surface);
+      const latin = isLatinSurface(surface);
       const next = tokens[i + 1];
       const nextSurface = String(next?.surface || next?.text || "");
-      const space = latin && next && !/^[.,!?;:'")\]]/.test(nextSurface) ? `<span class="tok-space"> </span>` : "";
+      const space = tokenGapHtml(surface, nextSurface, script);
       return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
     })
     .join("")}</span>`;

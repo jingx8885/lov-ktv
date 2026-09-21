@@ -64,6 +64,12 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
     assert "function fitTvLyricLine" in paint
+    assert 'const keepGloss = showExtra && script !== "zh"' in paint
+    assert "function tokenGapHtml" in paint
+    assert "align-items: flex-start" in shared
+    assert 'body[data-lyric-script="zh"] .line' in shared
+    assert "column-gap: 0" in shared
+    assert ".lyrics .anno .gloss:empty::before" in shared
     assert "transform: none !important" in tv
     assert "export function sanitizeLyrics" in paint
     tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(
@@ -130,6 +136,70 @@ check(4100, "4", "3", 4);
 check(5000, "4", "3", -1);
 const empty = karaokePair([], 0);
 if (empty.left || empty.right || empty.liveIndex !== -1) throw new Error("empty cues");
+"""
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        cwd=ROOT.parent.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_zh_lyrics_skip_per_char_gaps_and_keep_empty_gloss_rows():
+    import shutil
+    import subprocess
+
+    import pytest
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("需要 Node，才能跑歌词 token 空隙")
+    script = r"""
+globalThis.document = {
+  body: {
+    dataset: { lyricScript: "zh" },
+    classList: { contains: () => false }
+  }
+};
+const { renderCue } = await import("./frontend/public/shared/lyrics/js/paint.js");
+const zhCue = {
+  text: "晴天 My way",
+  translation: "晴天",
+  tokens: [
+    { text: "晴", surface: "晴", start_ms: 0, end_ms: 200 },
+    { text: "天", surface: "天", start_ms: 200, end_ms: 400 },
+    { text: "My", surface: "My", start_ms: 400, end_ms: 600 },
+    { text: "way", surface: "way", start_ms: 600, end_ms: 800 }
+  ]
+};
+const zhHtml = renderCue(zhCue, 0, "all");
+if (zhHtml.includes('class="gloss"')) throw new Error("zh should not keep per-token gloss");
+if (zhHtml.includes("tok-space") && !zhHtml.includes("</span><span class=\"tok-space\"> </span><span class=\"tok latin\"")) {
+  throw new Error("zh tok-space should only sit at the CJK/Latin boundary");
+}
+if ((zhHtml.match(/tok-space/g) || []).length !== 2) {
+  throw new Error("zh wants one CJK/Latin gap plus one Latin/Latin gap, got " + zhHtml);
+}
+const betweenHan = zhHtml.split("class=\"tok\"")[1];
+if (betweenHan.includes("tok-space")) throw new Error("Han characters must not have tok-space: " + zhHtml);
+
+document.body.dataset.lyricScript = "ja";
+const jaCue = {
+  text: "世界",
+  tokens: [
+    { text: "世界", surface: "世界", translation: "世界", start_ms: 0, end_ms: 400 },
+    { text: "へ", surface: "へ", start_ms: 400, end_ms: 600 }
+  ]
+};
+const jaHtml = renderCue(jaCue, 0, "all");
+if ((jaHtml.match(/class="gloss"/g) || []).length !== 2) {
+  throw new Error("ja must keep empty gloss so the source row stays aligned: " + jaHtml);
+}
+if (!jaHtml.includes('<span class="gloss"></span>')) {
+  throw new Error("untranslated ja token must still emit empty gloss: " + jaHtml);
+}
 """
     result = subprocess.run(
         [node, "--input-type=module", "-e", script],

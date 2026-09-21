@@ -26,6 +26,9 @@ def test_lyric_mode_buttons_do_not_select_body():
     # The listen-page lyric view must retain the same furigana annotation as
     # the TV subtitle view in both Japanese and complete modes.
     assert 'const keepRt = (view === "ja" || showExtra)' in paint
+    assert "const keepGloss = showExtra && script !== \"zh\"" in paint
+    assert "function tokenGapHtml" in paint
+    assert "if (script === \"zh\" && latin !== nextLatin)" in paint
     assert "export function sanitizeLyrics" in paint
     song = (ROOT / "phone" / "player" / "js" / "playback" / "song.js").read_text(
         encoding="utf-8"

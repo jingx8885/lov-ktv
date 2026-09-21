@@ -898,6 +898,11 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
   column-gap: 0.28em;
   row-gap: 0.12em;
 }
+body.phone[data-lyric-script="zh"] .page-player .player-lyrics .line,
+body.phone[data-lyric-script="zh"][data-lyric-mode="all"] .page-player .player-lyrics .line,
+body.phone[data-lyric-script="zh"] .page-player .player-lyrics .line-words {
+  column-gap: 0;
+}
 body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .roma,
 body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .gloss {
   min-height: 1.25em;
@@ -1687,6 +1692,10 @@ body.phone.edit-on .tl {
     flex-wrap: wrap;
     column-gap: 0.18em;
     row-gap: 0.08em;
+  }
+
+  body.phone[data-lyric-script="zh"][data-page="player"].display-mv .player-lyrics .line-words {
+    column-gap: 0;
   }
 
   body.phone[data-page="player"].display-mv .player-lyrics .prev,
