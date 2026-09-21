@@ -33,6 +33,7 @@ from .search import (
     clean_search_title,
     flatten_artists,
     is_clean_title,
+    lyric_search_queries,
     search_tonzhon,
 )
 
@@ -202,6 +203,22 @@ def _select_lyrics(
     raise RuntimeError("歌词为空")
 
 
+def _lyric_search(title: str, artist: str = "") -> list[dict[str, Any]]:
+    """Look up NetEase catalog rows, retrying a cleaner query if tonzhon fails.
+
+    Bilibili titles often include ``【官方MV】`` and the uploader as artist.
+    Combined, those strings make tonzhon return PHP HTML instead of JSON.
+    """
+    for query in lyric_search_queries(title, artist):
+        try:
+            rows = search_tonzhon(query)
+        except Exception:
+            continue
+        if rows:
+            return rows
+    return []
+
+
 def _complete_mugen_audio(
     skeleton: dict[str, Any], out_dir: Path, query: str
 ) -> dict[str, Any]:
@@ -287,13 +304,9 @@ def import_song(
     # External search hits (notably Bilibili) carry a title/artist that can
     # differ from the user's broad query.  Use that exact hit metadata for
     # lyric lookup; otherwise a second search may select a different version.
-    lookup_query = (
-        " ".join(
-            part.strip() for part in (title_hint, artist_hint) if part and part.strip()
-        )
-        or query
-    )
-    results = search_tonzhon(lookup_query)
+    # A BVID's "artist" is the uploader, not the singer — leave it out.
+    lyric_artist = "" if (song_id and is_bvid(song_id)) else artist_hint
+    results = _lyric_search(title_hint or query, lyric_artist)
     chosen: dict[str, Any] | None = None
     if song_id:
         matched = next(

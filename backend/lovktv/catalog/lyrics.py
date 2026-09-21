@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import json
 import re
 from typing import Any
 
-from .search import TONZHON_API, post_form
+from .search import TONZHON_API, decode_json, post_form
 
 LRC_TAG = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
 LRC_WORD_TAG = re.compile(r"<\d+:\d+(?:\.\d+)?>")
@@ -30,8 +29,13 @@ META_PREFIX = (
 
 
 def fetch_lyric(song_id: str, source: str = "netease") -> str:
-    raw = post_form(TONZHON_API, {"types": "lyric", "id": song_id, "source": source})
-    obj = json.loads(raw.decode("utf-8"))
+    try:
+        raw = post_form(TONZHON_API, {"types": "lyric", "id": song_id, "source": source})
+        obj = decode_json(raw, default={})
+    except Exception:
+        return ""
+    if not isinstance(obj, dict):
+        return ""
     return str(obj.get("lyric") or "")
 
 

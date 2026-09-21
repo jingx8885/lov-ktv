@@ -14,6 +14,15 @@ def test_parse_lrc_ignores_malformed_and_metadata_lines():
     ]
 
 
+def test_fetch_lyric_returns_empty_on_php_html(monkeypatch):
+    monkeypatch.setattr(
+        lyrics,
+        "post_form",
+        lambda *args, **kwargs: b"\n<br />\n<b>Warning</b>: foreach",
+    )
+    assert lyrics.fetch_lyric("123") == ""
+
+
 def test_audio_cache_roundtrip_keeps_copy_semantics():
     audio._AUDIO_CACHE.clear()
     audio.remember_audio_source("id", {"kind": "ytdlp", "page": "x"})

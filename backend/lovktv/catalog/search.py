@@ -179,10 +179,6 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
     """
     title = str(hit.get("title") or "").strip()
     artist = str(hit.get("artist") or "").strip()
-    query = " ".join(part for part in (clean_search_title(title), artist) if part)
-    queries = [query]
-    if fallback_query.strip() and fallback_query.strip() not in queries:
-        queries.append(fallback_query.strip())
     try:
         media_ms = int(round(float(hit.get("duration") or 0) * 1000))
     except (TypeError, ValueError):
@@ -191,7 +187,7 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
         from lovktv.catalog.kugou import lyric_mismatch_ms
         from lovktv.catalog.lyrics import fetch_lyric, parse_lrc
 
-        for lyric_query in queries:
+        for lyric_query in lyric_search_queries(title, artist, fallback_query):
             if not lyric_query:
                 continue
             rows = search_tonzhon(lyric_query, count=5, page=1)
@@ -283,6 +279,38 @@ def clean_search_title(title: str) -> str:
     return text or str(title or "").strip()
 
 
+def decode_json(raw: bytes | str, default: Any = None) -> Any:
+    """Parse a catalog JSON body. Tonzhon prepends a newline and, on some
+    queries, returns PHP HTML instead of JSON."""
+    if isinstance(raw, (bytes, bytearray)):
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            return default
+    else:
+        text = str(raw or "")
+    text = text.strip()
+    if not text:
+        return default
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return default
+
+
+def lyric_search_queries(title: str, artist: str = "", fallback: str = "") -> list[str]:
+    """Queries to try against NetEase via tonzhon, cleanest first fallback."""
+    cleaned = clean_search_title(title) or str(title or "").strip()
+    artist = str(artist or "").strip()
+    fallback = str(fallback or "").strip()
+    queries: list[str] = []
+    combined = " ".join(part for part in (cleaned, artist) if part)
+    for item in (combined, cleaned, fallback):
+        if item and item not in queries:
+            queries.append(item)
+    return queries
+
+
 def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
     body = urllib.parse.urlencode(fields).encode("utf-8")
     req = urllib.request.Request(
@@ -301,17 +329,20 @@ def post_form(url: str, fields: dict[str, Any], timeout: float = 15) -> bytes:
 def search_tonzhon(
     query: str, count: int = 12, source: str = "netease", page: int = 1
 ) -> list[dict[str, Any]]:
-    raw = post_form(
-        TONZHON_API,
-        {
-            "types": "search",
-            "count": count,
-            "source": source,
-            "name": query,
-            "pages": max(1, int(page)),
-        },
-    )
-    data = json.loads(raw.decode("utf-8"))
+    try:
+        raw = post_form(
+            TONZHON_API,
+            {
+                "types": "search",
+                "count": count,
+                "source": source,
+                "name": query,
+                "pages": max(1, int(page)),
+            },
+        )
+        data = decode_json(raw, default=[])
+    except Exception:
+        return []
     return data if isinstance(data, list) else []
 
 

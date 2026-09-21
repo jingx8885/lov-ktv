@@ -210,6 +210,75 @@ def test_clean_search_title_strips_version_marks():
     assert search.clean_search_title("晴天(深情版)") == "晴天"
     assert search.clean_search_title("晴天 (原唱 周杰伦)") == "晴天"
     assert search.clean_search_title("群青 (Remix)") == "群青"
+    assert (
+        search.clean_search_title("【官方MV】Paloalto - Good Times (feat. Babylon)")
+        == "Paloalto - Good Times"
+    )
+
+
+def test_search_tonzhon_returns_empty_on_php_html(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "post_form",
+        lambda *args, **kwargs: (
+            b"\n<br />\n<b>Warning</b>:  Invalid argument supplied for foreach()"
+        ),
+    )
+    assert search.search_tonzhon("Paloalto HiLiteRecords") == []
+
+
+def test_lyric_search_queries_retry_without_uploader():
+    assert search.lyric_search_queries(
+        "【官方MV】Paloalto - Good Times (feat. Babylon)",
+        "HiLiteRecords",
+    ) == ["Paloalto - Good Times HiLiteRecords", "Paloalto - Good Times"]
+
+
+def test_import_bilibili_survives_tonzhon_html(tmp_path, monkeypatch):
+    _no_mugen(monkeypatch)
+    queries: list[str] = []
+
+    def fake_search(query, *args, **kwargs):
+        queries.append(query)
+        if "HiLiteRecords" in query:
+            raise ValueError("Expecting value: line 2 column 1 (char 1)")
+        return [{"id": "29527724", "name": "Good Times", "artist": ["Paloalto"]}]
+
+    monkeypatch.setattr(importer, "search_tonzhon", fake_search)
+    monkeypatch.setattr(importer, "fetch_kugou_lyrics", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        importer,
+        "fetch_lyric",
+        lambda song_id, source="netease": "[00:01.00]Good times",
+    )
+    monkeypatch.setattr(importer, "probe_duration_ms", lambda path: 180_000)
+    monkeypatch.setattr(importer, "try_netease_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    monkeypatch.setattr(importer, "_ytdlp_download", lambda *args, **kwargs: False)
+
+    def fake_download(bvid, mp3_path, video_path=None):
+        mp3_path.write_bytes(b"x" * 60_000)
+        if video_path is not None:
+            video_path.write_bytes(b"v" * 2000)
+        return True
+
+    monkeypatch.setattr(importer, "try_bilibili_download", fake_download)
+    monkeypatch.setattr(
+        importer,
+        "peek_audio_source",
+        lambda song_id: {"bvid": "BV16S4y1X7bq", "title": "Good Times", "cover": ""},
+    )
+    skeleton = importer.import_song(
+        query="【官方MV】Paloalto - Good Times (feat. Babylon) HiLiteRecords",
+        out_dir=tmp_path,
+        song_id="BV16S4y1X7bq",
+        title_hint="【官方MV】Paloalto - Good Times (feat. Babylon)",
+        artist_hint="HiLiteRecords",
+    )
+    assert "HiLiteRecords" not in " ".join(queries)
+    assert "Paloalto - Good Times" in queries
+    assert skeleton["audio"]["source"] == "bilibili"
+    assert (tmp_path / "original.mp3").exists()
 
 
 def _no_mugen(monkeypatch):
