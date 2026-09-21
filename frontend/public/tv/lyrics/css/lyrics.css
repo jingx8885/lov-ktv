@@ -50,12 +50,14 @@ body.tv .lyrics .line {
     1px 0 0 #000,
     -1px 0 0 #000,
     0 4px 12px rgba(0, 0, 0, 0.7);
-  font-size: calc(clamp(44px, 4.2vw, 86px) * var(--tv-lyric-scale));
+  font-size: calc(clamp(36px, 3.4vw, 68px) * var(--tv-lyric-scale));
   font-weight: 700;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   width: max-content;
-  max-width: 86%;
+  max-width: 100%;
+  min-width: 0;
   margin: 0;
   color: #fff;
   padding: 0.12em 0.45em 0.16em;
@@ -98,11 +100,17 @@ body.tv .lyrics .line.is-done .rb-fill {
   opacity: 0.92;
 }
 body.tv .lyrics .line.is-done .rb-fill { width: 100% !important; }
-body.tv .lyrics .anno .rt,
-body.tv .lyrics .anno .rt i {
-  min-height: 0.38em;
-  font-size: 0.36em;
+body.tv .lyrics .anno .rt {
+  min-height: 0.5em;
+  font-size: 0.5em;
   line-height: 1.1;
+  font-weight: 700;
+  font-style: normal;
+}
+body.tv .lyrics .anno .rt i {
+  min-height: 0;
+  font-size: inherit;
+  line-height: inherit;
   font-weight: 700;
   font-style: normal;
 }

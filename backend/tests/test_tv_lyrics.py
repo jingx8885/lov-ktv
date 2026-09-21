@@ -14,8 +14,8 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
     assert "--tv-lyric-scale: 1" in tv
-    assert "clamp(44px, 4.2vw, 86px)" in tv
-    assert "font-size: calc(clamp(44px, 4.2vw, 86px) * var(--tv-lyric-scale))" in tv
+    assert "clamp(36px, 3.4vw, 68px)" in tv
+    assert "font-size: calc(clamp(36px, 3.4vw, 68px) * var(--tv-lyric-scale))" in tv
     assert "lyric-left" in tv
     assert "lyric-right" in tv
     assert "font-size: 42px" not in tv
@@ -25,9 +25,11 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "body.tv .lyrics .anno .rt" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
-    assert "font-size: 0.36em" in tv
+    assert "font-size: 0.5em" in tv
+    assert "font-size: inherit" in tv
     assert "font-size: 0.42em" in tv
     assert "font-size: 0.52em" in tv
+    assert "font-size: 0.36em" not in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
     assert "backdrop-filter" not in tv
@@ -56,12 +58,12 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "body.tv.is-waiting .lyric-plate" in shared
     assert "body.tv.is-waiting .wait-art" in stage
     assert 'href="/tv/stage/css/stage.css"' in html
-    assert "min-height: 0.38em" in tv
+    assert "min-height: 0.5em" in tv
     assert "min-height: 0.7em" in tv
     paint = (ROOT / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
-    assert "const onTv = tvStage();" in paint
+    assert "function fitTvLyricLine" in paint
     assert "transform: none !important" in tv
     assert "export function sanitizeLyrics" in paint
     tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(

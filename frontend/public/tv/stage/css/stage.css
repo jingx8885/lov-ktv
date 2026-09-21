@@ -39,6 +39,7 @@ body.tv.is-waiting .party-fx { display: none !important; }
   display: block;
   text-align: center;
   padding: 0 48px;
+  overflow: hidden;
 }
 .stage-fx,
 .party-fx {
