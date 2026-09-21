@@ -38,9 +38,8 @@ body.tv.is-waiting .party-fx { display: none !important; }
   height: auto;
   display: block;
   text-align: center;
-  padding: 0 28px;
+  padding: 0 48px;
 }
-.tv.has-native-mv .lyrics .prev { display: none; }
 .stage-fx,
 .party-fx {
   position: fixed;

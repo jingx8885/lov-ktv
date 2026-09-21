@@ -8,7 +8,7 @@ export const playbackState = guardState(
     prefetchBusy: 0,
     prefetchWait: [],
     armed: false,
-    lyricPaint: { prev: "", cur: "", next: "" },
+    lyricPaint: { left: "", right: "" },
     lastMtvSeek: 0,
     lastVocalSync: 0,
     boundMtvSong: "",

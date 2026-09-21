@@ -243,7 +243,6 @@ function fitLyricExtras(el) {
 }
 
 function fitLyricLine(el) {
-  if (tvStage()) return;
   // The listen page owns its responsive lyric sizing. Shrinking each cue to
   // its text width made translated lines appear at different sizes and made
   // long cues overflow narrow phone viewports.
@@ -251,6 +250,7 @@ function fitLyricLine(el) {
     fitLyricExtras(el);
     return;
   }
+  const onTv = tvStage();
   const run = () => {
     const box = /** @type {HTMLElement} */ (el);
     box.style.fontSize = "";
@@ -260,20 +260,22 @@ function fitLyricLine(el) {
     const words = box.querySelector(".line-words");
     const content = words || box.querySelector(".rb");
     if (!content) return;
-    fitLyricExtras(box);
-    const maxW = box.clientWidth;
+    if (!onTv) fitLyricExtras(box);
+    const parent = box.parentElement;
+    const maxW = onTv ? Math.floor((parent && parent.clientWidth ? parent.clientWidth : 0) * 0.86) : box.clientWidth;
     if (maxW <= 0) return;
     const needW = content.scrollWidth;
     if (needW <= maxW + 1) return;
-    const base = parseFloat(getComputedStyle(box).fontSize) || 24;
-    const next = Math.max(14, base * (maxW / needW) * 0.98);
+    const base = parseFloat(getComputedStyle(box).fontSize) || (onTv ? 64 : 24);
+    const min = onTv ? 32 : 14;
+    const next = Math.max(min, base * (maxW / needW) * 0.98);
     box.style.fontSize = `${next.toFixed(2)}px`;
-    fitLyricExtras(box);
+    if (!onTv) fitLyricExtras(box);
     const again = content.scrollWidth;
     if (again > maxW + 1) {
-      const retry = Math.max(14, next * (maxW / again) * 0.97);
+      const retry = Math.max(min, next * (maxW / again) * 0.97);
       box.style.fontSize = `${retry.toFixed(2)}px`;
-      fitLyricExtras(box);
+      if (!onTv) fitLyricExtras(box);
     }
   };
   run();
@@ -374,7 +376,8 @@ export function paintLine(el, cue, t, slot, paint, empty, mode) {
   }
   const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
   const id = cueKey(cue) + ":" + skin + ":" + view;
-  const fitKey = `${id}:${Math.round(el.clientWidth)}`;
+  const sizeKey = typeof document !== "undefined" && document.body ? String(document.body.dataset.lyricSize || "") : "";
+  const fitKey = `${id}:${Math.round(el.clientWidth)}:${sizeKey}`;
   if (paint[slot] !== id) {
     el.innerHTML = renderCue(cue, t, view);
     paint[slot] = id;

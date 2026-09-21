@@ -96,6 +96,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert 'id="tvSheet"' in html
     assert 'id="tvSkip"' in html
     assert 'id="tvVocalValue"' in html
+    assert 'id="tvLyricSize"' in html
     assert "tv-menu-item" in html
     assert "data-tv-menu" in html
     assert "确认 暂停/播放" in html
@@ -105,6 +106,10 @@ def test_tv_does_not_restart_on_network_stall():
     arrow_down = remote.split('case "ArrowDown":', 1)[1].split("case ", 1)[0]
     assert "moveSettings(1)" in arrow_down
     assert "nudgeVolume(-5)" in arrow_down
+    arrow_left = remote.split('case "ArrowLeft":', 1)[1].split("case ", 1)[0]
+    assert "nudgeFocusedSetting(-1)" in arrow_left
+    arrow_right = remote.split('case "ArrowRight":', 1)[1].split("case ", 1)[0]
+    assert "nudgeFocusedSetting(1)" in arrow_right
     silent = (
         ROOT.parent.parent
         / "android-tv"
@@ -149,7 +154,12 @@ def test_tv_does_not_restart_on_network_stall():
         / "RemoteKeys.kt"
     ).read_text(encoding="utf-8")
     assert "KEYCODE_DPAD_CENTER" in keys
+    assert "KEYCODE_DPAD_LEFT" in keys
+    assert "KEYCODE_DPAD_RIGHT" in keys
+    assert "nudgeLeft" in keys
+    assert "nudgeRight" in keys
     assert "KeyEvent.KEYCODE_DPAD_CENTER," in keys.split("fun interceptInNative")[1]
+    assert "KeyEvent.KEYCODE_DPAD_LEFT" in keys.split("fun interceptInNative")[1]
     mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
         encoding="utf-8"
     )

@@ -1,20 +1,26 @@
 .lyrics { text-align: center; min-height: 0; }
+body.tv {
+  --tv-lyric-scale: 1;
+}
+body.tv[data-lyric-size="s"] { --tv-lyric-scale: 0.82; }
+body.tv[data-lyric-size="m"] { --tv-lyric-scale: 1; }
+body.tv[data-lyric-size="l"] { --tv-lyric-scale: 1.28; }
+body.tv[data-lyric-size="xl"] { --tv-lyric-scale: 1.58; }
 .tv .lyrics > .lyric-plate {
-  display: inline-block;
-  max-width: 92vw;
-  padding: 2px 12px 0;
-  border-radius: 10px;
-  background: rgba(8, 12, 26, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28em;
+  width: 100%;
+  max-width: none;
+  padding: 4px 0 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 .tv:not(.has-native-mv) .lyric-plate:not(.bare) {
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 36%, rgba(6, 10, 22, 0.18)),
-    rgba(8, 12, 26, 0.58);
+  background: transparent;
 }
-.tv .lyrics .prev:empty,
-.tv .lyrics .next:empty,
 .tv .lyrics .line:empty { display: none; }
 body.tv.is-waiting .lyrics,
 body.tv.is-waiting .lyric-plate {
@@ -34,20 +40,9 @@ body.tv .lyric-plate.bare {
   border-radius: 0 !important;
   box-shadow: none !important;
   outline: none !important;
-  padding: 0 12px 4px !important;
+  padding: 0 !important;
 }
-body.tv.has-native-mv .lyrics .line,
-body.tv .lyric-plate.bare .line {
-  padding: 4px 12px 5px;
-  border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-body.tv .lyrics .line,
-body.tv.has-native-mv .lyrics .prev,
-body.tv.has-native-mv .lyrics .next,
-body.tv .lyric-plate.bare .prev,
-body.tv .lyric-plate.bare .next {
+body.tv .lyrics .line {
   text-shadow:
     0 0 3px #000,
     0 1px 0 #000,
@@ -55,26 +50,69 @@ body.tv .lyric-plate.bare .next {
     1px 0 0 #000,
     -1px 0 0 #000,
     0 4px 12px rgba(0, 0, 0, 0.7);
+  font-size: calc(clamp(44px, 4.2vw, 86px) * var(--tv-lyric-scale));
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  width: max-content;
+  max-width: 86%;
+  margin: 0;
+  color: #fff;
+  padding: 0.12em 0.45em 0.16em;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
-body.tv .lyrics .line {
-  /* Keep a readable baseline on TV panels; 17px was too small at couch distance. */
-  font-size: 24px !important;
+body.tv .lyrics .lyric-left {
+  align-items: flex-start;
+  margin-right: auto;
+  text-align: left;
 }
-body.tv .lyrics .prev,
-body.tv .lyrics .next {
-  font-size: 15px !important;
+body.tv .lyrics .lyric-right {
+  align-items: flex-end;
+  margin-left: auto;
+  text-align: right;
 }
+body.tv .lyrics .line.is-wait {
+  color: rgba(255, 255, 255, 0.82);
+  opacity: 0.88;
+}
+body.tv .lyrics .line.is-live {
+  color: #fff;
+  opacity: 1;
+}
+body.tv .lyrics .line.is-done {
+  opacity: 0.86;
+}
+body.tv .lyrics .line.is-wait .rb,
+body.tv .lyrics .line.is-wait .rb-fill {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+body.tv .lyrics .line.is-wait .rb-fill { width: 0 !important; }
+body.tv .lyrics .line.is-done .rb,
+body.tv .lyrics .line.is-done .rb-fill {
+  color: var(--gold);
+  -webkit-text-fill-color: var(--gold);
+  opacity: 0.92;
+}
+body.tv .lyrics .line.is-done .rb-fill { width: 100% !important; }
 body.tv .lyrics .anno .rt,
 body.tv .lyrics .anno .rt i {
-  min-height: 15px;
-  font-size: 15px !important;
+  min-height: 0.38em;
+  font-size: 0.36em;
   line-height: 1.1;
   font-weight: 700;
   font-style: normal;
 }
 body.tv .lyrics .line-words {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: 100%;
 }
+body.tv .lyrics .lyric-left .line-words { justify-content: flex-start; }
+body.tv .lyrics .lyric-right .line-words { justify-content: flex-end; }
 body.tv .lyrics .tok,
 body.tv .lyrics .anno {
   flex-shrink: 0;
@@ -84,8 +122,8 @@ body.tv .lyrics .anno .roma,
 body.tv .lyrics .anno .gloss {
   width: auto;
   min-width: 100%;
-  min-height: 15px;
-  font-size: 15px !important;
+  min-height: 0.5em;
+  font-size: 0.42em;
   line-height: 1.1;
   transform: none !important;
   overflow: visible;
@@ -96,8 +134,18 @@ body.tv .lyrics .anno .roma {
   letter-spacing: 0.02em;
   font-weight: 600;
 }
-body.tv .lyrics .lyric-zh {
-  min-height: 16px;
-  margin-top: 0.1em;
-  font-size: 16px !important;
+body.tv .lyrics .line.is-wait .roma,
+body.tv .lyrics .line.is-wait .gloss,
+body.tv .lyrics .line.is-done .roma,
+body.tv .lyrics .line.is-done .gloss {
+  display: none;
 }
+body.tv .lyrics .lyric-zh {
+  min-height: 0.7em;
+  margin-top: 0.08em;
+  font-size: 0.52em;
+  flex-basis: auto;
+  width: 100%;
+}
+body.tv .lyrics .lyric-left .lyric-zh { text-align: left; }
+body.tv .lyrics .lyric-right .lyric-zh { text-align: right; }

@@ -13,9 +13,11 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "clamp(28px, 4.6vw, 58px)" in shared
     assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
-    assert "font-size: 24px !important" in tv
-    assert "font-size: 15px !important" in tv
-    assert "clamp(" not in tv
+    assert "--tv-lyric-scale: 1" in tv
+    assert "clamp(44px, 4.2vw, 86px)" in tv
+    assert "font-size: calc(clamp(44px, 4.2vw, 86px) * var(--tv-lyric-scale))" in tv
+    assert "lyric-left" in tv
+    assert "lyric-right" in tv
     assert "font-size: 42px" not in tv
     assert "clamp(18px, 2.8vw, 34px)" not in tv
     assert "position: absolute" in stage
@@ -23,15 +25,22 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "body.tv .lyrics .anno .rt" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
-    assert "font-size: 15px !important" in tv
-    assert "font-size: 16px !important" in tv
-    assert "font-size: 14px" not in tv
+    assert "font-size: 0.36em" in tv
+    assert "font-size: 0.42em" in tv
+    assert "font-size: 0.52em" in tv
     assert "font-size: .28em" not in tv
     assert "font-size: .62em" not in tv
     assert "backdrop-filter" not in tv
     assert "drop-shadow" not in tv
     assert 'href="/tv/lyrics/css/lyrics.css"' in html
     assert 'href="/shared/lyrics/css/lyrics.css"' in html
+    assert 'id="lyricLeft"' in html
+    assert 'id="lyricRight"' in html
+    assert 'id="tvLyricSize"' in html
+    assert 'class="line lyric-left is-wait"' in html
+    assert 'class="line lyric-right is-wait"' in html
+    assert 'id="prev"' not in html
+    assert 'id="cur"' not in html
     assert 'class="tv is-waiting"' in html
     assert 'src="/brand/wait-tv.jpg"' in html
     assert 'id="appQrBox"' in html
@@ -47,11 +56,12 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "body.tv.is-waiting .lyric-plate" in shared
     assert "body.tv.is-waiting .wait-art" in stage
     assert 'href="/tv/stage/css/stage.css"' in html
-    assert "min-height: 15px" in tv
-    assert "min-height: 16px" in tv
+    assert "min-height: 0.38em" in tv
+    assert "min-height: 0.7em" in tv
     paint = (ROOT / "shared" / "lyrics" / "js" / "paint.js").read_text(encoding="utf-8")
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
+    assert "const onTv = tvStage();" in paint
     assert "transform: none !important" in tv
     assert "export function sanitizeLyrics" in paint
     tick = (ROOT / "tv" / "playback" / "js" / "runtime" / "tick.js").read_text(
@@ -59,6 +69,74 @@ def test_tv_lyrics_use_readable_fixed_type():
     )
     assert "sanitizeLyrics(lyricsHit.data)" in tick
     assert "const next = sanitizeLyrics(data)" in tick
+    paint_tv = (ROOT / "tv" / "playback" / "js" / "lyric" / "paint.js").read_text(
+        encoding="utf-8"
+    )
+    karaoke = (ROOT / "tv" / "playback" / "js" / "lyric" / "karaoke.js").read_text(
+        encoding="utf-8"
+    )
+    size = (ROOT / "tv" / "playback" / "js" / "lyric" / "size.js").read_text(
+        encoding="utf-8"
+    )
+    remote = (ROOT / "tv" / "playback" / "js" / "remote" / "controls.js").read_text(
+        encoding="utf-8"
+    )
+    assert "export function karaokePair" in karaoke
+    assert "even cues sit on the left" in karaoke
+    assert "from \"./karaoke.js\"" in paint_tv
+    assert "paintKaraokeLine($(\"lyricLeft\")" in paint_tv
+    assert "paintKaraokeLine($(\"lyricRight\")" in paint_tv
+    assert "export function applyLyricSize" in size
+    assert "applyLyricSize()" in remote
+    assert "nudgeFocusedSetting(-1)" in remote
+    assert "nudgeFocusedSetting(1)" in remote
+    assert 'id="tvLyricSize"' in html
+    assert ".tv.has-native-mv .lyrics .prev" not in stage
+
+
+def test_tv_karaoke_pair_keeps_even_left_odd_right():
+    import shutil
+    import subprocess
+
+    import pytest
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("需要 Node，才能跑卡拉 OK 两行配对")
+    script = r"""
+import { karaokePair } from './frontend/public/tv/playback/js/lyric/karaoke.js';
+const cues = [0, 1, 2, 3, 4].map((i) => ({
+  start_ms: i * 1000,
+  end_ms: i * 1000 + 800,
+  text: String(i)
+}));
+function check(t, left, right, live) {
+  const pair = karaokePair(cues, t);
+  const gotLeft = pair.left && pair.left.text;
+  const gotRight = pair.right && pair.right.text;
+  if (gotLeft !== left || gotRight !== right || pair.liveIndex !== live) {
+    throw new Error(`t=${t} got ${gotLeft}/${gotRight}/${pair.liveIndex} want ${left}/${right}/${live}`);
+  }
+  if (live >= 0 && live % 2 === 0 && pair.leftTime < 0) throw new Error("even live should fill left");
+  if (live >= 0 && live % 2 === 1 && pair.rightTime < 0) throw new Error("odd live should fill right");
+}
+check(100, "0", "1", 0);
+check(900, "0", "1", -1);
+check(1100, "2", "1", 1);
+check(2100, "2", "3", 2);
+check(4100, "4", "3", 4);
+check(5000, "4", "3", -1);
+const empty = karaokePair([], 0);
+if (empty.left || empty.right || empty.liveIndex !== -1) throw new Error("empty cues");
+"""
+    result = subprocess.run(
+        [node, "--input-type=module", "-e", script],
+        cwd=ROOT.parent.parent,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_tv_page_has_no_language_picker():

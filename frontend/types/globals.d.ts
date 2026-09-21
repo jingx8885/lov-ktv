@@ -225,6 +225,8 @@ interface LovKtvRemoteApi {
   togglePaused?: () => void | Promise<void>;
   settings?: () => void | boolean;
   back?: () => void | boolean;
+  nudgeLeft?: () => void;
+  nudgeRight?: () => void;
   __ready?: boolean;
   __module?: boolean;
 }

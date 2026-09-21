@@ -19,7 +19,7 @@ import {
 } from "../media/mix.js";
 import { bindMtv, silenceMtv, nativeMv, syncNativeMv } from "../media/mtv.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
-import { lyricsFingerprint, ensureStageFx } from "../lyric/paint.js";
+import { lyricsFingerprint, ensureStageFx, clearLyricPlate } from "../lyric/paint.js";
 import { mediaEndedAt, roomItemIdentity, shouldReloadRoomItem, shouldStopEmptyNow } from "./state.js";
 import { closeRoomWs, fetchRoomSnapshot, roomWsLive, snapshotStamp, watchRoom } from "../room/state.js";
 import { nativeMtvAvailable, pauseNativeMtv, stopNativeMtv } from "../../../platform.js";
@@ -200,9 +200,7 @@ export function stopPlayback() {
   state.mediaStall = 0;
   clearTrackFallback();
   state.lastRecoverAt = 0;
-  state.lyricPaint.prev = "";
-  state.lyricPaint.cur = "";
-  state.lyricPaint.next = "";
+  clearLyricPlate();
   ["karaoke", "mtv"].forEach((id) => {
     const el = $(id);
     el.pause();
@@ -249,9 +247,7 @@ export async function applyRoom(room) {
     $("gate").hidden = true;
     $("title").textContent = "";
     $("meta").textContent = "";
-    $("prev").innerHTML = "";
-    $("cur").textContent = "";
-    $("next").innerHTML = "";
+    clearLyricPlate();
     return;
   }
   state.emptyNow = 0;
@@ -267,18 +263,14 @@ export async function applyRoom(room) {
       stopNativeMtv();
       state.boundMtvSong = "";
     }
-    $("prev").innerHTML = "";
-    $("cur").textContent = "";
-    $("next").textContent = "";
+    clearLyricPlate();
     return;
   }
   const { itemKey, mediaRev } = roomItemIdentity(now);
   if (shouldReloadRoomItem(state.lastItem, state.lastMediaRev, now)) {
     state.lastItem = itemKey;
     state.lastMediaRev = mediaRev;
-    state.lyricPaint.prev = "";
-    state.lyricPaint.cur = "";
-    state.lyricPaint.next = "";
+    clearLyricPlate();
     // Start the new track immediately. Lyrics/video metadata are secondary
     // and should never add network latency to a room skip.
     state.lyrics = { cues: [] };

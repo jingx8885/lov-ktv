@@ -3,6 +3,7 @@ import { applyLyricMode, paintLine } from "../../../../shared/lyrics/js/paint.js
 import { state } from "../../../state.js";
 import { nativeMv, silenceMtv } from "../media/mtv.js";
 import { lyricClockMs, shouldSeekNative, videoSeekMs } from "./clock.js";
+import { karaokePair } from "./karaoke.js";
 import {
   nativeMtvAvailable,
   nativeMtvDurationMs,
@@ -111,6 +112,28 @@ export function disposePaint() {
   state.stageFx = null;
 }
 
+function paintKaraokeLine(el, cue, time, slot, mode) {
+  const skin = !cue ? "empty" : time < 0 ? "wait" : time > 1e10 ? "done" : "live";
+  if (el) {
+    el.classList.toggle("is-live", skin === "live");
+    el.classList.toggle("is-wait", skin === "wait" || skin === "empty");
+    el.classList.toggle("is-done", skin === "done");
+  }
+  paintLine(el, cue, time, slot, state.lyricPaint, "", mode);
+}
+
+export function clearLyricPlate() {
+  state.lyricPaint.left = "";
+  state.lyricPaint.right = "";
+  ["lyricLeft", "lyricRight"].forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = "";
+    el.classList.remove("is-live", "is-done");
+    el.classList.add("is-wait");
+  });
+}
+
 export function paint() {
   if (!paintActive) return;
   const now = state.room && state.room.now_playing;
@@ -150,24 +173,10 @@ export function paint() {
       }
     }
     const cues = state.lyrics.cues || [];
-    const idx = cues.findIndex((c) => t >= c.start_ms && t < c.end_ms);
-    const cue = idx >= 0 ? cues[idx] : null;
-    const upcomingIdx = cues.findIndex((c) => t < c.start_ms);
-    if (cue) {
-      fireCueFx(cue, idx);
-      paintLine($("prev"), idx > 0 ? cues[idx - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
-      paintLine($("cur"), cue, t, "cur", state.lyricPaint, "", mode);
-      paintLine($("next"), cues[idx + 1] || null, -1, "next", state.lyricPaint, "", mode);
-    } else if (upcomingIdx >= 0) {
-      const held = upcomingIdx > 0 ? cues[upcomingIdx - 1] : null;
-      paintLine($("prev"), upcomingIdx > 1 ? cues[upcomingIdx - 2] : null, 1e12, "prev", state.lyricPaint, "", mode);
-      paintLine($("cur"), held, 1e12, "cur", state.lyricPaint, "", mode);
-      paintLine($("next"), cues[upcomingIdx], -1, "next", state.lyricPaint, "", mode);
-    } else {
-      paintLine($("prev"), cues.length ? cues[cues.length - 1] : null, 1e12, "prev", state.lyricPaint, "", mode);
-      paintLine($("cur"), null, t, "cur", state.lyricPaint, "", mode);
-      paintLine($("next"), null, -1, "next", state.lyricPaint, "", mode);
-    }
+    const pair = karaokePair(cues, t);
+    if (pair.liveIndex >= 0) fireCueFx(cues[pair.liveIndex], pair.liveIndex);
+    paintKaraokeLine($("lyricLeft"), pair.left, pair.leftTime, "left", mode);
+    paintKaraokeLine($("lyricRight"), pair.right, pair.rightTime, "right", mode);
     syncNativeVideo(karaoke);
   }
   if (state.audioHook && !nativeMv()) LovBands.pull(state.audioHook);

@@ -180,9 +180,11 @@ interface PhoneLibState {
 }
 
 interface LyricPaintSlots {
-  prev: string;
-  cur: string;
-  next: string;
+  prev?: string;
+  cur?: string;
+  next?: string;
+  left?: string;
+  right?: string;
   align?: string;
   scroll?: LyricPaintSlots;
 }

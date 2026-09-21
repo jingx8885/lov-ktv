@@ -9,7 +9,8 @@ import org.junit.Test
 class RemoteKeysTest {
     @Test
     fun dpadMapsToPlaybackActions() {
-        assertEquals(null, RemoteKeys.jsAction(KeyEvent.KEYCODE_DPAD_RIGHT))
+        assertEquals("nudgeRight", RemoteKeys.jsAction(KeyEvent.KEYCODE_DPAD_RIGHT))
+        assertEquals("nudgeLeft", RemoteKeys.jsAction(KeyEvent.KEYCODE_DPAD_LEFT))
         assertEquals("skip", RemoteKeys.jsAction(KeyEvent.KEYCODE_MEDIA_NEXT))
         assertEquals("volumeUp", RemoteKeys.jsAction(KeyEvent.KEYCODE_DPAD_UP))
         assertEquals("volumeDown", RemoteKeys.jsAction(KeyEvent.KEYCODE_DPAD_DOWN))
@@ -24,7 +25,8 @@ class RemoteKeysTest {
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_MEDIA_NEXT))
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_MENU))
-        assertFalse(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_RIGHT))
+        assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_RIGHT))
+        assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_LEFT))
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_DPAD_CENTER))
         assertTrue(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_ENTER))
         assertFalse(RemoteKeys.interceptInNative(KeyEvent.KEYCODE_BACK))

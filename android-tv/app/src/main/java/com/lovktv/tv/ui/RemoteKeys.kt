@@ -12,6 +12,8 @@ object RemoteKeys {
             -> "skip"
             KeyEvent.KEYCODE_DPAD_UP -> "volumeUp"
             KeyEvent.KEYCODE_DPAD_DOWN -> "volumeDown"
+            KeyEvent.KEYCODE_DPAD_LEFT -> "nudgeLeft"
+            KeyEvent.KEYCODE_DPAD_RIGHT -> "nudgeRight"
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_NUMPAD_ENTER,
@@ -31,6 +33,8 @@ object RemoteKeys {
             KeyEvent.KEYCODE_MEDIA_NEXT,
             KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,
             KeyEvent.KEYCODE_CHANNEL_UP,
+            KeyEvent.KEYCODE_DPAD_LEFT,
+            KeyEvent.KEYCODE_DPAD_RIGHT,
             KeyEvent.KEYCODE_DPAD_CENTER,
             KeyEvent.KEYCODE_ENTER,
             KeyEvent.KEYCODE_NUMPAD_ENTER,

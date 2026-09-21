@@ -45,12 +45,16 @@
           <span class="tv-menu-label" data-i18n="tv.vocalLabel">人声</span>
           <span class="tv-menu-value" id="tvVocalValue" data-i18n="tv.toggle">原唱/伴唱</span>
         </button>
+        <button class="tv-menu-item" id="tvLyricSize" type="button" data-tv-menu role="menuitem">
+          <span class="tv-menu-label" data-i18n="tv.lyricSize">字幕大小</span>
+          <span class="tv-menu-value" id="tvLyricSizeValue">‹ 中 ›</span>
+        </button>
         <button class="tv-menu-item" id="tvSetup" type="button" data-tv-menu role="menuitem">
           <span class="tv-menu-label" data-i18n="tv.processServer">处理服务器</span>
           <span class="tv-menu-value" data-i18n="tv.processMeta">改地址</span>
         </button>
       </div>
-      <p class="tv-sheet-hint" data-i18n="tv.settingsNav">上下选择 · 确认打开 · 返回关闭</p>
+      <p class="tv-sheet-hint" data-i18n="tv.settingsNav">上下选择 · 左右调字号 · 返回关闭</p>
       <p class="tv-sheet-hint" id="tvVersion" hidden></p>
     </div>
   </div>
@@ -85,9 +89,8 @@
     </header>
     <section class="lyrics" data-mount="tv-lyrics">
       <div class="lyric-plate" id="lyricPlate">
-        <div class="prev" id="prev"></div>
-        <div class="line" id="cur"></div>
-        <div class="next" id="next"></div>
+        <div class="line lyric-left is-wait" id="lyricLeft"></div>
+        <div class="line lyric-right is-wait" id="lyricRight"></div>
       </div>
     </section>
     <footer class="bar" data-mount="tv-footer">

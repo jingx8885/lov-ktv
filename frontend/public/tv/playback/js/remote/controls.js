@@ -7,6 +7,7 @@ import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
 import { applyMix, activeTrackName, trackFallbackActive, clearTrackFallback } from "../media/mix.js";
 import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "../runtime/tick.js";
+import { applyLyricSize, cycleLyricSize, lyricSizeLabel, nudgeLyricSize } from "../lyric/size.js";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";
@@ -55,6 +56,14 @@ function activateSettings() {
   const items = settingsItems();
   const item = items[settingsIndex] || items[0];
   if (item) item.click();
+}
+
+function nudgeFocusedSetting(delta) {
+  const items = settingsItems();
+  const item = items[settingsIndex] || items[0];
+  if (!item || item.id !== "tvLyricSize") return;
+  nudgeLyricSize(delta);
+  paintSettings();
 }
 
 function roomPaused() {
@@ -188,6 +197,8 @@ export function paintSettings() {
     vocalItem.classList.toggle("on", on);
     vocalItem.classList.toggle("is-degraded", degraded);
   }
+  const sizeValue = $("tvLyricSizeValue");
+  if (sizeValue) sizeValue.textContent = lyricSizeLabel();
   const setup = $("tvSetup");
   if (setup) {
     const native = nativeSetupAvailable();
@@ -274,6 +285,16 @@ function onRemoteKey(event) {
       if (inSettings) moveSettings(1);
       else nudgeVolume(-5);
       break;
+    case "ArrowLeft":
+      event.preventDefault();
+      event.stopPropagation();
+      if (inSettings) nudgeFocusedSetting(-1);
+      break;
+    case "ArrowRight":
+      event.preventDefault();
+      event.stopPropagation();
+      if (inSettings) nudgeFocusedSetting(1);
+      break;
     case "Enter":
     case " ":
     case "NumpadEnter":
@@ -296,6 +317,7 @@ function onRemoteKey(event) {
 }
 
 export function bindRemote() {
+  applyLyricSize();
   if (new URLSearchParams(location.search).has("androidtv")) {
     document.body.classList.add("androidtv");
     const hint = $("remoteHint");
@@ -317,10 +339,22 @@ export function bindRemote() {
     start: startIfNeeded,
     settings: toggleSettings,
     back,
+    nudgeLeft: () => {
+      if (settingsOpen()) nudgeFocusedSetting(-1);
+    },
+    nudgeRight: () => {
+      if (settingsOpen()) nudgeFocusedSetting(1);
+    },
     __module: true
   };
   if ($("tvSkip")) $("tvSkip").onclick = () => skipSong();
   if ($("tvVocal")) $("tvVocal").onclick = () => toggleVocal();
+  if ($("tvLyricSize")) {
+    $("tvLyricSize").onclick = () => {
+      cycleLyricSize();
+      paintSettings();
+    };
+  }
   if ($("tvSetup")) $("tvSetup").onclick = () => openProcessSetup();
   if ($("tvSheetBack")) $("tvSheetBack").onclick = () => closeSettings();
   document.addEventListener("keydown", onRemoteKey, true);

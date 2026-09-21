@@ -565,7 +565,7 @@ def test_phone_learn_shell_is_wired():
     assert "fitLyricLine" in paint
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
-    assert "fitKey = `${id}:${Math.round(el.clientWidth)}`" in paint
+    assert "fitKey = `${id}:${Math.round(el.clientWidth)}:${sizeKey}`" in paint
     assert "el.clientHeight" not in paint
     assert "line-words" in paint
     assert "kickPlayerPaint" in (
