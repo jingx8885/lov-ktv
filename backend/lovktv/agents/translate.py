@@ -16,11 +16,14 @@ from pathlib import Path
 from typing import Any
 
 from lovktv.agents.ja_lyrics import (
+    AgentUnavailable,
     agent_enabled,
     agent_model,
+    agent_model_used,
     complete_json,
     has_han,
     lyric_source_key,
+    reset_agent_models_used,
     valid_zh,
 )
 from lovktv.pipeline.lyrics import tokenize
@@ -178,6 +181,8 @@ def _translate_chunk(
         note = _NOT_CHINESE_NOTE if invalid_answer else ""
         try:
             items = _request_translation(pending, title, artist, lang, note, target_language)
+        except AgentUnavailable:
+            raise
         except Exception as exc:  # noqa: BLE001 - retry the agent boundary
             last_error = exc
             if attempt >= _TRANSLATION_MAX_ATTEMPTS:
@@ -311,6 +316,7 @@ def translate_lines(
             return cached
     if not agent_enabled():
         raise RuntimeError("翻译 agent 未启用")
+    reset_agent_models_used()
     collected: list[dict[str, Any]] = []
     unique = _unique_lines(texts)
     lang = str(language or "").strip() or "unknown"
@@ -321,7 +327,7 @@ def translate_lines(
     result = {
         "schema": TRANSLATE_SCHEMA,
         "source_hash": digest,
-        "model": agent_model(),
+        "model": agent_model_used() or agent_model(),
         "title": title,
         "artist": artist,
         "language": lang,
@@ -539,5 +545,5 @@ def apply_zh_translation(
                 token["zh"] = gloss
                 token["translation"] = gloss
     timeline["translation"] = "lovjpn-" + (str(target_language or "zh").lower() or "zh")
-    timeline["translation_model"] = str(notes.get("model") or agent_model())
+    timeline["translation_model"] = str(notes.get("model") or agent_model_used() or agent_model())
     return timeline

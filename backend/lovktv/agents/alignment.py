@@ -18,12 +18,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import httpx
-
 from lovktv.agents.ja_lyrics import (
+    AgentUnavailable,
     agent_api_key,
     agent_base_url,
     agent_model,
+    agent_model_used,
+    post_chat,
+    reset_agent_models_used,
 )
 from lovktv.domain.alignment import SUNG_SCHEMA, SungLyrics, parse_sung_lyrics
 from lovktv.pipeline.lyrics import drop_credit_lines
@@ -108,41 +110,10 @@ def _json_payload(raw: str) -> dict[str, Any]:
 
 
 def _request_content(messages: list[dict[str, str]]) -> str:
-    base = agent_base_url()
-    key = agent_api_key()
-    if not base or not key:
-        raise RuntimeError("歌词 agent 未配置 LOVKTV_AGENT_URL/OPENAI_BASE_URL")
-    body = {"model": agent_model(), "temperature": 0.0, "messages": messages}
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    try:
-        with httpx.Client(timeout=180.0) as client:
-            response = client.post(f"{base}/chat/completions", headers=headers, json=body)
-    except Exception as exc:
-        if "socksio" not in str(exc):
-            raise
-        with httpx.Client(timeout=180.0, trust_env=False) as client:
-            response = client.post(f"{base}/chat/completions", headers=headers, json=body)
-    response.raise_for_status()
-    data = response.json()
-    if (
-        isinstance(data, dict)
-        and data.get("choices") is None
-        and isinstance(data.get("data"), dict)
-    ):
-        if data.get("code") not in (None, 0, 200):
-            raise RuntimeError(str(data.get("msg") or "歌词 agent 请求失败"))
-        data = data["data"]
-    choice = (data.get("choices") or [{}])[0]
-    message = choice.get("message") or {}
-    content = message.get("content") or choice.get("text") or ""
-    if isinstance(content, list):
-        content = "".join(
-            part.get("text") or "" if isinstance(part, dict) else str(part)
-            for part in content
-        )
-    if not content:
-        raise RuntimeError("歌词 agent 没有返回内容")
-    return str(content)
+    def accept(content: str) -> None:
+        _json_payload(content)
+
+    return post_chat(messages, temperature=0.0, accept=accept)
 
 
 def agent_words(asr_words: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -326,9 +297,12 @@ def generate_sung_lyrics(
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             pass
     lyrics: SungLyrics | None = None
+    reset_agent_models_used()
     if len(words) <= _WHOLE_SONG_WORDS:
         try:
             lyrics = _generate_whole(reference, words, language, energy_regions)
+        except AgentUnavailable:
+            return None
         except Exception:
             lyrics = None
     if lyrics is None:
@@ -345,7 +319,7 @@ def generate_sung_lyrics(
                         **lyrics.model_dump(mode="json", by_alias=True),
                         "schema": SUNG_SCHEMA,
                         "source_hash": digest,
-                        "model": agent_model(),
+                        "model": agent_model_used() or agent_model(),
                         "word_count": len(words),
                     },
                     ensure_ascii=False,

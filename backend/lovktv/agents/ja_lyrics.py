@@ -10,7 +10,9 @@ import hashlib
 import json
 import os
 import re
+import time
 import unicodedata
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -99,6 +101,194 @@ def agent_model() -> str:
         or os.environ.get("OPENAI_MODEL")
         or "gpt-5.4-mini"
     )
+
+
+# gpt-5.6-luna is the production primary. When it times out or the gateway
+# reports it down, lyric annotation and alignment switch to this model.
+FALLBACK_AGENT_MODEL = "grok-4.6"
+_AGENT_ATTEMPTS = 2
+_RETRYABLE_STATUS = {404, 408, 409, 425, 429, 500, 502, 503, 504}
+_used_models: ContextVar[tuple[str, ...] | None] = ContextVar(
+    "lovktv_agent_models_used", default=None
+)
+
+
+class AgentUnavailable(RuntimeError):
+    """Primary model and grok-4.6 both failed after retries."""
+
+
+class _RetryableAgentError(RuntimeError):
+    """Transient gateway/model failure; try again, then the fallback model."""
+
+
+def agent_fallback_model() -> str:
+    return (os.environ.get("LOVKTV_AGENT_FALLBACK_MODEL") or FALLBACK_AGENT_MODEL).strip()
+
+
+def agent_model_chain(explicit: str | None = None) -> list[str]:
+    """Primary model first, then the fallback when it is a different name."""
+    primary = (explicit or agent_model()).strip()
+    fallback = agent_fallback_model()
+    chain: list[str] = []
+    for name in (primary, fallback):
+        if name and name not in chain:
+            chain.append(name)
+    return chain
+
+
+def reset_agent_models_used() -> None:
+    _used_models.set(())
+
+
+def remember_agent_model(model: str) -> None:
+    current = _used_models.get() or ()
+    if current and current[-1] == model:
+        return
+    _used_models.set((*current, model))
+
+
+def agent_model_used() -> str:
+    """Model that actually answered. Empty when this call has not succeeded yet."""
+    seen: list[str] = []
+    for item in _used_models.get() or ():
+        if item not in seen:
+            seen.append(item)
+    if not seen:
+        return ""
+    return seen[0] if len(seen) == 1 else ",".join(seen)
+
+
+def _attempt_count() -> int:
+    raw = os.environ.get("LOVKTV_AGENT_ATTEMPTS")
+    try:
+        count = int(raw) if raw else _AGENT_ATTEMPTS
+    except (TypeError, ValueError):
+        count = _AGENT_ATTEMPTS
+    return max(1, count)
+
+
+def _retry_delay(attempt: int) -> None:
+    raw = os.environ.get("LOVKTV_AGENT_RETRY_DELAY")
+    try:
+        delay = float(raw) if raw is not None else 0.5
+    except (TypeError, ValueError):
+        delay = 0.5
+    if delay > 0:
+        time.sleep(delay * max(1, attempt))
+
+
+def _should_failover(exc: BaseException) -> bool:
+    if isinstance(exc, _RetryableAgentError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        return code in _RETRYABLE_STATUS or code >= 500
+    if isinstance(exc, (httpx.TimeoutException, httpx.TransportError)):
+        return True
+    return isinstance(exc, json.JSONDecodeError)
+
+
+def _post_once(url: str, headers: dict[str, str], body: dict[str, Any]) -> httpx.Response:
+    try:
+        with httpx.Client(timeout=180.0) as client:
+            return client.post(url, headers=headers, json=body)
+    except Exception as exc:
+        if "socksio" not in str(exc):
+            raise
+        with httpx.Client(timeout=180.0, trust_env=False) as client:
+            return client.post(url, headers=headers, json=body)
+
+
+def _content_from_response(response: httpx.Response) -> str:
+    if response.status_code in (401, 403):
+        raise RuntimeError(f"agent 鉴权失败 HTTP {response.status_code}")
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError:
+        raise
+    try:
+        data = response.json()
+    except Exception as exc:
+        raise json.JSONDecodeError("agent 返回的不是 JSON", "", 0) from exc
+    if (
+        isinstance(data, dict)
+        and data.get("choices") is None
+        and isinstance(data.get("data"), dict)
+    ):
+        if data.get("code") not in (None, 0, 200):
+            raise _RetryableAgentError(str(data.get("msg") or "agent 请求失败"))
+        data = data["data"]
+    if not isinstance(data, dict):
+        raise _RetryableAgentError("agent 没有返回内容")
+    choice = (data.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    content = message.get("content") or choice.get("text") or ""
+    if isinstance(content, list):
+        content = "".join(
+            part.get("text") or "" if isinstance(part, dict) else str(part)
+            for part in content
+        )
+    if not str(content or "").strip():
+        raise _RetryableAgentError(str(data.get("msg") or "agent 没有返回内容"))
+    return str(content)
+
+
+def post_chat(
+    messages: list[dict[str, str]],
+    *,
+    temperature: float,
+    model: str | None = None,
+    accept: Any = None,
+) -> str:
+    """Call the lyric agent, retry the primary model, then switch to grok-4.6.
+
+    ``accept`` runs on the raw text. Raise ``ValueError`` when the text is not
+    usable so a crashed model is retried and then replaced by the fallback.
+    """
+    base = agent_base_url()
+    key = agent_api_key()
+    if not base or not key:
+        raise RuntimeError("agent 未配置 LOVKTV_AGENT_URL/OPENAI_BASE_URL")
+    chain = agent_model_chain(model)
+    if not chain:
+        raise RuntimeError("agent 模型未配置")
+    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+    url = f"{base}/chat/completions"
+    attempts = _attempt_count()
+    last: BaseException | None = None
+    for index, chosen in enumerate(chain):
+        if index:
+            print(f"[lovktv] agent fallback {chosen}", flush=True)
+        for attempt in range(1, attempts + 1):
+            body = {
+                "model": chosen,
+                "temperature": temperature,
+                "messages": messages,
+            }
+            try:
+                content = _content_from_response(_post_once(url, headers, body))
+                if accept is not None:
+                    accept(content)
+            except Exception as exc:
+                last = exc
+                if not _should_failover(exc) and not isinstance(exc, ValueError):
+                    raise
+                print(
+                    f"[lovktv] agent fail model={chosen} attempt={attempt}: {exc}",
+                    flush=True,
+                )
+                if attempt < attempts:
+                    _retry_delay(attempt)
+                continue
+            remember_agent_model(chosen)
+            if attempt > 1 or index:
+                print(
+                    f"[lovktv] agent ok model={chosen} attempt={attempt}",
+                    flush=True,
+                )
+            return content
+    tried = ", ".join(chain)
+    raise AgentUnavailable(f"agent 请求失败（已试 {tried}）：{last}") from last
 
 
 def agent_enabled() -> bool:
@@ -412,46 +602,14 @@ def _parse_payload(raw: str) -> dict[str, Any]:
 def complete_json(
     messages: list[dict[str, str]], model: str | None = None
 ) -> dict[str, Any]:
-    base = agent_base_url()
-    key = agent_api_key()
-    if not base or not key:
-        raise RuntimeError("日语注音 agent 未配置 LOVKTV_AGENT_URL/OPENAI_BASE_URL")
-    body = {
-        "model": model or agent_model(),
-        "temperature": 0.1,
-        "messages": messages,
-    }
-    headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
-    url = f"{base}/chat/completions"
-    try:
-        with httpx.Client(timeout=180.0) as client:
-            response = client.post(url, headers=headers, json=body)
-    except Exception as exc:
-        if "socksio" not in str(exc):
-            raise
-        with httpx.Client(timeout=180.0, trust_env=False) as client:
-            response = client.post(url, headers=headers, json=body)
-    response.raise_for_status()
-    data = response.json()
-    if (
-        isinstance(data, dict)
-        and data.get("choices") is None
-        and isinstance(data.get("data"), dict)
-    ):
-        if data.get("code") not in (None, 0, 200):
-            raise RuntimeError(str(data.get("msg") or "agent 请求失败"))
-        data = data["data"]
-    choice = (data.get("choices") or [{}])[0]
-    message = choice.get("message") or {}
-    content = message.get("content") or choice.get("text") or ""
-    if isinstance(content, list):
-        content = "".join(
-            part.get("text") or "" if isinstance(part, dict) else str(part)
-            for part in content
-        )
-    if not content:
-        raise RuntimeError(str(data.get("msg") or "agent 没有返回内容"))
-    return _parse_payload(str(content))
+    parsed: dict[str, Any] = {}
+
+    def accept(content: str) -> None:
+        parsed.clear()
+        parsed.update(_parse_payload(content))
+
+    post_chat(messages, temperature=0.1, model=model, accept=accept)
+    return parsed
 
 
 def _request_chunk(lines: list[str], title: str, artist: str) -> list[dict[str, Any]]:
@@ -493,6 +651,7 @@ def annotate_ja_lines(
             return cached
     if not agent_enabled():
         raise RuntimeError("日语注音 agent 未启用")
+    reset_agent_models_used()
     collected: list[dict[str, Any]] = []
     unique: list[str] = []
     seen: set[str] = set()
@@ -507,7 +666,7 @@ def annotate_ja_lines(
     result = {
         "schema": ANNOTATION_SCHEMA,
         "source_hash": digest,
-        "model": agent_model(),
+        "model": agent_model_used() or agent_model(),
         "title": title,
         "artist": artist,
         "lines": collected,
