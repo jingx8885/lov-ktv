@@ -158,6 +158,17 @@ def agent_model_used() -> str:
     return seen[0] if len(seen) == 1 else ",".join(seen)
 
 
+def agent_timeout() -> httpx.Timeout:
+    """Wait longer for a full lyric batch; connect stays short."""
+    raw = os.environ.get("LOVKTV_AGENT_TIMEOUT")
+    try:
+        read = float(raw) if raw else 360.0
+    except (TypeError, ValueError):
+        read = 360.0
+    read = max(30.0, read)
+    return httpx.Timeout(connect=30.0, read=read, write=60.0, pool=30.0)
+
+
 def _attempt_count() -> int:
     raw = os.environ.get("LOVKTV_AGENT_ATTEMPTS")
     try:
@@ -190,12 +201,12 @@ def _should_failover(exc: BaseException) -> bool:
 
 def _post_once(url: str, headers: dict[str, str], body: dict[str, Any]) -> httpx.Response:
     try:
-        with httpx.Client(timeout=180.0) as client:
+        with httpx.Client(timeout=agent_timeout()) as client:
             return client.post(url, headers=headers, json=body)
     except Exception as exc:
         if "socksio" not in str(exc):
             raise
-        with httpx.Client(timeout=180.0, trust_env=False) as client:
+        with httpx.Client(timeout=agent_timeout(), trust_env=False) as client:
             return client.post(url, headers=headers, json=body)
 
 

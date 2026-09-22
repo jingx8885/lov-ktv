@@ -117,6 +117,12 @@ def test_alignment_request_falls_back_and_checks_json(monkeypatch):
     assert calls[0]["temperature"] == 0.0
 
 
+def test_agent_read_timeout_defaults_to_six_minutes():
+    timeout = ja_lyrics.agent_timeout()
+    assert timeout.read == 360.0
+    assert timeout.connect == 30.0
+
+
 def test_same_fallback_name_is_not_tried_twice(monkeypatch):
     monkeypatch.setattr(ja_lyrics, "agent_model", lambda: "grok-4.6")
     assert ja_lyrics.agent_model_chain() == ["grok-4.6"]
