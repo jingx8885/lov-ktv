@@ -268,6 +268,11 @@ export async function applyRoom(room) {
   }
   const { itemKey, mediaRev } = roomItemIdentity(now);
   if (shouldReloadRoomItem(state.lastItem, state.lastMediaRev, now)) {
+    const playing = $("karaoke");
+    const sameItem = !!state.lastItem && state.lastItem === itemKey;
+    // A new media revision of the song already on stage is a file refresh,
+    // not a new pick. Dropping the clock here is what restarts it on enqueue.
+    const kept = sameItem ? Number(playing && playing.currentTime) || resumeFor(now.song_id) || 0 : 0;
     state.lastItem = itemKey;
     state.lastMediaRev = mediaRev;
     clearLyricPlate();
@@ -276,6 +281,7 @@ export async function applyRoom(room) {
     state.lyrics = { cues: [] };
     state.skeleton = null;
     clearResume();
+    if (kept > 1) rememberResume(now.song_id, kept);
     clearTrackFallback();
     stopAudioOnly();
     stopNativeMtv();
@@ -390,9 +396,20 @@ export function startPlayback() {
     }
     return;
   }
-  clearResume();
+  const keptAt = resumeFor(songId);
+  if (!(keptAt > 1)) clearResume();
   state.mediaStall = 0;
   karaoke.preload = "auto";
+  karaoke.addEventListener(
+    "loadedmetadata",
+    () => {
+      if (!(keptAt > 1)) return;
+      try {
+        karaoke.currentTime = keptAt;
+      } catch (err) {}
+    },
+    { once: true }
+  );
   karaoke.src = mediaUrl(songId, activeTrackName(songId));
   karaoke.dataset.track = activeTrackName(songId);
   bindKaraokeFallback(karaoke, songId);

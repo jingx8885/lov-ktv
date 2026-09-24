@@ -264,7 +264,12 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     # TV playback has one audio element; changing original/backing replaces
     # its source instead of running a second track and synchronising it.
     assert "export function ensureActiveTrack" in mix
+    assert "export function sameMediaSrc" in mix
+    assert "sameMediaSrc(item, url)" in mix
+    assert "audio.addEventListener(" in mix
+    assert mix.index("audio.addEventListener(") < mix.index("audio.src = url")
     assert 'audio.src = url' in mix
+    assert "if (kept > 1) rememberResume(now.song_id, kept);" in tick
     assert 'id="vocal"' not in html
     assert "if (stamp === state.lastRoomStamp) return;" in tick
     assert "karaoke.readyState >= 3" in tick
