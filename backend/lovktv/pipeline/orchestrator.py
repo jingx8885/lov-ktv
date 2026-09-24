@@ -31,6 +31,7 @@ from lovktv.pipeline.clock import (
 )
 from lovktv.pipeline.constants import HOP_MS
 from lovktv.pipeline.energy import _finalize_line_bounds
+from lovktv.pipeline.energy import lrc_energy_match as _lrc_energy_match
 from lovktv.pipeline.energy import merge_with_energy as _merge_with_energy
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
@@ -382,7 +383,11 @@ def align_lyrics(
             duration = duration_ms or 60_000
             work = _assign_plain_lines(plain, phrases or regions, duration)
         elif timed:
-            shift = _estimate_lrc_offset(timed, phrases)
+            # A pre-timed LRC that already sits on vocal energy must keep its
+            # clock. estimate_lrc_offset only looks at the first phrase start,
+            # so a quiet intro it missed will drag every later line late.
+            score = _lrc_energy_match(timed, envelope, hop_ms)
+            shift = 0 if score.get("accepted") else _estimate_lrc_offset(timed, phrases)
             shifted = []
             for item in timed:
                 row = dict(item)

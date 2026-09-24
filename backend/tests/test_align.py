@@ -252,6 +252,34 @@ def test_late_vocals_shift_official_lrc():
     assert timeline["cues"][1]["start_ms"] >= 33000
 
 
+def test_trusted_lrc_is_not_pulled_onto_a_later_onset():
+    hop = 20
+    # The detector misses the quiet opening woah, then sees the next phrase.
+    # Later official stamps already land on voice, so the whole clock stays.
+    env = _pulse(
+        130,
+        hop,
+        [(8.34, 8.98), (14.48, 17.66), (55.78, 60.60), (112.50, 117.30)],
+    )
+    lines = [
+        {"ms": 3130, "text": "Woah"},
+        {"ms": 8404, "text": "Woah"},
+        {"ms": 15530, "text": "Woah"},
+        {"ms": 55788, "text": "Ladies and gents"},
+        {"ms": 112499, "text": "Oh this is the greatest show"},
+    ]
+    timeline = align_lyrics(
+        lines, "en", envelope=env, hop_ms=hop, duration_ms=180000
+    )
+    assert [cue["start_ms"] for cue in timeline["cues"]] == [
+        3130,
+        8404,
+        15530,
+        55788,
+        112499,
+    ]
+
+
 def test_lrc_with_existing_intro_voice_does_not_apply_global_shift():
     hop = 20
     env = _pulse(40, hop, [(3.0, 6.0), (8.0, 11.0), (14.0, 17.0)])
