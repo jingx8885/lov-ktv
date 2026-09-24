@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from starlette.requests import Request
 
 from lovktv.media.assets import versioned_response
-from lovktv.media.oss import oss_ready, public_url
+from lovktv.media.oss import oss_ready, public_url, published_names
 from lovktv.platform.runtime import WEB_ROOT, media_root
 
 router = APIRouter()
@@ -32,6 +32,12 @@ def media(song_id: str, name: str, request: Request):
     cache = (
         "public, max-age=31536000, immutable" if rev else "no-cache, must-revalidate"
     )
+    # Published playback files live on OSS. A local copy is only the processing
+    # leftover; serving it made the TV cache pull the whole song from this
+    # machine instead of the OSS object.
+    published = published_names(path.parent) if oss_ready() else None
+    if published is not None and name in published:
+        return RedirectResponse(_oss_location(song_id, name, rev), status_code=302)
     if path.exists():
         return FileResponse(
             path,
@@ -39,11 +45,15 @@ def media(song_id: str, name: str, request: Request):
             headers={"Access-Control-Allow-Origin": "*", "Cache-Control": cache},
         )
     if oss_ready():
-        url = public_url(song_id, name)
-        if rev:
-            url = f"{url}?v={quote(rev, safe='')}"
-        return RedirectResponse(url, status_code=302)
+        return RedirectResponse(_oss_location(song_id, name, rev), status_code=302)
     raise HTTPException(404)
+
+
+def _oss_location(song_id: str, name: str, rev: str) -> str:
+    url = public_url(song_id, name)
+    if rev:
+        url = f"{url}?v={quote(rev, safe='')}"
+    return url
 
 
 @router.get("/m.html")

@@ -93,6 +93,25 @@ def public_url(song_id: str, name: str) -> str:
     return f"{base}/{object_key(song_id, name)}"
 
 
+def published_names(folder: Path) -> set[str] | None:
+    """Names recorded in ``oss.json``, or None when this song was never published.
+
+    A missing marker means the folder is still local-only (in progress, or OSS
+    is off). An empty set means the marker exists but lists nothing.
+    """
+    marker = folder / "oss.json"
+    if not marker.is_file():
+        return None
+    try:
+        data = json.loads(marker.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    files = data.get("files") if isinstance(data, dict) else None
+    if not isinstance(files, list):
+        return set()
+    return {str(name) for name in files if str(name)}
+
+
 def _content_type(name: str) -> str:
     explicit = {
         ".mp3": "audio/mpeg",

@@ -81,6 +81,51 @@ def test_media_redirects_to_oss_when_local_missing(tmp_path, monkeypatch):
     )
 
 
+def test_media_redirects_published_file_even_when_local_copy_exists(tmp_path, monkeypatch):
+    monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
+    monkeypatch.setenv("ALIYUN_OSS_ENABLED", "true")
+    monkeypatch.setenv("ALIYUN_OSS_ACCESS_KEY_ID", "idididididididididididi")
+    monkeypatch.setenv("ALIYUN_OSS_ACCESS_KEY_SECRET", "secret")
+    monkeypatch.setenv("ALIYUN_OSS_ENDPOINT", "oss-cn-shenzhen.aliyuncs.com")
+    monkeypatch.setenv("ALIYUN_OSS_BUCKET_NAME", "lovbrowser")
+    monkeypatch.setenv("LOVKTV_OSS_PREFIX", "lovktv")
+    monkeypatch.setenv(
+        "ALIYUN_OSS_DOWNLOAD_DOMAIN", "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com"
+    )
+    from importlib import reload
+
+    from lovktv import main
+    from lovktv.core import config
+    from lovktv.media import oss
+    from lovktv.storage import store
+
+    reload(config)
+    reload(oss)
+    reload(main)
+    store.DB_PATH = tmp_path / "t.sqlite"
+    store.MEDIA_DIR = tmp_path / "media"
+    store.init_db()
+    config.MEDIA_DIR = tmp_path / "media"
+    folder = tmp_path / "media" / "abc123"
+    folder.mkdir(parents=True)
+    (folder / "karaoke.m4a").write_bytes(b"local-audio")
+    (folder / "vocals.wav").write_bytes(b"stem")
+    (folder / "oss.json").write_text(
+        '{"files":["karaoke.m4a","oss.json"],"media_rev":"abc"}',
+        encoding="utf-8",
+    )
+    with TestClient(main.app) as client:
+        published = client.get("/media/abc123/karaoke.m4a", follow_redirects=False)
+        stem = client.get("/media/abc123/vocals.wav", follow_redirects=False)
+    assert published.status_code == 302
+    assert (
+        published.headers["location"]
+        == "https://lovbrowser.oss-cn-shenzhen.aliyuncs.com/lovktv/abc123/karaoke.m4a"
+    )
+    assert stem.status_code == 200
+    assert stem.content == b"stem"
+
+
 def test_publish_files_includes_every_json(tmp_path, monkeypatch):
     monkeypatch.setenv("LOVKTV_DATA", str(tmp_path))
     from importlib import reload
