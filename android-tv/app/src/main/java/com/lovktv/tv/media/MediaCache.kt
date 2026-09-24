@@ -51,12 +51,29 @@ class MediaCache(private val root: File) {
     }
 
     fun putFile(songId: String, name: String, bytes: ByteArray): File? {
+        return putStream(songId, name) { part ->
+            part.writeBytes(bytes)
+            true
+        }
+    }
+
+    /** Writes through a temp file so a large download is not held in memory. */
+    fun putStream(songId: String, name: String, write: (File) -> Boolean): File? {
         val dest = file(songId, name) ?: return null
         dest.parentFile?.mkdirs()
         val part = File(dest.parentFile, "$name.part")
-        part.writeBytes(bytes)
+        if (part.exists()) part.delete()
+        val ok = try {
+            write(part)
+        } catch (_: Exception) {
+            false
+        }
+        if (!ok || !part.exists() || part.length() <= 0) {
+            part.delete()
+            return null
+        }
         if (dest.exists()) dest.delete()
-        part.renameTo(dest)
+        if (!part.renameTo(dest)) return null
         return dest
     }
 

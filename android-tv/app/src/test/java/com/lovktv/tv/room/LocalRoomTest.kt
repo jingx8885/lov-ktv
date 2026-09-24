@@ -62,7 +62,7 @@ class LocalRoomTest {
         assertEquals("separating", snap.nowPlaying?.status)
         snap = room.enqueue("OFF2", "missing")
         assertEquals(listOf("busy", "missing"), snap.queue.map { it.songId })
-        assertEquals("fetching", snap.queue.first { it.songId == "missing" }.status)
+        assertEquals("queued", snap.queue.first { it.songId == "missing" }.status)
         live["missing"] = CachedSong("missing", "新歌", "x", "zh", "ready", listOf("karaoke.m4a"), true, "rev-m")
         room.refreshSong("missing")
         snap = room.snapshot("OFF2")

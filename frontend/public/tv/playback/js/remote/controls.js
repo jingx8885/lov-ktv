@@ -7,7 +7,7 @@ import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
 import { applyMix, activeTrackName, trackFallbackActive, clearTrackFallback } from "../media/mix.js";
 import { startPlayback, stopPlayback, pauseAudio, tick, wantsResume } from "../runtime/tick.js";
-import { applyLyricSize, cycleLyricSize, lyricSizeLabel, nudgeLyricSize } from "../lyric/size.js";
+import { applyLyricSize, lyricSizeLabel, nudgeLyricSize } from "../lyric/size.js";
 
 function currentCode() {
   return roomCode() || (state.room && state.room.code) || "";
@@ -266,7 +266,8 @@ function openProcessSetup() {
 }
 
 function onRemoteKey(event) {
-  if (event.repeat) return;
+  const sizing = settingsOpen() && (event.key === "ArrowLeft" || event.key === "ArrowRight");
+  if (event.repeat && !sizing) return;
   const el = event.target;
   const tag = el && "tagName" in el ? String(el.tagName) : "";
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
@@ -351,7 +352,7 @@ export function bindRemote() {
   if ($("tvVocal")) $("tvVocal").onclick = () => toggleVocal();
   if ($("tvLyricSize")) {
     $("tvLyricSize").onclick = () => {
-      cycleLyricSize();
+      nudgeLyricSize(1);
       paintSettings();
     };
   }

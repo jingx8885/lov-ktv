@@ -35,6 +35,7 @@ export default {
 
   "status.queued": "Queued",
   "status.fetching": "Finding track",
+  "status.caching": "Caching",
   "status.separating": "Splitting vocals",
   "status.aligning": "Aligning lyrics to vocals",
   "status.annotating": "Adding Japanese readings",

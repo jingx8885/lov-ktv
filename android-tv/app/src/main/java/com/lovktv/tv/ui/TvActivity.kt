@@ -154,20 +154,20 @@ class TvActivity : Activity(), TvHost {
         })
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == KeyEvent.KEYCODE_MENU || keyCode == KeyEvent.KEYCODE_INFO) {
-            sendRemote("settings")
-            return true
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val action = remoteAction(event.keyCode) ?: return super.dispatchKeyEvent(event)
+        // Take D-pad before WebView. After the settings sheet focuses a button,
+        // spatial navigation consumes up/down and the page never sees them.
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+            sendRemote(action)
         }
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            sendRemote("back")
-            return true
-        }
-        if (event != null && RemoteKeys.interceptInNative(keyCode)) {
-            sendRemote(RemoteKeys.jsAction(keyCode) ?: return super.onKeyDown(keyCode, event))
-            return true
-        }
-        return super.onKeyDown(keyCode, event)
+        return true
+    }
+
+    private fun remoteAction(keyCode: Int): String? {
+        if (keyCode == KeyEvent.KEYCODE_BACK) return "back"
+        if (!RemoteKeys.interceptInNative(keyCode)) return null
+        return RemoteKeys.jsAction(keyCode)
     }
 
     private fun sendRemote(action: String) {

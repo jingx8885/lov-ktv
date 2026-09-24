@@ -35,6 +35,7 @@ export default {
 
   "status.queued": "排队",
   "status.fetching": "搜歌下载",
+  "status.caching": "缓存中",
   "status.separating": "人声分离",
   "status.aligning": "按人声对齐歌词",
   "status.annotating": "日语注音",

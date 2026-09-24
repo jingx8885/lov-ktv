@@ -1,22 +1,25 @@
-import { t } from "../../../../shared/i18n/js/i18n.js";
-
-export const LYRIC_SIZES = ["s", "m", "l", "xl"];
 export const LYRIC_SIZE_KEY = "tvLyricSize";
-export const DEFAULT_LYRIC_SIZE = "m";
+export const LYRIC_SIZE_MIN = 70;
+export const LYRIC_SIZE_MAX = 250;
+export const LYRIC_SIZE_STEP = 10;
+export const DEFAULT_LYRIC_SIZE = 100;
 
-const SIZE_LABEL = {
-  s: "tv.lyricSizeS",
-  m: "tv.lyricSizeM",
-  l: "tv.lyricSizeL",
-  xl: "tv.lyricSizeXl"
+const LEGACY_SIZE = {
+  s: 80,
+  m: 100,
+  l: 130,
+  xl: 160
 };
 
 /** @param {unknown} value */
 export function normLyricSize(value) {
-  const size = String(value || "")
-    .trim()
-    .toLowerCase();
-  return LYRIC_SIZES.includes(size) ? size : DEFAULT_LYRIC_SIZE;
+  if (value == null || value === "") return DEFAULT_LYRIC_SIZE;
+  const raw = String(value).trim().toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(LEGACY_SIZE, raw)) return LEGACY_SIZE[raw];
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return DEFAULT_LYRIC_SIZE;
+  const stepped = Math.round(n / LYRIC_SIZE_STEP) * LYRIC_SIZE_STEP;
+  return Math.max(LYRIC_SIZE_MIN, Math.min(LYRIC_SIZE_MAX, stepped));
 }
 
 export function storedLyricSize() {
@@ -29,43 +32,45 @@ export function storedLyricSize() {
 
 export function lyricSize() {
   if (typeof document === "undefined" || !document.body) return storedLyricSize();
-  return normLyricSize(document.body.dataset.lyricSize || storedLyricSize());
+  const current = document.body.dataset.lyricSize;
+  return normLyricSize(current == null || current === "" ? storedLyricSize() : current);
+}
+
+function clearFittedSize(el) {
+  el.dataset.lyricFit = "";
+  el.style.fontSize = "";
+  el.style.width = "";
+  const words = el.querySelector(".line-words");
+  if (!words) return;
+  words.style.flexWrap = "";
+  words.style.width = "";
 }
 
 /** @param {unknown} [value] */
 export function applyLyricSize(value) {
   const size = normLyricSize(value == null ? storedLyricSize() : value);
   try {
-    localStorage.setItem(LYRIC_SIZE_KEY, size);
+    localStorage.setItem(LYRIC_SIZE_KEY, String(size));
   } catch (_) {}
   if (typeof document !== "undefined" && document.body) {
-    document.body.dataset.lyricSize = size;
+    document.body.dataset.lyricSize = String(size);
+    document.body.style.setProperty("--tv-lyric-scale", String(size / 100));
     ["lyricLeft", "lyricRight"].forEach((id) => {
       const el = document.getElementById(id);
-      if (!el) return;
-      el.dataset.lyricFit = "";
-      el.style.fontSize = "";
+      if (el) clearFittedSize(el);
     });
   }
   return size;
 }
 
-/** @param {number} delta */
+/** @param {number} delta steps, usually -1 or 1 */
 export function nudgeLyricSize(delta) {
-  const sizes = LYRIC_SIZES;
-  const index = sizes.indexOf(lyricSize());
-  const next = Math.max(0, Math.min(sizes.length - 1, index + Number(delta || 0)));
-  return applyLyricSize(sizes[next]);
+  const step = Number(delta || 0) * LYRIC_SIZE_STEP;
+  return applyLyricSize(lyricSize() + step);
 }
 
-export function cycleLyricSize() {
-  const sizes = LYRIC_SIZES;
-  const index = sizes.indexOf(lyricSize());
-  return applyLyricSize(sizes[(index + 1) % sizes.length]);
-}
-
-/** @param {string} [size] */
+/** @param {number} [size] */
 export function lyricSizeLabel(size) {
-  const key = SIZE_LABEL[normLyricSize(size || lyricSize())] || SIZE_LABEL.m;
-  return `‹ ${t(key)} ›`;
+  const n = normLyricSize(size == null ? lyricSize() : size);
+  return `‹ ${n}% ›`;
 }

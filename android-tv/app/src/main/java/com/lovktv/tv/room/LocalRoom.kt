@@ -89,6 +89,11 @@ class LocalRoom(
     fun activeCode(): String = rooms.keys.lastOrNull().orEmpty()
 
     @Synchronized
+    fun queuedSongIds(): List<String> {
+        return rooms.values.flatMap { room -> room.queue.map { it.songId } }.distinct()
+    }
+
+    @Synchronized
     fun enqueue(code: String, songId: String): RoomSnap {
         val room = ensure(code)
         val id = songId.trim()
@@ -208,9 +213,17 @@ class LocalRoom(
 
     private fun itemStatus(song: CachedSong?): String {
         return when {
-            song == null -> "fetching"
+            song == null -> "queued"
             song.singable -> "ready"
-            else -> song.status.ifBlank { "fetching" }
+            else -> knownStatus(song.status)
+        }
+    }
+
+    /** Status values the public phone page already translates. `caching` is newer than that page. */
+    private fun knownStatus(status: String): String {
+        return when (status) {
+            "", "caching" -> "queued"
+            else -> status
         }
     }
 

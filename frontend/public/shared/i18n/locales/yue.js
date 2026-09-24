@@ -35,6 +35,7 @@ export default {
 
   "status.queued": "排隊",
   "status.fetching": "搵歌下載",
+  "status.caching": "快取中",
   "status.separating": "人聲分離",
   "status.aligning": "按人聲對齊歌詞",
   "status.annotating": "日語注音",

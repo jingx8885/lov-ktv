@@ -35,6 +35,7 @@ export default {
 
   "status.queued": "待機中",
   "status.fetching": "曲を取得中",
+  "status.caching": "キャッシュ中",
   "status.separating": "ボーカル分離",
   "status.aligning": "ボーカルに歌詞を合わせる",
   "status.annotating": "日本語の読みを付与",

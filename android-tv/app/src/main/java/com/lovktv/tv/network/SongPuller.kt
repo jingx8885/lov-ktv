@@ -15,6 +15,7 @@ class SongPuller(
     private val cache: MediaCache,
     private val http: OkHttpClient,
     private val processOrigin: () -> String,
+    private val priorityIds: () -> List<String> = { emptyList() },
     private val onSong: (String) -> Unit = {},
 ) {
     private val running = AtomicBoolean(false)
@@ -43,11 +44,15 @@ class SongPuller(
         if (origin.isBlank()) return
         val list = getJson(HostGateway.remoteUrl(origin, "/api/songs", null)) ?: return
         val songs = list.optJSONArray("songs") ?: return
-        for (i in 0 until songs.length()) {
-            val row = songs.optJSONObject(i) ?: continue
-            if (row.optString("status") != "ready") continue
-            pullSong(origin, row.optString("id"), row)
-        }
+        val first = priorityIds().filter { MediaCache.safeId(it) }.toSet()
+        val rows = buildList {
+            for (i in 0 until songs.length()) {
+                val row = songs.optJSONObject(i) ?: continue
+                if (row.optString("status") != "ready") continue
+                add(row)
+            }
+        }.sortedBy { if (it.optString("id") in first) 0 else 1 }
+        for (row in rows) pullSong(origin, row.optString("id"), row)
     }
 
     fun pullSong(origin: String, songId: String, seed: JSONObject? = null) {
@@ -64,6 +69,20 @@ class SongPuller(
         val wasSingable = cached?.singable == true
         val stale = remoteRev.isNotBlank() && cached?.mediaRev != remoteRev
         val wanted = MediaCache.wantedFiles(remoteFiles).ifEmpty { MediaCache.WANTED }
+        val title = detail.optString("title", seed?.optString("title").orEmpty()).ifBlank { cached?.title.orEmpty() }
+        if (!wasSingable) {
+            cache.writeMeta(
+                mapOf(
+                    "id" to songId,
+                    "title" to title.ifBlank { songId },
+                    "artist" to detail.optString("artist", seed?.optString("artist").orEmpty()),
+                    "language" to detail.optString("language", seed?.optString("language", "zh").orEmpty()),
+                    "status" to "queued",
+                    "media_rev" to cached?.mediaRev.orEmpty(),
+                ),
+            )
+            if (title.isNotBlank()) onSong(songId)
+        }
         var complete = true
         for (name in wanted) {
             val dest = cache.file(songId, name)
@@ -80,10 +99,10 @@ class SongPuller(
         cache.writeMeta(
             mapOf(
                 "id" to songId,
-                "title" to detail.optString("title", seed?.optString("title").orEmpty()),
+                "title" to title.ifBlank { songId },
                 "artist" to detail.optString("artist", seed?.optString("artist").orEmpty()),
                 "language" to detail.optString("language", seed?.optString("language", "zh").orEmpty()),
-                "status" to "ready",
+                "status" to if (complete) "ready" else "queued",
                 "media_rev" to if (complete) remoteRev else cached?.mediaRev.orEmpty(),
             ),
             wanted,
@@ -95,11 +114,15 @@ class SongPuller(
         val query = if (rev.isNotBlank()) "v=$rev" else null
         val url = HostGateway.remoteUrl(origin, "/media/$songId/$name", query)
         val request = Request.Builder().url(url).build()
-        http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) return
-            val bytes = response.body?.bytes() ?: return
-            if (bytes.isEmpty()) return
-            cache.putFile(songId, name, bytes)
+        cache.putStream(songId, name) { part ->
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@putStream false
+                val body = response.body ?: return@putStream false
+                body.byteStream().use { input ->
+                    part.outputStream().use { output -> input.copyTo(output, 16 * 1024) }
+                }
+                true
+            }
         }
     }
 

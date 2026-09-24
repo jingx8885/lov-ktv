@@ -95,6 +95,11 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "paintKaraokeLine($(\"lyricLeft\")" in paint_tv
     assert "paintKaraokeLine($(\"lyricRight\")" in paint_tv
     assert "export function applyLyricSize" in size
+    assert "export const LYRIC_SIZE_MIN = 70" in size
+    assert "export const LYRIC_SIZE_MAX = 250" in size
+    assert "export const LYRIC_SIZE_STEP = 10" in size
+    assert "data-lyric-size" not in tv
+    assert 'words.style.flexWrap = "wrap"' in paint
     assert "applyLyricSize()" in remote
     assert "nudgeFocusedSetting(-1)" in remote
     assert "nudgeFocusedSetting(1)" in remote

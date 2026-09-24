@@ -149,7 +149,7 @@ export function cueLine(cue) {
 /** @param {LyricCue} cue */
 export function cueRomaji(cue) {
   const bits = (cue.tokens || [])
-    .map((tok) => String(tok.romaji || tok.pronunciation?.value || "").trim())
+    .map((tok) => String(tok.romaji || (tok.pronunciation && tok.pronunciation.value) || "").trim())
     .filter(Boolean);
   return bits.join(" ") || String(cue.romaji || "").trim();
 }
@@ -164,7 +164,8 @@ function isKanjiText(value) {
 
 function tokenHasAnno(tok) {
   return !!(
-    String(tok.romaji || tok.pronunciation?.value || "").trim() || String(tok.translation || tok.zh || "").trim()
+    String(tok.romaji || (tok.pronunciation && tok.pronunciation.value) || "").trim() ||
+    String(tok.translation || tok.zh || "").trim()
   );
 }
 
@@ -250,23 +251,54 @@ function tvLineMaxWidth(box) {
   return Math.floor(Math.max(0, plate - pad - 8));
 }
 
+function contentInkWidth(box, content) {
+  const boxMax = box.style.maxWidth;
+  const contentMax = content.style.maxWidth;
+  box.style.maxWidth = "none";
+  content.style.maxWidth = "none";
+  const width = Math.ceil(content.scrollWidth);
+  box.style.maxWidth = boxMax;
+  content.style.maxWidth = contentMax;
+  return width;
+}
+
+function widestToken(content) {
+  const nodes = content.querySelectorAll(".tok, .rb");
+  let max = 0;
+  nodes.forEach((node) => {
+    max = Math.max(max, Math.ceil(node.getBoundingClientRect().width));
+  });
+  return max || Math.ceil(content.scrollWidth);
+}
+
 function fitTvLyricLine(box) {
   box.style.fontSize = "";
+  box.style.width = "";
   const words = box.querySelector(".line-words");
-  if (words) words.style.flexWrap = "";
+  if (words) {
+    words.style.flexWrap = "";
+    words.style.width = "";
+  }
   const content = words || box.querySelector(".rb");
   if (!content) return;
   const maxW = tvLineMaxWidth(box);
   if (maxW <= 0) return;
-  const need = () => Math.ceil(content.scrollWidth);
-  if (need() <= maxW + 1) return;
+  if (contentInkWidth(box, content) <= maxW + 1) return;
+  // Long cues wrap at the chosen size. Shrinking them back onto one line
+  // made every size setting land on the same fitted width. max-width also
+  // clamps scrollWidth, so the overflow check has to use the uncapped ink.
+  box.style.width = "100%";
+  if (words) {
+    words.style.flexWrap = "wrap";
+    words.style.width = "100%";
+  }
   let size = parseFloat(getComputedStyle(box).fontSize) || 56;
-  const min = 22;
-  for (let i = 0; i < 4 && need() > maxW + 1 && size > min; i += 1) {
-    size = Math.max(min, size * (maxW / Math.max(need(), 1)) * 0.96);
+  const min = Math.max(36, size * 0.85);
+  for (let i = 0; i < 3 && widestToken(content) > maxW + 8 && size > min + 0.5; i += 1) {
+    const need = widestToken(content);
+    size = Math.max(min, size * (maxW / Math.max(need, 1)) * 0.98);
     box.style.fontSize = `${size.toFixed(2)}px`;
   }
-  if (words && need() > maxW + 1) words.style.flexWrap = "wrap";
 }
 
 function fitLyricLine(el) {
@@ -395,7 +427,7 @@ export function renderCue(cue, t, mode) {
       const glossHtml = keepGloss ? `<span class="gloss">${escapeHtml(gloss)}</span>` : "";
       const latin = isLatinSurface(surface);
       const next = tokens[i + 1];
-      const nextSurface = String(next?.surface || next?.text || "");
+      const nextSurface = String((next && (next.surface || next.text)) || "");
       const space = tokenGapHtml(surface, nextSurface, script);
       return `<span class="tok${latin ? " latin" : ""}"><span class="anno">${rubyHtml(tok, keepRt)}${body}${romaHtml}${glossHtml}</span></span>${space}`;
     })

@@ -158,7 +158,10 @@ def test_tv_does_not_restart_on_network_stall():
     assert "KEYCODE_DPAD_RIGHT" in keys
     assert "nudgeLeft" in keys
     assert "nudgeRight" in keys
+    assert "dispatchKeyEvent" in activity
     assert "KeyEvent.KEYCODE_DPAD_CENTER," in keys.split("fun interceptInNative")[1]
+    assert "KeyEvent.KEYCODE_DPAD_UP" in keys.split("fun interceptInNative")[1]
+    assert "KeyEvent.KEYCODE_DPAD_DOWN" in keys.split("fun interceptInNative")[1]
     assert "KeyEvent.KEYCODE_DPAD_LEFT" in keys.split("fun interceptInNative")[1]
     mtv = (ROOT / "tv" / "playback" / "js" / "media" / "mtv.js").read_text(
         encoding="utf-8"

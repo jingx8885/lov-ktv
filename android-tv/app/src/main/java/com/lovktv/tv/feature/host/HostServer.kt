@@ -64,7 +64,7 @@ class HostServer(
     private val apiHttp = OkHttpClient.Builder().connectTimeout(12, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(20, TimeUnit.SECONDS).followRedirects(true).followSslRedirects(true).build()
     private val webSockets = HostWebSocketHandler(localRoom, http) { this.processOrigin }
-    private val puller = SongPuller(cache, http, { this.processOrigin }) { songId ->
+    private val puller = SongPuller(cache, http, { this.processOrigin }, { localRoom.queuedSongIds() }) { songId ->
         localRoom.refreshSong(songId)
         val code = HostRuntime.roomCode.ifBlank { localRoom.activeCode() }
         if (code.isNotBlank()) webSockets.broadcastAsync(code, localRoom.snapshot(code).toJson())

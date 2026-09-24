@@ -2,10 +2,6 @@
 body.tv {
   --tv-lyric-scale: 1;
 }
-body.tv[data-lyric-size="s"] { --tv-lyric-scale: 0.82; }
-body.tv[data-lyric-size="m"] { --tv-lyric-scale: 1; }
-body.tv[data-lyric-size="l"] { --tv-lyric-scale: 1.28; }
-body.tv[data-lyric-size="xl"] { --tv-lyric-scale: 1.58; }
 .tv .lyrics > .lyric-plate {
   display: flex;
   flex-direction: column;
