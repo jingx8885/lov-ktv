@@ -271,8 +271,17 @@ function widestToken(content) {
   return max || Math.ceil(content.scrollWidth);
 }
 
+/** Pixel size for the TV subtitle. Old WebViews drop clamp(), so the setting is applied directly. */
+function tvLyricFontPx() {
+  const raw = document.body && document.body.dataset.lyricSize;
+  const n = Number(raw);
+  const scale = Number.isFinite(n) && n > 0 ? n / 100 : 1;
+  return Math.round(64 * scale);
+}
+
 function fitTvLyricLine(box) {
-  box.style.fontSize = "";
+  const chosen = tvLyricFontPx();
+  box.style.fontSize = `${chosen}px`;
   box.style.width = "";
   const words = box.querySelector(".line-words");
   if (words) {
@@ -292,8 +301,8 @@ function fitTvLyricLine(box) {
     words.style.flexWrap = "wrap";
     words.style.width = "100%";
   }
-  let size = parseFloat(getComputedStyle(box).fontSize) || 56;
-  const min = Math.max(36, size * 0.85);
+  let size = chosen;
+  const min = Math.min(chosen, Math.max(4, chosen * 0.85));
   for (let i = 0; i < 3 && widestToken(content) > maxW + 8 && size > min + 0.5; i += 1) {
     const need = widestToken(content);
     size = Math.max(min, size * (maxW / Math.max(need, 1)) * 0.98);

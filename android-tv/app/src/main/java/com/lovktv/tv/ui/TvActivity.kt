@@ -3,6 +3,7 @@ package com.lovktv.tv.ui
 import com.lovktv.tv.R
 
 import com.lovktv.tv.feature.host.HostService
+import com.lovktv.tv.platform.Prefs
 import com.lovktv.tv.media.SilentMtv
 import com.lovktv.tv.feature.host.HostRuntime
 import android.annotation.SuppressLint
@@ -132,6 +133,12 @@ class TvActivity : Activity(), TvHost {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    override fun lyricSize(): String = Prefs.lyricSize(this)
+
+    override fun saveLyricSize(value: String) {
+        Prefs.saveLyricSize(this, value)
     }
 
     private fun loadWhenReady() {

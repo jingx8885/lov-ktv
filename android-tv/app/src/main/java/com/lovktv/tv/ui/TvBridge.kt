@@ -45,6 +45,14 @@ class TvBridge(private val host: TvHost) {
 
     @JavascriptInterface
     fun version(): String = host.appVersion()
+
+    @JavascriptInterface
+    fun lyricSize(): String = host.lyricSize()
+
+    @JavascriptInterface
+    fun saveLyricSize(value: String) {
+        host.saveLyricSize(value)
+    }
 }
 
 interface TvHost {
@@ -59,4 +67,6 @@ interface TvHost {
     fun mtvPlaying(): Boolean
     fun openSetup()
     fun appVersion(): String
+    fun lyricSize(): String
+    fun saveLyricSize(value: String)
 }

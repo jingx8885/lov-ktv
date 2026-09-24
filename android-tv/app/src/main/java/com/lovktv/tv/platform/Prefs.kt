@@ -8,6 +8,7 @@ object Prefs {
     private const val FILE = "lovktv"
     private const val KEY_SERVER = "server_url"
     private const val KEY_ROOM = "room_code"
+    private const val KEY_LYRIC_SIZE = "lyric_size"
     private const val LEGACY_DEFAULT_SERVER = "http://lov-ktv.local:8787"
     private val ROOM_RE = Regex("^[A-Z0-9]{4,12}$")
 
@@ -52,6 +53,28 @@ object Prefs {
             .putString(KEY_ROOM, code)
             .apply()
         return code
+    }
+
+    /** Empty when the TV has never chosen a subtitle size. */
+    fun lyricSize(context: Context): String {
+        return context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .getString(KEY_LYRIC_SIZE, "")
+            .orEmpty()
+    }
+
+    fun saveLyricSize(context: Context, raw: String): String {
+        val size = normalizeLyricSize(raw)
+        context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LYRIC_SIZE, size)
+            .apply()
+        return size
+    }
+
+    fun normalizeLyricSize(raw: String?): String {
+        val n = raw?.trim()?.toIntOrNull() ?: return "100"
+        val stepped = Math.round(n / 10.0).toInt() * 10
+        return stepped.coerceIn(10, 250).toString()
     }
 
     fun validRoom(raw: String): String {

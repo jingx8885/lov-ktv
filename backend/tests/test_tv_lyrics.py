@@ -14,8 +14,9 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
     assert "--tv-lyric-scale: 1" in tv
-    assert "clamp(36px, 3.4vw, 68px)" in tv
-    assert "font-size: calc(clamp(36px, 3.4vw, 68px) * var(--tv-lyric-scale))" in tv
+    assert "font-size: 64px;" in tv
+    assert "font-size: calc(64px * var(--tv-lyric-scale, 1))" in tv
+    assert "clamp(36px, 3.4vw, 68px)" not in tv
     assert "lyric-left" in tv
     assert "lyric-right" in tv
     assert "font-size: 42px" not in tv
@@ -64,6 +65,8 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
     assert "function fitTvLyricLine" in paint
+    assert "function tvLyricFontPx" in paint
+    assert "dataset.lyricSize" in paint
     assert 'const keepGloss = showExtra && script !== "zh"' in paint
     assert "function tokenGapHtml" in paint
     assert "align-items: flex-start" in shared
@@ -95,7 +98,8 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "paintKaraokeLine($(\"lyricLeft\")" in paint_tv
     assert "paintKaraokeLine($(\"lyricRight\")" in paint_tv
     assert "export function applyLyricSize" in size
-    assert "export const LYRIC_SIZE_MIN = 70" in size
+    assert "export const LYRIC_SIZE_MIN = 10" in size
+    assert "native.saveLyricSize" in size
     assert "export const LYRIC_SIZE_MAX = 250" in size
     assert "export const LYRIC_SIZE_STEP = 10" in size
     assert "data-lyric-size" not in tv

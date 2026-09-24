@@ -1,5 +1,5 @@
 export const LYRIC_SIZE_KEY = "tvLyricSize";
-export const LYRIC_SIZE_MIN = 70;
+export const LYRIC_SIZE_MIN = 10;
 export const LYRIC_SIZE_MAX = 250;
 export const LYRIC_SIZE_STEP = 10;
 export const DEFAULT_LYRIC_SIZE = 100;
@@ -22,7 +22,40 @@ export function normLyricSize(value) {
   return Math.max(LYRIC_SIZE_MIN, Math.min(LYRIC_SIZE_MAX, stepped));
 }
 
+function nativeBridge() {
+  try {
+    return typeof window !== "undefined" ? window.LovKtvNative : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+/** Android TV keeps this outside the page, because the local port can change. */
+function nativeLyricSize() {
+  const native = nativeBridge();
+  if (!native || typeof native.lyricSize !== "function") return "";
+  try {
+    return String(native.lyricSize() || "");
+  } catch (_) {
+    return "";
+  }
+}
+
+function rememberLyricSize(size) {
+  const text = String(size);
+  try {
+    localStorage.setItem(LYRIC_SIZE_KEY, text);
+  } catch (_) {}
+  const native = nativeBridge();
+  if (!native || typeof native.saveLyricSize !== "function") return;
+  try {
+    native.saveLyricSize(text);
+  } catch (_) {}
+}
+
 export function storedLyricSize() {
+  const native = nativeLyricSize();
+  if (native) return normLyricSize(native);
   try {
     return normLyricSize(localStorage.getItem(LYRIC_SIZE_KEY));
   } catch (_) {
@@ -49,9 +82,7 @@ function clearFittedSize(el) {
 /** @param {unknown} [value] */
 export function applyLyricSize(value) {
   const size = normLyricSize(value == null ? storedLyricSize() : value);
-  try {
-    localStorage.setItem(LYRIC_SIZE_KEY, String(size));
-  } catch (_) {}
+  rememberLyricSize(size);
   if (typeof document !== "undefined" && document.body) {
     document.body.dataset.lyricSize = String(size);
     document.body.style.setProperty("--tv-lyric-scale", String(size / 100));
