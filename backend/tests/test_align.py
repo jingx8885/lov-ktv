@@ -884,3 +884,28 @@ def test_align_lyrics_uses_asr_word_times():
     ]
     assert tokens[1]["end_ms"] == 20020
     assert tokens[3]["start_ms"] == 20320
+
+
+def test_asr_window_prefers_strongest_match_over_early_approximation():
+    from lovktv.pipeline.matching import _best_asr_window
+
+    asr = [
+        {"text": "helo", "start_ms": 1000, "end_ms": 1300},
+        {"text": "hello", "start_ms": 9000, "end_ms": 9400},
+    ]
+    match = _best_asr_window(
+        "hello", asr, [item["text"] for item in asr], "en", 0, 0, 12000, 0.72
+    )
+    assert match is not None
+    assert match[1:] == (1, 2)
+
+
+def test_japanese_kanji_tokens_follow_kana_asr_spans():
+    asr = [
+        {"text": "せかい", "start_ms": 1200, "end_ms": 2200},
+        {"text": "よる", "start_ms": 2200, "end_ms": 2800},
+    ]
+    spans = asr_token_spans(["世界", "夜"], 1000, 3000, asr, "ja")
+    assert spans is not None
+    assert spans[0][1] == 2200
+    assert spans[1][0] == 2200

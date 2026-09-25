@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import re
-from statistics import median
 import unicodedata
 from difflib import SequenceMatcher
+from statistics import median
 from typing import Any
 
 from lovktv.pipeline.constants import *
-from lovktv.pipeline.lyrics import fold_ja_netease_kanji
+from lovktv.pipeline.lyrics import fold_ja_netease_kanji, reading_for
 
 _WORD = re.compile(r"[A-Za-z0-9']+")
 _JA_LEAD_FILLER = re.compile(r"^[あぁアァー]+")
@@ -137,6 +137,7 @@ def _cjk_asr_token_spans(
     start_ms: int,
     end_ms: int,
     asr_words: list[dict[str, Any]],
+    language: str = "zh",
 ) -> list[tuple[int, int]] | None:
     chars: list[tuple[str, int, int]] = []
     for word in _asr_window(asr_words, start_ms, end_ms):
@@ -158,18 +159,38 @@ def _cjk_asr_token_spans(
     total_chars = 0
     for piece in pieces:
         key = "".join(ch for ch in piece if not ch.isspace())
-        total_chars += len(key)
-        if not key:
+        # Japanese ASR commonly emits kana while the reference lyric keeps
+        # kanji.  Try the kana reading as a second spelling, but keep the
+        # displayed surface token and its actual ASR span unchanged.
+        variants = [key] if key else []
+        if language == "ja" and key:
+            try:
+                reading = "".join(ch for ch in reading_for(piece, "ja") if not ch.isspace())
+            except Exception:  # noqa: BLE001 - pykakasi is an optional fallback
+                reading = ""
+            if reading and reading not in variants:
+                variants.append(reading)
+        total_chars += max((len(item) for item in variants), default=0)
+        if not variants:
             hits.append(None)
             continue
         hay = "".join(char for char, _left, _right in chars[used:])
-        idx = hay.find(key)
-        if idx < 0 or idx > 2:
+        found = None
+        found_len = 0
+        for variant in variants:
+            idx = hay.find(variant)
+            if idx >= 0 and idx <= 2:
+                # Prefer the earliest valid spelling; this keeps repeated
+                # kana/kanji tokens monotonic and avoids skipping a syllable.
+                if found is None or idx < found:
+                    found = idx
+                    found_len = len(variant)
+        if found is None:
             hits.append(None)
             continue
-        found = used + idx
-        used = found + len(key)
-        matched_chars += len(key)
+        found += used
+        used = found + found_len
+        matched_chars += found_len
         left = max(start_ms, chars[found][1])
         right = min(end_ms, max(left + 40, chars[used - 1][2]))
         hits.append((left, right))
@@ -191,7 +212,7 @@ def asr_token_spans(
     if language == "en":
         return _en_asr_token_spans(pieces, start_ms, end_ms, asr_words)
     if language in {"ja", "zh", "yue"}:
-        return _cjk_asr_token_spans(pieces, start_ms, end_ms, asr_words)
+        return _cjk_asr_token_spans(pieces, start_ms, end_ms, asr_words, language)
     return None
 
 
@@ -333,7 +354,19 @@ def _best_asr_window(
     time_limit = (
         latest if latest is not None else int(asr_words[cursor]["start_ms"]) + 30000
     )
-    best: tuple[float, int, int] | None = None
+    # Do not return the first acceptable window.  Short hooks and repeated
+    # choruses often produce several above-threshold candidates; selecting the
+    # strongest candidate prevents an early approximate match from stealing a
+    # later exact line.  Time proximity is only a tie-breaker so text evidence
+    # remains authoritative.
+    target_ms = None
+    if earliest is not None and latest is not None:
+        target_ms = (earliest + latest) / 2
+    elif earliest is not None:
+        target_ms = earliest
+    elif latest is not None:
+        target_ms = latest
+    candidates: list[tuple[float, int, int]] = []
     for start in range(cursor, n):
         start_ms = int(asr_words[start]["start_ms"])
         if earliest is not None and start_ms < earliest:
@@ -357,15 +390,17 @@ def _best_asr_window(
                 prev_err = abs((local[2] - local[1]) - known_n)
                 if width_err < prev_err or (width_err == prev_err and end > local[2]):
                     local = (score, start, end)
-        if local is None:
-            continue
-        if local[0] >= min_score:
-            return local
-        if best is None or local[0] > best[0] + 0.01:
-            best = local
-    if best and best[0] >= min_score:
-        return best
-    return None
+        if local is not None:
+            candidates.append(local)
+    acceptable = [item for item in candidates if item[0] >= min_score]
+    if not acceptable:
+        return None
+    def rank(item: tuple[float, int, int]) -> tuple[float, float, int, int]:
+        score, start, end = item
+        distance = abs(int(asr_words[start]["start_ms"]) - target_ms) if target_ms is not None else 0
+        width_err = abs((end - start) - known_n)
+        return (score, -distance, -width_err, -start)
+    return max(acceptable, key=rank)
 
 
 def estimate_asr_offset(

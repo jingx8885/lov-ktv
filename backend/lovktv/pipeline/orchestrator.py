@@ -47,6 +47,9 @@ from lovktv.pipeline.matching import (
     estimate_lrc_offset as _estimate_lrc_offset,
 )
 from lovktv.pipeline.matching import (
+    normalize_lyric as _normalize_lyric,
+)
+from lovktv.pipeline.matching import (
     vocal_phrases as _vocal_phrases,
 )
 
@@ -90,7 +93,20 @@ def resolve_sung_rows(
             item["status"] = "matched"
             item["start_ms"] = int(by_index[int(start)]["start_ms"])
             item["end_ms"] = max(item["start_ms"] + _MIN_LINE_MS, int(by_index[int(end)]["end_ms"]))
-            item["heard"] = int(end) - int(start) + 1
+            heard_parts = [
+                str(by_index[index].get("text") or "")
+                for index in range(int(start), int(end) + 1)
+                if index in by_index
+            ]
+            heard_text = (" " if language == "en" else "").join(heard_parts)
+            # ASR providers group CJK/Japanese characters into phrase-sized
+            # words, so counting ASR records underestimates how much of a line
+            # was actually heard and overextends the cue into the next line.
+            # Compare normalized lexical units for CJK and words for English.
+            if language == "en":
+                item["heard"] = len(tokenize(heard_text, language))
+            else:
+                item["heard"] = len(_normalize_lyric(heard_text, language))
         else:
             item["status"] = "inferred"
             item.pop("from", None)
@@ -100,7 +116,12 @@ def resolve_sung_rows(
     # Complete lines the ASR only partly heard: extend towards the next line.
     matched = [item for item in placed if item["status"] == "matched"]
     for index, item in enumerate(matched):
-        missing = len(tokenize(item["text"], language)) - int(item.get("heard") or 0)
+        line_units = (
+            len(tokenize(item["text"], language))
+            if language == "en"
+            else len(_normalize_lyric(item["text"], language))
+        )
+        missing = line_units - int(item.get("heard") or 0)
         if missing <= 0:
             continue
         limit = int(matched[index + 1]["start_ms"]) - 80 if index + 1 < len(matched) else None

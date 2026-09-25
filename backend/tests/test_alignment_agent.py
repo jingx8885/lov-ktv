@@ -448,3 +448,33 @@ def test_align_lyrics_without_reference_still_uses_agent_rows():
     )
     assert [cue["text"] for cue in timeline["cues"]] == ["la la"]
     assert align_lyrics([], "en")["alignment"] == "empty"
+
+
+def test_cjk_phrase_word_count_does_not_overextend_completed_line():
+    asr = alignment.agent_words(
+        _words(("世界", 100, 1_000), ("下一句", 5_000, 5_800))
+    )
+    rows = resolve_sung_rows(
+        [
+            {"text": "世界", "from": 1, "to": 1},
+            {"text": "下一句", "from": 2, "to": 2},
+        ],
+        asr,
+        "zh",
+    )
+    assert rows[0]["end_ms"] == 1_000
+
+
+def test_cjk_partial_phrase_is_extended_by_missing_units():
+    asr = alignment.agent_words(
+        _words(("我听", 100, 500), ("下一句", 5_000, 5_800))
+    )
+    rows = resolve_sung_rows(
+        [
+            {"text": "我听见雨", "from": 1, "to": 1},
+            {"text": "下一句", "from": 2, "to": 2},
+        ],
+        asr,
+        "zh",
+    )
+    assert rows[0]["end_ms"] == 500 + 2 * 350
