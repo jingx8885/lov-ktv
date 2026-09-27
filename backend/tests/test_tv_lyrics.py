@@ -26,6 +26,8 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "body.tv .lyrics .anno .rt" in tv
     assert "body.tv .lyrics .anno .roma" in tv
     assert "body.tv .lyrics .anno .gloss" in tv
+    assert "body.tv .lyrics .line.is-done .roma" in tv
+    assert "body.tv .lyrics .line.is-wait .roma" not in tv
     assert "font-size: 0.5em" in tv
     assert "font-size: inherit" in tv
     assert "font-size: 0.42em" in tv

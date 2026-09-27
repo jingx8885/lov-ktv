@@ -139,8 +139,6 @@ body.tv .lyrics .anno .roma {
   letter-spacing: 0.02em;
   font-weight: 600;
 }
-body.tv .lyrics .line.is-wait .roma,
-body.tv .lyrics .line.is-wait .gloss,
 body.tv .lyrics .line.is-done .roma,
 body.tv .lyrics .line.is-done .gloss {
   display: none;
