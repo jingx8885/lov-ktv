@@ -333,6 +333,8 @@ def process_import(
         mugen_kid = str(netease_id or (skeleton.get("source") or {}).get("kid") or "")
         if is_mugen_kid(mugen_kid):
             fields["netease_id"] = mugen_kid
+        elif netease_id:
+            fields["netease_id"] = str(netease_id)
         update_song(song_id, **fields)
         processing_debug.event(
             song_id,
@@ -536,13 +538,17 @@ def _closest_lrc_candidate(
         return None
     candidates: list[tuple[list[dict], str]] = [(current_lines, "selected")]
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    pinned = str(source.get("lyric_id") or "").strip()
     for item in source.get("lyric_candidates") or []:
         if not isinstance(item, dict):
+            continue
+        candidate_id = str(item.get("id") or "")
+        if pinned and candidate_id and candidate_id != pinned:
             continue
         raw = str(item.get("lrc") or "")
         parsed = parse_lrc(raw) if raw.strip() else []
         if parsed:
-            candidates.append((parsed, str(item.get("id") or "candidate")))
+            candidates.append((parsed, candidate_id or "candidate"))
     def distance(lines: list[dict]) -> int:
         last = max(
             int(item.get("end_ms") or item.get("ms") or 0)

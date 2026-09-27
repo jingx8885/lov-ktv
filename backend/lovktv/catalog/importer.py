@@ -179,7 +179,9 @@ def _select_lyrics(
     preferred_lyric_id: str = "",
 ) -> dict[str, Any]:
     """Choose between Kugou KRC and NetEase LRC using the media length."""
-    kugou = fetch_kugou_lyrics(title_name, artist_name, duration_ms=media_ms)
+    kugou = None
+    if not str(preferred_lyric_id or "").strip():
+        kugou = fetch_kugou_lyrics(title_name, artist_name, duration_ms=media_ms)
     if kugou and not kugou.get("timeline"):
         kugou = None
     if kugou is not None and media_ms and "mismatch_ms" not in kugou:

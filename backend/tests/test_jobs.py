@@ -444,7 +444,34 @@ def test_finish_ready_lyrics_keeps_bilibili_mv_even_when_rebuild(tmp_path, monke
     assert timeline["native_video"] is True
 
 
+def test_closest_lrc_candidate_keeps_pinned_lyric_id():
+    skeleton = {
+        "source": {
+            "lyric_id": "602790",
+            "lyric_candidates": [
+                {
+                    "id": "5414507",
+                    "lrc": "[00:01.00]korean lookalike\n[02:50.00]end",
+                },
+                {
+                    "id": "602790",
+                    "lrc": "[00:14.00]誰かの傷ついた心が\n[03:16.00]REASON",
+                },
+            ],
+        }
+    }
+    current = [
+        {"ms": 14000, "text": "誰かの傷ついた心が"},
+        {"ms": 196000, "text": "REASON"},
+    ]
+    chosen = jobs._closest_lrc_candidate(skeleton, current, 171_000)
+    assert chosen is not None
+    assert chosen[1] in {"selected", "602790"}
+    assert chosen[0][0]["text"] == "誰かの傷ついた心が"
+
+
 def test_realign_preserves_native_mv_and_translation_annotations():
+
     previous = {
         "native_video": True,
         "translation": "lovjpn-zh",

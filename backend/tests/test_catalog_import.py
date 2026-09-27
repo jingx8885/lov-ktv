@@ -197,6 +197,51 @@ def test_import_pins_external_hit_metadata_and_lyric_id(tmp_path, monkeypatch):
     assert skeleton["source"]["lyric_id"] == "123456"
 
 
+def test_import_skips_kugou_when_lyric_id_is_pinned(tmp_path, monkeypatch):
+    _no_mugen(monkeypatch)
+    monkeypatch.setattr(
+        importer,
+        "search_tonzhon",
+        lambda *args, **kwargs: [{"id": "999", "name": "Lookalike"}],
+    )
+    monkeypatch.setattr(
+        importer,
+        "fetch_kugou_lyrics",
+        lambda *args, **kwargs: {
+            "timeline": {
+                "cues": [
+                    {"start_ms": 1000, "end_ms": 2000, "text": "wrong kugou"},
+                    {"start_ms": 170000, "end_ms": 179000, "text": "end"},
+                ]
+            },
+            "lrc": "[00:01.00]wrong kugou",
+            "mismatch_ms": 0,
+            "candidate": {"id": "kg"},
+        },
+    )
+    monkeypatch.setattr(importer, "probe_duration_ms", lambda path: 180_000)
+    monkeypatch.setattr(importer, "try_bilibili_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "try_netease_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(importer, "try_ytdlp_search", lambda *args, **kwargs: (False, ""))
+    monkeypatch.setattr(importer, "_ytdlp_download", lambda *args, **kwargs: False)
+    monkeypatch.setattr(
+        importer,
+        "fetch_lyric",
+        lambda song_id, source="netease": "[00:01.00]誰かの傷ついた心が",
+    )
+    skeleton = importer.import_song(
+        query="REASON",
+        out_dir=tmp_path,
+        song_id="BV1reason",
+        title_hint="REASON",
+        artist_hint="小坂由美子",
+        lyric_id="602790",
+    )
+    assert skeleton["source"]["lyrics"] == "netease"
+    assert skeleton["source"]["lyric_id"] == "602790"
+    assert skeleton["sentences"][0]["raw"] == "誰かの傷ついた心が"
+
+
 def test_search_ranks_late_exact_hit_before_unknowns(monkeypatch):
     monkeypatch.setattr(
         search,
