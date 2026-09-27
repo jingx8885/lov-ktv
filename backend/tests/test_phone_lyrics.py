@@ -20,7 +20,8 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert 'btn.hidden = key === "roma"' in mix
     assert "if (!room || !hostVol" in mix
     assert "export function paintLyricSize" in mix
-    assert 'bindMixSlider("lyricSize", "lyric_size")' in mix
+    assert 'bindLyricSizeHold("lyricSizeDown", -1)' in mix
+    assert 'bindLyricSizeHold("lyricSizeUp", 1)' in mix
     assert "keepRoma" in paint
     assert "keepGloss" in paint
     assert "keepZh" in paint
@@ -44,8 +45,11 @@ def test_lyric_mode_buttons_do_not_select_body():
     assert 'from "../../../../shared/lyrics/js/paint.js"' in mix
     assert 'src="/phone/app.js"' in html
     assert 'href="/phone/desk/css/desk.css"' in html
-    assert 'id="lyricSize"' in html
+    assert 'id="deskLyricSize"' in html
+    assert 'id="lyricSizeDown"' in html
+    assert 'id="lyricSizeUp"' in html
     assert 'id="lyricSizeVal"' in html
+    assert 'id="lyricSize"' not in html
     assert 'from "./player/js/playback/mic.js"' in app
     css = (ROOT / "phone" / "player" / "css" / "player.css").read_text(encoding="utf-8")
     assert 'body.phone[data-lyric-mode="all"] .page-player .player-lyrics .rt' not in css
@@ -61,6 +65,8 @@ def test_lyric_mode_buttons_do_not_select_body():
             encoding="utf-8"
         )
         assert '"phone.mic.opened"' in loc
+        assert '"phone.desk.lyricSmaller"' in loc
+        assert '"phone.desk.lyricBigger"' in loc
 
 
 def test_english_lyric_labels_are_not_abbreviated():

@@ -110,8 +110,7 @@ async function togglePlayerFullscreen() {
 }
 
 export function mixEditing() {
-  const active = document.activeElement;
-  return active === $("hostVol") || active === $("micGain") || active === $("lyricSize");
+  return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
 }
 
 export function paintVocalMix(mix) {
@@ -210,12 +209,55 @@ export function paintLyricMode(mode, language) {
 }
 
 export function paintLyricSize(size) {
-  const el = $("lyricSize");
-  const val = $("lyricSizeVal");
   const n = Number(size);
   const shown = Number.isFinite(n) && n > 0 ? n : 30;
-  if (el) el.value = String(shown);
+  const val = $("lyricSizeVal");
   if (val) val.textContent = `${Math.round(shown)}%`;
+  const down = $("lyricSizeDown");
+  const up = $("lyricSizeUp");
+  if (down) down.disabled = shown <= 10;
+  if (up) up.disabled = shown >= 250;
+}
+
+function lyricSizeNow() {
+  const raw = $("lyricSizeVal") && $("lyricSizeVal").textContent;
+  const n = parseInt(String(raw || ""), 10);
+  return Number.isFinite(n) ? n : 30;
+}
+
+function nudgeDeskLyricSize(delta) {
+  const next = Math.max(10, Math.min(250, lyricSizeNow() + Number(delta || 0) * 10));
+  if (next === lyricSizeNow()) return false;
+  paintLyricSize(next);
+  postMix({ lyric_size: next });
+  return true;
+}
+
+function bindLyricSizeHold(id, delta) {
+  const el = $(id);
+  if (!el) return;
+  let timer = 0;
+  const stop = () => {
+    if (timer) window.clearTimeout(timer);
+    timer = 0;
+  };
+  const step = (first) => {
+    if (!nudgeDeskLyricSize(delta)) return;
+    timer = window.setTimeout(() => step(false), first ? 380 : 70);
+  };
+  el.addEventListener("pointerdown", (event) => {
+    if (event.button && event.button !== 0) return;
+    if (api.needTvOrRoom && api.needTvOrRoom()) return;
+    event.preventDefault();
+    try {
+      el.setPointerCapture(event.pointerId);
+    } catch (_) {}
+    stop();
+    step(true);
+  });
+  el.addEventListener("pointerup", stop);
+  el.addEventListener("pointercancel", stop);
+  el.addEventListener("lostpointercapture", stop);
 }
 
 export function paintMix(room) {
@@ -280,8 +322,7 @@ export function bindMixSlider(id, key) {
   const el = $(id);
   if (!el) return;
   const slide = () => {
-    if (id === "lyricSize") paintLyricSize(el.value);
-    else $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
+    $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
     if (id === "micGain") setNativeGain(el.value);
     clearTimeout(state.mixTimer);
     state.mixTimer = setTimeout(() => postMix({ [key]: Number(el.value) }), 80);
@@ -298,7 +339,8 @@ export function bindMix() {
   document.addEventListener("webkitfullscreenchange", () => paintPlayerFullscreen(true));
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
-  bindMixSlider("lyricSize", "lyric_size");
+  bindLyricSizeHold("lyricSizeDown", -1);
+  bindLyricSizeHold("lyricSizeUp", 1);
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
     btn.onclick = () => {
       paintLyricMode(btn.dataset.lyricMode);

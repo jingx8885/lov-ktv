@@ -30,7 +30,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     "card primary"
-    "tools tools";
+    "tools tools"
+    "size size";
   align-items: center;
   gap: 10px 8px;
   margin: 0 0 10px;
@@ -59,7 +60,12 @@
   padding-top: 10px;
   border-top: 1px solid var(--line);
 }
-.now-bar.is-idle { grid-template-areas: "card card"; padding-bottom: 12px; }
+.now-bar.is-idle {
+  grid-template-areas:
+    "card card"
+    "size size";
+  padding-bottom: 12px;
+}
 .now-bar.is-idle .now-primary,
 .now-bar.is-idle .now-secondary { display: none; }
 .now-bar .icon-btn.ghost {
@@ -139,6 +145,53 @@
   background: var(--accent);
 }
 .now-act:active { opacity: .6; }
+.lyric-size {
+  grid-area: size;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding-top: 10px;
+}
+.lyric-size-btn {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .08);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.lyric-size-btn:active { opacity: .7; }
+.lyric-size-btn:disabled {
+  opacity: .35;
+  cursor: default;
+}
+.lyric-size-read {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+.lyric-size-read em {
+  font-style: normal;
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
 .now-mix { padding: 0 2px 4px; }
 /* 歌词显示是听歌页的偏好，手机首屏不放。 */
 .lyric-select { display: none; }
@@ -165,7 +218,7 @@ body.phone .page-desk > .lyric-seg { display: none; }
 .mix-acts .btn { min-height: 44px; }
 .mix-row {
   display: grid;
-  grid-template-columns: minmax(64px, max-content) 1fr 44px;
+  grid-template-columns: minmax(52px, max-content) 1fr 36px;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
@@ -551,6 +604,7 @@ body.phone .page-desk > .lyric-seg { display: none; }
   .page-desk .now-bar.is-idle .now-secondary {
     display: contents;
   }
+  .page-desk .now-bar.is-idle .lyric-size { display: flex; }
   .page-desk .lyric-select { display: flex; }
   .page-desk .now-primary .now-act {
     width: auto;
@@ -613,6 +667,16 @@ body.phone .page-desk > .lyric-seg { display: none; }
   .page-desk .now-act#skip,
   .page-desk .now-act.on {
     color: var(--accent);
+  }
+
+  .page-desk .lyric-size {
+    grid-column: 1 / -1;
+    padding-top: 0;
+    margin-top: 2px;
+  }
+  .page-desk .lyric-size-btn {
+    background: rgba(255, 255, 255, .055);
+    border: 1px solid rgba(255, 255, 255, .07);
   }
 
   .page-desk .lyric-seg {
@@ -730,6 +794,11 @@ body.phone .page-desk > .lyric-seg { display: none; }
     border: 1px solid rgba(255, 255, 255, .08);
     border-radius: 12px;
     background: rgba(23, 26, 36, .72);
+  }
+
+  body.phone .page-desk .lyric-size {
+    grid-column: 1 / -1;
+    padding-top: 2px;
   }
 
   body.phone .page-desk > .lyric-seg {

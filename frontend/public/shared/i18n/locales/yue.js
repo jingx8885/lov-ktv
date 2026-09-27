@@ -187,6 +187,8 @@ export default {
   "phone.desk.cantQueue": "仲未可以點呢首",
   "phone.desk.vocalOn": "而家原唱，撳一下切到伴奏",
   "phone.desk.vocalOff": "而家伴奏，撳一下切到原唱",
+  "phone.desk.lyricSmaller": "細啲字幕",
+  "phone.desk.lyricBigger": "大啲字幕",
   "phone.lyric.mode": "歌詞顯示",
   "phone.lyric.en": "英語",
   "phone.lyric.complete": "完整顯示",

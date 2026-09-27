@@ -189,6 +189,8 @@ export default {
   "phone.desk.cantQueue": "This song cannot be queued yet",
   "phone.desk.vocalOn": "Original on — tap for karaoke",
   "phone.desk.vocalOff": "Karaoke on — tap for original",
+  "phone.desk.lyricSmaller": "Smaller subtitles",
+  "phone.desk.lyricBigger": "Larger subtitles",
   "phone.lyric.mode": "Lyric display",
   "phone.lyric.en": "English",
   "phone.lyric.complete": "Full lyrics",

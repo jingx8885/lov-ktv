@@ -188,6 +188,8 @@ export default {
   "phone.desk.cantQueue": "この曲はまだ予約できません",
   "phone.desk.vocalOn": "いま原曲。タップで伴奏へ",
   "phone.desk.vocalOff": "いま伴奏。タップで原曲へ",
+  "phone.desk.lyricSmaller": "字幕を小さく",
+  "phone.desk.lyricBigger": "字幕を大きく",
   "phone.lyric.mode": "歌詞表示",
   "phone.lyric.en": "英語",
   "phone.lyric.complete": "完全表示",

@@ -188,6 +188,8 @@ export default {
   "phone.desk.cantQueue": "还不能点这首",
   "phone.desk.vocalOn": "当前原唱，点按切到伴奏",
   "phone.desk.vocalOff": "当前伴奏，点按切到原唱",
+  "phone.desk.lyricSmaller": "减小字幕",
+  "phone.desk.lyricBigger": "加大字幕",
   "phone.lyric.mode": "歌词显示",
   "phone.lyric.en": "英语",
   "phone.lyric.complete": "完整显示",
