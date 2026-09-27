@@ -266,3 +266,9 @@ def test_set_mix_stores_lyric_mode(tmp_path, monkeypatch):
     assert snap["lyric_mode"] == "roma"
     snap = room_store.set_mix("LYR1", lyric_mode="nope")
     assert snap["lyric_mode"] == "all"
+    snap = room_store.set_mix("LYR1", lyric_size=136)
+    assert snap["lyric_size"] == 140
+    snap = room_store.set_mix("LYR1", lyric_size=400)
+    assert snap["lyric_size"] == 250
+    snap = room_store.set_mix("LYR1", lyric_size=4)
+    assert snap["lyric_size"] == 10

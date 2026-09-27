@@ -73,6 +73,7 @@ def test_command_parsing_normalizes_transport_payload():
             "volume": 120,
             "mic_gain": 40,
             "lyric_mode": "JA",
+            "lyric_size": 40,
             "paused": 0,
         },
     )
@@ -82,6 +83,7 @@ def test_command_parsing_normalizes_transport_payload():
     assert command.volume == 120
     assert command.mic_gain == 40
     assert command.lyric_mode == "JA"
+    assert command.lyric_size == 40
     assert command.paused is False
 
 

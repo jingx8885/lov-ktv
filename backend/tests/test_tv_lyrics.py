@@ -107,6 +107,10 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "data-lyric-size" not in tv
     assert 'words.style.flexWrap = "wrap"' in paint
     assert "applyLyricSize()" in remote
+    assert 'JSON.stringify({ lyric_size: next })' in remote
+    assert "applyLyricSize(raw)" in (ROOT / "tv" / "playback" / "js" / "media" / "mix.js").read_text(
+        encoding="utf-8"
+    )
     assert "nudgeFocusedSetting(-1)" in remote
     assert "nudgeFocusedSetting(1)" in remote
     assert 'id="tvLyricSize"' in html

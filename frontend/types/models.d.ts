@@ -58,6 +58,7 @@ interface Room {
   mic_on?: boolean;
   host_volume_kind?: string;
   lyric_mode?: LyricMode | string;
+  lyric_size?: number;
   display_mode?: DisplayMode | string;
   paused?: boolean | number;
   lan_origin?: string;
@@ -76,6 +77,7 @@ interface RoomCommand {
   volume?: number;
   mic_gain?: number;
   lyric_mode?: LyricMode | string;
+  lyric_size?: number;
   display_mode?: DisplayMode | string;
   paused?: boolean | number | string;
 }

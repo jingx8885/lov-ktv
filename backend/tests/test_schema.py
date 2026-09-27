@@ -45,6 +45,7 @@ def test_schema_covers_current_tables():
         "volume",
         "mic_gain",
         "lyric_mode",
+        "lyric_size",
         "now_index",
         "paused",
         "lan_origin",
@@ -136,6 +137,7 @@ def test_init_db_creates_sqlite_tables(tmp_path, monkeypatch):
 
     room = ensure_room("AB12CD")
     assert room["lyric_mode"] == "all"
+    assert int(room["lyric_size"] or 0) == 30
     assert room["mic_gain"] == 80
     assert int(room["paused"] or 0) == 0
 

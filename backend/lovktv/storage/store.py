@@ -34,11 +34,24 @@ READY = "ready"
 BUSY = {"fetching", "separating", "aligning", "annotating", "composing"}
 LYRIC_MODES = ("ja", "zh", "roma", "all")
 DISPLAY_MODES = ("lyrics", "mv")
+LYRIC_SIZE_MIN = 10
+LYRIC_SIZE_MAX = 250
+LYRIC_SIZE_STEP = 10
+DEFAULT_LYRIC_SIZE = 30
 
 
 def normalize_lyric_mode(value: Any) -> str:
     mode = str(value or "").strip().lower()
     return mode if mode in LYRIC_MODES else "all"
+
+
+def normalize_lyric_size(value: Any) -> int:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return DEFAULT_LYRIC_SIZE
+    stepped = int(number / LYRIC_SIZE_STEP + 0.5) * LYRIC_SIZE_STEP
+    return max(LYRIC_SIZE_MIN, min(LYRIC_SIZE_MAX, stepped))
 
 
 def normalize_display_mode(value: Any) -> str:

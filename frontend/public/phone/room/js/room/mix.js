@@ -110,7 +110,8 @@ async function togglePlayerFullscreen() {
 }
 
 export function mixEditing() {
-  return document.activeElement === $("hostVol") || document.activeElement === $("micGain");
+  const active = document.activeElement;
+  return active === $("hostVol") || active === $("micGain") || active === $("lyricSize");
 }
 
 export function paintVocalMix(mix) {
@@ -208,6 +209,15 @@ export function paintLyricMode(mode, language) {
   }
 }
 
+export function paintLyricSize(size) {
+  const el = $("lyricSize");
+  const val = $("lyricSizeVal");
+  const n = Number(size);
+  const shown = Number.isFinite(n) && n > 0 ? n : 30;
+  if (el) el.value = String(shown);
+  if (val) val.textContent = `${Math.round(shown)}%`;
+}
+
 export function paintMix(room) {
   const hostVol = $("hostVol");
   const hostVolVal = $("hostVolVal");
@@ -216,6 +226,7 @@ export function paintMix(room) {
   const micGainVal = $("micGainVal");
   if (!room || !hostVol || !hostVolVal || !hostVolLabel || !micGain || !micGainVal || mixEditing()) return;
   paintLyricMode(room.lyric_mode, room.now_playing && room.now_playing.language);
+  paintLyricSize(room.lyric_size);
   paintDisplayMode(localDisplayMode());
   paintPaused(!!room.paused);
   const vol = room.host_volume != null ? room.host_volume : room.volume != null ? room.volume : 80;
@@ -269,7 +280,8 @@ export function bindMixSlider(id, key) {
   const el = $(id);
   if (!el) return;
   const slide = () => {
-    $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
+    if (id === "lyricSize") paintLyricSize(el.value);
+    else $(id === "hostVol" ? "hostVolVal" : "micGainVal").textContent = el.value;
     if (id === "micGain") setNativeGain(el.value);
     clearTimeout(state.mixTimer);
     state.mixTimer = setTimeout(() => postMix({ [key]: Number(el.value) }), 80);
@@ -286,6 +298,7 @@ export function bindMix() {
   document.addEventListener("webkitfullscreenchange", () => paintPlayerFullscreen(true));
   bindMixSlider("hostVol", "volume");
   bindMixSlider("micGain", "mic_gain");
+  bindMixSlider("lyricSize", "lyric_size");
   document.querySelectorAll("button[data-lyric-mode]").forEach((btn) => {
     btn.onclick = () => {
       paintLyricMode(btn.dataset.lyricMode);

@@ -27,6 +27,7 @@ class RoomCommand:
     volume: int | None = None
     mic_gain: int | None = None
     lyric_mode: str | None = None
+    lyric_size: int | None = None
     display_mode: str | None = None
     paused: bool | None = None
 
@@ -55,6 +56,7 @@ class RoomCommand:
             lyric_mode=str(data["lyric_mode"])
             if data.get("lyric_mode") is not None
             else None,
+            lyric_size=data.get("lyric_size"),
             display_mode=str(data["display_mode"])
             if data.get("display_mode") is not None
             else None,
@@ -88,6 +90,7 @@ class RoomService:
                 volume=command.volume,
                 mic_gain=command.mic_gain,
                 lyric_mode=command.lyric_mode,
+                lyric_size=command.lyric_size,
                 display_mode=command.display_mode,
                 paused=command.paused,
             )

@@ -84,6 +84,9 @@ function clearFittedSize(el) {
 /** @param {unknown} [value] */
 export function applyLyricSize(value) {
   const size = normLyricSize(value == null ? storedLyricSize() : value);
+  if (typeof document !== "undefined" && document.body && document.body.dataset.lyricSize === String(size)) {
+    return size;
+  }
   rememberLyricSize(size);
   if (typeof document !== "undefined" && document.body) {
     document.body.dataset.lyricSize = String(size);

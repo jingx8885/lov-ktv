@@ -21,6 +21,7 @@ TABLES: dict[str, tuple[str, ...]] = {
         "volume",
         "mic_gain",
         "lyric_mode",
+        "lyric_size",
         "now_index",
         "paused",
         "lan_origin",
@@ -69,7 +70,7 @@ TABLES: dict[str, tuple[str, ...]] = {
 
 SONG_FIELDS = frozenset(TABLES["songs"]) - {"id", "created_at"}
 ROOM_FIELDS = frozenset(
-    {"vocal_mix", "volume", "mic_gain", "lyric_mode", "display_mode", "now_index", "paused"}
+    {"vocal_mix", "volume", "mic_gain", "lyric_mode", "lyric_size", "display_mode", "now_index", "paused"}
 )
 
 # Epoch milliseconds overflow 32-bit INTEGER on Postgres.
@@ -93,6 +94,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   volume INTEGER NOT NULL DEFAULT 80,
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
+  lyric_size INTEGER NOT NULL DEFAULT 30,
   display_mode TEXT NOT NULL DEFAULT 'mv',
   now_index INTEGER NOT NULL DEFAULT 0,
   paused INTEGER NOT NULL DEFAULT 0,
@@ -299,6 +301,7 @@ CREATE TABLE IF NOT EXISTS rooms (
   volume INTEGER NOT NULL DEFAULT 80,
   mic_gain INTEGER NOT NULL DEFAULT 80,
   lyric_mode TEXT NOT NULL DEFAULT 'all',
+  lyric_size INTEGER NOT NULL DEFAULT 30,
   display_mode TEXT NOT NULL DEFAULT 'mv',
   now_index INTEGER NOT NULL DEFAULT 0,
   paused INTEGER NOT NULL DEFAULT 0,
@@ -489,6 +492,7 @@ ROOM_MIGRATIONS = (
     ("owner_user_id", "TEXT NOT NULL DEFAULT ''"),
     ("mic_gain", "INTEGER NOT NULL DEFAULT 80"),
     ("lyric_mode", "TEXT NOT NULL DEFAULT 'all'"),
+    ("lyric_size", "INTEGER NOT NULL DEFAULT 30"),
     ("display_mode", "TEXT NOT NULL DEFAULT 'mv'"),
     ("paused", "INTEGER NOT NULL DEFAULT 0"),
     ("lan_origin", "TEXT NOT NULL DEFAULT ''"),

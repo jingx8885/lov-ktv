@@ -62,8 +62,20 @@ function nudgeFocusedSetting(delta) {
   const items = settingsItems();
   const item = items[settingsIndex] || items[0];
   if (!item || item.id !== "tvLyricSize") return;
-  nudgeLyricSize(delta);
+  const next = nudgeLyricSize(delta);
   paintSettings();
+  const code = currentCode();
+  if (!code) return;
+  fetchJson("/api/rooms/" + code + "/mix", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lyric_size: next })
+  }).then(({ data }) => {
+    if (!data || !data.code) return;
+    state.room = /** @type {Room} */ (data);
+    applyLyricSize(data.lyric_size);
+    paintSettings();
+  });
 }
 
 function roomPaused() {

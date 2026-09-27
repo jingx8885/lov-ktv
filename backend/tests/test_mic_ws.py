@@ -61,6 +61,9 @@ def test_mix_http_sets_mac_volume_and_snapshot(tmp_path, monkeypatch):
         assert body["host_volume_kind"] == "mac"
         assert body["mic_on"] is False
         assert applied == [35]
+        size = client.post("/api/rooms/MAC1/mix", json={"lyric_size": 45})
+        assert size.status_code == 200
+        assert size.json()["lyric_size"] == 50
 
 
 def test_ws_relays_rtc_and_marks_mic(tmp_path, monkeypatch):

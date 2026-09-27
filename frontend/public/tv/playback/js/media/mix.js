@@ -1,6 +1,7 @@
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { state } from "../../../state.js";
+import { applyLyricSize } from "../lyric/size.js";
 
 export function mediaRevFor(songId) {
   const snap = state.room;
@@ -215,4 +216,6 @@ export function applyMix() {
   }
   $("micLive").hidden = !(state.room && state.room.mic_on) && !state.pendingMic;
   $("qinfo").textContent = roomLine(state.room);
+  const raw = state.room && state.room.lyric_size;
+  if (raw != null && raw !== "") applyLyricSize(raw);
 }

@@ -30,6 +30,7 @@ class RoomRepository(Protocol):
         volume: int | None = None,
         mic_gain: int | None = None,
         lyric_mode: str | None = None,
+        lyric_size: int | None = None,
         display_mode: str | None = None,
         paused: bool | None = None,
     ) -> dict[str, Any]: ...
@@ -394,10 +395,15 @@ def set_mix(
     volume: int | None = None,
     mic_gain: int | None = None,
     lyric_mode: str | None = None,
+    lyric_size: int | None = None,
     paused: bool | None = None,
     display_mode: str | None = None,
 ) -> dict[str, Any]:
-    from lovktv.storage.store import normalize_display_mode, normalize_lyric_mode
+    from lovktv.storage.store import (
+        normalize_display_mode,
+        normalize_lyric_mode,
+        normalize_lyric_size,
+    )
 
     fields = {}
     if vocal_mix is not None:
@@ -408,6 +414,8 @@ def set_mix(
         fields["mic_gain"] = max(0, min(100, int(mic_gain)))
     if lyric_mode is not None:
         fields["lyric_mode"] = normalize_lyric_mode(lyric_mode)
+    if lyric_size is not None:
+        fields["lyric_size"] = normalize_lyric_size(lyric_size)
     if display_mode is not None:
         fields["display_mode"] = normalize_display_mode(display_mode)
     if paused is not None:

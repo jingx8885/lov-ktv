@@ -25,6 +25,7 @@ class RoomCommandPayload(BaseModel):
     volume: int | None = None
     mic_gain: int | None = None
     lyric_mode: str | None = None
+    lyric_size: int | None = None
     display_mode: str | None = None
     paused: bool | int | float | str | None = None
 

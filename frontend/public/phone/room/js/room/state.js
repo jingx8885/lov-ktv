@@ -10,6 +10,7 @@ export function roomStamp(room) {
     vol: room && room.volume,
     paused: room && room.paused,
     lyric_mode: room && room.lyric_mode,
+    lyric_size: room && room.lyric_size,
     now: room && room.now_playing && (room.now_playing.id || room.now_playing.song_id),
     nowStatus: room && room.now_playing && room.now_playing.status,
     q: (room && room.queue ? room.queue : []).map((item) => [item.id, item.song_id, item.status, item.title])
