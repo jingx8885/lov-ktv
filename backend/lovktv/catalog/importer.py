@@ -338,8 +338,9 @@ def import_song(
             chosen = {
                 "id": song_id,
                 "name": title_hint or (lyric_hint or {}).get("name") or query,
-                "artist": (lyric_hint or {}).get("artist")
-                or ([artist_hint] if artist_hint else []),
+                "artist": ([artist_hint] if artist_hint else None)
+                or (lyric_hint or {}).get("artist")
+                or [],
                 "album": (lyric_hint or {}).get("album") or [],
                 "pic": (lyric_hint or {}).get("pic") or "",
             }

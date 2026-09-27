@@ -526,7 +526,8 @@ def _lrc_duration_close(media_ms: int, lines: list[dict]) -> bool:
     )
     if not last_ms:
         return False
-    tolerance = min(20_000, max(5_000, int(media_ms * 0.08)))
+    # Anime OP/ED videos often keep 20-30s of instrumental after the last lyric.
+    tolerance = min(32_000, max(8_000, int(media_ms * 0.12)))
     return abs(int(media_ms) - last_ms) <= tolerance
 
 

@@ -470,8 +470,13 @@ def test_closest_lrc_candidate_keeps_pinned_lyric_id():
     assert chosen[0][0]["text"] == "誰かの傷ついた心が"
 
 
-def test_realign_preserves_native_mv_and_translation_annotations():
+def test_lrc_duration_close_allows_anime_op_outro():
+    lines = [{"ms": 13670, "text": "誰かの 傷ついた心が"}, {"ms": 196160, "text": "WAY"}]
+    assert jobs._lrc_duration_close(221_000, lines) is True
+    assert jobs._lrc_duration_close(280_000, lines) is False
 
+
+def test_realign_preserves_native_mv_and_translation_annotations():
     previous = {
         "native_video": True,
         "translation": "lovjpn-zh",
