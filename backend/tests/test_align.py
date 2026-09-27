@@ -5,7 +5,11 @@ from lovktv.pipeline.bounds import (
     restore_short_official_gaps,
 )
 from lovktv.pipeline.clock import consensus_line_start
-from lovktv.pipeline.energy import guard_early_next_starts, merge_with_energy
+from lovktv.pipeline.energy import (
+    guard_early_next_starts,
+    merge_with_energy,
+    snap_late_line_stamps,
+)
 from lovktv.pipeline.lyrics import timeline_from_lrc, tokenize
 from lovktv.pipeline.matching import (
     asr_token_spans,
@@ -234,6 +238,25 @@ def test_lrc_offset_uses_consensus_of_early_onsets():
     lines = [{"ms": value, "text": "x"} for value in (1000, 5000, 9000, 13000)]
     phrases = [(3500, 4500), (7500, 8500), (11500, 12500), (15500, 16500)]
     assert estimate_lrc_offset(lines, phrases) == 2500
+
+
+def test_lrc_offset_pulls_back_when_verse_started_before_first_stamp():
+    """勇気100%: first LRC sits in a later phrase while verse 1 already sang."""
+    lines = [
+        {"ms": ms, "text": "x"}
+        for ms in (21990, 23970, 26950, 30550, 32999)
+    ]
+    phrases = [
+        (8100, 12460),
+        (13200, 16180),
+        (17000, 23380),
+        (24080, 24740),
+        (27040, 32700),
+        (33840, 37460),
+    ]
+    offset = estimate_lrc_offset(lines, phrases)
+    assert offset <= -12000
+    assert abs((21990 + offset) - 8100) <= 1500
 
 
 def test_late_vocals_shift_official_lrc():
@@ -937,3 +960,25 @@ def test_japanese_kanji_tokens_follow_kana_asr_spans():
     assert spans is not None
     assert spans[0][1] == 2200
     assert spans[1][0] == 2200
+
+
+def test_snap_late_line_keeps_previous_phrase_owner():
+    """勇气100%: a late verse stamp must not steal the previous line's onset."""
+    regions = [
+        (19580, 23380),
+        (44700, 53920),
+        (57660, 60280),
+    ]
+    lines = [
+        {"ms": 21990, "text": "がっかりして めそめそして"},
+        {"ms": 44400, "text": "そばにいるから"},
+        {"ms": 47137, "text": "夢はでかくなけりゃ"},
+        {"ms": 54287, "text": "胸をたたいて 冒険しよう"},
+        {"ms": 60117, "text": "そうさ100%勇気 もうがんばるしかないさ"},
+    ]
+    out = snap_late_line_stamps(lines, regions)
+    assert out[0]["ms"] == 19580
+    assert out[1]["ms"] == 44400
+    assert out[2]["ms"] == 47137
+    assert out[4]["ms"] == 57660
+    assert out[2]["ms"] - out[1]["ms"] >= 500

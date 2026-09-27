@@ -108,11 +108,13 @@ def snap_late_line_stamps(
             (int(prev["ms"]) for prev in reversed(out) if prev.get("ms") is not None),
             None,
         )
-        if previous is not None and new_start <= previous:
+        if previous is not None and new_start - previous < MIN_LINE_MS:
+            # The previous line already owns this phrase onset.  Snapping
+            # would collapse it to a few hundred milliseconds.
             out.append(row)
             continue
         if previous is not None:
-            new_start = max(new_start, previous + 80)
+            new_start = max(new_start, previous + MIN_LINE_MS)
         delay = start_ms - new_start
         row["ms"] = new_start
         if row.get("end_ms") is not None:

@@ -408,8 +408,12 @@ def align_lyrics(
             # A pre-timed LRC that already sits on vocal energy must keep its
             # clock. estimate_lrc_offset only looks at the first phrase start,
             # so a quiet intro it missed will drag every later line late.
+            # Exception: a whole verse of voice before the first stamp means
+            # the LRC itself is late (勇気100%), not a missed intro.
             score = _lrc_energy_match(timed, envelope, hop_ms)
-            shift = 0 if score.get("accepted") else _estimate_lrc_offset(timed, phrases)
+            shift = _estimate_lrc_offset(timed, phrases)
+            if score.get("accepted") and shift >= -3000:
+                shift = 0
             shifted = []
             for item in timed:
                 row = dict(item)

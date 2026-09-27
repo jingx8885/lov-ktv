@@ -256,7 +256,18 @@ def estimate_lrc_offset(
     if not timed or not phrases:
         return 0
     first_expected = int(timed[0]["ms"])
-    first_onset = min(phrases, key=lambda phrase: abs(phrase[0] - first_expected))[0]
+    nearest = min(phrases, key=lambda phrase: abs(phrase[0] - first_expected))[0]
+    earliest = phrases[0][0]
+    voiced_before = sum(
+        max(0, end_ms - start_ms)
+        for start_ms, end_ms in phrases
+        if end_ms <= first_expected - 400
+    )
+    # A verse already singing before the first stamp is a late LRC clock, not
+    # a missed quiet intro.  Pin to the first onset so we do not snap onto a
+    # later phrase the unshifted stamp happens to sit inside.
+    late_lrc = voiced_before >= 4000 and first_expected - earliest >= 3000
+    first_onset = earliest if late_lrc else nearest
     first_raw = first_onset - first_expected
     samples = [first_raw]
     for item in timed[1:5]:
@@ -270,7 +281,8 @@ def estimate_lrc_offset(
     agreeing = sum(abs(sample - raw) <= 700 for sample in samples)
     if len(samples) > 2 and agreeing < max(2, (len(samples) + 1) // 2):
         return 0
-    return max(-2000, min(20000, raw))
+    lo = -20000 if late_lrc else -2000
+    return max(lo, min(20000, raw))
 
 
 def line_match_score(known: str, heard: str, language: str) -> float:
