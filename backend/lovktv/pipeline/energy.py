@@ -179,7 +179,13 @@ def energy_line_bounds(
         onset = onsets[0]
         if not (ENERGY_HOLE_MIN_MS <= onset - start_ms <= ENERGY_HOLE_MAX_MS):
             continue
-        if nxt - onset < ENERGY_NEXT_GUARD_MS and nxt - onset <= onset - start_ms:
+        prev_end = int(suggested[index - 1]["end_ms"]) if index else 0
+        long_rest = index > 0 and start_ms - prev_end >= 8000
+        if (
+            not long_rest
+            and nxt - onset < ENERGY_NEXT_GUARD_MS
+            and nxt - onset <= onset - start_ms
+        ):
             continue
         row["start_ms"] = onset
         row["end_ms"] = max(
@@ -465,7 +471,13 @@ def snap_holes_to_voice(
         onset = onsets[0]
         if not (ENERGY_HOLE_MIN_MS <= onset - start_ms <= ENERGY_HOLE_MAX_MS):
             continue
-        if nxt - onset < ENERGY_NEXT_GUARD_MS and nxt - onset <= onset - start_ms:
+        prev_end = int(bounds[index - 1]["end_ms"]) if index else 0
+        long_rest = index > 0 and start_ms - prev_end >= 8000
+        if (
+            not long_rest
+            and nxt - onset < ENERGY_NEXT_GUARD_MS
+            and nxt - onset <= onset - start_ms
+        ):
             continue
         row["start_ms"] = onset
         row["end_ms"] = max(

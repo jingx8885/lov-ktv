@@ -33,6 +33,7 @@ from lovktv.pipeline.constants import HOP_MS
 from lovktv.pipeline.energy import _finalize_line_bounds
 from lovktv.pipeline.energy import lrc_energy_match as _lrc_energy_match
 from lovktv.pipeline.energy import merge_with_energy as _merge_with_energy
+from lovktv.pipeline.energy import snap_holes_to_voice as _snap_holes_to_voice
 from lovktv.pipeline.energy import snap_late_line_stamps as _snap_late_line_stamps
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
@@ -427,6 +428,10 @@ def align_lyrics(
             work = _snap_late_line_stamps(shifted, regions)
         duration = duration_ms or (int(work[-1]["ms"]) + 4000 if work else 0)
         bounds = _finalize_line_bounds(work, phrases or regions, duration)
+        # After a long interlude the global LRC shift can still sit in the
+        # hole.  Slide those stamps onto the next sung onset so bridge lines
+        # do not appear over the instrumental (勇気100% たとえさびしすぎる).
+        bounds = _snap_holes_to_voice(bounds, regions)
         return {
             "language": lang,
             "alignment": "onset",

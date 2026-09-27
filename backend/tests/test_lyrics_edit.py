@@ -101,6 +101,34 @@ def test_manual_timeline_holds_until_next_line():
     assert out["cues"][0]["tokens"][0]["text"] == "Get"
 
 
+def test_sing_end_skips_previous_phrase_tail():
+    """勇气100%: stamp sits in the last 90ms of the previous burst."""
+    from lovktv.pipeline.bounds import line_sing_end
+
+    regions = [
+        (17000, 19200),
+        (19580, 23380),
+        (24080, 24740),
+    ]
+    sing = line_sing_end(19109, 23508, regions)
+    assert sing >= 23200
+    assert sing <= 23508
+
+
+def test_sing_end_joins_fragmented_islands_in_one_line():
+    """A 380ms hole inside 夢はでかくなけりゃ must not end the fill."""
+    from lovktv.pipeline.bounds import line_sing_end
+
+    regions = [
+        (33200, 33280),
+        (33840, 35060),
+        (35360, 37460),
+    ]
+    sing = line_sing_end(33247, 35360, regions)
+    assert sing >= 35000
+    assert sing <= 35360
+
+
 def test_pack_tokens_sweeps_voice_not_hold():
     hop = 20
     env = [20.0] * (86300 // hop) + [800.0] * ((90800 - 86300) // hop) + [10.0] * 300

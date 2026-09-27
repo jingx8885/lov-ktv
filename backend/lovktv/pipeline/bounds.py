@@ -13,6 +13,7 @@ from lovktv.pipeline.matching import (
     accept_score,
     estimate_asr_offset,
     normalize_lyric,
+    vocal_phrases,
 )
 
 
@@ -269,29 +270,39 @@ def line_sing_end(
     display_end: int,
     regions: list[tuple[int, int]],
 ) -> int:
-    """When the singer finishes this line. Display may hold longer until the next cue."""
+    """When the singer finishes this line. Display may hold longer until the next cue.
+
+    Walk merged vocal phrases, not raw energy islands.  A 80–400ms hole inside
+    one lyric (勇気100% やりたいこと…) used to stop the karaoke fill almost
+    immediately because the stamp sat on the tail of the previous burst.
+    """
     fallback = min(
         display_end, start_ms + max(800, min(MAX_LINE_MS, display_end - start_ms))
     )
     if not regions:
         return fallback
+    phrases = vocal_phrases(regions) or regions
     sing = None
     last = start_ms
-    for region_start, region_end in regions:
-        if region_end <= start_ms:
+    for phrase_start, phrase_end in phrases:
+        if phrase_end <= start_ms:
             continue
-        if region_start >= display_end:
+        if phrase_start >= display_end:
             break
         if sing is None:
-            if region_start > start_ms + 900:
+            # Landed on the leftover tail of the previous phrase.  Skip it so
+            # the fill follows the next sung burst of this line.
+            if phrase_start < start_ms and phrase_end - start_ms < 800:
+                continue
+            if phrase_start > start_ms + 900:
                 return fallback
-            sing = min(display_end, max(region_end, start_ms + 400) + 80)
-            last = region_end
+            sing = min(display_end, max(phrase_end, start_ms + 400) + 80)
+            last = phrase_end
             continue
-        if region_start - last > 350:
+        if phrase_start - last > 800:
             break
-        sing = min(display_end, region_end + 80)
-        last = region_end
+        sing = min(display_end, phrase_end + 80)
+        last = phrase_end
     if sing is None:
         return fallback
     return max(start_ms + 400, min(display_end, sing))
@@ -307,9 +318,7 @@ def pack_tokens_to_singing(
     for cue in cues:
         start_ms = int(cue["start_ms"])
         display_end = int(cue["end_ms"])
-        sing_end = int(
-            cue.get("sing_end_ms") or line_sing_end(start_ms, display_end, regions)
-        )
+        sing_end = line_sing_end(start_ms, display_end, regions)
         cue["sing_end_ms"] = sing_end
         tokens = list(cue.get("tokens") or [])
         if not tokens:

@@ -259,6 +259,29 @@ def test_lrc_offset_pulls_back_when_verse_started_before_first_stamp():
     assert abs((21990 + offset) - 8100) <= 1500
 
 
+def test_energy_lrc_snaps_bridge_off_the_instrumental():
+    """勇气100% 间奏: たとえ sits in silence ~2.5s before the next vocal."""
+    hop = 20
+    env = _pulse(
+        200,
+        hop,
+        [(8.1, 12.4), (183.5, 184.5), (185.3, 186.8), (188.0, 190.6)],
+    )
+    lines = [
+        {"ms": 8100, "text": "がっかりして めそめそして"},
+        {"ms": 150560, "text": "どこまでも駈けてゆくのさ"},
+        {"ms": 181009, "text": "たとえさびしすぎる 夜がきたって"},
+        {"ms": 188210, "text": "新しい朝 かならずくるさ"},
+    ]
+    timeline = align_lyrics(lines, "ja", envelope=env, hop_ms=hop, duration_ms=200000)
+    cues = timeline["cues"]
+    bridge = next(c for c in cues if "たとえ" in c["text"])
+    nxt = next(c for c in cues if "新しい朝" in c["text"])
+    assert 183000 <= bridge["start_ms"] <= 184000
+    assert bridge["start_ms"] < nxt["start_ms"]
+    assert nxt["start_ms"] >= 187500
+
+
 def test_late_vocals_shift_official_lrc():
     hop = 20
     env = _pulse(40, hop, [(9.9, 13.2), (25.0, 29.0)])
