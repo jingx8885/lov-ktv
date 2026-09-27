@@ -480,7 +480,7 @@ export function paintEchoHome() {
   $("learnEchoSkip").disabled = true;
   const vocal = $("learnEchoVocal");
   if (vocal) {
-    vocal.textContent = "原唱：开";
+    vocal.textContent = t("learn.echoVocalOn");
     vocal.setAttribute("aria-pressed", "true");
   }
 }
@@ -514,7 +514,7 @@ export function bindEcho() {
   $("learnEchoVocal").onclick = () => {
     session.vocal = !session.vocal;
     const btn = $("learnEchoVocal");
-    btn.textContent = session.vocal ? "原唱：开" : "伴唱：开";
+    btn.textContent = session.vocal ? t("learn.echoVocalOn") : t("learn.echoKaraokeOn");
     btn.setAttribute("aria-pressed", String(session.vocal));
   };
 }

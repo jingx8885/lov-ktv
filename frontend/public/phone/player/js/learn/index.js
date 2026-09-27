@@ -12,7 +12,7 @@ import { cancelCountdown, celebrateCorrect, clearLearnFx } from "./fx.js";
 import { bindQuiz, runQuiz, startQuiz, stopQuiz, quizScoreView, syncQuizLyricMode } from "./quiz.js";
 import { bindTap, runTap, startTap, stopTap, syncTapLyricMode, tapScoreView } from "./tap.js";
 import { bindEcho, runEcho, startEcho, stopEcho, echoScoreView } from "./echo.js";
-import { bindCampaign, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
+import { bindCampaign, currentCampaign, firstReady, loadCampaign, paintCampaign, setCampaign } from "./campaign.js";
 import { bindLesson, lessonScoreView, runLesson, startLesson, stopLesson } from "./lesson.js";
 import { RECITE_PANES, bindRecite, openRecite, reciteBack, reciteSongId, stopRecite } from "./recite.js";
 import { WORDS_PANES, bindSongWords, openSongWords, stopSongWords } from "./words.js";
@@ -21,7 +21,7 @@ import { getStudyWords } from "../../../desk/js/lyrics.js";
 export { openRecite } from "./recite.js";
 export { openSongWords } from "./words.js";
 
-/** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any, standalone: boolean }} */
+/** @type {{ mode: LearnMode | "lesson" | "", pack: LearnQuiz | null, vocalWas: number, boot: number, generation: number, run: { unitId: string, skill: string, review?: boolean } | null, lesson: any, attemptId: string, pendingScore: any, result: any, standalone: boolean }} */
 const ui = {
   mode: "",
   pack: null,
@@ -32,6 +32,8 @@ const ui = {
   lesson: null,
   attemptId: "",
   pendingScore: null,
+  // The saved result of the last campaign run, plus what it changed on the path.
+  result: null,
   standalone: false
 };
 let libraryLoad = 0;
@@ -150,6 +152,7 @@ export function exitLearn() {
   ui.lesson = null;
   ui.attemptId = "";
   ui.pendingScore = null;
+  ui.result = null;
   ui.standalone = false;
   document.body.classList.remove("learn-on");
   $("playerLearn").hidden = true;
@@ -227,6 +230,7 @@ function paintDailyGoal() {
     : t("learn.daily.goal", { done: snap.count, goal: DAILY_GOAL, streak: snap.streak });
 }
 
+/** @returns {boolean} true on the run that reaches today's goal */
 function markDailyPractice() {
   const data = readDaily();
   const today = dayKey();
@@ -241,6 +245,12 @@ function markDailyPractice() {
     localStorage.setItem(DAILY_KEY, JSON.stringify(data));
   } catch (_) {}
   paintDailyGoal();
+  return data.days[today] === DAILY_GOAL;
+}
+
+/** Count a finished run toward the daily goal and cheer the run that completes it. */
+function noteDailyPractice() {
+  if (markDailyPractice()) showToast(t("learn.daily.done", { streak: Math.max(1, dailySnapshot().streak) }));
 }
 
 /** 歌曲专属背词入口的副标题。没挑过词时提示先挑词，挑过之后报进度，
@@ -295,6 +305,7 @@ function goHome() {
   ui.lesson = null;
   ui.attemptId = "";
   ui.pendingScore = null;
+  ui.result = null;
   showPane("learnHome");
   paintSongHead();
   paintDailyGoal();
@@ -445,6 +456,7 @@ function showLearnLibrary() {
   ui.pack = null;
   ui.run = null;
   ui.lesson = null;
+  ui.result = null;
   showPane("learnLibrary");
   $("topTitle").textContent = t("learn.pageTitle");
   $("learnTitle").textContent = t("learn.pageTitle");
@@ -452,6 +464,112 @@ function showLearnLibrary() {
   if ($("learnSongSearch")) $("learnSongSearch").value = "";
   if ($("learnSongSearchClear")) $("learnSongSearchClear").hidden = true;
   loadLearnLibrary();
+}
+
+/** How far a campaign reaches: units with an open skill, and whether every skill is passed. */
+function pathState(pack) {
+  const units = (pack && pack.units) || [];
+  const passed = (skill) => skill.status === "passed" || skill.status === "mastered";
+  return {
+    open: units.filter((unit) => (unit.skills || []).some((skill) => skill.status !== "locked")).length,
+    done: units.length > 0 && units.every((unit) => (unit.skills || []).every(passed))
+  };
+}
+
+/** Fewest extra right answers that lift `ok` of `total` to the pass line. */
+function answersToPass(ok, total, pass) {
+  for (let n = 1; ok + n <= total; n += 1) {
+    if (Math.round(((ok + n) * 100) / total) >= pass) return n;
+  }
+  return 0;
+}
+
+/**
+ * One line that says what the run changed: how close a miss came to passing,
+ * or what the pass unlocked. Free play saves nothing, so it gets none.
+ * @param {any} score
+ * @returns {{ text: string, tone: string, big?: boolean } | null}
+ */
+function runBadge(score) {
+  const result = ui.result;
+  if (!ui.run || ui.standalone || !result) return null;
+  if (ui.run.review) {
+    const left = Number(result.mistakes || 0);
+    if (!left) return { text: t("learn.badge.bookDone"), tone: "unlock", big: true };
+    const cleared = Math.max(0, Number(result.mistakes_before || 0) - left);
+    return cleared ? { text: t("learn.badge.bookCleared", { n: cleared, left }), tone: "pass" } : null;
+  }
+  const pass = Number(result.pass_pct) || 70;
+  const pct = Number(result.pct != null ? result.pct : score.pct) || 0;
+  if (!result.passed) {
+    // Read runs score hits on the tap board, not items, so only a percentage fits.
+    const need = ui.mode === "lesson" ? answersToPass(score.ok || 0, score.total || 0, pass) : 0;
+    return {
+      text: need ? t("learn.badge.need", { n: need }) : t("learn.badge.needPct", { n: Math.max(1, pass - pct) }),
+      tone: "miss"
+    };
+  }
+  if (result.pathDone) return { text: t("learn.badge.allClear"), tone: "unlock", big: true };
+  if (result.unlocked) return { text: t("learn.badge.unlock", { n: result.unlocked }), tone: "unlock", big: true };
+  if (pct >= 90) return { text: t("learn.badge.mastered"), tone: "gold" };
+  return { text: t("learn.badge.passed"), tone: "pass" };
+}
+
+function paintBadge(badge) {
+  const el = $("learnScoreBadge");
+  if (!el) return;
+  el.hidden = !badge;
+  el.className = `learn-score-badge${badge ? ` is-${badge.tone}` : ""}`;
+  el.textContent = badge ? badge.text : "";
+}
+
+function paintStars(pct) {
+  const el = $("learnScoreStars");
+  if (!el) return;
+  // A cover score is a loose loudness-and-timing estimate; stars would overstate it.
+  el.hidden = ui.mode === "echo";
+  if (el.hidden) return;
+  const pass = (ui.result && Number(ui.result.pass_pct)) || 70;
+  const n = pct >= 100 ? 3 : pct >= 90 ? 2 : pct >= pass ? 1 : 0;
+  el.setAttribute("aria-label", t("learn.stars", { n }));
+  el.innerHTML = [0, 1, 2]
+    .map((i) => `<i class="learn-star${i < n ? " is-on" : ""}" style="--i:${i}" aria-hidden="true">★</i>`)
+    .join("");
+}
+
+/** @param {LearnScoreView["stats"]} stats */
+function paintStats(stats) {
+  const el = $("learnScoreStats");
+  if (!el) return;
+  const rows = stats || [];
+  el.hidden = !rows.length;
+  el.innerHTML = rows
+    .map((row) => `<li><b>${escapeHtml(row.value)}</b><span>${escapeHtml(row.label)}</span></li>`)
+    .join("");
+}
+
+/** After a passed stage, offer the next open one so the path keeps moving. */
+function paintNextStep() {
+  const btn = $("learnNext");
+  if (!btn) return null;
+  const run = ui.run;
+  const result = ui.result;
+  const ready = run && !run.review && !ui.standalone && result && result.passed ? firstReady(result.campaign) : null;
+  const step = ready && !(ready.unit.id === run.unitId && ready.skill.id === run.skill) ? ready : null;
+  btn.hidden = !step;
+  btn.disabled = false;
+  if (!step) return null;
+  btn.textContent = t("learn.nextStep", {
+    step: `${t("learn.unit", { n: step.unit.index + 1 })} · ${t("learn.skill." + step.skill.id)}`
+  });
+  btn.onclick = () => {
+    $("learnMix").pause();
+    btn.disabled = true;
+    startSkill(step.unit.id, step.skill.id).finally(() => {
+      btn.disabled = false;
+    });
+  };
+  return step;
 }
 
 /** @param {any} score */
@@ -466,6 +584,12 @@ function showScore(score) {
   $("learnScoreDetail").textContent = view.detail;
   $("learnAgain").textContent = view.again;
   $("learnOther").textContent = otherLabel(ui.mode);
+  const badge = runBadge(score);
+  paintBadge(badge);
+  paintStars(Number(score.pct) || 0);
+  paintStats(view.stats);
+  // The next stage takes the primary slot; otherwise replaying is the main action.
+  $("learnAgain").classList.toggle("primary", !paintNextStep());
   const saveRetry = $("learnSaveRetry");
   if (saveRetry) saveRetry.hidden = !ui.pendingScore;
   const mix = $("learnMix");
@@ -476,7 +600,8 @@ function showScore(score) {
   } else {
     mix.removeAttribute("src");
   }
-  if (view.celebrate) celebrateCorrect($("learnScoreNum"), { line: true });
+  if (badge && badge.big) celebrateCorrect($("learnScoreBadge"), { line: true, combo: 5 });
+  else if (view.celebrate) celebrateCorrect($("learnScoreNum"), { line: true });
 }
 
 async function loadPack() {
@@ -497,10 +622,20 @@ function scopedPack(lines) {
   return Object.assign({}, pack, { lines: lines || pack.lines });
 }
 
+function newAttemptId() {
+  return typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : String(Date.now()) + "-" + String(Math.random());
+}
+
 async function submitRun(score) {
   const run = ui.run;
   const song = state.playerSong;
-  if (!run || !song) return;
+  if (!run || !song) return false;
+  // Compare the path before and after, so the score screen can tell a fresh
+  // unlock from a replay of a stage that was already open.
+  const prev = currentCampaign();
+  const before = prev && prev.song_id === song.id ? pathState(prev) : null;
   const path = run.review ? `/api/songs/${song.id}/learn/review` : `/api/songs/${song.id}/learn/lesson`;
   const { ok, data } = await fetchJson(path, {
     method: "POST",
@@ -519,6 +654,11 @@ async function submitRun(score) {
     showToast((data && data.detail) || t("common.saveFailed"));
   } else {
     ui.pendingScore = null;
+    const after = data && data.campaign ? pathState(data.campaign) : null;
+    ui.result = Object.assign({}, data, {
+      unlocked: before && after && after.open > before.open ? after.open : 0,
+      pathDone: !!(before && after && after.done && !before.done)
+    });
   }
   return ok;
 }
@@ -546,18 +686,18 @@ async function startMode(mode, pack) {
   unlockPlayerGesture();
   pausePlayer();
   ui.mode = /** @type {LearnMode} */ (MODES[mode] ? mode : "quiz");
-  ui.attemptId =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : String(Date.now()) + "-" + String(Math.random());
+  ui.attemptId = newAttemptId();
+  ui.pendingScore = null;
+  ui.result = null;
   showPane(spec.pane);
   spec.setup(loaded);
   if (boot !== ui.boot || ui.mode !== mode) return;
   const score = await spec.run();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
   if (score) {
-    markDailyPractice();
+    noteDailyPractice();
     if (ui.run && !ui.standalone) await submitRun(score);
+    if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
     showScore(score);
   }
 }
@@ -627,21 +767,18 @@ async function startLessonRun(lesson) {
   unlockPlayerGesture();
   pausePlayer();
   ui.mode = "lesson";
-  ui.attemptId =
-    typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : String(Date.now()) + "-" + String(Math.random());
+  ui.attemptId = newAttemptId();
+  ui.pendingScore = null;
+  ui.result = null;
   showPane("learnLesson");
   startLesson(lesson);
-  // The lesson choices are painted before runLesson() marks the session live;
-  // showing a countdown here makes the buttons visibly tappable but inert.
-  const go = true;
-  if (!go || boot !== ui.boot || generation !== ui.generation || ui.mode !== "lesson" || !isLearnOpen()) return;
+  if (boot !== ui.boot || generation !== ui.generation || ui.mode !== "lesson" || !isLearnOpen()) return;
   const score = await runLesson();
   if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
   if (score) {
-    markDailyPractice();
+    noteDailyPractice();
     await submitRun(score);
+    if (boot !== ui.boot || generation !== ui.generation || !isLearnOpen()) return;
     showScore(score);
   }
 }
@@ -743,6 +880,39 @@ export async function enterCover() {
   await startMode("echo");
 }
 
+function shown(el) {
+  return !!el && !el.disabled && el.getClientRects().length > 0;
+}
+
+/**
+ * With a keyboard, 1–9 pick a choice and Enter moves past a miss. A focused
+ * button keeps its own Enter, and typing in a field or an open sheet wins.
+ */
+function bindLearnKeys() {
+  document.addEventListener("keydown", (event) => {
+    if (!isLearnOpen() || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+    const target = /** @type {HTMLElement} */ (event.target);
+    if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+    if (document.querySelector(".overlay:not([hidden])")) return;
+    const pane = document.querySelector("#playerLearn .learn-body:not([hidden])");
+    if (!pane) return;
+    if (/^[1-9]$/.test(event.key)) {
+      const choices = Array.from(pane.querySelectorAll(".learn-choice")).filter(shown);
+      const btn = choices[Number(event.key) - 1];
+      if (!btn) return;
+      event.preventDefault();
+      // detail 0 marks a pointerless click, which onPress answers.
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      return;
+    }
+    if (event.key !== "Enter" || (target && target.closest && target.closest("button, a"))) return;
+    const next = Array.from(pane.querySelectorAll(".learn-next, #reciteDetailNext")).find(shown);
+    if (!next) return;
+    event.preventDefault();
+    /** @type {HTMLElement} */ (next).click();
+  });
+}
+
 export function bindLearn() {
   const cover = $("playerEchoBtn");
   if (cover) cover.onclick = () => enterCover();
@@ -800,6 +970,7 @@ export function bindLearn() {
   bindTap();
   bindEcho();
   bindLesson();
+  bindLearnKeys();
   bindCampaign({
     onSkill: (unitId, skill) => startSkill(unitId, skill),
     onBook: () => openStudyBook()
@@ -851,18 +1022,15 @@ export function bindLearn() {
   const saveRetry = $("learnSaveRetry");
   if (saveRetry) {
     saveRetry.onclick = async () => {
-      if (!ui.pendingScore || !ui.run) return;
-      ui.attemptId =
-        typeof crypto !== "undefined" && crypto.randomUUID
-          ? crypto.randomUUID()
-          : String(Date.now()) + "-" + String(Math.random());
+      const score = ui.pendingScore;
+      if (!score || !ui.run) return;
+      const generation = ui.generation;
+      // The server claims an attempt id before it validates, so a retry needs a fresh one.
+      ui.attemptId = newAttemptId();
       saveRetry.disabled = true;
-      const ok = await submitRun(ui.pendingScore);
+      const ok = await submitRun(score);
       saveRetry.disabled = false;
-      if (ok) {
-        saveRetry.hidden = true;
-        showScore(ui.pendingScore);
-      }
+      if (ok && generation === ui.generation && isLearnOpen()) showScore(score);
     };
   }
   $("learnAgain").onclick = () => {

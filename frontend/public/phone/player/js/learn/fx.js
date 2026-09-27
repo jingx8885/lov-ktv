@@ -145,6 +145,23 @@ function flashClass(el, name, ms = 460) {
   fx.timers.add(timer);
 }
 
+/**
+ * Answer buttons fire on pointerdown so a tap lands without the click delay.
+ * Keyboard and assistive-tech activation never sends a pointerdown; it arrives
+ * as a click with detail 0, so route that to the same handler.
+ * @param {Element} btn @param {() => void} fn
+ */
+export function onPress(btn, fn) {
+  btn.addEventListener("pointerdown", (event) => {
+    if (/** @type {PointerEvent} */ (event).button > 0) return;
+    event.preventDefault();
+    fn();
+  });
+  btn.addEventListener("click", (event) => {
+    if (/** @type {MouseEvent} */ (event).detail === 0) fn();
+  });
+}
+
 /** A tiny selection tick for choices that have not been judged yet (matching). */
 export function playSelectSfx() {
   const ctx = fxCtx();

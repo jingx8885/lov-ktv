@@ -355,6 +355,8 @@ interface LearnScoreView {
   detail: string;
   mixUrl?: string;
   celebrate?: boolean;
+  /** Small figures shown as chips under the score, e.g. first-try hits or best streak. */
+  stats?: Array<{ label: string; value: string }>;
 }
 
 interface LearnTapSession {

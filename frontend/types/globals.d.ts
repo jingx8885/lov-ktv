@@ -319,6 +319,8 @@ interface LovKtvNativeBridge {
   capabilities?: () => string;
   state?: () => string;
   setGain?: (value: number) => void;
+  lyricSize?: () => string;
+  saveLyricSize?: (value: string) => void;
 }
 
 interface LovKtvPhoneBridge {

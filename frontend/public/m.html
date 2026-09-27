@@ -536,7 +536,7 @@
           </div>
           <div class="learn-body" id="learnHome">
             <p class="learn-lead" data-i18n="learn.lead">
-              一首歌是一大关。通关要词句都认识，并且能读能唱。每关从这首歌抽知识点，打错的会进错题本。
+              每关练一段歌词。单词、句意、听写、朗读四项都答对 70% 就解锁下一关。答错的题会在本轮末尾再考，也会进错题本。
             </p>
             <div class="learn-daily" id="learnDailyGoal" role="status" aria-live="polite"></div>
             <div class="learn-goals" id="learnGoals" hidden></div>
@@ -692,7 +692,6 @@
             <p class="learn-lead" id="learnBookLead" data-i18n="learn.bookHint">0 道待复习，连对两次才移出</p>
             <div class="learn-book-list" id="learnBookList"></div>
             <div class="learn-dock learn-dock-col">
-              <button class="btn" id="learnSaveRetry" type="button" hidden data-i18n="learn.saveRetry">重试保存</button>
               <button class="btn primary" id="learnBookGo" type="button" data-i18n="learn.bookGo">练错题</button>
             </div>
           </div>
@@ -825,7 +824,7 @@
             <div class="learn-echo-pulse" id="learnEchoPulse"></div>
             <div class="learn-echo-tools">
               <button class="btn ghost" id="learnEchoVocal" type="button" aria-pressed="true">原唱：开</button>
-              <button class="btn ghost" id="learnEchoStop" type="button">停止</button>
+              <button class="btn ghost" id="learnEchoStop" type="button" data-i18n="learn.echoStop">停止</button>
             </div>
             <button class="learn-skip" id="learnEchoSkip" type="button" disabled data-i18n="learn.skip">
               跳过这句
@@ -837,11 +836,16 @@
             </div>
           </div>
           <div class="learn-body" id="learnScore" hidden>
+            <p class="learn-score-badge" id="learnScoreBadge" role="status" hidden></p>
             <p class="learn-score-num" id="learnScoreNum">0</p>
+            <p class="learn-stars" id="learnScoreStars" role="img" hidden></p>
             <p class="learn-score-sub" id="learnScoreSub"></p>
+            <ul class="learn-score-stats" id="learnScoreStats" hidden></ul>
             <p class="tiny" id="learnScoreDetail"></p>
             <audio id="learnMix" controls playsinline hidden></audio>
             <div class="learn-dock learn-dock-col">
+              <button class="btn" id="learnSaveRetry" type="button" hidden data-i18n="learn.saveRetry">重试保存</button>
+              <button class="btn primary" id="learnNext" type="button" hidden></button>
               <button class="btn primary" id="learnAgain" type="button" data-i18n="learn.again">再来一次</button>
               <button class="btn" id="learnOther" type="button" data-i18n="learn.other">换一种</button>
               <button class="btn" id="learnDone" type="button" data-i18n="learn.done">回到听歌</button>

@@ -4,7 +4,7 @@ import { songTitle } from "../../../../shared/ui/js/song.js";
 import { state } from "../../../state.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { showToast } from "../../../ui/js/toast.js";
-import { celebrateCorrect, playMissSfx } from "./fx.js";
+import { celebrateCorrect, onPress, playMissSfx } from "./fx.js";
 import { mediaUrl } from "../playback/media.js";
 import { getStudyWords } from "../../../desk/js/lyrics.js";
 
@@ -422,10 +422,7 @@ function paintCard() {
     )
     .join("")}</div>`;
   box.querySelectorAll(".learn-choice").forEach((btn) => {
-    btn.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      pick(Number(btn.getAttribute("data-cid")), /** @type {HTMLElement} */ (btn));
-    });
+    onPress(btn, () => pick(Number(btn.getAttribute("data-cid")), /** @type {HTMLElement} */ (btn)));
   });
   if (card.audio) playSnippet(card.detail, replay);
 }

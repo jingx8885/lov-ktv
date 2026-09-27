@@ -383,6 +383,119 @@ body[data-lyric-mode="roma"] .learn-line .learn-roma {
   width: 100%;
   margin-top: 8px;
 }
+#learnScore {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#learnScore .learn-dock { margin-top: auto; }
+.learn-score-badge {
+  align-self: center;
+  max-width: 100%;
+  margin: 22px 0 0;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(48, 176, 80, .16);
+  color: #8dffd0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  animation: learn-badge-in 360ms cubic-bezier(.2, .9, .3, 1) both;
+}
+.learn-score-badge.is-gold {
+  background: rgba(245, 193, 108, .16);
+  color: var(--gold);
+  box-shadow: 0 0 20px rgba(245, 193, 108, .22);
+}
+.learn-score-badge.is-unlock {
+  background: linear-gradient(90deg, #ffc93c, #ff4d8d);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+  box-shadow: 0 6px 24px rgba(255, 77, 141, .36);
+  animation: learn-badge-pop 640ms cubic-bezier(.2, .9, .3, 1) both;
+}
+.learn-score-badge.is-miss {
+  background: rgba(255, 69, 58, .14);
+  color: #ffb0bd;
+}
+.learn-score-badge[hidden] { display: none !important; }
+.learn-score-badge:not([hidden]) + .learn-score-num { margin-top: 6px; }
+@keyframes learn-badge-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes learn-badge-pop {
+  0% { opacity: 0; transform: scale(.6); }
+  55% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.learn-stars {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 30px;
+  line-height: 1;
+}
+.learn-stars[hidden] { display: none !important; }
+.learn-star {
+  display: inline-block;
+  font-style: normal;
+  color: rgba(255, 255, 255, .16);
+}
+.learn-star.is-on {
+  color: var(--gold);
+  text-shadow: 0 0 14px rgba(245, 193, 108, .55);
+  animation: learn-star-pop 460ms cubic-bezier(.2, .9, .3, 1) both;
+  animation-delay: calc(var(--i) * 140ms + 120ms);
+}
+/* Each earned star starts grey and pops gold in turn. */
+@keyframes learn-star-pop {
+  0% { color: rgba(255, 255, 255, .16); text-shadow: none; transform: scale(1); }
+  35% { transform: scale(.72); }
+  70% { color: var(--gold); transform: scale(1.28); }
+  100% { transform: scale(1); }
+}
+.learn-score-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 2px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.learn-score-stats[hidden] { display: none !important; }
+.learn-score-stats li {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 84px;
+  padding: 10px 12px 8px;
+  border-radius: var(--r-m);
+  background: rgba(18, 16, 28, .5);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.learn-score-stats b {
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.learn-score-stats span {
+  color: var(--muted);
+  font-size: 12px;
+}
+/* After a miss the whole line comes back with its translation. */
+.learn-line.is-reveal {
+  padding-left: 10px;
+  padding-right: 10px;
+  border-radius: var(--r-m);
+  background: rgba(110, 200, 255, .08);
+  box-shadow: inset 0 0 0 1px rgba(110, 200, 255, .22);
+  animation: learn-feedback-in 180ms ease-out;
+}
+/* The meaning is the lesson here, so show it even when the lyric mode hides translations. */
+body[data-lyric-mode] .learn-line.is-reveal .learn-zh:not([hidden]) { display: block !important; }
 @keyframes learn-ok-pop {
   0% { transform: scale(.94); }
   38% { transform: scale(1.07); }
@@ -433,6 +546,9 @@ body[data-lyric-mode="roma"] .learn-line .learn-roma {
   .learn-combo.is-combo,
   .learn-combo.is-combo-super { transform: none; animation: none; filter: none; box-shadow: none; }
   .learn-count b.is-pop { animation: none; }
+  .learn-score-badge,
+  .learn-star.is-on,
+  .learn-line.is-reveal { animation: none; }
 }
 body.phone.learn-on { overflow: hidden; }
 body.phone.learn-on .topbar,

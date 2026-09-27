@@ -1,6 +1,6 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
-import { celebrateCorrect, playMissSfx } from "./fx.js";
+import { celebrateCorrect, onPress, playMissSfx } from "./fx.js";
 import {
   cancelCueWindow,
   cancelLineHold,
@@ -138,10 +138,7 @@ function paintQuestion(line) {
     </div>
   `;
   box.querySelectorAll(".learn-choice").forEach((btn) => {
-    btn.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      pickChoice(Number(btn.dataset.cid), btn);
-    });
+    onPress(btn, () => pickChoice(Number(btn.dataset.cid), btn));
   });
   if (session.answers[item.id] != null) markChoices(item, session.answers[item.id]);
 }
