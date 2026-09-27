@@ -26,8 +26,8 @@ class PrefsTest {
 
     @Test
     fun lyricSizeStepsBetween10And250() {
-        assertEquals("100", Prefs.normalizeLyricSize(""))
-        assertEquals("100", Prefs.normalizeLyricSize(null))
+        assertEquals("30", Prefs.normalizeLyricSize(""))
+        assertEquals("30", Prefs.normalizeLyricSize(null))
         assertEquals("10", Prefs.normalizeLyricSize("10"))
         assertEquals("10", Prefs.normalizeLyricSize("4"))
         assertEquals("250", Prefs.normalizeLyricSize("400"))

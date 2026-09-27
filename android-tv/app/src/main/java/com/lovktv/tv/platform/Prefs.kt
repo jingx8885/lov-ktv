@@ -8,7 +8,7 @@ object Prefs {
     private const val FILE = "lovktv"
     private const val KEY_SERVER = "server_url"
     private const val KEY_ROOM = "room_code"
-    private const val KEY_LYRIC_SIZE = "lyric_size"
+    private const val KEY_LYRIC_SIZE = "lyric_size_v2"
     private const val LEGACY_DEFAULT_SERVER = "http://lov-ktv.local:8787"
     private val ROOM_RE = Regex("^[A-Z0-9]{4,12}$")
 
@@ -72,7 +72,7 @@ object Prefs {
     }
 
     fun normalizeLyricSize(raw: String?): String {
-        val n = raw?.trim()?.toIntOrNull() ?: return "100"
+        val n = raw?.trim()?.toIntOrNull() ?: return "30"
         val stepped = Math.round(n / 10.0).toInt() * 10
         return stepped.coerceIn(10, 250).toString()
     }

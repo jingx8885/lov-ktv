@@ -1,8 +1,8 @@
-export const LYRIC_SIZE_KEY = "tvLyricSize";
+export const LYRIC_SIZE_KEY = "tvLyricSizeV2";
 export const LYRIC_SIZE_MIN = 10;
 export const LYRIC_SIZE_MAX = 250;
 export const LYRIC_SIZE_STEP = 10;
-export const DEFAULT_LYRIC_SIZE = 100;
+export const DEFAULT_LYRIC_SIZE = 30;
 
 const LEGACY_SIZE = {
   s: 80,
@@ -54,13 +54,15 @@ function rememberLyricSize(size) {
 }
 
 export function storedLyricSize() {
-  const native = nativeLyricSize();
-  if (native) return normLyricSize(native);
   try {
-    return normLyricSize(localStorage.getItem(LYRIC_SIZE_KEY));
-  } catch (_) {
-    return DEFAULT_LYRIC_SIZE;
-  }
+    const web = localStorage.getItem(LYRIC_SIZE_KEY);
+    if (web != null && web !== "") return normLyricSize(web);
+  } catch (_) {}
+  const native = nativeLyricSize();
+  // Old installs persisted the previous 100% default. Ignore that so a
+  // fresh page still opens at 30% until the user actually changes it.
+  if (native && normLyricSize(native) !== 100) return normLyricSize(native);
+  return DEFAULT_LYRIC_SIZE;
 }
 
 export function lyricSize() {

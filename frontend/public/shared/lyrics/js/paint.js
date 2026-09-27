@@ -275,7 +275,7 @@ function widestToken(content) {
 function tvLyricFontPx() {
   const raw = document.body && document.body.dataset.lyricSize;
   const n = Number(raw);
-  const scale = Number.isFinite(n) && n > 0 ? n / 100 : 1;
+  const scale = Number.isFinite(n) && n > 0 ? n / 100 : 0.3;
   return Math.round(64 * scale);
 }
 

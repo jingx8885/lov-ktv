@@ -13,9 +13,9 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "clamp(28px, 4.6vw, 58px)" in shared
     assert "font-size: 0.34em" in shared
     assert "font-size: .62em" in shared
-    assert "--tv-lyric-scale: 1" in tv
+    assert "--tv-lyric-scale: 0.3" in tv
     assert "font-size: 64px;" in tv
-    assert "font-size: calc(64px * var(--tv-lyric-scale, 1))" in tv
+    assert "font-size: calc(64px * var(--tv-lyric-scale, 0.3))" in tv
     assert "clamp(36px, 3.4vw, 68px)" not in tv
     assert "lyric-left" in tv
     assert "lyric-right" in tv
@@ -98,6 +98,8 @@ def test_tv_lyrics_use_readable_fixed_type():
     assert "paintKaraokeLine($(\"lyricLeft\")" in paint_tv
     assert "paintKaraokeLine($(\"lyricRight\")" in paint_tv
     assert "export function applyLyricSize" in size
+    assert "export const DEFAULT_LYRIC_SIZE = 30" in size
+    assert 'export const LYRIC_SIZE_KEY = "tvLyricSizeV2"' in size
     assert "export const LYRIC_SIZE_MIN = 10" in size
     assert "native.saveLyricSize" in size
     assert "export const LYRIC_SIZE_MAX = 250" in size
