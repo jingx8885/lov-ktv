@@ -51,6 +51,22 @@ def test_netease_lyrics_keeps_duration_candidates_for_energy_retry(monkeypatch):
     assert [item["id"] for item in selected["candidates"]] == ["1", "2"]
 
 
+def test_netease_lyrics_honor_preferred_id_over_duration_match(monkeypatch):
+    lyrics = {
+        "wanted": "[00:01.00]夢の国を\n[04:05.00]最後",
+        "close": "[00:01.00]wrong song\n[04:50.00]end",
+    }
+    monkeypatch.setattr(
+        importer, "fetch_lyric", lambda song_id, source="netease": lyrics[song_id]
+    )
+    selected = importer._fetch_netease_lyrics(
+        ["close", "wanted"], 290_000, preferred_id="wanted"
+    )
+    assert selected is not None
+    assert selected["id"] == "wanted"
+    assert "夢の国を" in selected["lrc"]
+
+
 def test_sync_video_to_audio_trims_or_loops_to_mp3(tmp_path, monkeypatch):
     video = tmp_path / "mtv.mp4"
     audio_path = tmp_path / "original.mp3"

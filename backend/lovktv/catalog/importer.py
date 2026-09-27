@@ -116,13 +116,17 @@ def _lrc_last_ms(lines: list[dict[str, Any]]) -> int:
     )
 
 
-def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | None:
+def _fetch_netease_lyrics(
+    ids: list[str], media_ms: int, preferred_id: str = ""
+) -> dict[str, Any] | None:
     """Fetch LRC candidates and keep the one that fits the media length best.
 
     Without a known media length the first candidate with lyrics wins, as
     before.  With one, every candidate is scored by ``lyric_mismatch_ms`` so
     a film cut picks the film lyrics even when the studio single is listed
-    first.
+    first.  An explicit ``preferred_id`` (the search hit the user picked)
+    still wins among candidates that fit the media, so a similarly long
+    unrelated NetEase track cannot steal the song.
     """
     best: dict[str, Any] | None = None
     candidates: list[dict[str, Any]] = []
@@ -146,16 +150,24 @@ def _fetch_netease_lyrics(ids: list[str], media_ms: int) -> dict[str, Any] | Non
         candidates.append(candidate)
         if best is None or mismatch < int(best["mismatch_ms"]):
             best = candidate
-        if mismatch == 0:
+        if mismatch == 0 and str(sid) == str(preferred_id or sid):
             break
     if best is not None:
         # Keep the alternatives for the post-separation energy check.  The
         # selected candidate remains at the top-level for compatibility with
         # existing callers and persisted skeletons.
-        best["candidates"] = [
+        packed = [
             {key: value for key, value in item.items() if key != "candidates"}
             for item in candidates
         ]
+        preferred = str(preferred_id or "").strip()
+        if preferred:
+            for item in packed:
+                if str(item.get("id") or "") == preferred:
+                    chosen = dict(item)
+                    chosen["candidates"] = packed
+                    return chosen
+        best["candidates"] = packed
     return best
 
 
@@ -182,7 +194,9 @@ def _select_lyrics(
     if kugou is not None and (not media_ms or kugou_mismatch <= KUGOU_ACCEPT_MS):
         return {"source": "kugou", "kugou": kugou, "mismatch_ms": kugou_mismatch}
     netease = _fetch_netease_lyrics(
-        _netease_lyric_ids(chosen, title_name, preferred_lyric_id), media_ms
+        _netease_lyric_ids(chosen, title_name, preferred_lyric_id),
+        media_ms,
+        preferred_lyric_id,
     )
     if netease is not None and (
         kugou is None or int(netease["mismatch_ms"]) < kugou_mismatch

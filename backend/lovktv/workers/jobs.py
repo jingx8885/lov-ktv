@@ -574,15 +574,19 @@ def _select_energy_lrc(
             return None
     candidates: list[tuple[list[dict], str]] = [(current_lines, "selected")]
     source = skeleton.get("source") if isinstance(skeleton.get("source"), dict) else {}
+    pinned = str(source.get("lyric_id") or "").strip()
     for item in source.get("lyric_candidates") or []:
         if not isinstance(item, dict):
+            continue
+        candidate_id = str(item.get("id") or "")
+        if pinned and candidate_id and candidate_id != pinned:
             continue
         raw = str(item.get("lrc") or "")
         if not raw.strip():
             continue
         parsed = parse_lrc(raw)
         if parsed:
-            candidates.append((parsed, str(item.get("id") or "candidate")))
+            candidates.append((parsed, candidate_id or "candidate"))
     best: tuple[list[dict], str, dict[str, Any]] | None = None
     for lines, candidate_id in candidates:
         if not _lrc_duration_close(media_ms, lines):
