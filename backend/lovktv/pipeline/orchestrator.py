@@ -33,6 +33,7 @@ from lovktv.pipeline.constants import HOP_MS
 from lovktv.pipeline.energy import _finalize_line_bounds
 from lovktv.pipeline.energy import lrc_energy_match as _lrc_energy_match
 from lovktv.pipeline.energy import merge_with_energy as _merge_with_energy
+from lovktv.pipeline.energy import snap_late_line_stamps as _snap_late_line_stamps
 from lovktv.pipeline.language import detect_language
 from lovktv.pipeline.lyrics import (
     build_cue,
@@ -416,7 +417,10 @@ def align_lyrics(
                 if item.get("end_ms") is not None:
                     row["end_ms"] = int(item["end_ms"]) + shift
                 shifted.append(row)
-            work = shifted
+            # Interior energy matches still accept a stamp several seconds into
+            # a phrase.  Pull those late starts back onto the covering onset
+            # without sliding the whole clock onto a later missed intro.
+            work = _snap_late_line_stamps(shifted, regions)
         duration = duration_ms or (int(work[-1]["ms"]) + 4000 if work else 0)
         bounds = _finalize_line_bounds(work, phrases or regions, duration)
         return {

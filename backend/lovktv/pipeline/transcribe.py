@@ -199,7 +199,54 @@ def _parse_grok_payload(data: dict[str, Any]) -> list[dict[str, Any]]:
                 "segment": segment,
             }
         )
-    return words
+    return _spread_collapsed_words(words)
+
+
+_MAX_NATIVE_WORD_MS = 2500
+_COLLAPSE_MS = 80
+
+
+def _spread_collapsed_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rebuild a phrase clock when Grok parks a whole line on one long token.
+
+    Native word timestamps sometimes give the first character the segment span
+    (0–13 s) and dump the rest into 40 ms ticks at the end.  Spread the
+    overlapping cluster by character weight so agent spans stay usable.
+    """
+    if not words:
+        return words
+    out = [dict(word) for word in words]
+    index = 0
+    while index < len(out):
+        duration = int(out[index]["end_ms"]) - int(out[index]["start_ms"])
+        if duration <= _MAX_NATIVE_WORD_MS:
+            index += 1
+            continue
+        lo = int(out[index]["start_ms"])
+        hi = int(out[index]["end_ms"])
+        left = index
+        while left > 0 and abs(int(out[left - 1]["start_ms"]) - lo) <= _COLLAPSE_MS:
+            left -= 1
+        right = index + 1
+        while right < len(out) and int(out[right]["start_ms"]) <= hi + _COLLAPSE_MS:
+            hi = max(hi, int(out[right]["end_ms"]))
+            right += 1
+        cluster = out[left:right]
+        if len(cluster) <= 1:
+            index = right
+            continue
+        weights = [max(1, len(str(word.get("text") or ""))) for word in cluster]
+        total = float(sum(weights))
+        cursor = float(lo)
+        span = float(max(hi - lo, 40 * len(cluster)))
+        for word, weight in zip(cluster, weights):
+            token_end = cursor + span * weight / total
+            word["start_ms"] = int(round(cursor))
+            word["end_ms"] = max(int(round(token_end)), int(word["start_ms"]) + 40)
+            cursor = token_end
+        cluster[-1]["end_ms"] = hi
+        index = right
+    return out
 
 
 def _dedupe_words(words: list[dict[str, Any]]) -> list[dict[str, Any]]:

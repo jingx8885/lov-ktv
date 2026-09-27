@@ -71,6 +71,56 @@ def lrc_energy_match(
     }
 
 
+def snap_late_line_stamps(
+    lines: list[dict[str, Any]],
+    regions: list[tuple[int, int]],
+    min_delay_ms: int = LRC_ENERGY_MAX_DELTA_MS,
+) -> list[dict[str, Any]]:
+    """Pull a stamp back to the covering region's onset when it is late inside that phrase.
+
+    Energy matching treats "inside a vocal region" as aligned, so a Netease LRC
+    that is two or three seconds late still takes the fast path and keeps the
+    late clock.  Snap only to an onset that no earlier line already owns, so a
+    long legato region covering several lines is left alone.
+    """
+    if not lines or not regions:
+        return [dict(item) for item in lines]
+    out: list[dict[str, Any]] = []
+    for item in lines:
+        row = dict(item)
+        if row.get("ms") is None:
+            out.append(row)
+            continue
+        start_ms = int(row["ms"])
+        covering = next(
+            (
+                (region_start, region_end)
+                for region_start, region_end in regions
+                if region_start <= start_ms <= region_end
+            ),
+            None,
+        )
+        if covering is None or start_ms - covering[0] < min_delay_ms:
+            out.append(row)
+            continue
+        new_start = covering[0]
+        previous = next(
+            (int(prev["ms"]) for prev in reversed(out) if prev.get("ms") is not None),
+            None,
+        )
+        if previous is not None and new_start <= previous:
+            out.append(row)
+            continue
+        if previous is not None:
+            new_start = max(new_start, previous + 80)
+        delay = start_ms - new_start
+        row["ms"] = new_start
+        if row.get("end_ms") is not None:
+            row["end_ms"] = max(new_start + MIN_LINE_MS, int(row["end_ms"]) - delay)
+        out.append(row)
+    return out
+
+
 def _vocal_end_near(
     start_ms: int, regions: list[tuple[int, int]], limit_ms: int = MAX_LINE_MS
 ) -> int:

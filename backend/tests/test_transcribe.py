@@ -10,6 +10,31 @@ from lovktv.pipeline.transcribe import (
 )
 
 
+def test_parse_grok_spreads_collapsed_phrase_timestamps():
+    words = _parse_grok_payload(
+        {
+            "words": [
+                {"text": "It's", "start": 0.0, "end": 0.04},
+                {"text": "alright", "start": 0.0, "end": 0.04},
+                {"text": "大", "start": 0.0, "end": 13.12},
+                {"text": "丈", "start": 13.12, "end": 13.16},
+                {"text": "夫", "start": 13.12, "end": 13.16},
+                {"text": "起", "start": 13.12, "end": 13.16},
+                {"text": "こ", "start": 13.12, "end": 13.16},
+                {"text": "せ", "start": 13.12, "end": 13.16},
+                {"text": "る", "start": 13.12, "end": 13.16},
+            ]
+        }
+    )
+    assert words[0]["start_ms"] == 0
+    assert words[-1]["end_ms"] == 13160
+    assert words[2]["end_ms"] - words[2]["start_ms"] < 2500
+    assert words[3]["start_ms"] > words[2]["start_ms"]
+    assert words[-1]["start_ms"] > 8000
+    starts = [word["start_ms"] for word in words]
+    assert starts == sorted(starts)
+
+
 def test_parse_grok_recovers_segment_boundaries_from_ranges():
     words = _parse_grok_payload(
         {

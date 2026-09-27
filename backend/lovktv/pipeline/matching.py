@@ -325,14 +325,37 @@ def accept_score(language: str) -> float:
 
 
 def _usable_asr_words(asr_words: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Drop collapsed Whisper tags so they cannot open a line window."""
-    usable: list[dict[str, Any]] = []
+    """Drop collapsed Whisper/Grok tags so they cannot open a line window."""
+    filtered: list[dict[str, Any]] = []
     for word in asr_words:
         start = int(word.get("start_ms") or 0)
         end = int(word.get("end_ms") or 0)
-        if end - start < 40:
+        if end - start < 40 or end - start > MAX_LINE_MS:
             continue
-        usable.append(word)
+        filtered.append(word)
+    # Grok often dumps a whole intro as many 40 ms tokens at t=0, then jumps
+    # to the real verse.  Those stamps are not a sung clock.
+    usable: list[dict[str, Any]] = []
+    index = 0
+    while index < len(filtered):
+        run_end = index + 1
+        while (
+            run_end < len(filtered)
+            and int(filtered[run_end]["start_ms"]) - int(filtered[index]["start_ms"])
+            <= 120
+        ):
+            run_end += 1
+        run = filtered[index:run_end]
+        nxt = filtered[run_end] if run_end < len(filtered) else None
+        span = int(run[-1]["end_ms"]) - int(run[0]["start_ms"])
+        collapsed = (
+            len(run) >= 4
+            and span <= 120
+            and (nxt is None or int(nxt["start_ms"]) - int(run[-1]["end_ms"]) >= 2500)
+        )
+        if not collapsed:
+            usable.extend(run)
+        index = run_end
     return usable
 
 

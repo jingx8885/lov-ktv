@@ -280,6 +280,25 @@ def test_trusted_lrc_is_not_pulled_onto_a_later_onset():
     ]
 
 
+def test_late_lrc_inside_phrase_snaps_back_to_covering_onset():
+    hop = 20
+    env = _pulse(40, hop, [(12.84, 17.72), (18.12, 24.32), (25.24, 30.16)])
+    timeline = align_lyrics(
+        [
+            {"ms": 16110, "text": "このまま歩き続けてる"},
+            {"ms": 21600, "text": "今夜もまっすぐ"},
+            {"ms": 25880, "text": "一人の足跡辿って"},
+        ],
+        "ja",
+        envelope=env,
+        hop_ms=hop,
+        duration_ms=40000,
+    )
+    assert abs(timeline["cues"][0]["start_ms"] - 12840) <= 80
+    assert abs(timeline["cues"][1]["start_ms"] - 18120) <= 80
+    assert abs(timeline["cues"][2]["start_ms"] - 25880) <= 80
+
+
 def test_lrc_with_existing_intro_voice_does_not_apply_global_shift():
     hop = 20
     env = _pulse(40, hop, [(3.0, 6.0), (8.0, 11.0), (14.0, 17.0)])
@@ -616,6 +635,15 @@ def test_late_whisper_keeps_official_when_vocals_already_there():
     bounds = align_lines_to_asr(lines, asr, "ja", envelope=env, hop_ms=hop)
     assert abs(bounds[0]["start_ms"] - 74610) <= 200
     assert bounds[1]["start_ms"] <= 80000
+
+
+def test_collapsed_leading_asr_cluster_is_ignored():
+    from lovktv.pipeline.matching import _usable_asr_words
+
+    asr = [{"text": word, "start_ms": 0, "end_ms": 40} for word in "Just wild beat communication".split()]
+    asr.append({"text": "濡れた", "start_ms": 33740, "end_ms": 34020})
+    usable = _usable_asr_words(asr)
+    assert [word["text"] for word in usable] == ["濡れた"]
 
 
 def test_collapsed_asr_does_not_pull_first_line_early():
