@@ -1005,3 +1005,20 @@ def test_snap_late_line_keeps_previous_phrase_owner():
     assert out[2]["ms"] == 47137
     assert out[4]["ms"] == 57660
     assert out[2]["ms"] - out[1]["ms"] >= 500
+
+
+def test_snap_late_line_does_not_crush_previous_full_line():
+    """祝福: どんな物語 sits 2s into a new phrase; snapping would flatten 君の世界だ."""
+    regions = [
+        (87500, 93700),
+        (94280, 111480),
+    ]
+    lines = [
+        {"ms": 93726, "text": "君の世界だ 君の未来だ"},
+        {"ms": 96523, "text": "どんな物語にでも出来る"},
+        {"ms": 99217, "text": "逃げる様に 隠れる様に"},
+    ]
+    out = snap_late_line_stamps(lines, regions)
+    assert out[0]["ms"] == 93726
+    assert out[1]["ms"] == 96523
+    assert out[1]["ms"] - out[0]["ms"] >= 1600
