@@ -2,8 +2,9 @@ import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { api } from "../../api.js";
-import { state, searchEmpty } from "../../state.js";
+import { state, searchEmpty, searchSkeleton, rememberSearch, clearRecentSearches } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
+import { artHtml } from "../../../shared/ui/js/art.js";
 import { showToast } from "../../ui/js/toast.js";
 import { loadWho } from "../../ui/js/who.js";
 import { handlePointError } from "../../ui/js/ads.js";
@@ -101,10 +102,9 @@ export function searchCard(hit) {
     timingMatch ? `<i class="meta-pill is-good">${escapeHtml(timingMatch)}</i>` : "",
     durationText ? `<i>${durationText}</i>` : ""
   ].filter(Boolean);
-  const source = escapeHtml(String(hit.source || ""));
   return `
         <article class="list-row" data-hit="${escapeHtml(hit.id || "")}">
-          <span class="list-cover ${isMv ? "mv" : ""} ${source}" aria-hidden="true">${isMv ? "MV" : ICO.note}</span>
+          ${artHtml({ key: `${hit.title}|${hit.artist || ""}`, title: hit.title, src: hit.pic || "", badge: isMv ? "MV" : "" })}
           <div class="list-copy">
             <b>${escapeHtml(hit.title)}</b>
             <span class="tiny">${escapeHtml(hit.artist || t("common.unknownArtist"))}</span>
@@ -148,7 +148,8 @@ export async function runSearch(page, append = false) {
     stopPreview();
     state.searchHits = [];
     state.searchHasMore = false;
-    $("hits").innerHTML = `<div class="empty-state"><p>${t("common.searching")}</p></div>`;
+    rememberSearch(q);
+    $("hits").innerHTML = searchSkeleton();
   } else if (moreBtn) {
     moreBtn.textContent = t("common.loading");
     moreBtn.disabled = true;
@@ -209,6 +210,21 @@ export function bindSearch() {
       runSearch(1);
     }
   });
+  $("hits").addEventListener("click", (event) => {
+    const target = /** @type {HTMLElement} */ (event.target);
+    const chip = target.closest("[data-recent]");
+    if (chip instanceof HTMLElement) {
+      $("q").value = chip.dataset.recent || "";
+      syncSearchChrome();
+      runSearch(1);
+      return;
+    }
+    if (target.closest("[data-recent-clear]")) {
+      clearRecentSearches();
+      $("hits").innerHTML = searchEmpty();
+    }
+  });
+  if (!$("q").value.trim() && !state.searchHits.length) $("hits").innerHTML = searchEmpty();
   $("q").addEventListener("input", syncSearchChrome);
   $("q").addEventListener("focus", syncSearchChrome);
   $("q").addEventListener("blur", () => setTimeout(syncSearchChrome, 80));

@@ -1,5 +1,6 @@
 import { $, escapeHtml } from "../../../../shared/ui/js/dom.js";
 import { songArtist, songTitle } from "../../../../shared/ui/js/song.js";
+import { songArt } from "../../../../shared/ui/js/art.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
@@ -340,10 +341,11 @@ function paintLearnSongList(songs, campaigns) {
     .map((song) => {
       const progress = campaignProgress(campaigns.get(song.id));
       const current = state.playerSong && state.playerSong.id === song.id;
+      const started = progress.done || progress.pct > 0;
       return `<button type="button" class="learn-song-row${progress.done ? " is-complete" : ""}${current ? " is-current" : ""}" data-learn-song="${escapeHtml(song.id)}">
-        <span class="learn-song-cover">${progress.done ? "✓" : "♪"}</span>
+        ${songArt(song, { cls: "learn-song-cover" })}
         <span class="learn-song-copy"><b>${escapeHtml(songTitle(song))}</b><small>${escapeHtml(songArtist(song) || t("common.unknownArtist"))}</small><span class="learn-song-status" role="status" hidden></span></span>
-        <span class="learn-song-progress"><i style="--pct:${progress.pct}%"></i><em>${progress.done ? escapeHtml(t("learn.completed")) : `${progress.pct}%`}</em></span>
+        ${started ? `<span class="learn-song-progress"><i style="--pct:${progress.pct}%"></i><em>${progress.done ? escapeHtml(t("learn.completed")) : `${progress.pct}%`}</em></span>` : `<span class="learn-song-go" aria-hidden="true">›</span>`}
       </button>`;
     })
     .join("");

@@ -1,0 +1,132 @@
+/* 歌曲封面：真封面加载成功才淡入，否则是按歌曲稳定生成的渐变 + 首字。 */
+.art {
+  --art-size: 44px;
+  position: relative;
+  flex: 0 0 var(--art-size);
+  width: var(--art-size);
+  height: var(--art-size);
+  margin-right: 4px;
+  border-radius: calc(var(--art-size) * 0.22);
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 18% 12%, rgba(255, 255, 255, 0.26), transparent 55%),
+    linear-gradient(150deg, var(--art-a, #3a3a44), var(--art-b, #18181e));
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.14),
+    0 4px 14px rgba(0, 0, 0, 0.32);
+  isolation: isolate;
+}
+.art > b {
+  color: rgba(255, 255, 255, 0.94);
+  font-size: calc(var(--art-size) * 0.42);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.28);
+}
+.art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+.art.has-img > img {
+  opacity: 1;
+}
+.art.has-img > b {
+  visibility: hidden;
+}
+.art-badge {
+  position: absolute;
+  left: 3px;
+  bottom: 3px;
+  z-index: 2;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.58);
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.art-eq {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: calc(var(--art-size) * 0.06);
+  padding-bottom: calc(var(--art-size) * 0.28);
+  background: rgba(0, 0, 0, 0.42);
+}
+.art-eq i {
+  width: calc(var(--art-size) * 0.08);
+  height: calc(var(--art-size) * 0.42);
+  border-radius: 2px;
+  background: #fff;
+  transform-origin: bottom;
+  animation: art-eq 1s ease-in-out infinite;
+}
+.art-eq i:nth-child(2) {
+  animation-delay: -0.45s;
+  animation-duration: 0.8s;
+}
+.art-eq i:nth-child(3) {
+  animation-delay: -0.2s;
+  animation-duration: 1.15s;
+}
+@keyframes art-eq {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .art-eq i {
+    animation: none;
+    transform: scaleY(0.7);
+  }
+  .art > img {
+    transition: none;
+  }
+}
+
+/* 正在唱：卡片里的大封面。 */
+.art.art-now {
+  --art-size: 52px;
+  margin-right: 0;
+  box-shadow:
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.16),
+    0 10px 24px rgba(0, 0, 0, 0.42);
+}
+@media (min-width: 700px) {
+  .page-desk .art.art-now {
+    --art-size: 60px;
+  }
+}
+
+/* 列表分隔线从文字起，和封面对齐（iOS / Apple Music 的 inset）。 */
+.inset-list > .list-row:has(> .art) + .list-row::before,
+.inset-list > .desk-row:has(> .art) + .desk-row::before {
+  left: 72px;
+}
+.list-row > .art {
+  margin-right: 10px;
+}
+.art:has(> .art-badge) > b {
+  transform: translateY(-4px);
+  font-size: calc(var(--art-size) * 0.36);
+}

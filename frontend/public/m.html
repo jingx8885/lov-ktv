@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/phone/shell/css/shell.css" />
     <link rel="stylesheet" href="/phone/search/css/search.css" />
     <link rel="stylesheet" href="/phone/desk/css/desk.css" />
+    <link rel="stylesheet" href="/shared/ui/css/art.css" />
     <link rel="stylesheet" href="/phone/player/css/player.css" />
     <link rel="stylesheet" href="/phone/player/css/learn.css" />
     <link rel="stylesheet" href="/phone/player/css/learn-quiz.css" />
@@ -254,7 +255,12 @@
               <b id="playerTitle" data-i18n="phone.player.idle">还没选歌</b>
               <p class="tiny" id="playerMeta" data-i18n="phone.player.idleHint">从点歌台听一首</p>
             </div>
-            <div class="player-head-side end"></div>
+            <div class="player-head-side end">
+              <button class="icon-btn ghost" id="playerLearnBtn" type="button" data-enter-learn data-i18n-aria="learn.pageTitle">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.8a3.5 3.5 0 103 3.4V9h7V4H9z" /></svg>
+                <em class="vh" data-i18n="phone.player.songLearn">这首歌</em>
+              </button>
+            </div>
           </div>
           <audio id="playerAudio" preload="metadata" playsinline crossorigin="anonymous"></audio>
           <audio id="playerGuide" preload="auto" playsinline crossorigin="anonymous" hidden></audio>
@@ -428,16 +434,6 @@
                 <path d="M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zm-7 9a7 7 0 0014 0h-2a5 5 0 01-10 0H5z" />
               </svg>
               <em class="vh" data-i18n="learn.echo">翻唱</em>
-            </button>
-            <button
-              class="icon-btn"
-              id="playerLearnBtn"
-              type="button"
-              data-enter-learn
-              data-i18n-aria="learn.pageTitle"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4v10.8a3.5 3.5 0 103 3.4V9h7V4H9z" /></svg>
-              <em class="vh" data-i18n="phone.player.songLearn">这首歌</em>
             </button>
           </div>
         </div>

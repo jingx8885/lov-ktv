@@ -662,7 +662,7 @@ body.phone .source-tag.youtube { background: #3a2020; color: #ff8a8a; }
   line-height: 1.3;
   letter-spacing: -.01em;
 }
-.list-copy .tiny { font-size: 12px; color: var(--muted); }
+.list-copy .tiny { overflow: hidden; font-size: 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .list-add { flex: 0 0 40px; }
 .list-more {
   display: block;

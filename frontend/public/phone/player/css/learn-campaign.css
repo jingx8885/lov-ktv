@@ -87,9 +87,15 @@
 }
 
 .learn-library { overflow: auto; -webkit-overflow-scrolling: touch; }
+/* 曲库态不再套一层渐变面板：顶栏已经写着「学歌」，内容和其它 tab 对齐到同一条边。 */
+body.phone.learn-on #playerLearn.is-library { padding-left: 0; padding-right: 0; background: none; }
 .learn-library-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.learn-library-head .learn-lead { margin: 4px 0 0; }
-.learn-library-search-go { flex: 0 0 auto; padding: 8px 12px; font-size: 12px; }
+.learn-library-head .learn-song { display: none; }
+.learn-library-head .learn-lead { margin: 0; font-size: 13px; line-height: 1.4; }
+body.phone .learn-library-search-go.btn {
+  flex: 0 0 auto; width: auto; min-height: 32px; padding: 6px 14px; border: 0; border-radius: 999px;
+  color: var(--accent); background: rgba(255, 55, 95, .14); box-shadow: none; font-size: 13px; font-weight: 650;
+}
 .learn-quick-search {
   display: flex;
   align-items: center;
@@ -105,37 +111,51 @@
 .learn-quick-search input { min-width: 0; flex: 1; border: 0; outline: 0; color: var(--text); background: transparent; font: inherit; }
 .learn-quick-search input::placeholder { color: var(--muted); }
 .learn-quick-search button { appearance: none; border: 0; color: var(--muted); background: transparent; font-size: 24px; line-height: 1; cursor: pointer; }
-.learn-library-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 12px; }
+/* 两张入口做成竖排小卡：图标在上、标题、两行说明，带各自色调，不再挤成一行省略号。 */
+.learn-library-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0 18px; }
 .learn-tool-card {
-  appearance: none; display: grid; grid-template-columns: 34px 1fr 12px; align-items: center; gap: 8px; min-width: 0;
-  padding: 11px 10px; border: 0; border-radius: var(--r-m, 14px); color: var(--text); text-align: left; cursor: pointer;
-  background: var(--surface-1, rgba(18, 16, 28, .55)); box-shadow: inset 0 0 0 1px var(--line, rgba(255, 255, 255, .09));
+  appearance: none; position: relative; display: grid; align-content: start; gap: 10px; min-width: 0;
+  padding: 14px; border: 0; border-radius: 18px; color: var(--text); text-align: left; cursor: pointer;
+  background: linear-gradient(155deg, var(--tool-tint, rgba(255, 255, 255, .08)), rgba(255, 255, 255, .02) 70%), var(--surface-1, #131318);
+  box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .1);
+  transition: transform .16s ease;
 }
-.learn-tool-card:active { transform: scale(.98); }
-.learn-tool-card.is-mistake { box-shadow: inset 3px 0 0 var(--accent), inset 0 0 0 1px var(--line); }
-.learn-tool-card.is-word { box-shadow: inset 3px 0 0 #58cc02, inset 0 0 0 1px rgba(255,255,255,.09); }
-.learn-tool-ico { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; color: var(--gold); background: rgba(245,193,108,.14); }
-.learn-tool-ico svg { width: 17px; height: 17px; fill: currentColor; }
-.learn-tool-card.is-mistake .learn-tool-ico { color: #ff8fab; background: rgba(255, 55, 95, .16); }
-.learn-tool-card b, .learn-tool-card small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.learn-tool-card b { font-size: 14px; }
-.learn-tool-card small { margin-top: 2px; color: var(--muted); font-size: 11px; }
-.learn-tool-card strong { color: var(--muted); font-size: 20px; font-weight: 400; }
-.learn-library-section { display: grid; gap: 8px; }
-.learn-library-section-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px; }
-.learn-library-section-h b { font-size: 15px; }
-.learn-library-section-h span { color: var(--muted); font-size: 12px; }
-.learn-song-list { display: grid; gap: 8px; }
+.learn-tool-card:active { transform: scale(.97); }
+.learn-tool-card.is-mistake { --tool-tint: rgba(255, 55, 95, .26); }
+.learn-tool-card.is-word { --tool-tint: rgba(245, 193, 108, .22); }
+.learn-tool-ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: var(--gold); background: rgba(245,193,108,.16); }
+.learn-tool-ico svg { width: 18px; height: 18px; fill: currentColor; }
+.learn-tool-card.is-mistake .learn-tool-ico { color: #ff8fab; background: rgba(255, 55, 95, .18); }
+.learn-tool-card b, .learn-tool-card small { display: block; }
+.learn-tool-card b { font-size: 16px; font-weight: 700; letter-spacing: -.01em; }
+.learn-tool-card small {
+  margin-top: 3px; color: var(--muted); font-size: 12px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.learn-tool-card strong { position: absolute; top: 12px; right: 14px; color: var(--muted); font-size: 20px; font-weight: 400; line-height: 1; }
+.learn-library-section { display: grid; gap: 4px; }
+.learn-library-section-h { display: flex; align-items: baseline; justify-content: space-between; padding: 0 2px; }
+.learn-library-section-h b { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+.learn-library-section-h span { color: var(--muted); font-size: 13px; }
+/* 曲目是平铺列表 + 发丝分隔线，和点歌 / 曲库同一套语言，而不是一摞独立卡片。 */
+.learn-song-list { display: grid; gap: 0; }
 .learn-song-row {
-  appearance: none; display: grid; grid-template-columns: 38px 1fr 72px; align-items: center; gap: 10px; width: 100%; min-width: 0;
-  padding: 11px 12px; border: 0; border-radius: var(--r-m, 14px); color: var(--text); text-align: left; cursor: pointer;
-  background: var(--surface-1, rgba(18, 16, 28, .56)); box-shadow: inset 0 0 0 1px var(--line, rgba(255,255,255,.08));
+  appearance: none; position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: 100%; min-width: 0; padding: 10px 2px; border: 0; border-radius: 0; color: var(--text); text-align: left; cursor: pointer;
+  background: transparent; box-shadow: none; transition: background-color .15s ease;
 }
-.learn-song-row:active { transform: scale(.985); }
-.learn-song-row.is-current { box-shadow: inset 0 0 0 1.5px rgba(245,193,108,.7); }
-.learn-song-row.is-complete { background: linear-gradient(100deg, rgba(72,220,160,.22), rgba(18,16,28,.56)); box-shadow: inset 0 0 0 1.5px rgba(72,220,160,.55); }
-.learn-song-cover { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 13px; color: var(--gold); background: rgba(245,193,108,.14); font-weight: 900; }
-.is-complete .learn-song-cover { color: #8dffd0; background: rgba(72,220,160,.2); }
+.learn-song-row + .learn-song-row::before {
+  content: ""; position: absolute; left: 58px; right: 0; top: 0; height: 1px; background: var(--separator, rgba(255, 255, 255, .08));
+}
+.learn-song-row:active { background: rgba(255, 255, 255, .05); }
+.learn-song-row.is-current .learn-song-copy b { color: var(--gold); }
+.learn-song-cover.art { margin-right: 0; }
+/* 完成 / 加载都盖在封面上，封面本身保持不变。 */
+.learn-song-cover::after {
+  content: ""; position: absolute; inset: 0; z-index: 3; display: grid; place-items: center;
+  color: #fff; font-size: 20px; font-weight: 800; opacity: 0;
+}
+.is-complete .learn-song-cover::after { content: "✓"; opacity: 1; background: rgba(20, 120, 84, .62); }
 .learn-song-copy { min-width: 0; display: grid; gap: 3px; }
 .learn-song-copy b, .learn-song-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .learn-song-copy b { font-size: 15px; font-weight: 500; letter-spacing: -.01em; }
@@ -145,6 +165,8 @@
 .is-complete .learn-song-progress i { background: #48dca0; }
 .learn-song-progress em { color: var(--muted); font-style: normal; font-size: 11px; font-weight: 750; }
 .is-complete .learn-song-progress em { color: #8dffd0; }
+/* 还没开始的歌不放一排 0% 进度条，只留一个指引箭头。 */
+.learn-song-go { color: var(--muted); font-size: 22px; font-weight: 300; line-height: 1; opacity: .7; }
 .learn-path {
   display: flex;
   flex-direction: column;
@@ -472,11 +494,10 @@
   }
 }
 
-.learn-song-row.is-loading { cursor: progress; box-shadow: inset 0 0 0 1.5px var(--gold); }
-.learn-song-row.is-loading .learn-song-cover { font-size: 0; }
+.learn-song-row.is-loading { cursor: progress; background: rgba(245, 193, 108, .06); }
 .learn-song-row.is-loading .learn-song-cover::after {
-  content: ""; width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent;
-  border-radius: 50%; animation: learn-song-loading .8s linear infinite;
+  content: ""; inset: auto; width: 18px; height: 18px; opacity: 1; border: 2px solid #fff; border-right-color: transparent;
+  border-radius: 50%; background: none; box-shadow: 0 0 0 40px rgba(0, 0, 0, .45); animation: learn-song-loading .8s linear infinite;
 }
 .learn-song-status { color: var(--gold); font-size: 12px; line-height: 1.5; }
 @keyframes learn-song-loading { to { transform: rotate(360deg); } }

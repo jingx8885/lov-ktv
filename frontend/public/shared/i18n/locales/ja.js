@@ -129,6 +129,8 @@ export default {
   "phone.search.upload": "ローカル取り込み",
   "phone.search.empty": "曲名かアーティストで検索",
   "phone.search.emptyHint": "試聴して保存すると「聴く」から再生できます",
+  "phone.search.recent": "最近の検索",
+  "phone.search.recentClear": "クリア",
   "phone.search.none": "見つかりません",
   "phone.search.noneHint": "別のキーワードで試す",
   "phone.search.preview": "試聴",

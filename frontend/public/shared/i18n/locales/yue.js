@@ -128,6 +128,8 @@ export default {
   "phone.search.upload": "本地入庫",
   "phone.search.empty": "搵歌名或歌手",
   "phone.search.emptyHint": "先試聽，收藏咗先可以去聽歌",
+  "phone.search.recent": "最近搜尋",
+  "phone.search.recentClear": "清除",
   "phone.search.none": "搵唔到呢首",
   "phone.search.noneHint": "換個關鍵字再搵",
   "phone.search.preview": "試聽",

@@ -1300,6 +1300,7 @@ body.phone.edit-on .tl {
   body.phone[data-page="player"] .player-head .player-head-side {
     pointer-events: auto;
   }
+  /* 学歌入口交给底部 tab；这里右上角会压到曲库栏的按钮。 */
   body.phone[data-page="player"] .player-head .player-head-side.end {
     display: none;
   }
@@ -1534,6 +1535,27 @@ body.phone.edit-on .tl {
   }
   body.phone[data-page="player"] .player-tools { margin-bottom: 8px; }
   body.phone[data-page="player"] .tool-chip { flex: 0 1 160px; }
+}
+
+/* 700–1099 的 tab 是浮在底部的胶囊（高 64、离底 20），播放控制条要让出来。 */
+@media (min-width: 700px) and (max-width: 1099px) {
+  body.phone[data-page="player"] .page-player {
+    padding-bottom: 104px;
+  }
+}
+
+/* 横屏手机藏了底部 tab，学歌入口只剩头部这一个；右上角是曲库栏的按钮，挨着返回放。 */
+@media (orientation: landscape) and (min-width: 700px) and (max-width: 899px) {
+  body.phone[data-page="player"] .page-player {
+    padding-bottom: 24px;
+  }
+  body.phone[data-page="player"] .player-head {
+    justify-content: flex-start;
+    gap: 4px;
+  }
+  body.phone[data-page="player"] .player-head .player-head-side.end {
+    display: flex;
+  }
 }
 
 @media (min-width: 1100px) {

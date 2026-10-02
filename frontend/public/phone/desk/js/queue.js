@@ -8,6 +8,7 @@ import { ICO, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showDeskPane } from "./library.js";
 import { songArtist, songTitle } from "../../../shared/ui/js/song.js";
+import { songArt } from "../../../shared/ui/js/art.js";
 import { fetchRoom, roomStamp } from "../../room/js/room/state.js";
 
 let lastLanFailAt = 0;
@@ -67,7 +68,7 @@ export async function loadRoom(opts) {
   if ($("nowBar")) $("nowBar").classList.toggle("is-idle", !now);
   $("nowCard").innerHTML = now
     ? `<div class="now-hit">
-            <span class="now-cover">${now.status === "ready" ? ICO.play : ICO.note}</span>
+            ${songArt(now, { cls: "art-now", playing: now.status === "ready" })}
             <div>
               <p class="kicker">${now.status === "ready" ? t("phone.desk.now") : STATUS[now.status] || now.status}</p>
               <b>${escapeHtml(songTitle(now))}</b>
@@ -86,10 +87,15 @@ export async function loadRoom(opts) {
         const canBump = !playing && i > (room.now_index || 0) + 1;
         return `
         <div class="desk-row ${playing ? "on" : ""}">
-          <span class="desk-index ${playing ? "live" : ""}">${playing ? ICO.play : String(i + 1)}</span>
+          ${songArt(item, { playing })}
           <div class="desk-copy">
             <b>${escapeHtml(songTitle(item))}</b>
-            <span class="tiny">${playing ? t("phone.desk.now") : ready ? t("phone.desk.nextQueued") : STATUS[item.status] || item.status}</span>
+            <span class="tiny">${
+              [songArtist(item), playing ? t("phone.desk.now") : ready ? "" : STATUS[item.status] || item.status]
+                .filter(Boolean)
+                .map(escapeHtml)
+                .join(" · ") || t("phone.desk.nextQueued")
+            }</span>
           </div>
           <div class="desk-actions">
             ${canBump ? `<button class="row-action ghost" data-bump="${item.id}" aria-label="${t("phone.desk.bump")}">${ICO.bump}</button>` : ""}

@@ -7,6 +7,7 @@ import { api } from "../../api.js";
 import { state, LIB_LETTERS } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { songArtist, songTitle } from "../../../shared/ui/js/song.js";
+import { songArt } from "../../../shared/ui/js/art.js";
 import { showToast } from "../../ui/js/toast.js";
 import { showActionSheet } from "../../ui/js/overlays.js";
 import { handlePointError } from "../../ui/js/ads.js";
@@ -65,6 +66,7 @@ function songRow(song) {
   const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
   return `
         <div class="desk-row ${canPlay ? "" : "busy"}" data-song="${escapeHtml(song.id)}">
+          ${songArt(song)}
           <div class="desk-copy">
             <b>${escapeHtml(songTitle(song))}</b>
             <span class="tiny">${escapeHtml(songArtist(song) || t("common.unknownArtist"))} ${mv}${pill}</span>

@@ -130,6 +130,8 @@ export default {
   "phone.search.upload": "Import local file",
   "phone.search.empty": "Search a title or artist",
   "phone.search.emptyHint": "Preview first, then save it for listening",
+  "phone.search.recent": "Recent searches",
+  "phone.search.recentClear": "Clear",
   "phone.search.none": "No match",
   "phone.search.noneHint": "Try another keyword",
   "phone.search.preview": "Preview",
