@@ -114,10 +114,12 @@
       if (opts.onSeek) opts.onSeek(next);
     }
 
-    function peekOverview(url) {
+    function peekOverview(url, visible) {
       if (!url || !global.LovBands) return null;
       const hit = LovBands.getOverview(url);
-      if (hit) return hit;
+      if (hit || !visible) return hit || null;
+      // decodeOverview fetches the entire audio file; the wave lanes are only
+      // useful while the alignment timeline is actually on screen.
       const pending = LovBands.decodeOverview(url);
       if (pending && pending.then) pending.then(() => drawWave()).catch(() => {});
       return null;
@@ -161,9 +163,10 @@
     function drawWave() {
       const a = audio();
       const url = a && (a.currentSrc || a.src);
-      paintLane(wave, peekOverview(url), mixOn ? "rgba(255,77,141,0.78)" : "rgba(255,77,141,0.18)");
+      const tlVisible = !!((wave && wave.getClientRects().length) || (voice && voice.getClientRects().length));
+      paintLane(wave, peekOverview(url, tlVisible), mixOn ? "rgba(255,77,141,0.78)" : "rgba(255,77,141,0.18)");
       if (voice)
-        paintLane(voice, peekOverview(voiceUrl), voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)");
+        paintLane(voice, peekOverview(voiceUrl, tlVisible), voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)");
       waveUrl = url || "";
       lastZoom = pxPerSec;
       lastDur = duration;

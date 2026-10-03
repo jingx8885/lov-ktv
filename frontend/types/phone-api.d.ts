@@ -42,6 +42,9 @@ interface PhoneApi {
   pausePlayer(): void;
   applyKaraokeGain(): void;
   syncGuide(forceTime?: number): void;
+  ensureGuideLoaded(): boolean;
+  ensureMtvLoaded(): boolean;
+  releasePlayerMtv(): void;
   applyPlayerVocalMix(): void;
   hookPlayerAudio(): void;
   loadPlayerList(): Promise<void>;
@@ -80,6 +83,11 @@ interface PhoneState {
   lyricsDirty: boolean;
   playerVocal: number;
   songMediaRev: string;
+  playerGuideUrl: string;
+  playerGuideFailed: string;
+  playerMtvUrl: string;
+  playerMtvFailed: string;
+  playerMtvTok: number;
   playerRaf: number;
   playerHeld: boolean;
   playerHook: BandsHook | null;

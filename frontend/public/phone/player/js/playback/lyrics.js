@@ -4,6 +4,7 @@ import { paintLine, cueIndexAt as cueIndexAtCues } from "../../../../shared/lyri
 import { api } from "../../../api.js";
 import { state } from "../../../state.js";
 import { refreshPlayIcon, registerPaintPlayer, syncGuide } from "./controls.js";
+import { releasePlayerMtv } from "./media.js";
 
 let lastPaintAt = 0;
 // Keep the expensive source fingerprint out of the playback hot path:
@@ -211,14 +212,7 @@ export function resetPlayerFace() {
     scroll.dataset.windowKey = "";
     scroll.scrollTop = 0;
   }
-  const mtv = $("playerMtv");
-  if (mtv) {
-    mtv.pause();
-    mtv.removeAttribute("src");
-    mtv.load();
-  }
-  const art = $("playerArt");
-  if (art) art.classList.remove("has-mtv");
+  releasePlayerMtv();
   state.lyricPaint.align = "";
   ["playerPrev", "playerCur", "playerNext"].forEach((id) => {
     const el = $(id);

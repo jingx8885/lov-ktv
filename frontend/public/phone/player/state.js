@@ -9,6 +9,12 @@ export const playerState = guardState(
     lyricsDirty: false,
     playerVocal: localStorage.getItem("playerVocal") === "0" ? 0 : 1,
     songMediaRev: "",
+    // Pending lazy media sources; attached only while their consumer is active.
+    playerGuideUrl: "",
+    playerGuideFailed: "",
+    playerMtvUrl: "",
+    playerMtvFailed: "",
+    playerMtvTok: 0,
     playerRaf: 0,
     playerHeld: true,
     playerHook: null,

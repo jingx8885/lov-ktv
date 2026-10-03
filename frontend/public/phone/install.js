@@ -35,6 +35,7 @@ import {
 } from "./player/js/playback/controls.js";
 import { loadPlayerList, playNextSong } from "./player/js/playback/queue.js";
 import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/song.js";
+import { ensureGuideLoaded, ensureMtvLoaded, releasePlayerMtv } from "./player/js/playback/media.js";
 import { cueIndexAt } from "./player/js/playback/lyrics.js";
 import { setPlayerSheet } from "./player/js/playback/sheet.js";
 import {
@@ -90,6 +91,9 @@ installApi({
   pausePlayer,
   applyKaraokeGain,
   syncGuide,
+  ensureGuideLoaded,
+  ensureMtvLoaded,
+  releasePlayerMtv,
   applyPlayerVocalMix,
   hookPlayerAudio,
   loadPlayerList,

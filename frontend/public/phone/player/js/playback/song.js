@@ -15,7 +15,7 @@ import {
   syncGuide,
   unlockPlayerGesture
 } from "./controls.js";
-import { mediaUrl, waitMedia, setPlayerCover } from "./media.js";
+import { mediaUrl, mediaPath, waitMedia, setPlayerCover, releasePlayerMtv } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
 import { markCurrentPlayerPick, renderPlayerList } from "./queue.js";
@@ -47,21 +47,14 @@ export async function loadPlayerSong(songId, opts) {
   const mtv = $("playerMtv");
   const art = $("playerArt");
   audio.pause();
-  if (guide) guide.pause();
-  if (mtv) {
-    mtv.pause();
-    mtv.hidden = true;
-    mtv.onerror = null;
-    mtv.onloadeddata = null;
-    mtv.removeAttribute("src");
-    mtv.load();
-  }
-  audio.onloadedmetadata = null;
-  audio.onerror = null;
   if (guide) {
+    guide.pause();
     guide.onloadedmetadata = null;
     guide.onerror = null;
   }
+  releasePlayerMtv();
+  audio.onloadedmetadata = null;
+  audio.onerror = null;
   state.playerSong = song;
   const regenerate = $("playerRegenerate");
   if (regenerate) regenerate.hidden = !state.songAdmin || !song.can_realign;
@@ -100,39 +93,22 @@ export async function loadPlayerSong(songId, opts) {
     }
   };
   const guideUrl = mediaUrl(song.id, "guide.m4a");
-  if (guide) {
-    guide.src = guideUrl;
+  state.playerGuideUrl = guideUrl;
+  state.playerGuideFailed = "";
+  // guide.m4a only matters inside the alignment editor; attaching it eagerly
+  // would burn a full extra song download on every track change.
+  if (guide && guide.getAttribute("src") && mediaPath(guide.src) !== mediaPath(guideUrl)) {
+    guide.removeAttribute("src");
     guide.load();
-    guide.onerror = () => {
-      if (gen !== state.playerLoad) return;
-      guide.removeAttribute("src");
-      guide.load();
-    };
   }
-  if (mtv) {
-    mtv.onerror = () => {
-      if (gen !== state.playerLoad) return;
-      mtv.hidden = true;
-      if (art) art.classList.remove("has-mtv");
-      mtv.removeAttribute("src");
-      mtv.load();
-    };
-    mtv.onloadeddata = () => {
-      if (gen !== state.playerLoad) return;
-      mtv.hidden = !document.body.classList.contains("display-mv");
-      if (art) art.classList.toggle("has-mtv", document.body.classList.contains("display-mv"));
-      const fullscreen = $("playerFullscreen");
-      if (fullscreen) fullscreen.hidden = !document.body.classList.contains("display-mv");
-      try {
-        mtv.currentTime = 0;
-      } catch (err) {}
-    };
-    mtv.src = mediaUrl(song.id, "mtv.mp4");
+  if (document.body.classList.contains("edit-on")) api.ensureGuideLoaded();
+  state.playerMtvUrl = mediaUrl(song.id, "mtv.mp4");
+  state.playerMtvFailed = "";
+  if (document.body.classList.contains("display-mv")) {
     // Reserve the shared MV/lyrics grid as soon as a new video source is
     // selected, instead of briefly rendering the compact progress-row layout
     // while the first frame is decoding.
-    if (art) art.classList.toggle("has-mtv", document.body.classList.contains("display-mv"));
-    mtv.load();
+    if (api.ensureMtvLoaded() && art) art.classList.add("has-mtv");
   }
   api.ensureTimeline().setVoiceUrl(guideUrl);
   api.applyEditorTracks();

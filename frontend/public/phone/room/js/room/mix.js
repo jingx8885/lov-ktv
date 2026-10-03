@@ -12,11 +12,27 @@ import { nativeMicState, setNativeGain } from "../../../platform.js";
 const DISPLAY_MODE_KEY = "lovktv.phone.displayMode";
 let playerFullscreenFallback = false;
 
+/**
+ * Default MV display only makes sense on unmetered links; on cellular or
+ * Data Saver the MV is the biggest per-song download, so fall back to
+ * lyrics until the user explicitly picks MV.
+ */
+function meteredDefaultDisplay() {
+  try {
+    const nav = /** @type {any} */ (navigator);
+    const c = nav.connection || nav.webkitConnection;
+    if (c && (c.saveData || c.type === "cellular" || c.effectiveType === "2g" || c.effectiveType === "3g"))
+      return "lyrics";
+  } catch (err) {}
+  return "mv";
+}
+
 function localDisplayMode() {
   try {
-    return localStorage.getItem(DISPLAY_MODE_KEY) === "lyrics" ? "lyrics" : "mv";
+    const saved = localStorage.getItem(DISPLAY_MODE_KEY);
+    return saved === "lyrics" || saved === "mv" ? saved : meteredDefaultDisplay();
   } catch (err) {
-    return "mv";
+    return meteredDefaultDisplay();
   }
 }
 
@@ -146,8 +162,11 @@ export function paintDisplayMode(mode) {
   // MV/lyrics toggle feel sluggish on mobile.
   const mtv = $("playerMtv");
   const art = $("playerArt");
+  // Attach/detach the video source with the display mode so lyrics-only
+  // listening never downloads the MV at all.
+  if (on && api.ensureMtvLoaded) api.ensureMtvLoaded();
+  else if (!on && api.releasePlayerMtv) api.releasePlayerMtv();
   if (mtv) mtv.hidden = !(on && !!mtv.src);
-  if (!on && mtv && !mtv.paused) mtv.pause();
   if (art) art.classList.toggle("has-mtv", on && !!mtv?.src);
   paintPlayerFullscreen();
   const btn = $("playerDisplayMode");

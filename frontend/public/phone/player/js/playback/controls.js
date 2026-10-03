@@ -195,13 +195,16 @@ export function applyKaraokeGain() {
 export function syncGuide(forceTime) {
   const audio = $("playerAudio");
   const guide = $("playerGuide");
-  if (!guide || !guide.getAttribute("src")) return;
+  if (!guide) return;
   const editing = document.body.classList.contains("edit-on");
   if (!editing) {
     guide.pause();
     guide.muted = true;
     return;
   }
+  // The guide track downloads lazily: a plain listen never fetches it.
+  api.ensureGuideLoaded();
+  if (!guide.getAttribute("src")) return;
   const want = !state.playerHeld && !!(audio && audio.src) && state.voiceTrackOn;
   const clock = forceTime != null ? forceTime : audio.currentTime || 0;
   const now = Date.now();
