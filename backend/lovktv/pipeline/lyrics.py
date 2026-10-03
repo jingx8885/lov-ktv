@@ -72,7 +72,18 @@ def drop_leading_title_echo(lines: list[dict[str, Any]]) -> list[dict[str, Any]]
 
 
 _CREDIT_LINE = re.compile(
-    r"(収録\s*[:：]|発売日\s*[:：]|^\s*「[^」]{1,48}」\s*(OP|ED)?\s*$)",
+    r"(収録\s*[:：]|発売日\s*[:：]|^\s*「[^」]{1,48}」\s*(OP|ED)?\s*$"
+    # Chinese staff credits commonly shipped inside NetEase LRC bodies
+    # (词/曲/编曲/合声编写/吉他/贝斯/制作人 …  or the English OP/ED/作词
+    # variants).  Matching a colon keeps sung lines like 「词不达意」 safe.
+    r"|^(?:作詞|作词|作曲|編曲|编曲|混音|母帶|母带|製作人|制作人|監製|监制|錄音|录音|合聲編寫|合声编写|和聲編寫|和声编写|"
+    r"合聲|合声|和聲|和声|吉他|貝斯|贝斯|鼓|鍵盤|键盘|鋼琴|钢琴|小提琴|大提琴|萨克斯|小号|长号|弦乐|詞|词|曲|唱|"
+    r"OP|ED|TM|IN|Lyrics?|Composer|Music|Arrange(?:ment)?|Producer|"
+    r"Vocal|Guitar|Bass|Drums?)(?:\s*[・/&＆、,，]+\s*(?:作詞|作词|作曲|編曲|编曲|"
+    r"混音|母帶|母带|製作人|制作人|監製|监制|錄音|录音|合聲|合声|和聲|和声|吉他|貝斯|贝斯|鼓|鍵盤|键盘|鋼琴|钢琴|小提琴|大提琴|萨克斯|小号|长号|弦乐|"
+    r"詞|词|曲|唱|OP|ED|Lyrics?|Composer|Music|Arrange(?:ment)?|Producer|"
+    r"Vocal|Guitar|Bass|Drums?))*\s*[:：])",
+    re.IGNORECASE,
 )
 _STAMP_ONLY = re.compile(r"^(?:\[\d+:\d+(?:\.\d+)?\]\s*)+$")
 # NetEase ja LRC often ships Simplified Chinese lookalikes of Japanese kanji.
@@ -137,6 +148,21 @@ _CN_TO_JP = str.maketrans(
         "电": "電",
         "脑": "脳",
         "残": "残",
+        "独": "独",
+        "这": "這",
+        "亲": "親",
+        "热": "熱",
+        "闹": "鬧",
+        "声": "聲",
+        "宝": "寶",
+        "岛": "島",
+        "与": "與",
+        "话": "話",
+        "书": "書",
+        "国": "國",
+        "见": "見",
+        "边": "邊",
+        "间": "間",
     }
 )
 
