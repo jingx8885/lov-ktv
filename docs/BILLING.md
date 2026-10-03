@@ -55,6 +55,14 @@ GOOGLE_PLAY_SERVICE_ACCOUNT_FILE=/run/secrets/google-play-service-account.json
 
 服务账号只授予 Play Console 的订阅查看权限，不要把 JSON 密钥提交到 Git 或写进镜像。续费、退款、暂停和取消应再接入 Google Play Real-time Developer Notifications（Pub/Sub），定期同步订阅状态。
 
+## 转化漏斗（第一方埋点）
+
+- 表：`funnel_events`（SQLite/Postgres 同一 DDL），字段 `kind / owner / day(上海时区) / meta / created_at`。
+- 事件：`landing_view`（落地页 beacon，带 utm/ref）、`cta_tv`、`cta_phone`、`song_search`、`song_queued`（搜歌入库或上传）、`signup`/`login`（Google / LovBrowser / 密码）、`checkout_start`、`paid`、`sub_status`。
+- `POST /api/funnel` 只收白名单 kind（landing_view / cta_tv / cta_phone），meta 只透传 utm_* / ref / lang，防止被当垃圾日志端点。
+- 查看：管理页 `admin.html` 顶部第二行（`/api/admin/summary` 里的 `funnel` 字段），或容器里 `python -c "from lovktv.storage import store; print(store.funnel_summary(30)['by_kind'])"`。
+- 隐私：不写 IP、不写搜索词；privacy.html 已披露“匿名产品使用统计”。
+
 ## Google 登录
 
 在 Google Cloud Console 创建 Web client，配置授权来源为正式站点，并设置：
