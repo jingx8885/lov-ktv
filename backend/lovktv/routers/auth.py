@@ -18,6 +18,7 @@ from lovktv.identity.auth import (
     wechat_authorize_url,
     wechat_ready,
 )
+from lovktv.identity.funnel import track
 from lovktv.identity.points import grant_register, points_payload
 from lovktv.identity.quota import guest_key, quota_payload
 from lovktv.identity.song_admin import is_song_admin
@@ -85,11 +86,16 @@ def api_lovbrowser_callback(request: Request, code: str = "", state: str = "", e
             raise ValueError("LovBrowser 登录状态已过期")
         claims = lovbrowser.exchange_code(code, f"{base}/api/auth/lovbrowser/callback", verifier)
         verified_email = str(claims.get("email") or "") if claims.get("email_verified") is True else ""
+        lov_sub = str(claims.get("sub") or "")
+        from lovktv.storage.store import user_exists_by_lovbrowser
+
+        new_account = not user_exists_by_lovbrowser(lov_sub, verified_email)
         user = upsert_lovbrowser_user(
-            str(claims.get("sub") or ""), verified_email,
+            lov_sub, verified_email,
             str(claims.get("name") or claims.get("preferred_username") or ""),
             str(claims.get("picture") or ""),
         )
+        track(request, "signup" if new_account else "login", {"method": "lovbrowser"})
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     response = RedirectResponse(f"{base}{next_path}", status_code=302)
@@ -158,6 +164,7 @@ def api_auth_register(
         )
     except ValueError as exc:
         raise HTTPException(400, localize_exc(request, exc)) from exc
+    track(request, "signup", {"method": "password"})
     points = grant_register(request, user)
     # Keep songs saved before account creation with the new account.
     favorite_store.merge_owners(guest_key(request, guest), "u:" + str(user["id"]))

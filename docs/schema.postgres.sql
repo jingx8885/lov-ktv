@@ -207,3 +207,12 @@ CREATE TABLE IF NOT EXISTS billing_events (
   event_id TEXT PRIMARY KEY,
   created_at BIGINT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS funnel_events (
+  id TEXT PRIMARY KEY,
+  kind TEXT NOT NULL,
+  owner TEXT NOT NULL DEFAULT '',
+  day TEXT NOT NULL DEFAULT '',
+  meta TEXT NOT NULL DEFAULT '',
+  created_at BIGINT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS funnel_events_kind_day ON funnel_events (kind, day);

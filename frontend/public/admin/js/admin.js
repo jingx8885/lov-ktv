@@ -151,6 +151,21 @@ async function loadSummary() {
     reg: data.rules.register_bonus,
     dl: data.rules.download_bonus
   });
+  const funnel = data.funnel && data.funnel.by_kind ? data.funnel.by_kind : {};
+  const funnelEl = $("funnel");
+  if (funnelEl) {
+    funnelEl.textContent = t("admin.funnel", {
+      days: (data.funnel && data.funnel.days) || 30,
+      view: funnel.landing_view || 0,
+      tv: funnel.cta_tv || 0,
+      phone: funnel.cta_phone || 0,
+      search: funnel.song_search || 0,
+      queue: funnel.song_queued || 0,
+      signup: funnel.signup || 0,
+      checkout: funnel.checkout_start || 0,
+      paid: funnel.paid || 0
+    });
+  }
   $("rules").textContent = $("summary").textContent;
   return true;
 }

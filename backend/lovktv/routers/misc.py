@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, Body, File, Form, UploadFile
 from starlette.requests import Request
 
 from lovktv.agents.ja_lyrics import agent_status
 from lovktv.core.db import dialect as db_dialect
+from lovktv.identity.funnel import FUNNEL_KINDS, track
 from lovktv.media.apps import catalog as apps_catalog
 from lovktv.media.apps import download_apk, require_upload_token, save_apk
 from lovktv.media.assets import asset_rev
@@ -13,6 +14,25 @@ from lovktv.pipeline.mdx_onnx import model_status
 from lovktv.platform.runtime import WEB_ROOT
 
 router = APIRouter()
+
+
+@router.post("/api/funnel")
+def api_funnel(request: Request, payload: dict = Body(default={})) -> dict:
+    """Client-side funnel beacon (landing view, CTA clicks). Kind allowlist
+    and meta are scrubbed to a few keys so the endpoint cannot be abused to
+    dump arbitrary payload text."""
+    kind = str(payload.get("kind") or "")
+    if kind not in {"landing_view", "cta_tv", "cta_phone"}:
+        return {"ok": False}
+    raw_meta = payload.get("meta") or {}
+    meta = {}
+    if isinstance(raw_meta, dict):
+        for key in ("utm_source", "utm_medium", "utm_campaign", "ref", "lang"):
+            value = str(raw_meta.get(key) or "").strip()[:160]
+            if value:
+                meta[key] = value
+    track(request, kind, meta)
+    return {"ok": True}
 
 
 @router.get("/api/host")

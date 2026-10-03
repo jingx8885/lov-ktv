@@ -22,6 +22,7 @@ from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import search_songs
 from lovktv.domain.timeline import normalize_timeline
 from lovktv.identity.plans import processing_priority
+from lovktv.identity.funnel import track
 from lovktv.identity.points import charge_process
 from lovktv.identity.quota import learn_owner
 from lovktv.identity.song_admin import is_song_admin
@@ -59,7 +60,9 @@ def api_search(request: Request, q: str, count: int = 10, page: int = 1) -> dict
     if not q.strip():
         fail(request, 400, "api.missing_q")
     try:
-        return search_songs(q.strip(), count=count, page=page)
+        results = search_songs(q.strip(), count=count, page=page)
+        track(request, "song_search", {"n": len((results or {}).get("hits") or [])})
+        return results
     except Exception as exc:
         fail(request, 502, "api.search_failed", exc=exc)
 
@@ -119,6 +122,7 @@ def api_import(request: Request, payload: dict) -> dict:
     if not query:
         fail(request, 400, "api.missing_query")
     charge_process(request)
+    track(request, "song_queued", {"src": "search"})
     raw_id = str(payload.get("id") or "")
     title_hint = str(payload.get("title") or query).strip()
     artist_hint = str(payload.get("artist") or "").strip()
@@ -171,6 +175,7 @@ async def api_upload(
     request: Request = None,
 ) -> dict:
     charge_process(request)
+    track(request, "song_queued", {"src": "upload"})
     song = create_song(
         title or file.filename or i18n_t(request, "api.unnamed"), artist, language
     )
@@ -211,8 +216,6 @@ def api_ja_lyrics(request: Request, payload: dict = Body(default={})) -> dict:
 def api_realign(
     request: Request, song_id: str, payload: dict = Body(default={})
 ) -> dict:
-    if not is_song_admin(current_user(request)):
-        fail(request, 403, "api.song_admin_required")
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
@@ -237,6 +240,8 @@ def api_realign(
 def api_save_lyrics(
     request: Request, song_id: str, payload: dict = Body(default={})
 ) -> dict:
+    if not is_song_admin(current_user(request)):
+        fail(request, 403, "api.song_admin_required")
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")

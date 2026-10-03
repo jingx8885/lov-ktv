@@ -161,6 +161,34 @@ function paintAppDownloads(catalog) {
   });
 }
 
+function sendFunnel(kind, meta) {
+  try {
+    fetch("/api/funnel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, meta: meta || {} }),
+      keepalive: true,
+      credentials: "same-origin"
+    }).catch(() => {});
+  } catch (err) { /* telemetry must never break the page */ }
+}
+
+const utm = new URLSearchParams(location.search);
+const funnelMeta = {
+  utm_source: utm.get("utm_source") || "",
+  utm_medium: utm.get("utm_medium") || "",
+  utm_campaign: utm.get("utm_campaign") || "",
+  ref: (document.referrer || "").slice(0, 160),
+  lang: navigator.language || ""
+};
+sendFunnel("landing_view", funnelMeta);
+document.querySelectorAll('a[href="/tv.html"]').forEach((el) => {
+  el.addEventListener("click", () => sendFunnel("cta_tv", funnelMeta));
+});
+document.querySelectorAll('a[href="/m.html"]').forEach((el) => {
+  el.addEventListener("click", () => sendFunnel("cta_phone", funnelMeta));
+});
+
 fetch("/api/apps")
   .then((resp) => (resp.ok ? resp.json() : null))
   .then((catalog) => {

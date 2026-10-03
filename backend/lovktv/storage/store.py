@@ -6,6 +6,7 @@ import shutil
 import threading
 import time
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from lovktv.core.config import DB_PATH, MEDIA_DIR, QR_TTL_MS, SESSION_DAYS
@@ -806,3 +807,60 @@ def claim_billing_event(event_id: str) -> bool:
             return True
         except Exception:
             return False
+
+_FUNNEL_TZ = timezone(timedelta(hours=8))
+
+
+def track_funnel_event(kind: str, owner: str = "", meta: str = "") -> None:
+    """Insert one funnel event. Caller decides privacy-safe payloads."""
+    now = now_ms()
+    day = datetime.fromtimestamp(now / 1000, tz=_FUNNEL_TZ).strftime("%Y-%m-%d")
+    with _LOCK, connect() as conn:
+        execute(
+            conn,
+            "INSERT INTO funnel_events (id, kind, owner, day, meta, created_at) VALUES (?,?,?,?,?,?)",
+            (new_id(), str(kind)[:32], str(owner or "")[:80], day, str(meta or "")[:800], now),
+        )
+
+
+def funnel_summary(days: int = 30) -> dict:
+    """Counts by kind plus per-day breakdown for the admin dashboard."""
+    days = max(1, min(int(days), 365))
+    start = datetime.fromtimestamp(now_ms() / 1000, tz=_FUNNEL_TZ) - timedelta(days=days - 1)
+    since = start.strftime("%Y-%m-%d")
+    with connect() as conn:
+        rows = execute(
+            conn,
+            "SELECT kind, COUNT(*) AS n FROM funnel_events WHERE day >= ? GROUP BY kind",
+            (since,),
+        ).fetchall()
+        daily_rows = execute(
+            conn,
+            "SELECT day, kind, COUNT(*) AS n FROM funnel_events WHERE day >= ? GROUP BY day, kind ORDER BY day",
+            (since,),
+        ).fetchall()
+    by_kind = {str(row["kind"]): int(row["n"]) for row in rows}
+    daily: dict = {}
+    for row in daily_rows:
+        daily.setdefault(str(row["day"]), {})[str(row["kind"])] = int(row["n"])
+    return {"since": since, "days": days, "by_kind": by_kind, "daily": daily}
+
+
+def user_exists_by_google(sub: str, email: str) -> bool:
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT id FROM users WHERE google_sub=? OR email=? LIMIT 1",
+            (str(sub or ""), str(email or "").strip().lower()),
+        ).fetchone()
+    return bool(row)
+
+
+def user_exists_by_lovbrowser(sub: str, email: str) -> bool:
+    with connect() as conn:
+        row = execute(
+            conn,
+            "SELECT id FROM users WHERE lovbrowser_sub=? OR email=? LIMIT 1",
+            (str(sub or ""), str(email or "").strip().lower()),
+        ).fetchone()
+    return bool(row)

@@ -31,6 +31,7 @@ from lovktv.storage.room_store import (
 )
 from lovktv.storage.store import (
     create_song,
+    funnel_summary,
     delete_song,
     get_song,
     get_user,
@@ -151,6 +152,7 @@ def api_admin_summary(request: Request) -> dict:
         "rooms": len(list_rooms(limit=200)),
         "wallets": len(point_store.list_wallets(limit=200)),
         "points_total": point_store.points_total(),
+        "funnel": funnel_summary(30),
         "rules": {
             **{item["key"]: item["value"] for item in settings.catalog()},
         },

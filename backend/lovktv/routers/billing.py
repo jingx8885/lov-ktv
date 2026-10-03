@@ -27,6 +27,7 @@ from lovktv.core.config import (
     STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET,
 )
+from lovktv.identity.funnel import track, track_owner
 from lovktv.identity.plans import PLAN_LIMITS, PLAN_ROOM_LIMITS, effective_plan
 from lovktv.services.http import current_user, request_base, set_session
 from lovktv.storage.store import (
@@ -36,6 +37,7 @@ from lovktv.storage.store import (
     execute,
     update_billing_user,
     upsert_google_user,
+    user_exists_by_google,
 )
 
 router = APIRouter()
@@ -244,6 +246,7 @@ def checkout(request: Request, payload: dict = Body(default={})):
         )
     except StripeError as exc:
         raise HTTPException(502, "Stripe 创建支付失败：" + str(exc)) from exc
+    track(request, "checkout_start", {"plan": key})
     return {"url": session.url, "session_id": session.id}
 
 
@@ -273,6 +276,8 @@ def verify_google_play(request: Request, payload: dict = Body(default={} )):
     product_id = str(payload.get("product_id") or "").strip()
     purchase_token = str(payload.get("purchase_token") or "").strip()
     result = _verify_play_purchase(product_id, purchase_token)
+    if result["status"] == "active" and str(user.get("google_play_purchase_token") or "") != purchase_token:
+        track(request, "paid", {"plan": result["plan"], "source": "play", "product_id": product_id})
     updated = update_billing_user(
         user["id"],
         plan=result["plan"],
@@ -330,6 +335,7 @@ async def webhook(request: Request):
             stripe_customer_id=obj.get("customer", ""),
             stripe_subscription_id=obj.get("subscription", ""),
         )
+        track_owner("paid", "u:" + uid, {"plan": plan, "source": "stripe"})
     elif typ in (
         "customer.subscription.created",
         "customer.subscription.updated",
@@ -372,6 +378,7 @@ async def webhook(request: Request):
                     stripe_subscription_id=str(sub),
                     plan_expires_at=int(obj.get("current_period_end") or 0) * 1000,
                 )
+            track_owner("sub_status", "u:" + str(user_id), {"type": typ, "status": status})
     elif typ in ("invoice.paid", "invoice.payment_succeeded", "invoice.payment_failed"):
         customer = str(obj.get("customer") or "")
         sub = str(obj.get("subscription") or "")
@@ -415,12 +422,16 @@ def google_login(request: Request, payload: dict = Body(default={})):
         or info.get("email_verified") not in ("true", True)
     ):
         raise HTTPException(401, "Google 账号校验失败")
+    google_sub = str(info.get("sub") or "")
+    google_email = str(info.get("email") or "")
+    new_account = not user_exists_by_google(google_sub, google_email)
     user = upsert_google_user(
-        info.get("sub", ""),
-        info.get("email", ""),
+        google_sub,
+        google_email,
         info.get("name", ""),
         info.get("picture", ""),
     )
+    track(request, "signup" if new_account else "login", {"method": "google"})
     resp = JSONResponse({"user": user})
     set_session(resp, create_session(user["id"]), request)
     return resp
