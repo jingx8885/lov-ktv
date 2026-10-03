@@ -15,7 +15,7 @@ import { bindJoin, paintBindBtns } from "./room/js/room/join.js";
 import { bindMix, paintVocalMix, paintLyricMode, paintDisplayMode } from "./room/js/room/mix.js";
 import { bindRoomRtc } from "./room/js/room/rtc.js";
 import { bindPlayback } from "./player/js/playback/ui.js";
-import { updatePlayOrderBtns } from "./player/js/playback/queue.js";
+import { updatePlayOrderBtns, bindPlayerList } from "./player/js/playback/queue.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/playback/sheet.js";
 import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
@@ -114,6 +114,7 @@ export function mount(root, deps = {}) {
   bindRoomRtc();
   bindPlayback();
   bindPlayerSheet();
+  bindPlayerList();
   bindAlign();
   bindPhoneMic();
   bindLearn();

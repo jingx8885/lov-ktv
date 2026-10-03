@@ -351,7 +351,37 @@
               </button>
             </div>
             <div class="player-sheet-body" id="playerSheetBody">
-              <div class="player-list inset-list" id="playerList"></div>
+              <div class="player-sheet-main">
+                <div class="player-filter" id="playerFilter" hidden>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                      d="M10 4a6 6 0 014.7 9.7l4.6 4.6-1.4 1.4-4.6-4.6A6 6 0 1110 4zm0 2a4 4 0 100 8 4 4 0 000-8z"
+                    />
+                  </svg>
+                  <input
+                    id="playerListQ"
+                    type="search"
+                    autocomplete="off"
+                    enterkeyhint="search"
+                    data-i18n-placeholder="phone.player.filterPh"
+                    data-i18n-aria="phone.player.filterPh"
+                  />
+                  <button
+                    class="player-filter-clear"
+                    id="playerListClear"
+                    type="button"
+                    hidden
+                    data-i18n-aria="phone.desk.clearFilter"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        d="M6.4 5L12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4L12 13.4 6.4 19 5 17.6 10.6 12 5 6.4z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div class="player-list inset-list" id="playerList"></div>
+              </div>
               <nav class="lib-index" id="playerIndex" data-i18n-aria="phone.desk.letters"></nav>
             </div>
           </div>
@@ -404,7 +434,9 @@
               data-i18n-aria="phone.player.align"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z" />
+                <path
+                  d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"
+                />
               </svg>
               <em data-i18n="phone.player.alignShort">调词</em>
             </button>
@@ -558,7 +590,8 @@
           </div>
           <div class="learn-body" id="learnHome">
             <p class="learn-lead" data-i18n="learn.lead">
-              每关练一段歌词。单词、句意、听写、朗读四项都答对 70% 就解锁下一关。答错的题会在本轮末尾再考，也会进错题本。
+              每关练一段歌词。单词、句意、听写、朗读四项都答对 70%
+              就解锁下一关。答错的题会在本轮末尾再考，也会进错题本。
             </p>
             <div class="learn-daily" id="learnDailyGoal" role="status" aria-live="polite"></div>
             <div class="learn-goals" id="learnGoals" hidden></div>

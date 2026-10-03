@@ -222,6 +222,8 @@ export default {
   "phone.player.closeLib": "收起曲庫",
   "phone.player.openLib": "打開曲庫",
   "phone.player.sheetMeta": "上拉選歌",
+  "phone.player.favLib": "我嘅收藏",
+  "phone.player.filterPh": "篩選歌名或歌手",
   "phone.player.emptyLib": "仲未收藏可聽嘅歌",
   "phone.player.noPlayable": "仲未有可播嘅歌",
   "phone.player.micSing": "開咪唱歌",
@@ -562,7 +564,8 @@ export default {
   "admin.skip": "切歌",
   "admin.empty": "冇記錄",
   "admin.rules": "點歌 {queue} · 處理 {process} · 廣告 {ad}/{sec}秒 · 註冊 {reg} · 下載 {dl}",
-  "admin.funnel": "近 {days} 日漏斗：落地頁 {view} · 開電視 {tv} · 開手機 {phone} · 搜歌 {search} · 處理 {queue} · 註冊 {signup} · 發起付款 {checkout} · 付費 {paid}",
+  "admin.funnel":
+    "近 {days} 日漏斗：落地頁 {view} · 開電視 {tv} · 開手機 {phone} · 搜歌 {search} · 處理 {queue} · 註冊 {signup} · 發起付款 {checkout} · 付費 {paid}",
   "admin.recharge": "充值",
   "admin.recharges": "充值記錄",
   "admin.rechargeNotePh": "現金 / 微信 / 房間",

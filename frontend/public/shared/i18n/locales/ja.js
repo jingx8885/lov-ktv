@@ -223,6 +223,8 @@ export default {
   "phone.player.closeLib": "曲庫を閉じる",
   "phone.player.openLib": "曲庫を開く",
   "phone.player.sheetMeta": "上に引いて選曲",
+  "phone.player.favLib": "お気に入り",
+  "phone.player.filterPh": "曲名・アーティストで絞り込み",
   "phone.player.emptyLib": "保存した曲がありません",
   "phone.player.noPlayable": "まだ再生できる曲がありません",
   "phone.player.micSing": "マイクで歌う",
@@ -566,7 +568,8 @@ export default {
   "admin.skip": "スキップ",
   "admin.empty": "記録なし",
   "admin.rules": "予約 {queue} · 処理 {process} · 広告 {ad}/{sec}秒 · 登録 {reg} · DL {dl}",
-  "admin.funnel": "直近 {days} 日の漏斗：LP {view} · TV {tv} · スマホ {phone} · 検索 {search} · 処理 {queue} · 登録 {signup} · 決済開始 {checkout} · 支払い {paid}",
+  "admin.funnel":
+    "直近 {days} 日の漏斗：LP {view} · TV {tv} · スマホ {phone} · 検索 {search} · 処理 {queue} · 登録 {signup} · 決済開始 {checkout} · 支払い {paid}",
   "admin.recharge": "チャージ",
   "admin.recharges": "チャージ履歴",
   "admin.rechargeNotePh": "現金 / WeChat / 部屋",
@@ -616,7 +619,8 @@ export default {
   "landing.hero.fine": "説明書はいりません。テレビにQRを出し、スマホで読み込めば最初の曲が始まります。",
   "landing.clip.eye": "実録・インストール不要で見られる",
   "landing.clip.h": "曲を探すだけで、大画面が歌い始める。",
-  "landing.clip.p": "実際の録画：スマホで曲を部屋に入れると、テレビが自動で取得・ボーカル除去・歌詞同期を行い、カラオケのような色付き字幕が流れます。",
+  "landing.clip.p":
+    "実際の録画：スマホで曲を部屋に入れると、テレビが自動で取得・ボーカル除去・歌詞同期を行い、カラオケのような色付き字幕が流れます。",
   "landing.apps.tv": "テレビ App をダウンロード",
   "landing.apps.phone": "スマホ App をダウンロード",
   "landing.apps.ver": "{version} · {size}",

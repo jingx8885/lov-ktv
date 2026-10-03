@@ -232,6 +232,8 @@ export default {
   "phone.player.closeLib": "收起曲库",
   "phone.player.openLib": "打开曲库",
   "phone.player.sheetMeta": "上拉选歌",
+  "phone.player.favLib": "我的收藏",
+  "phone.player.filterPh": "筛选歌名或歌手",
   "phone.player.emptyLib": "还没有收藏可听的歌",
   "phone.player.noPlayable": "还没有可播的歌",
   "phone.player.micSing": "开麦唱歌",
@@ -660,7 +662,8 @@ export default {
   "admin.skip": "切歌",
   "admin.empty": "没有记录",
   "admin.rules": "点歌 {queue} · 处理 {process} · 广告 {ad}/{sec}秒 · 注册 {reg} · 下载 {dl}",
-  "admin.funnel": "近 {days} 天漏斗：落地页 {view} · 开电视 {tv} · 开手机 {phone} · 搜歌 {search} · 处理 {queue} · 注册 {signup} · 发起付款 {checkout} · 付费 {paid}",
+  "admin.funnel":
+    "近 {days} 天漏斗：落地页 {view} · 开电视 {tv} · 开手机 {phone} · 搜歌 {search} · 处理 {queue} · 注册 {signup} · 发起付款 {checkout} · 付费 {paid}",
   "admin.recharge": "充值",
   "admin.recharges": "充值记录",
   "admin.rechargeNotePh": "现金 / 微信 / 房间",

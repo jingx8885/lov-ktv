@@ -224,6 +224,8 @@ export default {
   "phone.player.closeLib": "Hide library",
   "phone.player.openLib": "Open library",
   "phone.player.sheetMeta": "Pull up to pick a song",
+  "phone.player.favLib": "Saved songs",
+  "phone.player.filterPh": "Filter by title or artist",
   "phone.player.emptyLib": "No saved songs to listen to",
   "phone.player.noPlayable": "No playable songs yet",
   "phone.player.micSing": "Sing with mic",
@@ -568,7 +570,8 @@ export default {
   "admin.skip": "Skip",
   "admin.empty": "Nothing here",
   "admin.rules": "Queue {queue} · process {process} · ad {ad}/{sec}s · register {reg} · download {dl}",
-  "admin.funnel": "Last {days}d funnel: landing {view} · TV {tv} · phone {phone} · search {search} · queued {queue} · signup {signup} · checkout {checkout} · paid {paid}",
+  "admin.funnel":
+    "Last {days}d funnel: landing {view} · TV {tv} · phone {phone} · search {search} · queued {queue} · signup {signup} · checkout {checkout} · paid {paid}",
   "admin.recharge": "Top up",
   "admin.recharges": "Top-up history",
   "admin.rechargeNotePh": "Cash / WeChat / room",
@@ -620,7 +623,8 @@ export default {
   "landing.hero.fine": "No tutorial needed: the TV shows a QR code, everyone scans in, and the first song starts.",
   "landing.clip.eye": "Real footage · no install needed to watch",
   "landing.clip.h": "Search a song and the screen starts singing.",
-  "landing.clip.p": "A real screen recording: the phone drops a song into the room, the TV fetches it, removes vocals, aligns lyrics, and the color-sweep captions roll like a real KTV box.",
+  "landing.clip.p":
+    "A real screen recording: the phone drops a song into the room, the TV fetches it, removes vocals, aligns lyrics, and the color-sweep captions roll like a real KTV box.",
   "landing.apps.tv": "Download TV app",
   "landing.apps.phone": "Download phone app",
   "landing.apps.ver": "{version} · {size}",

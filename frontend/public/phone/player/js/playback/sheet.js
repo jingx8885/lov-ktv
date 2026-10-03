@@ -1,6 +1,7 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
+import { playerListMode } from "./queue.js";
 
 const PEEK_PORT = 58;
 const PEEK_LAND = 48;
@@ -72,9 +73,17 @@ function applySheet(y, anim, hard = true) {
   sheet.classList.toggle("is-drag", !anim);
   sheet.style.transform = `translate3d(0, ${next}px, 0)`;
   sheet.dataset.y = String(next);
+  const wasOpen = sheet.dataset.snap === "open";
   const snap = next < peek * 0.45 ? "open" : "peek";
   sheet.dataset.snap = snap;
   sheet.classList.toggle("is-open", snap === "open");
+  if (snap === "open" && !wasOpen) {
+    // Jump straight to the playing row so long lists open in context.
+    const list = $("playerList");
+    const on = list && list.querySelector(".player-pick.on");
+    if (on) requestAnimationFrame(() => on.scrollIntoView({ block: "center" }));
+  }
+  syncPlayerSheetMeta();
   document.body.classList.toggle("player-sheet-open", snap === "open");
   const grab = $("playerSheetGrab");
   if (grab) {
@@ -115,8 +124,19 @@ export function syncPlayerSheetMeta() {
   const count = (state.playerCatalog || []).length;
   const title = $("playerSheetTitle");
   const meta = $("playerSheetMeta");
-  if (title) title.textContent = t("phone.desk.lib");
-  if (meta) meta.textContent = count ? t("phone.desk.nSongs", { n: count }) : t("phone.player.noPlayable");
+  const sheet = $("playerSheet");
+  const open = sheet && sheet.dataset.snap === "open";
+  const favs = playerListMode() === "favs";
+  if (title) title.textContent = favs ? t("phone.player.favLib") : t("phone.desk.lib");
+  if (meta) {
+    meta.textContent = count
+      ? open
+        ? t("phone.desk.nSongs", { n: count })
+        : `${t("phone.desk.nSongs", { n: count })} · ${t("phone.player.sheetMeta")}`
+      : favs
+        ? t("phone.player.emptyLib")
+        : t("phone.player.noPlayable");
+  }
 }
 
 export function bindPlayerSheet() {

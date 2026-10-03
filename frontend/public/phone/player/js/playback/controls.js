@@ -15,6 +15,7 @@ export function registerPaintPlayer(fn) {
 }
 
 export function setPlayIcon(playing) {
+  document.body.classList.toggle("player-live", !!playing);
   const loading = !!state.playerLoading;
   const icon = loading ? ICO.loading : playing ? ICO.pause : ICO.play;
   const label = loading ? t("common.loading") : playing ? t("common.pause") : t("common.play");
