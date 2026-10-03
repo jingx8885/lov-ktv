@@ -39,6 +39,9 @@ class PlaybackService : Service() {
         } catch (_: Exception) {
             // Android 14+ can refuse the start if the mediaPlayback type is not
             // permitted; the notification still exists via the controller.
+            // Stop the service so a denied promotion is not reported seconds
+            // later as a foreground-service-start timeout crash.
+            stopSelf()
         }
         return START_STICKY
     }

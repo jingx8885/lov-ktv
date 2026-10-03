@@ -79,7 +79,15 @@ class PhoneNotificationController(private val context: Context) {
         }
         val content = PendingIntent.getActivity(context, REQUEST_OPEN, openIntent, pendingFlags())
 
-        val builder = Notification.Builder(context)
+        val builder = if (Build.VERSION.SDK_INT >= 26) {
+            // Foreground-service posts crash (BadNotificationForForegroundException)
+            // when the notification carries no channel on O+, and regular posts are
+            // silently dropped. Bind the channel we create in init.
+            Notification.Builder(context, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
             .setSmallIcon(R.drawable.ic_app)
             .setContentTitle(songLine)
             .setContentText(label)
