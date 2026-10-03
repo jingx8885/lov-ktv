@@ -166,7 +166,11 @@
       const tlVisible = !!((wave && wave.getClientRects().length) || (voice && voice.getClientRects().length));
       paintLane(wave, peekOverview(url, tlVisible), mixOn ? "rgba(255,77,141,0.78)" : "rgba(255,77,141,0.18)");
       if (voice)
-        paintLane(voice, peekOverview(voiceUrl, tlVisible), voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)");
+        paintLane(
+          voice,
+          peekOverview(voiceUrl, tlVisible),
+          voiceOn ? "rgba(245,193,108,0.88)" : "rgba(245,193,108,0.18)"
+        );
       waveUrl = url || "";
       lastZoom = pxPerSec;
       lastDur = duration;
@@ -317,7 +321,10 @@
     function pointerMove(event) {
       if (!dragging) return;
       const dx = axisX(event) - dragging.startX;
-      if (Math.abs(dx) > 4) dragging.moved = true;
+      if (Math.abs(dx) > 4 && !dragging.moved) {
+        dragging.moved = true;
+        if (dragging.kind !== "scrub" && opts.onFirstMove) opts.onFirstMove();
+      }
       const delta = msOf(dx);
       const list = cues();
       if (dragging.kind === "scrub") {

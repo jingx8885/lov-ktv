@@ -75,6 +75,7 @@ function songRow(song) {
           <div class="desk-actions">
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
             ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
+            ${canPlay ? `<button class="row-action ghost" data-edit="${song.id}" aria-label="${t("phone.player.align")}">${ICO.edit}</button>` : ""}
             ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
             ${canRetry ? `<button class="row-action ghost retry-action" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}<span>${t("phone.desk.retry")}</span></button>` : ""}
             ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
@@ -156,6 +157,16 @@ function bindSongActions() {
         }
         btn.classList.add("on");
         api.loadRoom({ room: data });
+      };
+    });
+  $("songs")
+    .querySelectorAll("[data-edit]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = (event) => {
+        event.stopPropagation();
+        if (api.editSong) api.editSong(btn.dataset.edit);
       };
     });
   $("songs")

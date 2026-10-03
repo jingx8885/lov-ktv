@@ -116,6 +116,7 @@ interface LovTimelineOpts {
   onSeek?: (ms: number) => void;
   onSelect?: (index: number) => void;
   onGrab?: () => void;
+  onFirstMove?: () => void;
   onReleaseCue?: (cue: LyricCue) => void;
   onChange?: () => void;
 }

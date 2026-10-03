@@ -15,11 +15,13 @@ import { ensurePhoneCtx, stopPhoneMic, paintPhoneMic } from "./player/js/playbac
 import {
   exitEdit,
   enterEdit,
+  editSong,
   ensureTimeline,
   updateAlignNow,
   renderAlignList,
   applyEditorTracks,
-  syncEditAxis
+  syncEditAxis,
+  syncEditEntry
 } from "./player/js/playback/align.js";
 import {
   setPlayIcon,
@@ -78,11 +80,13 @@ installApi({
   paintPhoneMic,
   exitEdit,
   enterEdit,
+  editSong,
   ensureTimeline,
   updateAlignNow,
   renderAlignList,
   applyEditorTracks,
   syncEditAxis,
+  syncEditEntry,
   setPlayIcon,
   refreshPlayIcon,
   unlockPlayerGesture,

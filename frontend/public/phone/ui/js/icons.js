@@ -23,6 +23,7 @@ export const ICO = {
   trash:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM8 9h2v9H8V9z"/></svg>',
   save: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l4 4v14H5V3zm2 2v6h10V5H7zm10 16v-7H7v7h10zM9 6h6v3H9V6z"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z"/></svg>',
   seq: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10v2H4zm0 5h10v2H4zm0 5h7v2H4zm12.2-1.2L19 18l3.8-3.2-1.2-1.5-1.6 1.3V7h-2v7.6l-1.6-1.3z"/></svg>',
   shuffle:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 3h4v4h-2V6.4l-3.2 3.2-1.4-1.4L17.6 5H17V3zM3 7h6.6l7 7H21v2h-5.6l-7-7H3V7zm14 8.6l3.2 3.2V17h2v4h-4v-2h1.6L14.6 15l1.4-1.4 1 1zM3 15h4.6l2.2-2.2 1.4 1.4L8.4 17H3v-2z"/></svg>',

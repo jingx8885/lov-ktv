@@ -29,11 +29,13 @@ interface PhoneApi {
   paintPhoneMic(): void;
   exitEdit(): void;
   enterEdit(): void;
+  editSong(songId: string): Promise<void>;
   ensureTimeline(): LovTimelineHandle | null;
   updateAlignNow(playMs: number): void;
   renderAlignList(): void;
   applyEditorTracks(): void;
   syncEditAxis(): void;
+  syncEditEntry(): void;
   setPlayIcon(playing: boolean): void;
   refreshPlayIcon(): void;
   unlockPlayerGesture(): void;

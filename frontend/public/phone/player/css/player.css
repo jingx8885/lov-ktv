@@ -750,6 +750,24 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
 .tool-chip.on { color: #fff; background: rgba(255, 255, 255, 0.14); }
 .tool-chip.on svg { fill: var(--accent); }
 .tool-chip:active { opacity: 0.6; }
+.tool-chip.player-edit-chip { color: var(--accent); }
+.tool-chip.player-edit-chip svg { fill: var(--accent); }
+.edit-done { width: auto; min-width: 44px; padding: 0 14px; border-radius: 22px; gap: 6px; }
+.edit-done em { font-style: normal; font-size: 14px; font-weight: 600; }
+.icon-btn.dirty { position: relative; }
+.icon-btn.dirty::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold, #f5c16c);
+  box-shadow: 0 0 0 2px rgba(7, 10, 20, 0.9);
+}
+.tl-toolbar .btn:disabled { opacity: 0.35; }
+#markPlayhead { letter-spacing: 1px; }
 .player-lyric-select {
   position: relative;
   flex: 1 1 100px;
@@ -1173,6 +1191,10 @@ body.phone.edit-on .overlay,
 body.phone.edit-on .player-main,
 body.phone.edit-on .player-dock {
   display: none !important;
+}
+/* 编辑器里的确认弹层（例如未保存退出）仍要能浮出来。 */
+body.phone.edit-on .overlay#actionSheet:not([hidden]) {
+  display: block !important;
 }
 body.phone.edit-on #page-player {
   display: block !important;

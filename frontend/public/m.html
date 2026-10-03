@@ -396,6 +396,18 @@
               </svg>
               <em id="playerDisplayModeLabel" data-i18n="phone.player.mvMode">MV</em>
             </button>
+            <button
+              class="tool-chip player-edit-chip"
+              id="playerEditChip"
+              type="button"
+              hidden
+              data-i18n-aria="phone.player.align"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16v2H4zm0 5h10v2H4zm0 5h16v2H4zm13.2-8.8l1.6 1.6-2.3 2.3 1.2 1.2 2.3-2.3 1.6 1.6V6h-4.4z" />
+              </svg>
+              <em data-i18n="phone.player.alignShort">调词</em>
+            </button>
             <label class="tool-chip player-lyric-select" for="playerLyricModeSelect">
               <span data-i18n="phone.lyric.mode">歌词显示</span>
               <select id="playerLyricModeSelect" data-i18n-aria="phone.lyric.mode">
@@ -439,8 +451,9 @@
         </div>
         <div class="player-align" id="playerAlign" hidden>
           <div class="edit-bar">
-            <button class="icon-btn ghost" id="editBack" type="button" data-i18n-aria="phone.player.done">
+            <button class="icon-btn ghost edit-done" id="editBack" type="button" data-i18n-aria="phone.player.done">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z" /></svg>
+              <em data-i18n="phone.player.done">完成</em>
             </button>
             <button class="play-btn edit-play" id="editPlay" type="button" data-i18n-aria="common.play">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
@@ -466,9 +479,13 @@
             </button>
           </div>
           <div class="tl-toolbar">
+            <button class="btn" id="cuePrev" type="button" data-i18n="phone.align.prevCue">上一句</button>
+            <button class="btn primary" id="markPlayhead" type="button" data-i18n="phone.align.mark">打点</button>
+            <button class="btn" id="cueNext" type="button" data-i18n="phone.align.nextCue">下一句</button>
+            <button class="btn" id="undoAlign" type="button" disabled data-i18n="phone.align.undo">撤销</button>
             <button class="btn tl-icon" id="tlZoomOut" type="button">－</button>
             <button class="btn tl-icon" id="tlZoomIn" type="button">＋</button>
-            <button class="btn" id="tlChain" type="button" data-i18n="phone.align.chain">单句</button>
+            <button class="btn" id="tlChain" type="button" data-i18n="phone.align.chain">只动这句</button>
             <button class="btn" id="nudgeBack" type="button">－0.1s</button>
             <button class="btn" id="nudgeFwd" type="button">＋0.1s</button>
           </div>
