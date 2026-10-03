@@ -5,7 +5,7 @@ from starlette.requests import Request
 
 from lovktv.agents.ja_lyrics import agent_status
 from lovktv.core.db import dialect as db_dialect
-from lovktv.identity.funnel import FUNNEL_KINDS, track
+from lovktv.identity.funnel import track
 from lovktv.media.apps import catalog as apps_catalog
 from lovktv.media.apps import download_apk, require_upload_token, save_apk
 from lovktv.media.assets import asset_rev
