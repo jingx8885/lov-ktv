@@ -23,6 +23,7 @@ from lovktv.agents.ja_lyrics import (
     line_is_romaji,
     valid_zh,
 )
+from lovktv.agents.jev import EvalResult, noul_value, try_evaluate
 from lovktv.agents.translate import is_chinese_lang
 from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.lyrics import is_credit_lyric, write_subtitles
@@ -148,7 +149,168 @@ def _load_timeline(song_id: str) -> tuple[Path, dict[str, Any] | None]:
     return out_dir, timeline if isinstance(timeline, dict) else None
 
 
-def audit_song(song_id: str) -> dict[str, Any]:
+def _token_view(token: dict[str, Any]) -> dict[str, str]:
+    """Compact view of one sung token for the Jev state."""
+    out = {"text": str(token.get("text") or token.get("surface") or "").strip()}
+    reading = str(token.get("reading") or "").strip()
+    pronunciation = token.get("pronunciation")
+    romaji = str(token.get("romaji") or "").strip()
+    if not romaji and isinstance(pronunciation, dict):
+        romaji = str(pronunciation.get("value") or "").strip()
+    if reading:
+        out["reading"] = reading
+    if romaji:
+        out["romaji"] = romaji
+    return out
+
+
+def _cue_checkable(language: str, cue: dict[str, Any]) -> bool:
+    """A cue worth asking Jev about: visible sung text, not a credit or solfege."""
+    text = _cue_text(cue)
+    if not text or is_credit_lyric(text) or _is_solfege(text):
+        return False
+    if language == "ja":
+        return True
+    if is_chinese_lang(language):
+        return bool(_LATIN.search(text))
+    return bool(_LATIN.search(text) or _JA_SCRIPT.search(text))
+
+
+def _jev_questions(language: str, items: list[dict[str, Any]]) -> dict[str, Any]:
+    """One question batch: per-cue zh faithfulness + per-cue ja reading check."""
+    questions: dict[str, Any] = {}
+    for item in items:
+        qid = item["qid"]
+        zh = str(item.get("zh") or "").strip()
+        if zh:
+            questions[f"zh_ok_{qid}"] = {
+                "type": "noul",
+                "instructions": (
+                    f"Item {qid}: is 'zh' a faithful Simplified Chinese "
+                    "translation of the sung line? Answer low when it is a "
+                    "different meaning, an English gloss, or copied source."
+                ),
+            }
+        if language == "ja" and item.get("tokens") and _JA_SCRIPT.search(
+            str(item.get("text") or "")
+        ):
+            questions[f"read_ok_{qid}"] = {
+                "type": "noul",
+                "instructions": (
+                    f"Item {qid} (Japanese karaoke): are the per-token "
+                    "readings plausible? Kanji surface should carry hiragana "
+                    "fitting this lyric; katakana loans map to the source "
+                    "word; romaji surface means unrestored. Low when wrong."
+                ),
+            }
+    return questions
+
+
+def _jev_report(
+    song_id: str,
+    timeline: dict[str, Any],
+    *,
+    accept: float = 0.55,
+    unsure_low: float = 0.30,
+    client: Any = None,
+) -> dict[str, Any]:
+    """Shadow-mode Jev pass over one song's cues. Report only, never writes.
+
+    Cheap typed questions ask what the regex audit cannot: is this zh really
+    faithful, are these ja readings plausible. Verdicts are advisory; a Jev
+    outage reports as error and never changes the heuristic verdict.
+    """
+    language = str(timeline.get("language") or "").strip().lower()
+    cues = [cue for cue in timeline.get("cues") or [] if isinstance(cue, dict)]
+    items: list[dict[str, Any]] = []
+    for index, cue in enumerate(cues):
+        if not _cue_checkable(language, cue):
+            continue
+        tokens = [
+            _token_view(token)
+            for token in cue.get("tokens") or []
+            if isinstance(token, dict)
+        ]
+        items.append(
+            {
+                "qid": str(len(items) + 1),
+                "cue_index": index,
+                "text": _cue_text(cue),
+                "zh": str(cue.get("zh") or cue.get("translation") or "").strip(),
+                "tokens": [token for token in tokens if token.get("text")][:24],
+            }
+        )
+    report: dict[str, Any] = {
+        "checked": len(items),
+        "bad_zh": [],
+        "bad_reading": [],
+        "unsure": [],
+        "model": "",
+        "usage": {},
+    }
+    if not items:
+        return report
+    song = get_song(song_id) or {}
+    batch_size = 24
+    for start in range(0, len(items), batch_size):
+        batch = items[start : start + batch_size]
+        state = {
+            "song": {
+                "id": song_id,
+                "title": str(song.get("title") or ""),
+                "artist": str(song.get("artist") or ""),
+                "language": language,
+            },
+            "lines": [
+                {
+                    "id": item["qid"],
+                    "line": item["text"],
+                    "zh": item["zh"],
+                    "tokens": item["tokens"],
+                }
+                for item in batch
+            ],
+        }
+        result: EvalResult = try_evaluate(
+            state, _jev_questions(language, batch), client=client
+        )
+        if result.error:
+            report["error"] = result.error
+            break
+        report["model"] = result.model
+        report["usage"] = result.usage
+        answers = result.answers
+        for item in batch:
+            qid = item["qid"]
+            flagged = None
+            zh_prob = noul_value(answers.get(f"zh_ok_{qid}"))
+            read_prob = noul_value(answers.get(f"read_ok_{qid}"))
+            probs = [p for p in (zh_prob, read_prob) if p is not None]
+            if zh_prob is not None and zh_prob < unsure_low:
+                report["bad_zh"].append(
+                    {"line": item["text"], "zh": item["zh"], "p": round(zh_prob, 2)}
+                )
+                flagged = "bad_zh"
+            if read_prob is not None and read_prob < unsure_low:
+                report["bad_reading"].append(
+                    {"line": item["text"], "p": round(read_prob, 2)}
+                )
+                flagged = flagged or "bad_reading"
+            if flagged is None and probs and min(probs) < accept:
+                report["unsure"].append(
+                    {
+                        "line": item["text"],
+                        "zh_ok": zh_prob,
+                        "read_ok": read_prob,
+                    }
+                )
+    report["flagged"] = (
+        len(report["bad_zh"]) + len(report["bad_reading"]) + len(report["unsure"])
+    )
+    return report
+
+
+def audit_song(song_id: str, use_jev: bool = False) -> dict[str, Any]:
     _out_dir, timeline = _load_timeline(song_id)
     song = get_song(song_id) or {}
     base = {
@@ -160,7 +322,10 @@ def audit_song(song_id: str) -> dict[str, Any]:
         return {**base, "ok": True, "skipped": "no-lyrics"}
     if timeline.get("burned_lyrics"):
         return {**base, "ok": True, "skipped": "burned"}
-    return {**base, **audit_timeline(timeline)}
+    result = {**base, **audit_timeline(timeline)}
+    if use_jev:
+        result["jev"] = _jev_report(song_id, timeline)
+    return result
 
 
 def _clear_invalid_zh(timeline: dict[str, Any]) -> int:
@@ -280,13 +445,24 @@ def repair_song(song_id: str, publish: bool = True) -> dict[str, Any]:
 
 
 def run(
-    song_ids: list[str] | None = None, fix: bool = False, publish: bool = True
+    song_ids: list[str] | None = None,
+    fix: bool = False,
+    publish: bool = True,
+    use_jev: bool = False,
 ) -> list[dict[str, Any]]:
     ids = song_ids or [row["id"] for row in list_songs()]
     results: list[dict[str, Any]] = []
     for song_id in ids:
         try:
-            results.append(repair_song(song_id, publish=publish) if fix else audit_song(song_id))
+            if fix:
+                item = repair_song(song_id, publish=publish)
+                if use_jev and not item.get("skipped"):
+                    _out_dir, timeline = _load_timeline(song_id)
+                    if timeline is not None:
+                        item["jev"] = _jev_report(song_id, timeline)
+                results.append(item)
+            else:
+                results.append(audit_song(song_id, use_jev=use_jev))
         except Exception as exc:  # noqa: BLE001
             results.append({"id": song_id, "ok": False, "error": str(exc)})
     return results
@@ -307,6 +483,19 @@ def _summary(item: dict[str, Any]) -> str:
     if item.get("missing_line_zh"):
         bits.append(f"no-zh={len(item['missing_line_zh'])}")
     status = "ok" if item.get("ok") else " ".join(bits) or "bad"
+    jev = item.get("jev")
+    if isinstance(jev, dict):
+        if jev.get("error"):
+            status += " jev:err"
+        else:
+            jbits = []
+            if jev.get("bad_zh"):
+                jbits.append(f"zh={len(jev['bad_zh'])}")
+            if jev.get("bad_reading"):
+                jbits.append(f"read={len(jev['bad_reading'])}")
+            if jev.get("unsure"):
+                jbits.append(f"unsure={len(jev['unsure'])}")
+            status += " jev:" + ("/".join(jbits) if jbits else "ok")
     if item.get("changed"):
         status += " <- " + ",".join(item.get("actions") or ["-"])
     return status
@@ -319,8 +508,15 @@ def main() -> int:
     parser.add_argument("--no-publish", action="store_true", help="Do not upload to OSS after fixing")
     parser.add_argument("--json", action="store_true", help="Print full JSON report")
     parser.add_argument("--all", action="store_true", help="Also list songs that are fine")
+    parser.add_argument(
+        "--jev",
+        action="store_true",
+        help="Also ask Jev (System One) to judge zh faithfulness and ja readings; report only",
+    )
     args = parser.parse_args()
-    results = run(args.song_ids or None, fix=args.fix, publish=not args.no_publish)
+    results = run(
+        args.song_ids or None, fix=args.fix, publish=not args.no_publish, use_jev=args.jev
+    )
     if args.json:
         print(json.dumps(results, ensure_ascii=False, indent=2))
     else:
