@@ -5,6 +5,10 @@ const hero = document.querySelector(".lp-hero");
 const shot = document.querySelector(".lp-shot");
 if (hero && !reduced) {
   const move = (event) => {
+    // Touch scrolling fires pointermove continuously; repainting the spot
+    // gradient and tilting the demo card on every touch event is what made
+    // the hero flicker on phones. Pointer effects stay mouse/trackpad only.
+    if (event.pointerType === "touch") return;
     const box = hero.getBoundingClientRect();
     const x = ((event.clientX - box.left) / box.width) * 100;
     const y = ((event.clientY - box.top) / box.height) * 100;
@@ -26,6 +30,7 @@ document.querySelectorAll(".lp-features article").forEach((card) => {
   card.addEventListener(
     "pointermove",
     /** @param {PointerEvent} event */ (event) => {
+      if (event.pointerType === "touch") return;
       const box = card.getBoundingClientRect();
       card.style.setProperty("--mx", `${event.clientX - box.left}px`);
       card.style.setProperty("--my", `${event.clientY - box.top}px`);

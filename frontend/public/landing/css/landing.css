@@ -42,6 +42,7 @@ a { color: inherit; text-decoration: none; }
   z-index: 30;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   background: rgba(9, 9, 12, 0.8);
+  -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
 .lp-nav-inner {
@@ -140,6 +141,7 @@ select.lang-picker:focus {
   border: 1px solid var(--stroke);
   color: var(--ink);
   background: rgba(10, 10, 10, 0.55);
+  -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
 }
 .btn.ghost:hover { border-color: #3a3a3a; }
@@ -376,7 +378,10 @@ select.lang-picker:focus {
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02) 36%, rgba(8, 8, 12, 0.5)),
     rgba(10, 10, 14, 0.62);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), 0 0 80px rgba(255, 77, 141, 0.16);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
   backdrop-filter: blur(22px) saturate(1.35);
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
   transform: perspective(1100px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
   transition: transform 0.16s ease-out;
 }
@@ -776,6 +781,7 @@ tbody th { width: 4.5em; color: var(--mute); font-weight: 600; }
   .lp-features { margin-top: 36px; }
   .lp-shot { padding: 20px; }
   .lyric.sing { font-size: 20px; }
+  .lp-grain, .lp-meteors, .lp-mesh, .lp-aurora { animation: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
