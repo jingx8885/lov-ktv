@@ -48,6 +48,21 @@ export function tokenProgress(tok, t) {
   return 0;
 }
 
+// Layout reads in the paint path dirty the frame when they run against fresh
+// style writes. Lines are re-measured only when their content, the lyric size
+// setting, or a viewport epoch changes instead of on every frame.
+let lyricFitEpoch = 0;
+if (typeof window !== "undefined" && typeof window.addEventListener === "function") {
+  const bumpLyricFit = () => {
+    lyricFitEpoch += 1;
+  };
+  window.addEventListener("resize", bumpLyricFit);
+  window.addEventListener("orientationchange", bumpLyricFit);
+  if (typeof document !== "undefined" && document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(bumpLyricFit).catch(() => {});
+  }
+}
+
 const LEADING_STAMPS = /^(?:\s*\[\d+:\d+(?:\.\d+)?\])+/;
 const STAMP_ONLY = /^(?:\[\d+:\d+(?:\.\d+)?\]\s*)+$/;
 
@@ -203,41 +218,50 @@ function fitLyricExtras(el) {
   // words visibly jump between different font sizes. Let the annotation use
   // its natural width instead; the lyric line's wrapping handles the result.
   const keepPhoneExtraSize = !!(el.closest && el.closest(".player-lyrics"));
+  const jobs = [];
+  // Phase 1 clears every constraint. The measurements in phase 2 then share
+  // one layout pass instead of forcing a fresh one per annotation, which is
+  // what made lyric line changes hitch on mobile WebViews.
   el.querySelectorAll(".anno").forEach((anno) => {
-    const rb = /** @type {HTMLElement | null} */ (anno.querySelector(".rb"));
-    if (!rb) return;
-    const box = /** @type {HTMLElement} */ (anno);
+    const box = anno;
     box.style.width = "";
+    const rb = box.querySelector(".rb");
+    if (!rb) return;
+    const extras = Array.from(box.querySelectorAll(".roma, .gloss"));
+    extras.forEach((node) => {
+      node.style.transform = "";
+      node.style.transformOrigin = "";
+      if (keepPhoneExtraSize) {
+        node.style.width = "max-content";
+        node.style.minWidth = "0";
+      }
+    });
+    jobs.push({ box, rb, extras, cap: 0, widths: [] });
+  });
+  jobs.forEach((job) => {
+    job.cap = job.rb.getBoundingClientRect().width;
+    job.widths = job.extras.map((extra) => textInkWidth(extra));
+  });
+  jobs.forEach((job) => {
     if (keepPhoneExtraSize) {
-      const extras = Array.from(box.querySelectorAll(".roma, .gloss"));
-      const sourceWidth = rb.getBoundingClientRect().width;
-      let naturalWidth = sourceWidth;
-      // Measure the unscaled text before restoring the annotation's minimum
-      // width. This gives the token enough room without changing its font.
-      extras.forEach((node) => {
-        const extra = /** @type {HTMLElement} */ (node);
-        extra.style.transform = "";
-        extra.style.transformOrigin = "";
-        extra.style.width = "max-content";
-        extra.style.minWidth = "0";
-        naturalWidth = Math.max(naturalWidth, textInkWidth(extra));
+      let naturalWidth = job.cap;
+      job.widths.forEach((w) => {
+        naturalWidth = Math.max(naturalWidth, w);
       });
-      if (naturalWidth > 0) box.style.width = `${Math.ceil(naturalWidth)}px`;
-      extras.forEach((node) => {
-        /** @type {HTMLElement} */ (node).style.minWidth = "100%";
+      if (naturalWidth > 0) job.box.style.width = Math.ceil(naturalWidth) + "px";
+      job.extras.forEach((node) => {
+        node.style.minWidth = "100%";
       });
       return;
     }
-    const cap = rb.getBoundingClientRect().width;
-    if (cap > 0) box.style.width = `${Math.ceil(cap)}px`;
-    box.querySelectorAll(".roma, .gloss").forEach((node) => {
-      const extra = /** @type {HTMLElement} */ (node);
-      extra.style.transform = "";
+    const cap = job.cap;
+    if (cap > 0) job.box.style.width = Math.ceil(cap) + "px";
+    job.extras.forEach((node, i) => {
       if (cap <= 0) return;
-      const w = textInkWidth(extra);
+      const w = job.widths[i];
       if (w > cap + 1) {
-        extra.style.transform = `scale(${cap / w})`;
-        extra.style.transformOrigin = "top center";
+        node.style.transform = "scale(" + cap / w + ")";
+        node.style.transformOrigin = "top center";
       }
     });
   });
@@ -453,54 +477,101 @@ export function renderCue(cue, t, mode) {
  * @param {string} [empty]
  * @param {LyricMode | string} [mode]
  */
-export function paintLine(el, cue, t, slot, paint, empty, mode) {
-  if (!el) return;
+export function syncLine(el, cue, t, slot, paint, empty, mode) {
+  if (!el) return false;
   const view = normLyricMode(mode);
   if (!cue) {
-    const blank = `empty:${view}`;
+    const blank = "empty:" + view;
     if (paint[slot] !== blank) {
       el.textContent = empty || "";
       paint[slot] = blank;
+      paint[slot + "~fills"] = null;
     }
-    return;
+    return false;
   }
   const skin = t < 0 ? "wait" : t > 1e10 ? "done" : "live";
   const id = cueKey(cue) + ":" + skin + ":" + view;
   const sizeKey = typeof document !== "undefined" && document.body ? String(document.body.dataset.lyricSize || "") : "";
-  const fitKey = `${id}:${Math.round(el.clientWidth)}:${sizeKey}`;
+  const fitKey = id + ":" + sizeKey + ":" + lyricFitEpoch;
   if (paint[slot] !== id) {
     el.innerHTML = renderCue(cue, t, view);
     paint[slot] = id;
     el.dataset.lyricFit = "";
+    paint[slot + "~fills"] = null;
   }
   if (el.dataset.lyricFit !== fitKey) {
     fitLyricLine(el);
     if (el.clientWidth > 0) el.dataset.lyricFit = fitKey;
   }
-  if (paint[slot] !== id || skin !== "live") return;
-  const toks = clusterTokens(cue.tokens || []);
-  const fills = el.querySelectorAll(".rb-fill");
-  if (!toks.length && fills.length) {
-    const next = Math.round(tokenProgress(cue, t)) + "%";
-    fills.forEach((node) => {
-      const style = /** @type {HTMLElement} */ (node).style;
+  return skin === "live";
+}
+
+/**
+ * Writes karaoke progress widths only. The token list and fill nodes are
+ * cached per slot so a steady-state frame performs no querySelectorAll and
+ * no clusterTokens allocation. The align editor mutates cue tokens without
+ * changing cue identity, so it bypasses the cache.
+ * @param {HTMLElement | null} el
+ * @param {LyricCue} cue
+ * @param {number} t
+ * @param {keyof LyricPaintSlots | string} slot
+ * @param {LyricPaintSlots} paint
+ */
+export function updateLineFills(el, cue, t, slot, paint) {
+  if (!el || !cue) return;
+  const editing = !!(typeof document !== "undefined" && document.body && document.body.classList.contains("edit-on"));
+  let cache = editing ? null : paint[slot + "~fills"];
+  if (!cache) {
+    cache = {
+      toks: clusterTokens(cue.tokens || []),
+      fills: Array.from(el.querySelectorAll(".rb-fill"))
+    };
+    paint[slot + "~fills"] = cache;
+  }
+  if (!cache.toks.length) {
+    if (!cache.fills.length) return;
+    const next = Math.round(tokenProgress(cue, t) * 10) / 10 + "%";
+    cache.fills.forEach((node) => {
+      const style = node.style;
       if (style.width !== next) style.width = next;
     });
     return;
   }
-  fills.forEach((node, i) => {
-    if (!toks[i]) return;
-    const next = Math.round(tokenProgress(toks[i], t)) + "%";
-    const style = /** @type {HTMLElement} */ (node).style;
+  cache.fills.forEach((node, i) => {
+    const tok = cache.toks[i];
+    if (!tok) return;
+    const next = Math.round(tokenProgress(tok, t) * 10) / 10 + "%";
+    const style = node.style;
     if (style.width !== next) style.width = next;
   });
+}
+
+export function paintLine(el, cue, t, slot, paint, empty, mode) {
+  if (syncLine(el, cue, t, slot, paint, empty, mode)) updateLineFills(el, cue, t, slot, paint);
 }
 
 /** @param {LyricCue[] | null | undefined} cues @param {number} t */
 export function cueIndexAt(cues, t) {
   const list = cues || [];
-  const idx = list.findIndex((c) => t >= c.start_ms && t < c.end_ms);
-  if (idx >= 0) return idx;
-  const upcoming = list.findIndex((c) => t < c.start_ms);
-  return upcoming >= 0 ? upcoming : list.length ? list.length - 1 : -1;
+  if (!list.length) return -1;
+  // Last cue starting at or before t. The previous pair of findIndex scans
+  // walked the whole document on every paint frame; a binary search keeps
+  // the lookup at log(n).
+  let lo = 0;
+  let hi = list.length - 1;
+  let at = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (list[mid].start_ms <= t) {
+      at = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  if (at < 0) return 0;
+  if (t >= list[at].end_ms) return Math.min(at + 1, list.length - 1);
+  // Overlapping cues still resolve to the first covering line.
+  while (at > 0 && list[at - 1].end_ms > t && list[at - 1].start_ms <= t) at -= 1;
+  return at;
 }

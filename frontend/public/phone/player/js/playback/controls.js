@@ -8,6 +8,7 @@ import { mediaAhead, mediaUrl, mediaPath } from "./media.js";
 
 let paintPlayerCallback = null;
 let lastGuideSyncAt = 0;
+let lastIconKey = "";
 let trackSwitchGen = 0;
 export function registerPaintPlayer(fn) {
   paintPlayerCallback = fn;
@@ -17,6 +18,9 @@ export function setPlayIcon(playing) {
   const loading = !!state.playerLoading;
   const icon = loading ? ICO.loading : playing ? ICO.pause : ICO.play;
   const label = loading ? t("common.loading") : playing ? t("common.pause") : t("common.play");
+  const key = loading + ":" + playing + ":" + label;
+  if (key === lastIconKey) return;
+  lastIconKey = key;
   ["playerPlay", "editPlay"].forEach((id) => {
     const btn = $(id);
     if (!btn) return;
@@ -198,8 +202,8 @@ export function syncGuide(forceTime) {
   if (!guide) return;
   const editing = document.body.classList.contains("edit-on");
   if (!editing) {
-    guide.pause();
-    guide.muted = true;
+    if (!guide.paused) guide.pause();
+    if (guide.muted !== true) guide.muted = true;
     return;
   }
   // The guide track downloads lazily: a plain listen never fetches it.

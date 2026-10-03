@@ -43,6 +43,7 @@ export function bindPlayback() {
     const seek = $(id);
     if (!seek) return;
     seek.addEventListener("input", () => {
+      kickPlayerPaint();
       const ratio = Number(seek.value) / 1000;
       ["playerSeek", "playerSeekDock"].forEach((otherId) => {
         const other = $(otherId);
