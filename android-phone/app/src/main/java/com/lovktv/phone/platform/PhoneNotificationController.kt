@@ -12,6 +12,7 @@ import android.media.session.PlaybackState
 import android.os.Build
 import com.lovktv.phone.R
 import com.lovktv.phone.feature.DeskActivity
+import com.lovktv.phone.media.PlaybackService
 import org.json.JSONObject
 
 /**
@@ -113,10 +114,16 @@ class PhoneNotificationController(private val context: Context) {
                     .setShowActionsInCompactView(0, 1, 2),
             )
         }
-        manager.notify(NOTIFICATION_ID, builder.build())
+        val notification = builder.build()
+        // While a track is actually playing the shade entry is owned by the
+        // mediaPlayback foreground service, which also keeps the WebView
+        // (and the JS that advances tracks) alive in the background.
+        PlaybackService.sync(context, playing, notification)
+        manager.notify(NOTIFICATION_ID, notification)
     }
 
     fun close() {
+        PlaybackService.stop(context)
         manager.cancel(NOTIFICATION_ID)
         mediaSession.isActive = false
         mediaSession.release()

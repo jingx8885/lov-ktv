@@ -6,6 +6,7 @@ import { state, LIB_LETTERS } from "../../../state.js";
 import { nextSongId } from "./state.js";
 import { ICO, songLetter } from "../../../ui/js/icons.js";
 import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
+import { api } from "../../../api.js";
 import { unlockPlayerGesture } from "./controls.js";
 import { loadPlayerSong } from "./song.js";
 
@@ -53,7 +54,15 @@ export async function loadPlayerList() {
   const { data } = await fetchJson("/api/songs?favorites=1", { cache: "no-store" }).catch(() => ({
     data: { songs: [] }
   }));
-  state.playerCatalog = (data.songs || []).filter((song) => song.status === "ready");
+  let catalog = (data.songs || []).filter((song) => song.status === "ready");
+  // The player list is the user's saved set, but auto-advance must never hit
+  // an empty queue just because nothing was favorited yet.  Fall back to the
+  // whole ready library so finishing a track keeps the session going.
+  if (!catalog.length) {
+    const all = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => ({ data: { songs: [] } }));
+    catalog = ((all && all.data && all.data.songs) || []).filter((song) => song.status === "ready");
+  }
+  state.playerCatalog = catalog;
   renderPlayerList();
 }
 
@@ -102,9 +111,27 @@ export function renderPlayerList() {
   if (on) on.scrollIntoView({ block: "nearest" });
 }
 
+let catalogRetry = false;
+
 export function playNextSong() {
   const cur = state.playerSong && state.playerSong.id;
   const next = nextSongId(state.playerCatalog, cur, state.playOrder);
-  if (!next) return;
+  if (!next) {
+    // The track may have ended before the catalog finished loading (launch
+    // straight into a song); retry once the list resolves instead of
+    // silently stopping the listening session.
+    if (!catalogRetry && api.loadPlayerList) {
+      catalogRetry = true;
+      Promise.resolve(api.loadPlayerList())
+        .then(() => {
+          catalogRetry = false;
+          playNextSong();
+        })
+        .catch(() => {
+          catalogRetry = false;
+        });
+    }
+    return;
+  }
   loadPlayerSong(next, { play: true, refreshPlayerCatalog: false });
 }
