@@ -587,6 +587,10 @@ select.lang-picker:focus {
 .lp-pricing-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 28px; color: var(--dim); font-size: 11px; }
 .lp-pricing-foot i { width: 3px; height: 3px; border-radius: 99px; background: #484852; }
 .lp-section { padding: 96px 0; }
+.lp-clip-lead { max-width: 640px; margin: 14px auto 34px; color: #9b98ad; font-size: 15px; line-height: 1.8; text-align: center; }
+.lp-video { text-align: center; }
+.lp-clip-frame { position: relative; margin: 0 auto; max-width: 960px; border-radius: 18px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .09); box-shadow: 0 30px 80px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 77, 141, .08); }
+.lp-clip { display: block; width: 100%; height: auto; background: #050508; }
 .lp-section.lp-alt {
   border-top: 1px solid rgba(26, 26, 26, 0.8);
   background: var(--alt);
