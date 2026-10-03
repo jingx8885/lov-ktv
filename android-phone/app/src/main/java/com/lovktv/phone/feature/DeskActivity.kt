@@ -25,6 +25,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
@@ -65,6 +66,15 @@ class DeskActivity : Activity() {
     private var pendingNotificationPage = ""
     private var pendingNotificationAction = ""
     private lateinit var playBilling: PlayBillingManager
+    // Activity.requestPermissions has no parallel support: a second call while
+    // a system dialog is up swallows the request and the result never comes
+    // back, leaving WebView getUserMedia pending forever.  Every runtime
+    // request in this activity goes through one FIFO queue instead.
+    private data class PermAsk(val code: Int, val perms: Array<String>)
+    private val permQueue = ArrayDeque<PermAsk>()
+    private var permBusy = false
+    private var permActive = -1
+    private val permWatchdog = Runnable { onPermissionWatchdog() }
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -89,7 +99,7 @@ class DeskActivity : Activity() {
         loadDesk()
         startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
+            requestPermission(REQ_NOTIFICATIONS, Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -618,11 +628,12 @@ class DeskActivity : Activity() {
             grantWebPermission(request)
             return
         }
-        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_WEB_MIC)
+        requestPermission(REQ_WEB_MIC, Manifest.permission.RECORD_AUDIO)
     }
 
     private fun grantWebPermission(request: PermissionRequest) {
-        request.grant(request.resources)
+        val wanted = request.resources.filter { it == PermissionRequest.RESOURCE_AUDIO_CAPTURE }
+        request.grant((if (wanted.isEmpty()) request.resources else wanted.toTypedArray()))
         if (pendingWebPerm === request) pendingWebPerm = null
     }
 
@@ -638,7 +649,62 @@ class DeskActivity : Activity() {
         ) {
             needed.add(Manifest.permission.POST_NOTIFICATIONS)
         }
-        requestPermissions(needed.toTypedArray(), REQ_PHONE_MIC)
+        requestPermission(REQ_PHONE_MIC, *needed.toTypedArray())
+    }
+
+    private fun requestPermission(code: Int, vararg perms: String) {
+        permQueue.add(PermAsk(code, arrayOf(*perms)))
+        pumpPermissions()
+    }
+
+    private fun pumpPermissions() {
+        if (permBusy) return
+        val next = permQueue.removeFirstOrNull() ?: return
+        permBusy = true
+        permActive = next.code
+        watch.postDelayed(permWatchdog, PERM_WATCHDOG_MS)
+        runCatching { requestPermissions(next.perms, next.code) }
+            .onFailure {
+                watch.removeCallbacks(permWatchdog)
+                permBusy = false
+                permActive = -1
+                pumpPermissions()
+            }
+    }
+
+    private fun onPermissionWatchdog() {
+        // If the system swallowed a request or a dialog was dismissed without
+        // a result, fail it instead of leaving the queue (and any pending
+        // WebView permission request) stuck forever.
+        val code = permActive
+        permBusy = false
+        permActive = -1
+        when (code) {
+            REQ_WEB_MIC -> denyWebPermission(pendingWebPerm)
+            REQ_PHONE_MIC -> {
+                pendingSend = null
+                pendingIem = null
+                dispatchMicEvent("lovktv-mic-denied")
+            }
+        }
+        pumpPermissions()
+    }
+
+    private fun guideMicToSettings() {
+        android.widget.Toast.makeText(this, R.string.mic_open_settings, android.widget.Toast.LENGTH_LONG).show()
+        // A permanent denial never shows the system prompt again; the only way
+        // the cover challenge can record is if the user re-enables the mic in
+        // app settings, so take them there directly.
+        watch.postDelayed({ openMicSettings() }, 900)
+    }
+
+    private fun openMicSettings() {
+        runCatching {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
     }
 
     private fun dispatchMicEvent(name: String) {
@@ -650,12 +716,19 @@ class DeskActivity : Activity() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        watch.removeCallbacks(permWatchdog)
+        if (requestCode == permActive) {
+            permBusy = false
+            permActive = -1
+        }
+        pumpPermissions()
         val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
         when (requestCode) {
             REQ_WEB_MIC -> {
                 val req = pendingWebPerm
                 if (granted && req != null) grantWebPermission(req)
                 else denyWebPermission(req)
+                if (!granted && grantResults.isNotEmpty() && !hasAudio(this)) guideMicToSettings()
             }
             REQ_PHONE_MIC -> {
                 if (granted && hasAudio(this)) {
@@ -671,6 +744,7 @@ class DeskActivity : Activity() {
                     pendingSend = null
                     pendingIem = null
                     dispatchMicEvent("lovktv-mic-denied")
+                    if (grantResults.isNotEmpty() && !hasAudio(this)) guideMicToSettings()
                 }
             }
             REQ_NOTIFICATIONS -> Unit
@@ -740,6 +814,7 @@ class DeskActivity : Activity() {
         const val EXTRA_MIC_RATE = "mic_rate"
         const val EXTRA_NOTIFICATION_ACTION = "notification_action"
         const val EXTRA_NOTIFICATION_PAGE = "notification_page"
+        private const val PERM_WATCHDOG_MS = 30000L
         private const val REQ_FILE = 22
         private const val REQ_WEB_MIC = 23
         private const val REQ_PHONE_MIC = 24

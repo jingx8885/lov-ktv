@@ -9,6 +9,7 @@
     <string name="scan_invalid">不是进房二维码，请扫电视上的码</string>
     <string name="scan_joining">正在进房…</string>
     <string name="mic_channel">低延时麦</string>
+    <string name="mic_open_settings">没拿到麦克风权限，去系统设置打开</string>
     <string name="splash_desc">lov-ktv 开屏</string>
     <string name="lan_desk_fail">连不上电视，先用手机搜歌、听歌、学习。要唱到电视再扫码或填房间号。</string>
     <string name="tv_reconnecting">正在重连电视…</string>

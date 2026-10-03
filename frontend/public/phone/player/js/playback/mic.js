@@ -13,7 +13,9 @@ import {
   micErrorText as platformMicErrorText
 } from "../../../platform.js";
 
-const MIC_WAIT_MS = 12000;
+// Give the user time to answer the Android permission dialog:
+// the embedder serializes runtime requests, so a slow grant must not fail.
+const MIC_WAIT_MS = 60000;
 
 function micErrorText(err) {
   return platformMicErrorText(err);
