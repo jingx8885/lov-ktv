@@ -17,7 +17,10 @@ import android.graphics.Typeface
 import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
+import android.widget.RemoteViews
 import android.os.Build
+import android.app.ActivityManager
+import android.app.ApplicationExitInfo
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
@@ -51,6 +54,7 @@ class PhoneNotificationController(private val context: Context) {
     private val artPending = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val artFailed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val customViewsBroken = detectPreviousCustomViewCrash()
 
     private var lastPayload = ""
     private var lastMeta = ""
@@ -217,7 +221,37 @@ class PhoneNotificationController(private val context: Context) {
                     .setShowActionsInCompactView(0, 1, 2),
             )
         }
+        if (!customViewsBroken) {
+            builder.setCustomContentView(compactViews(songTitle))
+            builder.setCustomBigContentView(expandedViews(songTitle, label))
+            builder.setStyle(Notification.DecoratedMediaCustomViewStyle()
+                .setMediaSession(mediaSession.sessionToken))
+        }
         postNotification(builder, songTitle, label)
+    }
+
+    /**
+     * A RemoteViews that fails to inflate crashes the POSTING app with a
+     * RemoteServiceException one frame later - normal try/catch cannot stop
+     * it.  Read the previous process-exit trace once at startup; if the last
+     * death carried a RemoteViews/BadNotification failure we permanently fall
+     * back to the standard card instead of crash-looping on every song.
+     */
+    private fun detectPreviousCustomViewCrash(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_CUSTOM_BROKEN, false)) return true
+        val am = context.getSystemService(ActivityManager::class.java) ?: return false
+        val exits = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 1) }
+            .getOrNull() ?: return false
+        val info = exits.firstOrNull() ?: return false
+        if (info.reason != ApplicationExitInfo.REASON_CRASH) return false
+        val trace = runCatching {
+            info.traceInputStream?.bufferedReader()?.use { it.readText() } ?: ""
+        }.getOrDefault("")
+        val broken = trace.contains("RemoteViews") || trace.contains("BadNotification") || trace.contains("BadForegroundServiceNotification")
+        if (broken) prefs.edit().putBoolean(KEY_CUSTOM_BROKEN, true).apply()
+        return broken
     }
 
     /**
@@ -394,6 +428,68 @@ class PhoneNotificationController(private val context: Context) {
         runCatching { mediaSession.release() }
     }
 
+    /** Compact custom row; the lyric line marquees so long lines still read. */
+    private fun compactViews(songTitle: String): RemoteViews {
+        val v = RemoteViews(context.packageName, R.layout.notification_media)
+        v.setImageViewBitmap(R.id.nc_art, artworkFor(songTitle))
+        v.setTextViewText(R.id.nc_title, songTitle)
+        v.setTextViewText(R.id.nc_lyric, lastLyric.ifBlank { lastArtist })
+        v.setImageViewResource(R.id.nc_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
+        v.setOnClickPendingIntent(R.id.nc_play, actionPending(if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
+        v.setBoolean(R.id.nc_title, "setSelected", true)
+        v.setBoolean(R.id.nc_lyric, "setSelected", true)
+        return v
+    }
+
+    /** Expanded card: current lyric large, translation gold, next line dim. */
+    private fun expandedViews(songTitle: String, label: String): RemoteViews {
+        val v = RemoteViews(context.packageName, R.layout.notification_media_expanded)
+        v.setImageViewBitmap(R.id.nx_art, artworkFor(songTitle))
+        v.setTextViewText(R.id.nx_title, songTitle)
+        v.setTextViewText(R.id.nx_sub, listOf(lastArtist, label).filter { it.isNotBlank() }.joinToString(" · "))
+        if (lastLyric.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric, lastLyric)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric, android.view.View.GONE)
+        }
+        if (lastLyricTrans.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric_trans, lastLyricTrans)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric_trans, android.view.View.GONE)
+        }
+        if (lastLyricNext.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric_next, context.getString(R.string.notification_next_lyric) + "  " + lastLyricNext)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric_next, android.view.View.GONE)
+        }
+        if (lastDurationMs > 0) {
+            val progress = ((lastPositionMs * 1000) / lastDurationMs).toInt().coerceIn(0, 1000)
+            v.setProgressBar(R.id.nx_progress, 1000, progress, false)
+        } else {
+            v.setViewVisibility(R.id.nx_progress, android.view.View.GONE)
+        }
+        val listening = lastPage == "player"
+        v.setImageViewResource(R.id.nx_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
+        v.setImageViewResource(R.id.nx_next, R.drawable.ic_notif_next)
+        if (listening) {
+            v.setImageViewResource(R.id.nx_a1, R.drawable.ic_notif_queue)
+            v.setImageViewResource(R.id.nx_a3, R.drawable.ic_notif_vocal)
+            v.setOnClickPendingIntent(R.id.nx_a1, actionPending(ACTION_TO_DESK))
+            v.setOnClickPendingIntent(R.id.nx_a3, actionPending(ACTION_PLAYER_VOCAL))
+        } else {
+            v.setImageViewResource(R.id.nx_a1, R.drawable.ic_notif_search)
+            v.setImageViewResource(R.id.nx_a3, R.drawable.ic_notif_mic)
+            v.setOnClickPendingIntent(R.id.nx_a1, actionPending(ACTION_SEARCH))
+            v.setOnClickPendingIntent(R.id.nx_a3, actionPending(ACTION_DESK_MIC))
+        }
+        v.setOnClickPendingIntent(R.id.nx_play, actionPending(if (listening) ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
+        v.setOnClickPendingIntent(R.id.nx_next, actionPending(if (listening) ACTION_PLAYER_NEXT else ACTION_DESK_SKIP))
+        listOf(R.id.nx_title, R.id.nx_sub, R.id.nx_lyric, R.id.nx_lyric_trans, R.id.nx_lyric_next).forEach {
+            v.setBoolean(it, "setSelected", true)
+        }
+        return v
+    }
+
     private fun actionPending(action: String): PendingIntent {
         val intent = Intent(context, NotificationActionReceiver::class.java)
             .putExtra(EXTRA_ACTION, action)
@@ -427,6 +523,8 @@ class PhoneNotificationController(private val context: Context) {
         private const val NOTIFICATION_ID = 4101
         private const val REQUEST_OPEN = 4102
         private const val ART_SIZE = 256
+        private const val PREFS = "lovktv-notify"
+        private const val KEY_CUSTOM_BROKEN = "custom_broken"
 
         /** Same curated gradient pairs as frontend/public/shared/ui/js/art.js. */
         private val PALETTE = listOf(
