@@ -528,11 +528,21 @@ def shift_cues(
 def write_manual_lrc(out_dir: Path, cues: list[dict[str, Any]]) -> None:
     """Lock line starts so auto-realign cannot overwrite editor timing."""
     lines = []
-    for cue in cues:
+    for index, cue in enumerate(cues):
         text = str(cue.get("text") or "").strip()
         if not text:
             continue
         lines.append(f"[{_lrc_time(int(cue['start_ms']))}]{text}")
+        end_ms = int(cue.get("end_ms") or 0)
+        nxt = (
+            int(cues[index + 1].get("start_ms") or 0)
+            if index + 1 < len(cues)
+            else 0
+        )
+        # A blank stamp keeps an early line ending through parse_lrc so a
+        # manual lock round-trips the sung tail, not just the next start.
+        if end_ms and (not nxt or end_ms < nxt):
+            lines.append(f"[{_lrc_time(end_ms)}]")
     if not lines:
         return
     (out_dir / "lyrics.manual.lrc").write_text(
@@ -560,7 +570,10 @@ def rebuild_manual_timeline(
         start_ms = int(
             row["ms"] if row.get("ms") is not None else row.get("start_ms") or 0
         )
-        if index + 1 < len(rows):
+        explicit_end = row.get("end_ms")
+        if explicit_end is not None:
+            end_ms = int(explicit_end)
+        elif index + 1 < len(rows):
             nxt = rows[index + 1]
             end_ms = int(
                 nxt["ms"]

@@ -159,3 +159,25 @@ def test_validate_timeline_rejects_empty():
         assert "没有歌词" in str(exc)
     else:
         raise AssertionError("expected empty cues to fail")
+
+
+def test_manual_timeline_keeps_explicit_line_end(tmp_path):
+    """A blank stamp locks the sung tail instead of the next line's start."""
+    rows = [
+        {"text": "alpha", "ms": 1000, "end_ms": 2400},
+        {"text": "beta", "ms": 9000},
+    ]
+    out = rebuild_manual_timeline(rows, {"language": "en", "cues": []})
+    assert out["cues"][0]["end_ms"] == 2400
+    assert out["cues"][1]["end_ms"] > 9000
+
+    from lovktv.pipeline.lyrics import write_manual_lrc
+    from lovktv.catalog.lyrics import parse_lrc
+
+    write_manual_lrc(tmp_path, out["cues"])
+    raw = (tmp_path / "lyrics.manual.lrc").read_text(encoding="utf-8")
+    assert "[00:02.40]" in raw or "[00:02.400]" in raw
+    parsed = parse_lrc(raw)
+    assert parsed[0]["end_ms"] == 2400
+    again = rebuild_manual_timeline(parsed, {"language": "en", "cues": []})
+    assert again["cues"][0]["end_ms"] == 2400
