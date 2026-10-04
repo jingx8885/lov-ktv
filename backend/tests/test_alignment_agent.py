@@ -4,7 +4,7 @@ import pytest
 
 from lovktv.agents import alignment
 from lovktv.domain.alignment import parse_sung_lyrics
-from lovktv.pipeline.energy import lrc_energy_match
+from lovktv.pipeline.energy import lrc_energy_match, uncovered_voice_ms
 from lovktv.pipeline.orchestrator import align_lyrics, resolve_sung_rows
 
 
@@ -39,6 +39,25 @@ def test_lrc_energy_match_rejects_when_no_vocal_onsets_match():
         hop_ms=20,
     )
     assert result["accepted"] is False
+
+
+def test_uncovered_voice_ms_flags_sung_tail_without_stamp():
+    # Vocals 1.0-4.0s are claimed; a 5.0-9.0s sung tail has no stamp.
+    lines = [{"ms": 1000, "text": "one"}, {"ms": 3000, "text": "two"}]
+    assert uncovered_voice_ms(lines, [(1000, 4000), (5000, 9000)]) == 4000
+
+
+def test_uncovered_voice_ms_merges_close_islands():
+    # Breath gaps under the merge threshold do not split a missing verse.
+    lines = [{"ms": 1000, "text": "one"}]
+    regions = [(1000, 4000), (43000, 47000), (47200, 48300)]
+    assert uncovered_voice_ms(lines, regions) == 5100
+
+
+def test_uncovered_voice_ms_margin_covers_slightly_longer_line():
+    # A stamp 800ms before the region edge still owns it: lines show early.
+    lines = [{"ms": 9500, "text": "tail"}]
+    assert uncovered_voice_ms(lines, [(10200, 13000)]) == 0
 
 
 def _agent(monkeypatch, payload: dict) -> dict:

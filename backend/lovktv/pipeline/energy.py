@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from bisect import bisect_left
 from typing import Any
 
 from lovktv.pipeline.audio import snap_to_onset, vocal_regions
@@ -14,6 +15,15 @@ from lovktv.pipeline.matching import vocal_phrases
 # definition of "close enough".
 LRC_ENERGY_MAX_DELTA_MS = 1200
 LRC_ENERGY_MIN_RATIO = 0.72
+
+# Reverse coverage gate for the fast path: lrc_energy_match only asks whether
+# every LRC stamp lands on singing.  A source whose own clock omits a verse or
+# stops before the sung tail still passes that check, so separately require
+# that no substantial vocal stretch is left unclaimed by any stamp.  Stamps
+# only have to sit near the stretch (lines often show a little early).
+LRC_UNCOVERED_MARGIN_MS = 800
+LRC_UNCOVERED_MERGE_GAP_MS = 400
+LRC_UNCOVERED_REJECT_MS = 2500
 
 
 def lrc_energy_match(
@@ -69,6 +79,47 @@ def lrc_energy_match(
         "mean_delta_ms": sum(deltas) / len(deltas) if deltas else None,
         "accepted": ratio >= float(min_ratio),
     }
+
+
+def uncovered_voice_ms(
+    lines: list[dict[str, Any]],
+    regions: list[tuple[int, int]],
+    *,
+    margin_ms: int = LRC_UNCOVERED_MARGIN_MS,
+    merge_gap_ms: int = LRC_UNCOVERED_MERGE_GAP_MS,
+) -> int:
+    """Longest run of singing no lyric stamp claims.
+
+    For each vocal region, a stamp within ``margin_ms`` of either edge counts
+    as coverage — display lines typically bracket the sung span with a little
+    headroom.  Neighbouring uncovered islands separated by short breaths
+    merge into one run, so a verse split by phrase gaps is still measured as
+    a single missing section.  Returns the longest uncovered run in
+    milliseconds; zero means every sung stretch has a line nearby.
+    """
+    stamps = sorted(
+        int(item["ms"])
+        for item in lines
+        if isinstance(item, dict) and item.get("ms") is not None
+    )
+    if not regions:
+        return 0
+    longest = 0
+    run = 0
+    previous_end: int | None = None
+    for region_start, region_end in regions:
+        index = bisect_left(stamps, region_start - margin_ms)
+        covered = index < len(stamps) and stamps[index] <= region_end + margin_ms
+        if covered:
+            run = 0
+        else:
+            if previous_end is not None and region_start - previous_end <= merge_gap_ms:
+                run += region_end - region_start
+            else:
+                run = region_end - region_start
+            longest = max(longest, run)
+        previous_end = region_end
+    return longest
 
 
 def snap_late_line_stamps(

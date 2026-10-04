@@ -33,7 +33,11 @@ from lovktv.catalog.mugen import (
 from lovktv.core.config import MEDIA_DIR
 from lovktv.pipeline.audio import extract_envelope, probe_duration_ms, vocal_regions
 from lovktv.pipeline.bounds import pack_tokens_to_singing
-from lovktv.pipeline.energy import lrc_energy_match
+from lovktv.pipeline.energy import (
+    LRC_UNCOVERED_REJECT_MS,
+    lrc_energy_match,
+    uncovered_voice_ms,
+)
 from lovktv.pipeline.language import normalize_target_language, resolve_language
 from lovktv.pipeline.lyrics import (
     parse_plain_lines,
@@ -601,6 +605,19 @@ def _select_energy_lrc(
         score = lrc_energy_match(lines, envelope, hop_ms)
         if not score.get("accepted"):
             continue
+        # A truncated or shifted LRC can still land every stamp on singing.
+        # Reject it when a substantial sung stretch has no line at all, so
+        # the ASR agent path can transcribe what the source omits.
+        uncovered = uncovered_voice_ms(lines, regions)
+        if uncovered > LRC_UNCOVERED_REJECT_MS:
+            processing_debug.event(
+                out_dir.name,
+                "energy-candidate-skipped",
+                candidate=candidate_id,
+                uncovered_ms=uncovered,
+            )
+            continue
+        score["uncovered_ms"] = uncovered
         # Prefer the highest ratio, then the smallest mean onset error.
         rank = (
             float(score.get("ratio") or 0),
@@ -1236,6 +1253,7 @@ def _align_and_mtv(
             candidate=candidate_id,
             ratio=score.get("ratio"),
             mean_delta_ms=score.get("mean_delta_ms"),
+            uncovered_ms=score.get("uncovered_ms"),
         )
         asr_words = None
         sung = None

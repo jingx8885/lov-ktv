@@ -511,3 +511,36 @@ def test_realign_preserves_native_mv_and_translation_annotations():
     assert timeline["translation"] == "lovjpn-zh"
     assert timeline["cues"][0]["zh"] == "我留下"
     assert [token["zh"] for token in timeline["cues"][0]["tokens"]] == ["我", "留下"]
+
+
+def _envelope_with_bursts(*bursts: tuple[int, int], total_ms: int = 60_000) -> list[float]:
+    envelope = [0.0] * (total_ms // 20)
+    for start_ms, end_ms in bursts:
+        for index in range(start_ms // 20, end_ms // 20):
+            envelope[index] = 100.0
+    return envelope
+
+
+def test_select_energy_lrc_rejects_sung_tail_missing_stamp(tmp_path):
+    # The truncated-LRC failure: every stamp lands on vocals, but the
+    # recording keeps singing a whole section past the last line.
+    out_dir = tmp_path / "s1"
+    out_dir.mkdir()
+    skeleton = {"has_video": True}
+    lines = [
+        {"ms": 1000, "text": "one"},
+        {"ms": 25000, "text": "two"},
+    ]
+    envelope = _envelope_with_bursts(
+        (1000, 4000), (25000, 28000), (40000, 45000), total_ms=60_000
+    )
+    assert (
+        jobs._select_energy_lrc(out_dir, skeleton, lines, envelope, 20, 46_000)
+        is None
+    )
+    covered = lines + [{"ms": 41_000, "text": "tail"}]
+    choice = jobs._select_energy_lrc(
+        out_dir, skeleton, covered, envelope, 20, 46_000
+    )
+    assert choice is not None
+    assert choice[2]["uncovered_ms"] == 0
