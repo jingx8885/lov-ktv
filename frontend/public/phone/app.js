@@ -23,6 +23,7 @@ import { bindLearn } from "./player/js/learn/index.js";
 import { api, installApi } from "./api.js";
 import { installPlatform, phonePlatform } from "./platform.js";
 import { songArtist, songTitle } from "../shared/ui/js/song.js";
+import { songCoverUrl } from "../shared/ui/js/art.js";
 
 const mounted = new WeakSet();
 
@@ -132,13 +133,13 @@ export function mount(root, deps = {}) {
   // player loads without coupling every feature module to the native bridge.
   const syncNotification = () => {
     const page = state.currentPage === "player" ? "player" : "desk";
+    const card = $("nowCard", root);
     let title = "";
     let artist = "";
     if (page === "player" && state.playerSong) {
       title = songTitle(state.playerSong);
       artist = songArtist(state.playerSong);
     } else if (page === "desk") {
-      const card = $("nowCard", root);
       const hit = card && card.querySelector(".now-hit");
       const values = hit ? hit.querySelectorAll("b, .tiny") : [];
       title = values[0]?.textContent?.trim() || "";
@@ -151,8 +152,24 @@ export function mount(root, deps = {}) {
         : !!$("nowBar", root) &&
           !$("nowBar", root).classList.contains("is-idle") &&
           !$("deskPause", root)?.classList.contains("on");
+    // Cover art powers the lock-screen card; the song id is known on the
+    // player page, and on the desk the rendered <img> carries the URL.
+    let cover = "";
+    if (page === "player") {
+      const id = state.playerSong && (state.playerSong.id || state.playerSong.song_id);
+      if (id) cover = songCoverUrl(id, state.playerSong.media_rev);
+    } else {
+      const img = card && card.querySelector(".now-hit img");
+      if (img && img.getAttribute("src")) cover = img.getAttribute("src");
+    }
+    if (cover) cover = new URL(cover, location.href).href;
+    const payload = { page, title, artist, playing, cover };
+    if (page === "player" && audio && audio.currentSrc) {
+      payload.position = audio.currentTime || 0;
+      payload.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+    }
     if (phonePlatform.notification && typeof phonePlatform.notification.update === "function") {
-      phonePlatform.notification.update({ page, title, artist, playing });
+      phonePlatform.notification.update(payload);
     }
   };
   const notificationTimer = setInterval(syncNotification, 1000);

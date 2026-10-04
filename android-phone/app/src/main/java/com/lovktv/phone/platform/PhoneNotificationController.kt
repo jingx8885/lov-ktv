@@ -6,13 +6,27 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.media.session.MediaSession
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
+import android.graphics.Typeface
 import android.media.MediaMetadata
+import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.util.LruCache
 import com.lovktv.phone.R
 import com.lovktv.phone.feature.DeskActivity
 import com.lovktv.phone.media.PlaybackService
+import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONObject
 
 /**
@@ -21,63 +35,115 @@ import org.json.JSONObject
  * The web shell tells us which page is visible and which song is current.  We
  * deliberately keep the action ids semantic (rather than depending on DOM
  * labels) so translations and styling changes do not break the shade controls.
+ *
+ * The card doubles as the lock-screen / screen-off media control: the media
+ * session stays active and public so the system keyguard, ambient display and
+ * Android 13+ media carousel all render the same artwork and transport keys.
  */
 class PhoneNotificationController(private val context: Context) {
     private val manager = context.getSystemService(NotificationManager::class.java)
     private val mediaSession = MediaSession(context, "lov-ktv-phone")
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(5, TimeUnit.SECONDS)
+        .readTimeout(8, TimeUnit.SECONDS)
+        .build()
+    private val artCache = LruCache<String, Bitmap>(24)
+    private val artPending = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    private val artFailed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private var lastPayload = ""
+    private var lastMeta = ""
     private var lastPage = "desk"
+    private var lastTitle = ""
+    private var lastArtist = ""
+    private var lastPlaying = false
+    private var lastCover = ""
+    private var lastDurationMs = 0L
+    private var lastPositionMs = 0L
+
+    /** DeskActivity wires this to the WebView so the lock-screen seek bar works. */
+    var onSeekTo: ((Long) -> Unit)? = null
 
     init {
         if (Build.VERSION.SDK_INT >= 26) {
+            // v2 channel: the v1 channel was IMPORTANCE_LOW which some ROMs hide
+            // from the lock screen entirely.  DEFAULT with sound/vibration off
+            // keeps the card silent while letting the keyguard show it.
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, context.getString(R.string.notification_channel), NotificationManager.IMPORTANCE_LOW).apply {
+                NotificationChannel(CHANNEL_ID, context.getString(R.string.notification_channel), NotificationManager.IMPORTANCE_DEFAULT).apply {
                     description = context.getString(R.string.notification_channel_desc)
                     setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                    lockscreenVisibility = Notification.VISIBILITY_PUBLIC
                 },
             )
+            runCatching { manager.deleteNotificationChannel(LEGACY_CHANNEL_ID) }
         }
         mediaSession.setCallback(object : MediaSession.Callback() {
             override fun onPlay() = DeskActivity.dispatchNotificationAction(context, if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE)
             override fun onPause() = DeskActivity.dispatchNotificationAction(context, if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE)
             override fun onSkipToNext() = DeskActivity.dispatchNotificationAction(context, if (lastPage == "player") ACTION_PLAYER_NEXT else ACTION_DESK_SKIP)
+            override fun onSeekTo(pos: Long) {
+                onSeekTo?.invoke(pos)
+            }
         })
+        @Suppress("DEPRECATION")
+        mediaSession.setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
+        // Lets the keyguard / media carousel open the app by tapping the card.
+        mediaSession.setSessionActivity(openIntent("desk"))
         mediaSession.isActive = true
     }
 
     fun update(payloadJson: String) {
         val payload = runCatching { JSONObject(payloadJson) }.getOrNull() ?: return
-        val page = payload.optString("page").ifBlank { "desk" }
-        val title = payload.optString("title").trim()
-        val artist = payload.optString("artist").trim()
-        val playing = payload.optBoolean("playing", false)
-        val key = listOf(page, title, artist, playing).joinToString("\u0000")
-        if (key == lastPayload) return
-        lastPayload = key
-        lastPage = page
+        lastPage = payload.optString("page").ifBlank { "desk" }
+        lastTitle = payload.optString("title").trim()
+        lastArtist = payload.optString("artist").trim()
+        lastPlaying = payload.optBoolean("playing", false)
+        lastCover = payload.optString("cover").trim()
+        lastDurationMs = (payload.optDouble("duration", 0.0) * 1000).toLong().coerceAtLeast(0L)
+        lastPositionMs = (payload.optDouble("position", 0.0) * 1000).toLong().coerceIn(0L, if (lastDurationMs > 0) lastDurationMs else Long.MAX_VALUE)
 
-        val listening = page == "player"
-        val label = if (listening) context.getString(R.string.notification_listening) else context.getString(R.string.notification_karaoke)
-        val songTitle = title.ifBlank { context.getString(if (listening) R.string.notification_idle_listen else R.string.notification_idle_karaoke) }
-        val songLine = if (artist.isBlank()) songTitle else "$songTitle · $artist"
-        mediaSession.setMetadata(
-            MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_TITLE, songTitle)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, artist)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, label)
-                .build(),
-        )
+        // Session state is cheap to refresh: it drives the lock-screen card and
+        // the seek bar, so update it on every heartbeat even when the shade
+        // notification itself does not need a rebuild.
+        val seekable = lastPage == "player" && lastDurationMs > 0
+        var sessionActions = PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT
+        if (seekable) sessionActions = sessionActions or PlaybackState.ACTION_SEEK_TO
         mediaSession.setPlaybackState(
             PlaybackState.Builder()
-                .setState(if (playing) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, 0L, 1f)
-                .setActions(PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT)
+                .setState(if (lastPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, lastPositionMs, 1f)
+                .setActions(sessionActions)
                 .build(),
         )
-        val openIntent = Intent(context, DeskActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(DeskActivity.EXTRA_NOTIFICATION_PAGE, page)
+        post()
+    }
+
+    private fun post() {
+        val listening = lastPage == "player"
+        val label = if (listening) context.getString(R.string.notification_listening) else context.getString(R.string.notification_karaoke)
+        val songTitle = lastTitle.ifBlank { context.getString(if (listening) R.string.notification_idle_listen else R.string.notification_idle_karaoke) }
+        val art = artworkFor(songTitle)
+
+        val metaKey = listOf(songTitle, lastArtist, label, lastDurationMs, art != null).joinToString("\u0000")
+        if (metaKey != lastMeta) {
+            lastMeta = metaKey
+            mediaSession.setMetadata(
+                MediaMetadata.Builder()
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, songTitle)
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, lastArtist)
+                    .putString(MediaMetadata.METADATA_KEY_ALBUM, label)
+                    .putLong(MediaMetadata.METADATA_KEY_DURATION, lastDurationMs)
+                    .apply { if (art != null) putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art) }
+                    .build(),
+            )
         }
-        val content = PendingIntent.getActivity(context, REQUEST_OPEN, openIntent, pendingFlags())
+
+        val key = listOf(lastPage, lastTitle, lastArtist, lastPlaying, lastCover, lastDurationMs, art != null).joinToString("\u0000")
+        if (key == lastPayload) return
+        lastPayload = key
 
         val builder = if (Build.VERSION.SDK_INT >= 26) {
             // Foreground-service posts crash (BadNotificationForForegroundException)
@@ -88,33 +154,37 @@ class PhoneNotificationController(private val context: Context) {
             @Suppress("DEPRECATION")
             Notification.Builder(context)
         }
-            .setSmallIcon(R.drawable.ic_app)
-            .setContentTitle(songLine)
-            .setContentText(label)
-            .setSubText(context.getString(R.string.app_name))
-            .setContentIntent(content)
+            .setSmallIcon(R.drawable.ic_notif_small)
+            .setContentTitle(songTitle)
+            .setContentText(if (lastArtist.isBlank()) label else lastArtist)
+            .setSubText(label)
+            .setContentIntent(openIntent(lastPage))
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(context.getColor(R.color.accent))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
-
-        val actions = if (listening) {
-            listOf(
-                action(android.R.drawable.ic_menu_revert, context.getString(R.string.notification_to_karaoke), ACTION_TO_DESK),
-                action(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) context.getString(R.string.notification_pause) else context.getString(R.string.notification_play), ACTION_PLAYER_PLAY),
-                action(android.R.drawable.ic_media_next, context.getString(R.string.notification_next), ACTION_PLAYER_NEXT),
-                action(android.R.drawable.ic_btn_speak_now, context.getString(R.string.notification_vocal), ACTION_PLAYER_VOCAL),
-            )
-        } else {
-            listOf(
-                action(android.R.drawable.ic_menu_search, context.getString(R.string.notification_search), ACTION_SEARCH),
-                action(if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play, if (playing) context.getString(R.string.notification_pause) else context.getString(R.string.notification_play), ACTION_DESK_PAUSE),
-                action(android.R.drawable.ic_media_next, context.getString(R.string.notification_skip), ACTION_DESK_SKIP),
-                action(android.R.drawable.ic_btn_speak_now, context.getString(R.string.notification_mic), ACTION_DESK_MIC),
-            )
+        if (Build.VERSION.SDK_INT >= 26) {
+            builder.setColorized(true)
         }
-        actions.forEach(builder::addAction)
+        if (art != null) builder.setLargeIcon(art)
+
+        // Compact order is play-pause, next, then the page's signature action;
+        // the fourth button only shows when the card is expanded.
+        if (listening) {
+            builder
+                .addAction(action(if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play, if (lastPlaying) context.getString(R.string.notification_pause) else context.getString(R.string.notification_play), ACTION_PLAYER_PLAY))
+                .addAction(action(R.drawable.ic_notif_next, context.getString(R.string.notification_next), ACTION_PLAYER_NEXT))
+                .addAction(action(R.drawable.ic_notif_vocal, context.getString(R.string.notification_vocal), ACTION_PLAYER_VOCAL))
+                .addAction(action(R.drawable.ic_notif_queue, context.getString(R.string.notification_to_karaoke), ACTION_TO_DESK))
+        } else {
+            builder
+                .addAction(action(if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play, if (lastPlaying) context.getString(R.string.notification_pause) else context.getString(R.string.notification_play), ACTION_DESK_PAUSE))
+                .addAction(action(R.drawable.ic_notif_next, context.getString(R.string.notification_skip), ACTION_DESK_SKIP))
+                .addAction(action(R.drawable.ic_notif_mic, context.getString(R.string.notification_mic), ACTION_DESK_MIC))
+                .addAction(action(R.drawable.ic_notif_search, context.getString(R.string.notification_search), ACTION_SEARCH))
+        }
         if (Build.VERSION.SDK_INT >= 21) {
             builder.setStyle(
                 Notification.MediaStyle()
@@ -126,12 +196,110 @@ class PhoneNotificationController(private val context: Context) {
         // While a track is actually playing the shade entry is owned by the
         // mediaPlayback foreground service, which also keeps the WebView
         // (and the JS that advances tracks) alive in the background.
-        PlaybackService.sync(context, playing, notification)
+        PlaybackService.sync(context, lastPlaying, notification)
         manager.notify(NOTIFICATION_ID, notification)
+    }
+
+    private fun artworkFor(title: String): Bitmap? {
+        if (lastCover.isBlank()) return fallbackArt(title)
+        val cached = artCache.get(lastCover)
+        if (cached != null) return cached
+        if (!artFailed.contains(lastCover) && artPending.add(lastCover)) {
+            val url = lastCover
+            Thread({
+                val bmp = fetchCover(url)
+                artPending.remove(url)
+                if (bmp != null) {
+                    artCache.put(url, bmp)
+                    // Repost so the card picks the real cover up; the payload
+                    // key now differs because art is non-null.
+                    mainHandler.post { post() }
+                } else {
+                    artFailed.add(url)
+                }
+            }, "lovktv-cover").start()
+        }
+        return fallbackArt(title)
+    }
+
+    private fun fetchCover(url: String): Bitmap? {
+        return runCatching {
+            http.newCall(Request.Builder().url(url).build()).execute().use { res ->
+                if (!res.isSuccessful) return@use null
+                val bytes = res.body?.bytes() ?: return@use null
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@use null
+                var sample = 1
+                while (bounds.outWidth / sample > 1024 || bounds.outHeight / sample > 1024) sample *= 2
+                val raw = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, BitmapFactory.Options().apply { inSampleSize = sample })
+                    ?: return@use null
+                square(raw)
+            }
+        }.getOrNull()
+    }
+
+    /** Center-crop to a square so the media card and keyguard art stay uniform. */
+    private fun square(src: Bitmap): Bitmap {
+        val side = minOf(src.width, src.height)
+        val out = Bitmap.createBitmap(ART_SIZE, ART_SIZE, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val left = (src.width - side) / 2f
+        val top = (src.height - side) / 2f
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        canvas.drawBitmap(src, android.graphics.Rect(left.toInt(), top.toInt(), (left + side).toInt(), (top + side).toInt()), android.graphics.Rect(0, 0, ART_SIZE, ART_SIZE), paint)
+        return out
+    }
+
+    /**
+     * Branded placeholder that mirrors the web side's art.js tile: a stable
+     * two-tone gradient picked by the title hash plus its first glyph, so a
+     * cover-less song still looks intentional on the lock screen.
+     */
+    private fun fallbackArt(title: String): Bitmap {
+        val key = "fallback:$title"
+        artCache.get(key)?.let { return it }
+        val pair = PALETTE[(fnv(title) and 0x7fffffff) % PALETTE.size]
+        val out = Bitmap.createBitmap(ART_SIZE, ART_SIZE, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        canvas.drawRect(
+            0f, 0f, ART_SIZE.toFloat(), ART_SIZE.toFloat(),
+            Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                shader = LinearGradient(0f, 0f, ART_SIZE.toFloat(), ART_SIZE.toFloat(), pair.first, pair.second, Shader.TileMode.CLAMP)
+            },
+        )
+        val glyph = title.firstOrNull { it.isLetterOrDigit() }?.uppercase() ?: "♪"
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(0xE0, 255, 255, 255)
+            textSize = ART_SIZE * 0.42f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText(glyph, ART_SIZE / 2f, ART_SIZE / 2f - (text.ascent() + text.descent()) / 2f, text)
+        artCache.put(key, out)
+        return out
+    }
+
+    private fun fnv(text: String): Int {
+        var h = 0x811C9DC5.toInt()
+        for (ch in text) {
+            h = h xor ch.code
+            h *= 16777619
+        }
+        return h
+    }
+
+    private fun openIntent(page: String): PendingIntent {
+        val intent = Intent(context, DeskActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(DeskActivity.EXTRA_NOTIFICATION_PAGE, page)
+        }
+        return PendingIntent.getActivity(context, REQUEST_OPEN, intent, pendingFlags())
     }
 
     fun close() {
         PlaybackService.stop(context)
+        mainHandler.removeCallbacksAndMessages(null)
         manager.cancel(NOTIFICATION_ID)
         mediaSession.isActive = false
         mediaSession.release()
@@ -162,9 +330,23 @@ class PhoneNotificationController(private val context: Context) {
         const val ACTION_PLAYER_PLAY = "player_play"
         const val ACTION_PLAYER_NEXT = "player_next"
         const val ACTION_PLAYER_VOCAL = "player_vocal"
-        private const val CHANNEL_ID = "lovktv_playback"
+        private const val CHANNEL_ID = "lovktv_playback_v2"
+        private const val LEGACY_CHANNEL_ID = "lovktv_playback"
         private const val NOTIFICATION_ID = 4101
         private const val REQUEST_OPEN = 4102
+        private const val ART_SIZE = 512
+
+        /** Same curated gradient pairs as frontend/public/shared/ui/js/art.js. */
+        private val PALETTE = listOf(
+            0xFFFF6B8F.toInt() to 0xFF6E1634.toInt(),
+            0xFF9A8CFF.toInt() to 0xFF2B2170.toInt(),
+            0xFF5CC8FF.toInt() to 0xFF123C66.toInt(),
+            0xFFFFB36B.toInt() to 0xFF7A2E1A.toInt(),
+            0xFF4FE0B5.toInt() to 0xFF0F4A46.toInt(),
+            0xFFFF86DC.toInt() to 0xFF4B1A6B.toInt(),
+            0xFFFFD56B.toInt() to 0xFF6B4512.toInt(),
+            0xFF7CB8FF.toInt() to 0xFF3A1F6B.toInt(),
+        )
     }
 }
 

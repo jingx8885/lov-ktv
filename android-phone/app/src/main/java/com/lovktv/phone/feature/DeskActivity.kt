@@ -90,6 +90,15 @@ class DeskActivity : Activity() {
         webView = findViewById(R.id.webview)
         active = WeakReference(this)
         notificationController = PhoneNotificationController(this)
+        // Lock-screen / media-carousel seek bar: route the position straight
+        // to the player <audio>.  The WebView must exist before evaluating.
+        notificationController.onSeekTo = { pos ->
+            if (::webView.isInitialized) {
+                webView.post {
+                    webView.evaluateJavascript("(function(){var a=document.getElementById('playerAudio');if(a){a.currentTime=" + (pos / 1000.0) + "}})()", null)
+                }
+            }
+        }
         playBilling = PlayBillingManager(this) { payload ->
             runOnUiThread { webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('lovktv-play-billing',{detail:$payload}))", null) }
         }
