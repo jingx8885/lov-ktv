@@ -28,5 +28,4 @@
     <string name="notification_next">下一首</string>
     <string name="notification_mic">开麦</string>
     <string name="notification_vocal">原唱/伴奏</string>
-    <string name="notification_next_lyric">下一句</string>
 </resources>
