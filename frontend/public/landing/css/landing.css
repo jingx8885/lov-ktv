@@ -804,3 +804,33 @@ tbody th { width: 4.5em; color: var(--mute); font-weight: 600; }
 @media (prefers-reduced-transparency: reduce) {
   .lp-nav, .lp-shot { background: #111; backdrop-filter: none; }
 }
+
+/* lp-lite is set by the probe in index.html when the kernel cannot composite
+   the heavy hero layers reliably. Keep the page readable: drop every blur,
+   blend and animated layer instead of only pausing its animation. */
+.lp-lite .lp-mesh,
+.lp-lite .lp-aurora,
+.lp-lite .lp-meteors,
+.lp-lite .lp-lamp,
+.lp-lite .lp-grain,
+.lp-lite .lp-glare,
+.lp-lite .lp-shot-ring,
+.lp-lite .lp-shot-glow,
+.lp-lite .lp-closer::before {
+  display: none;
+}
+.lp-lite .lp-beams { opacity: 0.28; filter: none; }
+.lp-lite .lp-beams path,
+.lp-lite .grad,
+.lp-lite .lyric.sing span,
+.lp-lite .lp-bars i { animation: none; }
+.lp-lite .lp-nav,
+.lp-lite .lp-shot,
+.lp-lite .btn.ghost {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.lp-lite .lp-nav { background: rgba(9, 9, 12, 0.96); }
+.lp-lite .lp-shot { transform: none; }
+.lp-lite .grad { color: #f5c16c; }
+.lp-lite .lyric.sing span { color: #f5c16c; }

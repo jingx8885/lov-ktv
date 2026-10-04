@@ -1,9 +1,10 @@
 import { t, bootI18n, onLangChange, applyDom } from "../../shared/i18n/js/i18n.js";
 
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lite = document.documentElement.classList.contains("lp-lite");
 const hero = document.querySelector(".lp-hero");
 const shot = document.querySelector(".lp-shot");
-if (hero && !reduced) {
+if (hero && !reduced && !lite) {
   const move = (event) => {
     // Touch scrolling fires pointermove continuously; repainting the spot
     // gradient and tilting the demo card on every touch event is what made
@@ -26,7 +27,8 @@ if (hero && !reduced) {
   window.addEventListener("pointermove", move, { passive: true });
 }
 
-document.querySelectorAll(".lp-features article").forEach((card) => {
+const featureCards = lite ? [] : document.querySelectorAll(".lp-features article");
+featureCards.forEach((card) => {
   card.addEventListener(
     "pointermove",
     /** @param {PointerEvent} event */ (event) => {
@@ -121,7 +123,7 @@ onLangChange(() => {
 
 if (songEl && curEl) {
   paintSong();
-  if (!reduced) {
+  if (!reduced && !lite) {
     setInterval(() => {
       index = (index + 1) % songs.length;
       paintSong();

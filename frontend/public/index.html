@@ -14,6 +14,24 @@
   <link rel="icon" href="/brand/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/brand/apple-touch.png" />
   <style>html{background:#09090c}</style>
+  <script>
+    // Old kernels flicker under the layered hero effects (large blur layers,
+    // mix-blend-mode, backdrop-filter). Keep the full look only on engines
+    // that composite it reliably; everything else gets lp-lite.
+    (function () {
+      var ok = false;
+      try {
+        ok =
+          typeof CSS !== "undefined" &&
+          CSS.supports("color: oklch(0.7 0.2 220)") &&
+          (CSS.supports("-webkit-backdrop-filter: blur(1px)") ||
+            CSS.supports("backdrop-filter: blur(1px)")) &&
+          typeof window.PointerEvent === "function" &&
+          !(typeof navigator.deviceMemory === "number" && navigator.deviceMemory < 2);
+      } catch (e) {}
+      if (!ok) document.documentElement.className += " lp-lite";
+    })();
+  </script>
   <link rel="stylesheet" href="/landing/css/landing.css" />
 </head>
 <body class="lp">
