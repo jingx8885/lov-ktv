@@ -21,6 +21,10 @@ def test_library_append_dedupes_and_poll_does_not_rewind_page():
     assert "extra.length > 0" in hits
     assert "data.page !== state.searchPage" in hits
     assert "btn.onclick = () => runSearch(Number(btn.dataset.page), true)" not in hits
+    assert "IntersectionObserver" in hits
+    assert "watchMoreSentinel(more)" in hits
+    assert "unwatchMoreSentinel()" in hits
+    assert 'capture: true' in hits
     assert ".catch(\n    () => null\n  )" in hits
     assert 'state.searchLoading = false;' in hits
     assert 'moreBtn.textContent = t("common.loadMore")' in hits

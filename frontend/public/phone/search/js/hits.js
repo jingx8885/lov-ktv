@@ -21,6 +21,34 @@ const hitLyricsCache = new Map();
 const selectedLyric = new Map();
 /** Monotonic request id so a slow lyric fetch cannot paint a stale sheet. */
 let sheetLyricsReq = 0;
+/** Watches the load-more sentinel so scrolling near it fetches the next
+ *  page.  The scrollable ancestor differs per breakpoint: .page scrolls
+ *  on phones while body scrolls on wide layouts, so an observer bound
+ *  to the sentinel works regardless of which element actually scrolls. */
+let moreSentinelObserver = null;
+
+function unwatchMoreSentinel() {
+  if (moreSentinelObserver) {
+    moreSentinelObserver.disconnect();
+    moreSentinelObserver = null;
+  }
+}
+
+function watchMoreSentinel(more) {
+  unwatchMoreSentinel();
+  if (typeof IntersectionObserver !== "function" || !more) return;
+  moreSentinelObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (!entry || !entry.isIntersecting) return;
+      const page = $("page-search");
+      if (!page || page.hidden || state.searchLoading || !state.searchHasMore) return;
+      runSearch(Number(more.dataset.page) || state.searchPage + 1, true);
+    },
+    { root: null, rootMargin: "0px 0px 320px 0px", threshold: 0.01 }
+  );
+  moreSentinelObserver.observe(more);
+}
 
 function hitById(id) {
   return state.searchHits.find((item) => String(item.id) === String(id));
@@ -314,7 +342,12 @@ export function paintSearchHits(q, hasMore) {
   $("hits").innerHTML = cards + tail;
   repaintImportChrome();
   const more = $("hits").querySelector(".list-more");
-  if (more) more.onclick = () => runSearch(Number(more.dataset.page) || state.searchPage + 1, true);
+  if (more) {
+    more.onclick = () => runSearch(Number(more.dataset.page) || state.searchPage + 1, true);
+    watchMoreSentinel(more);
+  } else {
+    unwatchMoreSentinel();
+  }
   if (state.previewId) {
     const live = $("hits").querySelector(`[data-preview="${state.previewId}"]`);
     if (live) {
@@ -341,6 +374,7 @@ export async function runSearch(page, append = false) {
     state.searchHits = [];
     state.searchHasMore = false;
     rememberSearch(q);
+    unwatchMoreSentinel();
     $("hits").innerHTML = searchSkeleton();
   } else if (moreBtn) {
     moreBtn.textContent = t("common.loading");
@@ -472,13 +506,21 @@ export function bindSearch() {
     $("hits").innerHTML = searchEmpty();
     syncSearchChrome();
   };
-  $("page-search").addEventListener("scroll", () => {
-    const page = $("page-search");
-    if (!page || page.hidden) return;
-    if (page.scrollHeight - page.scrollTop - page.clientHeight > 160) return;
-    if (!state.searchHasMore || state.searchLoading) return;
-    runSearch(state.searchPage + 1, true);
-  });
+  // Scroll events do not bubble, but capture listeners still see them.
+  // Listening on window covers both the phone (.page) and desktop (body)
+  // scrollers; the IntersectionObserver is the primary trigger anyway.
+  window.addEventListener(
+    "scroll",
+    () => {
+      const page = $("page-search");
+      if (!page || page.hidden) return;
+      if (!state.searchHasMore || state.searchLoading) return;
+      const el = page.scrollHeight > page.clientHeight ? page : document.documentElement;
+      if (el.scrollHeight - el.scrollTop - el.clientHeight > 160) return;
+      runSearch(state.searchPage + 1, true);
+    },
+    { capture: true, passive: true }
+  );
   $("openUpload").onclick = () => $("file").click();
   $("file").onchange = async () => {
     const file = $("file").files[0];
