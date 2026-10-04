@@ -1,6 +1,7 @@
 import { $ } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
+import { api } from "../../api.js";
 import { state } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
@@ -51,6 +52,9 @@ export async function togglePreview(hit, btn) {
     return;
   }
   stopPreview();
+  // A preview must own the speakers: pause the in-app listening track so
+  // the two sources never play over each other.
+  api.pausePlayer();
   if (btn) btn.classList.add("busy");
   const params = previewParams(hit);
   const { ok, data: info } = await fetchJson(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());

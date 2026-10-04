@@ -15,7 +15,9 @@ export function showPage(name, songId, push) {
   if (name !== "player") {
     api.exitLearn();
     api.exitEdit();
-    api.pausePlayer();
+    // Keep the local track running while the singer browses other tabs;
+    // only explicit actions (search preview, learn, edit, track change)
+    // interrupt playback.
     if (api.setPlayerSheet) api.setPlayerSheet("peek", false);
   }
   state.currentPage = name;
