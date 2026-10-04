@@ -99,6 +99,7 @@ from lovktv.routers import (  # noqa: E402
     learn,
     media,
     misc,
+    playlists,
     recite,
     rooms,
     songs,
@@ -110,6 +111,7 @@ app.include_router(billing.router)
 app.include_router(ads.router)
 app.include_router(admin.router)
 app.include_router(songs.router)
+app.include_router(playlists.router)
 app.include_router(learn.router)
 app.include_router(recite.router)
 app.include_router(rooms.router)

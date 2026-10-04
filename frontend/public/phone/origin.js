@@ -21,6 +21,17 @@ export function lanOrigin() {
   return trimOrigin(query().get("lan"));
 }
 
+/**
+ * Off-Wi-Fi session: the Android shell marks the page with ?nowifi and
+ * reports the transport here, so the desk can stop joining the TV room
+ * and LAN binding stays inert on cellular.
+ */
+export function noWifi() {
+  if (query().get("nowifi")) return true;
+  const net = nativeNet();
+  return !!net && net !== "wifi";
+}
+
 export function processOrigin() {
   return trimOrigin(query().get("process"));
 }
@@ -72,10 +83,11 @@ export function catalogUrl(path) {
   return process + (path.charAt(0) === "/" ? path : "/" + path);
 }
 
-import { useLan as platformUseLan } from "./platform.js";
+import { useLan as platformUseLan, nativeNet } from "./platform.js";
 
 /** Ask the Android phone app to bind the TV LAN URL discovered from the room. */
 export function adoptLan(room) {
+  if (noWifi()) return false;
   const lan = String((room && (room.lan_origin || room.lanOrigin)) || "").replace(/\/$/, "");
   const code = String((room && room.code) || "").toUpperCase();
   if (!lan || !code) return false;

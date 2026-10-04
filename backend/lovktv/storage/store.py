@@ -188,6 +188,7 @@ def delete_song(song_id: str) -> bool:
     with _LOCK, connect() as conn:
         execute(conn, "DELETE FROM queue WHERE song_id=?", (song_id,))
         execute(conn, "DELETE FROM song_favorites WHERE song_id=?", (song_id,))
+        execute(conn, "DELETE FROM playlist_items WHERE song_id=?", (song_id,))
         execute(conn, "DELETE FROM songs WHERE id=?", (song_id,))
         _clamp_room_indexes(conn)
     folder = MEDIA_DIR / song_id

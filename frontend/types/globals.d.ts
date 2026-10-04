@@ -322,10 +322,13 @@ interface LovKtvNativeBridge {
   setGain?: (value: number) => void;
   lyricSize?: () => string;
   saveLyricSize?: (value: string) => void;
+  checkUpdate?: () => void;
 }
 
 interface LovKtvPhoneBridge {
   version?: () => string;
+  /** "wifi" | "cell" | "offline" */
+  network?: () => string;
   scanTv?: () => void;
   http?: (id: string, url: string, method: string, body: string) => void;
   useLan?: (lan: string, room: string) => void;
@@ -338,6 +341,7 @@ interface LovKtvPhoneBridge {
   setGain?: (value: number) => void;
   openUrl?: (url: string) => void;
   notification?: (payload: string) => void;
+  checkUpdate?: () => void;
 }
 
 interface Window {

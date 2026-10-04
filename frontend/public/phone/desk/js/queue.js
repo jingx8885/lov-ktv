@@ -1,6 +1,6 @@
 import { $, escapeHtml } from "../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../shared/ui/js/http.js";
-import { adoptLan, lanOrigin, roomUrl } from "../../origin.js";
+import { adoptLan, lanOrigin, noWifi, roomUrl } from "../../origin.js";
 import { t } from "../../../shared/i18n/js/i18n.js";
 import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
@@ -43,7 +43,7 @@ export async function loadRoom(opts) {
     ok = true;
   }
   if (!ok || !room || !room.code) {
-    if (lanOrigin()) {
+    if (lanOrigin() && !noWifi()) {
       const cloud = await fetchJson("/api/rooms/" + code).catch(() => ({ ok: false, data: {} }));
       if (cloud.ok && cloud.data && cloud.data.code && adoptLan(cloud.data)) return;
     }

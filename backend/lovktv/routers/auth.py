@@ -31,6 +31,7 @@ from lovktv.services.http import (
     set_session,
 )
 from lovktv.storage import favorites as favorite_store
+from lovktv.storage import playlists as playlist_store
 from lovktv.storage.store import (
     confirm_login_ticket,
     consume_confirmed_ticket,
@@ -168,6 +169,7 @@ def api_auth_register(
     points = grant_register(request, user)
     # Keep songs saved before account creation with the new account.
     favorite_store.merge_owners(guest_key(request, guest), "u:" + str(user["id"]))
+    playlist_store.merge_owners(guest_key(request, guest), "u:" + str(user["id"]))
     return _password_session(request, user, {"points": points})
 
 

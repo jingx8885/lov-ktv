@@ -78,7 +78,7 @@ def test_phone_player_starts_when_song_clicked():
     )
     nav = (root / "phone" / "nav" / "js" / "pages.js").read_text(encoding="utf-8")
     assert "unlockPlayerGesture" in player
-    assert "loadPlayerSong(btn.dataset.pick, { play: true })" in player
+    assert "loadPlayerSong(pick.dataset.pick, { play: true })" in player
     assert "loadPlayerSong(songId, { play: true })" in nav
     assert 'play: !$("playerAudio").paused' not in player
     assert 'play: !$("playerAudio").paused' not in nav

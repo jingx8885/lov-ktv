@@ -2,7 +2,7 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
-import { nativeAppVersion, nativeSetupAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
+import { checkNativeUpdate, nativeAppVersion, nativeSetupAvailable, nativeUpdateAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
 import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
 import { applyMix, activeTrackName, trackFallbackActive, clearTrackFallback } from "../media/mix.js";
@@ -222,6 +222,12 @@ export function paintSettings() {
     version.hidden = !label;
     if (label) version.textContent = t("common.version", { version: label });
   }
+  const update = $("tvUpdate");
+  if (update) {
+    update.hidden = !nativeUpdateAvailable();
+    const value = $("tvUpdateValue");
+    if (value) value.textContent = nativeAppVersion();
+  }
 }
 
 export function openSettings() {
@@ -369,6 +375,7 @@ export function bindRemote() {
     };
   }
   if ($("tvSetup")) $("tvSetup").onclick = () => openProcessSetup();
+  if ($("tvUpdate")) $("tvUpdate").onclick = () => checkNativeUpdate();
   if ($("tvSheetBack")) $("tvSheetBack").onclick = () => closeSettings();
   document.addEventListener("keydown", onRemoteKey, true);
   return () => {

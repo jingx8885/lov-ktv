@@ -130,6 +130,23 @@ export function nativeAppVersion() {
   }
 }
 
+export function nativeUpdateAvailable() {
+  const native = bridge();
+  return !!(native && typeof native.checkUpdate === "function");
+}
+
+/** Ask the shell to check the server for a newer APK; result UI is native. */
+export function checkNativeUpdate() {
+  const native = bridge();
+  if (!native || typeof native.checkUpdate !== "function") return false;
+  try {
+    native.checkUpdate();
+    return true;
+  } catch (err) {
+    return false;
+  }
+}
+
 /** Named ports keep browser and Android-TV playback on one capability shape. */
 export const tvPlatform = {
   http: { available: () => true, fetchJson: null },

@@ -11,14 +11,20 @@ import { api } from "../../../api.js";
 import { showToast } from "../../../ui/js/toast.js";
 import { togglePlayer, unlockPlayerGesture } from "./controls.js";
 import { loadPlayerSong } from "./song.js";
+import { openPlaylistSheet } from "./playlists.js";
 
-// Whether the sheet shows the saved (favorites) set or the whole ready library,
-// plus the substring filter typed into the sheet search box.
-let playerListFavs = false;
+// Which catalog the sheet is drawing: a named playlist, the saved (favorites)
+// set, or the whole ready library. The substring filter lives in playerListQ.
+let playerListMode_ = "all";
 let playerListQ = "";
 
 export function playerListMode() {
-  return playerListFavs ? "favs" : "all";
+  return playerListMode_;
+}
+
+export function activePlaylistId() {
+  const source = String(state.playerSource || "");
+  return source.startsWith("pl:") ? source.slice(3) : "";
 }
 
 export function updatePlayOrderBtns() {
@@ -58,6 +64,7 @@ function filteredCatalog() {
 function playerRowHtml(song) {
   const cur = state.playerSong && state.playerSong.id;
   const fav = song.favorite !== false;
+  const inPlaylist = playerListMode_ === "pl";
   return `
         <button
           type="button"
@@ -78,6 +85,20 @@ function playerRowHtml(song) {
             aria-label="${fav ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}"
             aria-pressed="${fav ? "true" : "false"}"
           >${ICO.star}</span>
+          <span
+            class="row-action ghost pick-pl"
+            role="button"
+            tabindex="-1"
+            data-pladd="${escapeHtml(song.id)}"
+            aria-label="${t("phone.pl.addTo")}"
+          >${ICO.plAdd}</span>
+          ${inPlaylist ? `<span
+            class="row-action ghost pick-plremove"
+            role="button"
+            tabindex="-1"
+            data-plremove="${escapeHtml(song.id)}"
+            aria-label="${t("phone.pl.removeSong")}"
+          >${ICO.trash}</span>` : ""}
         </button>`;
 }
 
@@ -90,33 +111,93 @@ function syncDeskFavorite(songId, active) {
   btn.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
 }
 
-async function togglePlayerFavorite(songId, favEl) {
-  const song = state.playerCatalog.find((item) => item.id === songId);
-  if (!song) return;
-  const next = song.favorite === false;
-  favEl.classList.add("is-busy");
+/** Reflect the current song's star on the player dock chip. */
+export function syncPlayerFavButton() {
+  const btn = $("playerFav");
+  if (!btn) return;
+  const song = state.playerSong;
+  const active = !!(song && song.favorite);
+  btn.hidden = !song;
+  btn.classList.toggle("on", active);
+  btn.setAttribute("aria-pressed", String(active));
+  btn.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
+}
+
+async function postFavorite(songId, next) {
   const result = await fetchJson(`/api/songs/${encodeURIComponent(songId)}/favorite`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ favorite: next })
   }).catch(() => null);
-  favEl.classList.remove("is-busy");
   if (!result || !result.ok) {
     showToast((result && result.data && result.data.detail) || t("phone.desk.favoriteFailed"));
-    return;
+    return null;
   }
-  const active = !!result.data.favorite;
-  song.favorite = active;
+  return !!result.data.favorite;
+}
+
+/**
+ * Persist one star change and repaint every place that mirrors it: the saved
+ * catalog, the desk library row, the dock chip and the sheet row.
+ */
+export async function setSongFavorite(songId, next, favEl) {
+  const song = (state.playerCatalog || []).find((item) => item.id === songId);
+  const active = await postFavorite(songId, next);
+  if (active === null) return false;
+  if (song) song.favorite = active;
+  if (state.playerSong && state.playerSong.id === songId) {
+    state.playerSong.favorite = active;
+  }
   syncDeskFavorite(songId, active);
-  if (playerListFavs && !active) {
+  syncPlayerFavButton();
+  if (playerListMode_ === "favs" && !active) {
     // The sheet is the saved list: un-starring removes the row immediately.
     state.playerCatalog = state.playerCatalog.filter((item) => item.id !== songId);
     renderPlayerList();
+    return true;
+  }
+  if (favEl) {
+    favEl.classList.toggle("on", active);
+    favEl.setAttribute("aria-pressed", String(active));
+    favEl.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
+  }
+  return true;
+}
+
+async function togglePlayerFavorite(songId, favEl) {
+  const song = (state.playerCatalog || []).find((item) => item.id === songId);
+  if (!song) return;
+  favEl.classList.add("is-busy");
+  await setSongFavorite(songId, song.favorite === false, favEl);
+  favEl.classList.remove("is-busy");
+}
+
+/** Star toggle for the song that is playing right now. */
+export async function toggleCurrentFavorite() {
+  const song = state.playerSong;
+  if (!song || !song.id) return;
+  const btn = $("playerFav");
+  if (btn) btn.disabled = true;
+  await setSongFavorite(song.id, !song.favorite);
+  if (btn) btn.disabled = false;
+}
+
+async function removeFromActivePlaylist(songId) {
+  const pid = activePlaylistId();
+  if (!pid) return;
+  const result = await fetchJson(
+    `/api/playlists/${encodeURIComponent(pid)}/songs/${encodeURIComponent(songId)}`,
+    { method: "DELETE" }
+  ).catch(() => null);
+  if (!result || !result.ok) {
+    showToast((result && result.data && result.data.detail) || t("common.saveFailed"));
     return;
   }
-  favEl.classList.toggle("on", active);
-  favEl.setAttribute("aria-pressed", String(active));
-  favEl.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
+  state.playerCatalog = state.playerCatalog.filter((item) => item.id !== songId);
+  const entry = (state.playlists || []).find((item) => item.id === pid);
+  if (entry) entry.count = Math.max(0, (entry.count || 0) - 1);
+  renderPlayerSources();
+  renderPlayerList();
 }
 
 function paintIndexSpy() {
@@ -188,20 +269,100 @@ function syncPlayerFilter() {
   }
 }
 
+/** Source chips above the list: library, saved songs, and every playlist. */
+export function renderPlayerSources() {
+  const bar = $("playerSources");
+  if (!bar) return;
+  const lists = Array.isArray(state.playlists) ? state.playlists : [];
+  const source = String(state.playerSource || "");
+  const chip = (key, label, on, extra) =>
+    `<button type="button" class="src-chip${on ? " on" : ""}${extra || ""}" data-src="${key}">${label}</button>`;
+  bar.innerHTML =
+    chip("all", t("phone.desk.lib"), playerListMode_ === "all") +
+    chip("favs", t("phone.pl.favs"), playerListMode_ === "favs") +
+    lists
+      .map((item) =>
+        chip(
+          "pl:" + item.id,
+          `${escapeHtml(item.name)}<em>${item.count || 0}</em>`,
+          source === "pl:" + item.id,
+          " src-pl"
+        )
+      )
+      .join("") +
+    `<button type="button" class="src-chip src-add" data-src-add aria-label="${t(
+      "phone.pl.manage"
+    )}">${ICO.plus}<em>${lists.length ? "" : t("phone.pl.new")}</em></button>`;
+  bar.querySelectorAll("[data-src]").forEach((btn) => {
+    btn.onclick = () => selectPlayerSource(btn.dataset.src);
+  });
+  const add = bar.querySelector("[data-src-add]");
+  if (add) add.onclick = () => openPlaylistSheet("");
+}
+
+/** Switch the listening catalog; "pl:<id>" selects one named playlist. */
+export async function selectPlayerSource(source) {
+  source = String(source || "");
+  if (source.startsWith("pl:") && source === state.playerSource) {
+    // Re-tap the active playlist: manage it instead of reloading the same list.
+    openPlaylistSheet("");
+    return;
+  }
+  state.playerSource = source;
+  localStorage.setItem("playerSource", source);
+  if (!source.startsWith("pl:")) state.playerSourceName = "";
+  await loadPlayerList();
+}
+
 export async function loadPlayerList() {
-  const favs = await fetchJson("/api/songs?favorites=1", { cache: "no-store" }).catch(() => ({
-    data: { songs: [] }
-  }));
-  let catalog = (favs.data.songs || []).filter((song) => song.status === "ready");
-  playerListFavs = catalog.length > 0;
-  // The player list is the saved set, but auto-advance must never hit an
-  // empty queue just because nothing was favorited yet.  Fall back to the
-  // whole ready library so finishing a track keeps the session going.
-  if (!catalog.length) {
-    const all = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => ({ data: { songs: [] } }));
+  const source = String(state.playerSource || "");
+  let catalog = [];
+  playerListMode_ = "";
+  if (source.startsWith("pl:")) {
+    const pid = source.slice(3);
+    const res = await fetchJson(
+      `/api/playlists/${encodeURIComponent(pid)}/songs`,
+      { cache: "no-store" }
+    ).catch(() => null);
+    if (res && res.ok && res.data && res.data.playlist) {
+      playerListMode_ = "pl";
+      state.playerSourceName = String(res.data.playlist.name || "");
+      const entry = (state.playlists || []).find((item) => item.id === pid);
+      if (entry) entry.count = Number(res.data.total || 0);
+      catalog = (res.data.songs || []).filter((song) => song.status === "ready");
+    } else {
+      // The list vanished (deleted elsewhere); fall back to the saved set.
+      state.playerSource = "";
+      localStorage.removeItem("playerSource");
+      state.playerSourceName = "";
+    }
+  }
+  if (!playerListMode_ && source === "all") {
+    playerListMode_ = "all";
+    const all = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => ({
+      data: { songs: [] }
+    }));
     catalog = ((all && all.data && all.data.songs) || []).filter((song) => song.status === "ready");
   }
+  if (!playerListMode_) {
+    const favs = await fetchJson("/api/songs?favorites=1", { cache: "no-store" }).catch(() => ({
+      data: { songs: [] }
+    }));
+    catalog = (favs.data.songs || []).filter((song) => song.status === "ready");
+    // Explicit "favs" keeps the empty saved view; the auto source falls back
+    // to the whole ready library so finishing a track keeps the session going.
+    if (catalog.length || source === "favs") {
+      playerListMode_ = "favs";
+    } else {
+      playerListMode_ = "all";
+      const all = await fetchJson("/api/songs", { cache: "no-store" }).catch(() => ({
+        data: { songs: [] }
+      }));
+      catalog = ((all && all.data && all.data.songs) || []).filter((song) => song.status === "ready");
+    }
+  }
   state.playerCatalog = catalog;
+  renderPlayerSources();
   renderPlayerList();
 }
 
@@ -238,9 +399,11 @@ export function renderPlayerList() {
   if (!rows.length) {
     box.innerHTML = searching
       ? `<div class="empty-state"><p>${t("phone.desk.noMatch")}</p></div>`
-      : playerListFavs
+      : playerListMode_ === "favs"
         ? `<div class="empty-state"><p>${t("phone.player.emptyLib")}</p><button class="btn primary" type="button" data-go-search>${t("phone.desk.goSearch")}</button></div>`
-        : `<div class="empty-state"><p>${t("phone.player.noPlayable")}</p></div>`;
+        : playerListMode_ === "pl"
+          ? `<div class="empty-state"><p>${t("phone.pl.empty")}</p></div>`
+          : `<div class="empty-state"><p>${t("phone.player.noPlayable")}</p></div>`;
   } else {
     let lastSec = "";
     box.innerHTML = rows
@@ -256,6 +419,7 @@ export function renderPlayerList() {
       .join("");
   }
   syncPlayerSheetMeta();
+  syncPlayerFavButton();
   renderPlayerIndex();
   const sheet = $("playerSheet");
   if (sheet && sheet.dataset.snap === "open") {
@@ -274,6 +438,18 @@ export function bindPlayerList() {
     box.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
+      const plremove = target.closest("[data-plremove]");
+      if (plremove && box.contains(plremove)) {
+        event.stopPropagation();
+        removeFromActivePlaylist(plremove.dataset.plremove);
+        return;
+      }
+      const pladd = target.closest("[data-pladd]");
+      if (pladd && box.contains(pladd)) {
+        event.stopPropagation();
+        openPlaylistSheet(pladd.dataset.pladd);
+        return;
+      }
       const fav = target.closest("[data-fav]");
       if (fav && box.contains(fav)) {
         event.stopPropagation();

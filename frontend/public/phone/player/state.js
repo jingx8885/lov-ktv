@@ -24,6 +24,11 @@ export const playerState = guardState(
     voiceTrackOn: true,
     mixTrackOn: true,
     playOrder: localStorage.getItem("playOrder") === "shuffle" ? "shuffle" : "seq",
+    // Listen source: "" auto (favorites first, library as fallback),
+    // "favs", "all", or "pl:<id>" for one named playlist.
+    playerSource: localStorage.getItem("playerSource") || "",
+    playerSourceName: "",
+    playlists: [],
     playerCatalog: [],
     playerLoad: 0,
     playerLoading: false,

@@ -126,16 +126,25 @@ export function syncPlayerSheetMeta() {
   const meta = $("playerSheetMeta");
   const sheet = $("playerSheet");
   const open = sheet && sheet.dataset.snap === "open";
-  const favs = playerListMode() === "favs";
-  if (title) title.textContent = favs ? t("phone.player.favLib") : t("phone.desk.lib");
+  const mode = playerListMode();
+  if (title) {
+    title.textContent =
+      mode === "pl"
+        ? state.playerSourceName || t("phone.pl.title")
+        : mode === "favs"
+          ? t("phone.player.favLib")
+          : t("phone.desk.lib");
+  }
   if (meta) {
     meta.textContent = count
       ? open
         ? t("phone.desk.nSongs", { n: count })
         : `${t("phone.desk.nSongs", { n: count })} · ${t("phone.player.sheetMeta")}`
-      : favs
-        ? t("phone.player.emptyLib")
-        : t("phone.player.noPlayable");
+      : mode === "pl"
+        ? t("phone.pl.empty")
+        : mode === "favs"
+          ? t("phone.player.emptyLib")
+          : t("phone.player.noPlayable");
   }
 }
 

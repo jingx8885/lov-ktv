@@ -3,6 +3,7 @@ import { fetchJson } from "../../../shared/ui/js/http.js";
 import { t, lang } from "../../../shared/i18n/js/i18n.js";
 import { isAccount, submitAccount } from "../../../shared/ui/js/account.js";
 import { paintTopWho } from "./icons.js";
+import { checkNativeUpdate, hasNativePhone, nativeAppVersion, nativeUpdateAvailable } from "../../platform.js";
 import { showToast } from "./toast.js";
 import { openOverlay } from "./overlays.js";
 import { api } from "../../api.js";
@@ -85,6 +86,14 @@ export async function loadWho() {
   if (accountLogin) accountLogin.hidden = signed;
   $("whoLogin").href = loginQs();
   $("whoLogout").hidden = !signed;
+  const ver = $("whoVersion");
+  if (ver) {
+    const label = hasNativePhone() ? nativeAppVersion() : "";
+    ver.hidden = !label;
+    if (label) ver.textContent = t("common.version", { version: label });
+  }
+  const upd = $("whoUpdate");
+  if (upd) upd.hidden = !nativeUpdateAvailable();
   paintQuotaBar(data.quota, signed);
   const pointsEl = $("whoPoints");
   if (pointsEl) {
@@ -147,6 +156,8 @@ export function bindWho() {
     runWhoPass("login");
   });
   $("whoRegister").onclick = () => runWhoPass("register");
+  const upd = $("whoUpdate");
+  if (upd) upd.onclick = () => checkNativeUpdate();
   loadWho();
 }
 

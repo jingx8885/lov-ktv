@@ -1,7 +1,7 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { songArtist, songTitle } from "../../../../shared/ui/js/song.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
-import { roomUrl } from "../../../origin.js";
+import { noWifi, roomUrl } from "../../../origin.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { paintLyricMode } from "../../../room/js/room/mix.js";
 import { api } from "../../../api.js";
@@ -18,7 +18,7 @@ import {
 import { mediaUrl, mediaPath, waitMedia, setPlayerCover, releasePlayerMtv } from "./media.js";
 import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
-import { markCurrentPlayerPick, renderPlayerList } from "./queue.js";
+import { markCurrentPlayerPick, renderPlayerList, syncPlayerFavButton } from "./queue.js";
 import { paintDeskLyrics } from "../../../desk/js/lyrics.js";
 import { prefetchMedia } from "../../../media-cache.js";
 import { syncPlayerSheetMeta } from "./sheet.js";
@@ -82,6 +82,7 @@ export async function loadPlayerSong(songId, opts) {
   setPlayerCover(song);
   $("playerVocal").classList.toggle("on", !!state.playerVocal);
   $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
+  syncPlayerFavButton();
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
   const selected = mediaUrl(song.id, playerTrackName());
@@ -175,7 +176,7 @@ export async function bootPlayer() {
   // 学习中心会自行选择歌曲，避免进入学习页时房间当前歌曲抢先加载。
   if (document.body.classList.contains("learn-on")) return;
   if (state.playerSong) return;
-  const code = $("room")?.value.trim();
+  const code = noWifi() ? "" : $("room")?.value.trim();
   if (!code) return;
   const roomHit = await fetchJson(roomUrl("/api/rooms/" + code)).catch(() => null);
   const room = roomHit && roomHit.data;

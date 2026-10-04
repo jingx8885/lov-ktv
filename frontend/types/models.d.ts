@@ -45,6 +45,15 @@ interface Song {
   favorite?: boolean;
 }
 
+interface Playlist {
+  id: string;
+  name: string;
+  count?: number;
+  has_song?: boolean;
+  created_at?: number;
+  updated_at?: number;
+}
+
 interface QueueItem extends Song {
   song_id: string;
   position?: number;

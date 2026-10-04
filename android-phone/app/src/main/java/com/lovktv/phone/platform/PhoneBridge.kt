@@ -9,6 +9,17 @@ class PhoneBridge(private val activity: DeskActivity) {
     fun capabilities(): String = activity.micCapabilities()
 
     @JavascriptInterface
+    fun version(): String = activity.appVersionName()
+
+    @JavascriptInterface
+    fun checkUpdate() {
+        activity.runOnUiThread { activity.checkAppUpdate() }
+    }
+
+    @JavascriptInterface
+    fun network(): String = activity.netState()
+
+    @JavascriptInterface
     fun state(): String = activity.micStateJson()
 
     @JavascriptInterface

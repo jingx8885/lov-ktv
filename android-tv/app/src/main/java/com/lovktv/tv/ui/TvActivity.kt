@@ -3,6 +3,7 @@ package com.lovktv.tv.ui
 import com.lovktv.tv.R
 
 import com.lovktv.tv.feature.host.HostService
+import com.lovktv.tv.platform.AppUpdate
 import com.lovktv.tv.platform.Prefs
 import com.lovktv.tv.media.SilentMtv
 import com.lovktv.tv.feature.host.HostRuntime
@@ -26,6 +27,7 @@ import android.widget.Toast
 class TvActivity : Activity(), TvHost {
     private lateinit var webView: WebView
     private lateinit var silentMtv: SilentMtv
+    private lateinit var appUpdate: AppUpdate
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,6 +35,10 @@ class TvActivity : Activity(), TvHost {
         setContentView(R.layout.activity_tv)
         webView = findViewById(R.id.webview)
         silentMtv = SilentMtv(findViewById<SurfaceView>(R.id.mtvNative))
+        appUpdate = AppUpdate(this, "tv") {
+            Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER }
+        }
+        webView.postDelayed({ appUpdate.check(manual = false) }, 2500)
 
         runCatching {
             val cookies = CookieManager.getInstance()
@@ -135,6 +141,10 @@ class TvActivity : Activity(), TvHost {
         }
     }
 
+    override fun checkAppUpdate() {
+        appUpdate.check(manual = true)
+    }
+
     override fun lyricSize(): String = Prefs.lyricSize(this)
 
     override fun saveLyricSize(value: String) {
@@ -200,10 +210,12 @@ class TvActivity : Activity(), TvHost {
         webView.onResume()
         webView.requestFocus()
         resumeMtv()
+        if (::appUpdate.isInitialized) appUpdate.onHostResume()
     }
 
     override fun onDestroy() {
         stopMtv()
+        if (::appUpdate.isInitialized) appUpdate.close()
         webView.removeJavascriptInterface("LovKtvNative")
         webView.destroy()
         super.onDestroy()

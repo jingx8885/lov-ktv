@@ -20,6 +20,8 @@ export const ICO = {
   check:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.4L5 12.2l1.4-1.4 2.8 2.8L17.5 5 19 6.4z"/></svg>',
   star: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3.5z"/></svg>',
+  plAdd:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9v2H4zm0 4h9v2H4zm0 4h6v2H4zm12-8v5.6a3.4 3.4 0 102 3.1V6h3V4h-5z"/></svg>',
   refresh:
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5a7 7 0 105.7 2.9l-1.6 1.2A5 5 0 1112 7h-2.2L13 3.8 16.2 7H14a7 7 0 00-2-2z"/></svg>',
   trash:

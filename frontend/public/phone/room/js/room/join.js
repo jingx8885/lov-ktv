@@ -1,6 +1,6 @@
 import { $ } from "../../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
-import { adoptLan, lanOrigin, roomUrl, tvBound } from "../../../origin.js";
+import { adoptLan, lanOrigin, noWifi, roomUrl, tvBound } from "../../../origin.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { api } from "../../../api.js";
 import { paintTopRoom } from "../../../ui/js/icons.js";
@@ -138,6 +138,10 @@ export function bindJoin() {
     event.preventDefault();
     openTv(code);
   };
+  if (noWifi()) {
+    // Cellular session: no TV room auto-join, the app boots as a listener.
+    return;
+  }
   if ($("room").value) {
     $("openTv").href = tvUrl($("room").value);
     joinRoom(false, true);

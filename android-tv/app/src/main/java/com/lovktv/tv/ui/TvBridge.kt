@@ -47,6 +47,11 @@ class TvBridge(private val host: TvHost) {
     fun version(): String = host.appVersion()
 
     @JavascriptInterface
+    fun checkUpdate() {
+        host.runOnUi { host.checkAppUpdate() }
+    }
+
+    @JavascriptInterface
     fun lyricSize(): String = host.lyricSize()
 
     @JavascriptInterface
@@ -67,6 +72,7 @@ interface TvHost {
     fun mtvPlaying(): Boolean
     fun openSetup()
     fun appVersion(): String
+    fun checkAppUpdate()
     fun lyricSize(): String
     fun saveLyricSize(value: String)
 }

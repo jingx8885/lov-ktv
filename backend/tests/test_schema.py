@@ -26,6 +26,8 @@ def test_schema_covers_current_tables():
         "learn_words",
         "learn_word_sources",
         "learn_migrations",
+        "playlists",
+        "playlist_items",
     }
     assert TABLES["songs"] == (
         "id",

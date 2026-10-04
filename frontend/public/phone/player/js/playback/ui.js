@@ -10,7 +10,7 @@ import {
   switchPlayerTrack,
   togglePlayer
 } from "./controls.js";
-import { playNextSong, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
+import { playNextSong, toggleCurrentFavorite, togglePlayOrder, updatePlayOrderBtns } from "./queue.js";
 
 export function bindPlayback() {
   $("playerPlay").onclick = () => togglePlayer();
@@ -67,6 +67,8 @@ export function bindPlayback() {
   $("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
   $("playerVocal").setAttribute("aria-label", state.playerVocal ? t("phone.desk.vocalOn") : t("phone.desk.vocalOff"));
   $("playerOrder").onclick = () => togglePlayOrder();
+  const favChip = $("playerFav");
+  if (favChip) favChip.onclick = () => toggleCurrentFavorite();
   $("playerNextBtn").onclick = () => playNextSong();
   updatePlayOrderBtns();
   $("playerToDesk").onclick = () => {

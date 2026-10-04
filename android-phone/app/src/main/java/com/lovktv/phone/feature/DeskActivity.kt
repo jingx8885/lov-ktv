@@ -5,6 +5,7 @@ import com.lovktv.phone.media.MicService
 import com.lovktv.phone.media.NativeMic
 import com.lovktv.phone.network.ApiClient
 import com.lovktv.phone.network.LanHttp
+import com.lovktv.phone.platform.AppUpdate
 import com.lovktv.phone.platform.Prefs
 import com.lovktv.phone.platform.PhoneBridge
 import com.lovktv.phone.platform.PhoneNotificationController
@@ -20,6 +21,10 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -62,10 +67,13 @@ class DeskActivity : Activity() {
     private val watch = Handler(Looper.getMainLooper())
     private var lanMisses = 0
     private var watching = false
+    private var lastWifi = -1
+    private var netCallback: ConnectivityManager.NetworkCallback? = null
     private lateinit var notificationController: PhoneNotificationController
     private var pendingNotificationPage = ""
     private var pendingNotificationAction = ""
     private lateinit var playBilling: PlayBillingManager
+    private lateinit var appUpdater: AppUpdate
     // Activity.requestPermissions has no parallel support: a second call while
     // a system dialog is up swallows the request and the result never comes
     // back, leaving WebView getUserMedia pending forever.  Every runtime
@@ -107,6 +115,13 @@ class DeskActivity : Activity() {
         bindWebView()
         loadDesk()
         startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
+        watchNet()
+        appUpdater = AppUpdate(this, "phone") {
+            server.ifBlank {
+                Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER }
+            }
+        }
+        watch.postDelayed({ appUpdater.check(manual = false) }, 3500)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermission(REQ_NOTIFICATIONS, Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -260,9 +275,21 @@ class DeskActivity : Activity() {
     }
 
     private fun loadDesk(hash: String = "", fresh: Boolean = false) {
-        var url = DeskPage.url(server, roomCode, lanOrigin)
+        val wifi = isWifi()
+        var url = DeskPage.url(
+            server,
+            if (wifi) roomCode else "",
+            if (wifi) lanOrigin else "",
+        )
         if (fresh) url += "&bind=" + System.currentTimeMillis()
-        if (hash.isNotBlank()) url += "#$hash"
+        var target = hash
+        if (!wifi) {
+            // Cellular: LAN hints die anyway; tell the page to skip the TV
+            // room and land on the listen screen.
+            url += "&nowifi=1"
+            if (target.isBlank()) target = "player"
+        }
+        if (target.isNotBlank()) url += "#$target"
         webView.stopLoading()
         webView.loadUrl(url)
     }
@@ -470,6 +497,10 @@ class DeskActivity : Activity() {
     }
 
     private fun joinFromScan(text: String) {
+        if (!isWifi()) {
+            android.widget.Toast.makeText(this, R.string.tv_need_wifi, android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         val target = JoinLink.parse(text)
         if (target == null) {
             android.widget.Toast.makeText(this, R.string.scan_invalid, android.widget.Toast.LENGTH_LONG).show()
@@ -504,6 +535,7 @@ class DeskActivity : Activity() {
     }
 
     fun useLan(lan: String, room: String) {
+        if (!isWifi()) return
         val code = room.trim().uppercase().ifBlank { roomCode }
         val next = lan.trim().trimEnd('/')
         if (code.isBlank() || next.isBlank()) return
@@ -526,6 +558,12 @@ class DeskActivity : Activity() {
 
     private fun watchLan() {
         if (!watching || roomCode.isBlank()) return
+        if (!isWifi()) {
+            // Off Wi-Fi the TV box is unreachable; keep polling cheaply in
+            // case the network comes back, but never hit the LAN.
+            watch.postDelayed({ watchLan() }, 8000)
+            return
+        }
         Thread({
             val current = lanOrigin
             if (current.isNotBlank() && probeTv(current)) {
@@ -584,9 +622,68 @@ class DeskActivity : Activity() {
     }
 
     private fun probeTv(origin: String): Boolean {
+        if (!isWifi()) return false
         return runCatching {
             ApiClient(origin, 2, 4).host().mode.equals("tv", ignoreCase = true)
         }.getOrDefault(false)
+    }
+
+    fun isWifi(): Boolean {
+        return runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java) ?: return false
+            cm.activeNetwork?.let { net ->
+                cm.getNetworkCapabilities(net)
+                    ?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            } ?: false
+        }.getOrDefault(false)
+    }
+
+    /** "wifi" | "cell" | "offline", exposed to the page through the bridge. */
+    fun netState(): String {
+        return runCatching {
+            val cm = getSystemService(ConnectivityManager::class.java) ?: return@runCatching "offline"
+            val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) }
+                ?: return@runCatching "offline"
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) "wifi"
+            else if (
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            ) "cell" else "offline"
+        }.getOrDefault("offline")
+    }
+
+    private fun watchNet() {
+        val cm = runCatching { getSystemService(ConnectivityManager::class.java) }
+            .getOrNull() ?: return
+        val request = NetworkRequest.Builder().build()
+        val callback = object : ConnectivityManager.NetworkCallback() {
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                val wifi = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                onNetChanged(if (wifi) 1 else 0)
+            }
+
+            override fun onLost(network: Network) {
+                onNetChanged(0)
+            }
+        }
+        val registered = runCatching {
+            cm.registerDefaultNetworkCallback(callback)
+        }.isSuccess
+        if (registered) netCallback = callback
+    }
+
+    private fun onNetChanged(wifi: Int) {
+        runOnUiThread {
+            if (lastWifi == wifi) return@runOnUiThread
+            val first = lastWifi == -1
+            lastWifi = wifi
+            if (first || !::webView.isInitialized) return@runOnUiThread
+            // The desk URL and the page's TV-join behavior both key off the
+            // current transport, so a Wi-Fi <-> cellular flap gets a fresh
+            // page instead of a stale bound state.
+            if (wifi == 0 && MicService.running) MicService.stop(this@DeskActivity)
+            loadDesk()
+        }
     }
 
     fun micCapabilities(): String = NativeMic.capabilitiesJson(micHost, micPort, micRate)
@@ -598,6 +695,7 @@ class DeskActivity : Activity() {
     )
 
     fun startNativeMic(send: Boolean?, iem: Boolean?): String {
+        if (!isWifi()) return "no-tv"
         if (send == true && !hasLanMic()) return "no-tv"
         if (!hasAudio(this)) {
             pendingSend = send
@@ -619,6 +717,10 @@ class DeskActivity : Activity() {
         } catch (_: Exception) {
             ""
         }
+    }
+
+    fun checkAppUpdate() {
+        appUpdater.check(manual = true)
     }
 
     fun playBillingProducts(): String = if (::playBilling.isInitialized) playBilling.productsJson() else "{\"ready\":false}"
@@ -760,6 +862,11 @@ class DeskActivity : Activity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (::appUpdater.isInitialized) appUpdater.onHostResume()
+    }
+
     override fun onPause() {
         // Persist the cookie jar now. Without this the session cookie can still
         // be in memory when Android kills the process, losing the login.
@@ -768,6 +875,7 @@ class DeskActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::appUpdater.isInitialized) appUpdater.close()
         if (::playBilling.isInitialized) playBilling.close()
         hideFullscreenView()
         watching = false
@@ -776,6 +884,12 @@ class DeskActivity : Activity() {
         pendingWebPerm = null
         fileCallback?.onReceiveValue(null)
         fileCallback = null
+        netCallback?.let {
+            runCatching {
+                getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(it)
+            }
+        }
+        netCallback = null
         if (!isChangingConfigurations) {
             MicService.stop(this)
             if (::notificationController.isInitialized) notificationController.close()

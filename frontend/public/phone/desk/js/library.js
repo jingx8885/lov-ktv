@@ -74,6 +74,7 @@ function songRow(song) {
           </div>
           <div class="desk-actions">
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
+            <button class="row-action ghost pladd-action" data-pladd="${song.id}" aria-label="${t("phone.pl.addTo")}">${ICO.plAdd}</button>
             ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
             ${canPlay ? `<button class="row-action ghost" data-edit="${song.id}" aria-label="${t("phone.player.align")}">${ICO.edit}</button>` : ""}
             ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
@@ -131,6 +132,16 @@ function bindSongActions() {
         btn.setAttribute("aria-pressed", String(active));
         btn.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
         if (api.loadPlayerList) api.loadPlayerList();
+      };
+    });
+  $("songs")
+    .querySelectorAll("[data-pladd]")
+    .forEach((btn) => {
+      if (btn.dataset.bound === "1") return;
+      btn.dataset.bound = "1";
+      btn.onclick = (event) => {
+        event.stopPropagation();
+        if (api.openPlaylistSheet) api.openPlaylistSheet(btn.dataset.pladd);
       };
     });
   $("songs")
@@ -365,6 +376,8 @@ export function bindLibrary() {
   document.addEventListener("lovktv-auth-change", () => {
     state.libStamp = "";
     loadSongs(false, true);
+    if (api.refreshPlaylists) api.refreshPlaylists();
+    if (api.loadPlayerList) api.loadPlayerList();
   });
   document.querySelectorAll("[data-desk]").forEach((btn) => {
     btn.onclick = () => showDeskPane(btn.dataset.desk);

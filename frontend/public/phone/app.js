@@ -17,12 +17,14 @@ import { bindRoomRtc } from "./room/js/room/rtc.js";
 import { bindPlayback } from "./player/js/playback/ui.js";
 import { updatePlayOrderBtns, bindPlayerList } from "./player/js/playback/queue.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/playback/sheet.js";
+import { bindPlaylists, refreshPlaylists } from "./player/js/playback/playlists.js";
 import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import { bindLearn } from "./player/js/learn/index.js";
 import { api, installApi } from "./api.js";
 import { bootMediaCache } from "./media-cache.js";
 import { installPlatform, phonePlatform } from "./platform.js";
+import { noWifi } from "./origin.js";
 import { songArtist, songTitle } from "../shared/ui/js/song.js";
 import { songCoverUrl } from "../shared/ui/js/art.js";
 import { cueIndexAt as cueIndexAtCues, cueLine } from "../shared/lyrics/js/paint.js";
@@ -60,6 +62,13 @@ export function mount(root, deps = {}) {
     } catch (_) {}
   }
   must("room").value = (roomFromUrl || localStorage.getItem("room") || "").toUpperCase();
+  if (noWifi() && must("room").value) {
+    // Cellular boot: drop the remembered TV room so nothing tries to join it.
+    must("room").value = "";
+    try {
+      localStorage.removeItem("room");
+    } catch (_) {}
+  }
 
   bootMediaCache();
   bootI18n();
@@ -119,9 +128,11 @@ export function mount(root, deps = {}) {
   bindPlayback();
   bindPlayerSheet();
   bindPlayerList();
+  bindPlaylists();
   bindAlign();
   bindPhoneMic();
   bindLearn();
+  refreshPlaylists();
 
   const pollTimer = setInterval(() => {
     const scopedRoot = /** @type {any} */ (root);
@@ -196,7 +207,7 @@ export function mount(root, deps = {}) {
   const bootHash = (location.hash || "").replace("#", "");
   const linkedSong = (params.get("song") || "").trim();
   const linkedLyrics = linkedSong && bootHash === "lyrics";
-  const bootPage = PAGES.includes(bootHash) ? bootHash : "desk";
+  const bootPage = PAGES.includes(bootHash) ? bootHash : noWifi() ? "player" : "desk";
   showPage(linkedLyrics ? "desk" : bootPage, linkedSong && !linkedLyrics ? linkedSong : null, false);
   if (linkedLyrics) {
     // Admin deep links can open the read-only lyric desk without requiring a

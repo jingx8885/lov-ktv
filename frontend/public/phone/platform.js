@@ -37,6 +37,19 @@ export function hasNativePhone() {
   return !!bridge();
 }
 
+/** Current transport from the shell: "wifi" | "cell" | "offline" | "". */
+export function nativeNet() {
+  const native = bridge();
+  if (!native || typeof native.network !== "function") return "";
+  try {
+    return String(native.network() || "")
+      .trim()
+      .toLowerCase();
+  } catch (_) {
+    return "";
+  }
+}
+
 export function nativeAppVersion() {
   const native = bridge();
   if (!native || typeof native.version !== "function") return "";
@@ -44,6 +57,23 @@ export function nativeAppVersion() {
     return String(native.version() || "").trim();
   } catch (_) {
     return "";
+  }
+}
+
+export function nativeUpdateAvailable() {
+  const native = bridge();
+  return !!(native && typeof native.checkUpdate === "function");
+}
+
+/** Ask the shell to check the server for a newer APK; result UI is native. */
+export function checkNativeUpdate() {
+  const native = bridge();
+  if (!native || typeof native.checkUpdate !== "function") return false;
+  try {
+    native.checkUpdate();
+    return true;
+  } catch (_) {
+    return false;
   }
 }
 

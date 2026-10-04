@@ -50,12 +50,18 @@ interface PhoneApi {
   applyPlayerVocalMix(): void;
   hookPlayerAudio(): void;
   loadPlayerList(): Promise<void>;
+  renderPlayerSources(): void;
+  selectPlayerSource(source: string): Promise<void>;
+  toggleCurrentFavorite(): Promise<void>;
+  openPlaylistSheet(songId?: string): Promise<void>;
+  refreshPlaylists(): Promise<void>;
   loadPlayerSong(songId: string, opts?: LoadPlayerOpts): Promise<void>;
   openPlayer(songId: string): void;
   bootPlayer(): Promise<void>;
   playNextSong(): void;
   cueIndexAt(t: number): number;
   setPlayerSheet(snap: "open" | "peek", anim?: boolean): void;
+  syncPlayerSheetMeta(): void;
   enterLearn(): Promise<void> | void;
   enterCover(): Promise<void> | void;
   openStudyBook(kind?: "words" | "mistakes" | ""): Promise<void> | void;
@@ -100,6 +106,9 @@ interface PhoneState {
   mixTrackOn: boolean;
   playOrder: PlayOrder;
   playerCatalog: Song[];
+  playerSource: string;
+  playerSourceName: string;
+  playlists: Playlist[];
   playerLoad: number;
   playerLoading: boolean;
   playerClockHold: number | null;

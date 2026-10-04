@@ -35,11 +35,12 @@ import {
   applyPlayerVocalMix,
   hookPlayerAudio
 } from "./player/js/playback/controls.js";
-import { loadPlayerList, playNextSong } from "./player/js/playback/queue.js";
+import { loadPlayerList, playNextSong, renderPlayerSources, selectPlayerSource, toggleCurrentFavorite } from "./player/js/playback/queue.js";
+import { openPlaylistSheet, refreshPlaylists } from "./player/js/playback/playlists.js";
 import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/song.js";
 import { ensureGuideLoaded, ensureMtvLoaded, releasePlayerMtv } from "./player/js/playback/media.js";
 import { cueIndexAt } from "./player/js/playback/lyrics.js";
-import { setPlayerSheet } from "./player/js/playback/sheet.js";
+import { setPlayerSheet, syncPlayerSheetMeta } from "./player/js/playback/sheet.js";
 import {
   enterLearn,
   enterCover,
@@ -101,12 +102,18 @@ installApi({
   applyPlayerVocalMix,
   hookPlayerAudio,
   loadPlayerList,
+  renderPlayerSources,
+  selectPlayerSource,
+  toggleCurrentFavorite,
+  openPlaylistSheet,
+  refreshPlaylists,
   loadPlayerSong,
   openPlayer,
   bootPlayer,
   playNextSong,
   cueIndexAt,
   setPlayerSheet,
+  syncPlayerSheetMeta,
   enterLearn,
   enterCover,
   exitLearn,

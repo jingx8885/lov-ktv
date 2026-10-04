@@ -2231,3 +2231,90 @@ body.phone.player-fullscreen .player-lyrics .next {
   opacity: 0.92;
   font-size: clamp(11px, 2.8vw, 20px);
 }
+
+/* 听歌来源 chips：全部 / 收藏 / 各歌单 */
+.player-sources {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  margin: 8px 12px 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.player-sources::-webkit-scrollbar { display: none; }
+.src-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.src-chip em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--dim);
+}
+.src-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.src-chip.on em { color: #ffb3c6; }
+.src-chip.src-add {
+  padding: 0 10px;
+  color: var(--dim);
+}
+.src-chip.src-add svg { width: 14px; height: 14px; fill: currentColor; }
+.src-chip.src-add em { color: inherit; font-size: 12px; }
+
+/* 歌曲行：加入歌单 / 从歌单移除 */
+.player-pick .pick-pl,
+.player-pick .pick-plremove {
+  flex: 0 0 34px;
+  width: 34px;
+  height: 42px;
+}
+.player-pick .pick-plremove { color: var(--dim); }
+.pl-row { gap: 10px; }
+.pl-row .pl-ico {
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .07);
+  color: var(--muted);
+}
+.pl-row .pl-ico svg { width: 20px; height: 20px; fill: currentColor; }
+.pl-row .pl-toggle.on { color: var(--accent); }
+.pl-new {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pl-new input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pl-new .btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 76px;
+  margin-top: 0;
+}
+.playlist-sheet .pl-list {
+  max-height: 46dvh;
+  overflow: auto;
+}
