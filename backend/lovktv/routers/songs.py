@@ -19,7 +19,7 @@ from lovktv.catalog.index import (
     song_letter,
 )
 from lovktv.catalog.mugen import is_mugen_kid
-from lovktv.catalog.search import search_songs
+from lovktv.catalog.search import list_lyric_candidates, search_songs
 from lovktv.domain.timeline import normalize_timeline
 from lovktv.identity.plans import processing_priority
 from lovktv.identity.funnel import track
@@ -66,6 +66,21 @@ def api_search(request: Request, q: str, count: int = 10, page: int = 1) -> dict
     except Exception as exc:
         fail(request, 502, "api.search_failed", exc=exc)
 
+
+@router.get("/api/lyric_candidates")
+def api_lyric_candidates(
+    request: Request, title: str, artist: str = "", duration: float = 0, q: str = ""
+) -> dict:
+    # NetEase lyric versions for one search hit, scored like the search card.
+    # The phone picker lists these so the singer can pin a lyric edition
+    # before importing; ``lyrics_id`` on ``/api/songs/import`` honors the pin.
+    if not str(title or "").strip():
+        fail(request, 400, "api.missing_title")
+    try:
+        candidates = list_lyric_candidates(title, artist, duration, fallback_query=q)
+        return {"candidates": candidates}
+    except Exception as exc:
+        fail(request, 502, "api.search_failed", exc=exc)
 
 @router.get("/api/preview/{song_id}/resolve")
 def api_preview_resolve(

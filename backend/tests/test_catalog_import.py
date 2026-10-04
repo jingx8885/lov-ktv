@@ -552,3 +552,38 @@ def test_search_score_uses_best_fitting_lrc_like_import(monkeypatch):
     search.enrich_lyric_durations([hit], "From Now On")
     assert hit["lyrics_duration_ms"] == 290_000
     assert search.annotate_duration_match(hit)["lyrics_match_score"] >= 96
+
+
+def test_lyric_candidates_lists_scored_versions(monkeypatch):
+    monkeypatch.setattr(
+        search,
+        "search_tonzhon",
+        lambda *args, **kwargs: [
+            {"id": "111", "name": "晴天", "artist": [["周杰伦"]]},
+            {"id": "222", "name": "晴天 (现场版)", "artist": [["周杰伦"]]},
+        ],
+    )
+    lyrics = {
+        "111": "[00:01.00]故事的小黄花\n[00:10.00]从出生那年就飘着\n[03:55.00]最后一句",
+        "222": "[00:02.00]现场第一句\n[05:40.00]现场拖长结尾",
+    }
+    monkeypatch.setattr(
+        "lovktv.catalog.lyrics.fetch_lyric",
+        lambda song_id, source="netease": lyrics[song_id],
+    )
+    candidates = search.list_lyric_candidates("晴天", "周杰伦", 236)
+    assert [item["id"] for item in candidates] == ["111", "222"]
+    best, live = candidates
+    assert best["recommended"] is True
+    assert best["score"] == 100
+    assert best["mismatch_ms"] == 0
+    assert best["last_ms"] == 235_000
+    assert best["lines"][:2] == ["故事的小黄花", "从出生那年就飘着"]
+    assert live["recommended"] is False
+    assert live["mismatch_ms"] > 0
+    assert live["score"] < best["score"]
+
+
+def test_lyric_candidates_returns_empty_when_nothing_matches(monkeypatch):
+    monkeypatch.setattr(search, "search_tonzhon", lambda *args, **kwargs: [])
+    assert search.list_lyric_candidates("不存在的歌", "", 0) == []

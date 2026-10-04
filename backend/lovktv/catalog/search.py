@@ -7,6 +7,7 @@ import json
 import re
 import shutil
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -57,6 +58,94 @@ TITLE_VERSION = re.compile(r"[\s]*[\(（\[【][^\)）\]】]{0,40}[\)）\]】]")
 SEARCH_CHANNELS = ("mugen", "bilibili", "soundcloud")
 # NetEase LRC candidates compared per search hit when its duration is known.
 LYRIC_DURATION_CANDIDATES = 4
+# List at most this many lyric versions in the picker; scoring runs on the
+# first ``LYRIC_DURATION_CANDIDATES`` candidates only.
+LYRIC_PICKER_LIMIT = 6
+LYRIC_CANDIDATE_TTL = 600.0
+
+# (title, artist, media_ms, fallback_query) -> (expires_at, candidate dicts).
+# Search-time scoring and the picker share it, so opening a song card does
+# not re-download the LRC files the search just scored.
+_lyric_candidates_cache: dict[tuple[str, str, int, str], tuple[float, list[dict[str, Any]]]] = {}
+
+
+def _score_lyric_candidates(
+    title: str, artist: str, media_ms: int, fallback_query: str = ""
+) -> list[dict[str, Any]]:
+    """NetEase lyric versions for a hit, each scored against the media length.
+
+    Every entry carries ``id``, ``title``, ``artist``, ``last_ms``,
+    ``mismatch_ms`` (ranking gap; ``lyric_mismatch_ms`` semantics),
+    ``score`` (0-100 percentage like the search card),
+    ``lines`` (first real lyric lines for a visual sanity check) and
+    ``recommended`` on the entry the import would pick.  Results are cached
+    briefly because the same hit is scored during search and then browsed.
+    """
+    key = (str(title or ""), str(artist or ""), int(media_ms or 0), str(fallback_query or ""))
+    cached = _lyric_candidates_cache.get(key)
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+    from lovktv.catalog.kugou import lyric_mismatch_ms
+    from lovktv.catalog.lyrics import fetch_lyric, parse_lrc
+
+    candidates: list[dict[str, Any]] = []
+    for lyric_query in lyric_search_queries(title, artist, fallback_query):
+        if not lyric_query:
+            continue
+        rows = search_tonzhon(lyric_query, count=max(LYRIC_PICKER_LIMIT, 5), page=1)
+        candidate = _pick_lyric_candidate(rows, title or lyric_query, artist)
+        if not candidate:
+            continue
+        ordered = [candidate] + [row for row in rows if row is not candidate]
+        for index, row in enumerate(ordered):
+            if index >= LYRIC_DURATION_CANDIDATES or len(candidates) >= LYRIC_PICKER_LIMIT:
+                break
+            song_id = str(row.get("lyric_id") or row.get("id") or "").strip()
+            if not song_id.isdigit() or any(item["id"] == song_id for item in candidates):
+                continue
+            try:
+                cues = parse_lrc(fetch_lyric(song_id))
+            except Exception:
+                continue
+            times = [int(cue.get("ms")) for cue in cues if cue.get("ms") is not None]
+            if not times:
+                continue
+            last_ms = max(times)
+            # Ranking uses the asymmetric lyric/media gap (an over-running
+            # track is almost surely another cut); the displayed score uses
+            # the same plain percentage as ``annotate_duration_match``.
+            mismatch = lyric_mismatch_ms(last_ms, media_ms) if media_ms else 0
+            diff = abs(last_ms - media_ms) if media_ms else 0
+            score = (
+                100
+                if media_ms and diff <= 1500
+                else (
+                    max(0, min(100, int(round((1 - (diff / max(media_ms, last_ms, 1))) * 100))))
+                    if media_ms
+                    else None
+                )
+            )
+            preview = [str(cue.get("text") or "").strip() for cue in cues if str(cue.get("text") or "").strip()]
+            candidates.append({
+                "id": song_id,
+                "title": str(row.get("name") or row.get("title") or ""),
+                "artist": flatten_artists(row),
+                "last_ms": last_ms,
+                "mismatch_ms": mismatch,
+                "score": score,
+                "lines": preview[:3],
+                "recommended": False,
+            })
+        if candidates:
+            break
+    if candidates:
+        candidates.sort(key=lambda item: (int(item["mismatch_ms"]), item["id"]))
+        candidates[0]["recommended"] = True
+    if len(_lyric_candidates_cache) > 256:
+        _lyric_candidates_cache.clear()
+    _lyric_candidates_cache[key] = (time.monotonic() + LYRIC_CANDIDATE_TTL, candidates)
+    return candidates
+
 
 
 def annotate_duration_match(hit: dict[str, Any]) -> dict[str, Any]:
@@ -184,49 +273,30 @@ def _fetch_lyric_duration(hit: dict[str, Any], fallback_query: str = "") -> int 
     except (TypeError, ValueError):
         media_ms = 0
     try:
-        from lovktv.catalog.kugou import lyric_mismatch_ms
-        from lovktv.catalog.lyrics import fetch_lyric, parse_lrc
-
-        for lyric_query in lyric_search_queries(title, artist, fallback_query):
-            if not lyric_query:
-                continue
-            rows = search_tonzhon(lyric_query, count=5, page=1)
-            candidate = _pick_lyric_candidate(rows, title or lyric_query, artist)
-            if not candidate:
-                continue
-            candidates = [candidate] + [
-                row for row in rows if row is not candidate
-            ]
-            best: tuple[int, int, str] | None = None
-            for row in candidates[:LYRIC_DURATION_CANDIDATES]:
-                song_id = str(row.get("lyric_id") or row.get("id") or "").strip()
-                if not song_id.isdigit():
-                    continue
-                try:
-                    cues = parse_lrc(fetch_lyric(song_id))
-                except Exception:
-                    continue
-                times = [int(cue.get("ms")) for cue in cues if cue.get("ms") is not None]
-                if not times:
-                    continue
-                last_ms = max(times)
-                if not media_ms:
-                    hit["lyrics_id"] = song_id
-                    return last_ms
-                mismatch = lyric_mismatch_ms(last_ms, media_ms)
-                if best is None or mismatch < best[0]:
-                    best = (mismatch, last_ms, song_id)
-                if mismatch == 0:
-                    break
-            if best is not None:
-                # Keep the exact candidate alongside its duration.  Import
-                # receives this id so the lyric text cannot drift to another
-                # same-title result between search and processing.
-                hit["lyrics_id"] = best[2]
-                return best[1]
+        candidates = _score_lyric_candidates(title, artist, media_ms, fallback_query)
     except Exception:
         return None
-    return None
+    chosen = next((item for item in candidates if item.get("recommended")), None)
+    if chosen is None:
+        return None
+    # Keep the exact candidate alongside its duration.  Import receives this
+    # id so the lyric text cannot drift to another same-title result between
+    # search and processing.
+    hit["lyrics_id"] = chosen["id"]
+    return int(chosen["last_ms"])
+
+
+def list_lyric_candidates(
+    title: str, artist: str = "", duration_s: float = 0, fallback_query: str = ""
+) -> list[dict[str, Any]]:
+    """Public wrapper for the lyric-version picker on the search sheet."""
+    try:
+        media_ms = int(round(float(duration_s or 0) * 1000))
+    except (TypeError, ValueError):
+        media_ms = 0
+    return _score_lyric_candidates(
+        str(title or "").strip(), str(artist or "").strip(), media_ms, fallback_query
+    )
 
 
 def enrich_lyric_durations(

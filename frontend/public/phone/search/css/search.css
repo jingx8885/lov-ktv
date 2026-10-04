@@ -256,6 +256,50 @@
 .hit-sheet-play.busy { opacity: .7; }
 .hit-sheet-play.busy svg { animation: hit-spin .8s linear infinite; }
 .hit-sheet-play.busy svg path { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+
+/* 歌词版本：可点选的歌词列表，选中项高亮。 */
+.hit-lyrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.hit-lyrics:empty { display: none; }
+.hit-lyrics-title { margin: 0; font-size: 13px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; }
+.hit-lyrics-title .tiny { font-weight: 400; }
+.hit-lyrics-note { margin: 0; }
+.hit-lyric {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.hit-lyric:active { opacity: .7; }
+.hit-lyric.on { border-color: var(--accent); background: var(--accent-soft); }
+.hit-lyric-top { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.hit-lyric-top b { font-size: 14px; overflow-wrap: anywhere; }
+.hit-lyric-top .tiny { color: var(--muted); }
+.hit-lyric-top > i { font-style: normal; font-size: 12px; color: var(--muted); }
+.hit-lyric-top .lyric-best { font-style: normal; font-size: 11px; font-weight: 600; color: var(--accent); }
+.hit-lyric-lines { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hit-lyric-lines span {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 @keyframes hit-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .hit-sheet-play.busy svg { animation: none; }

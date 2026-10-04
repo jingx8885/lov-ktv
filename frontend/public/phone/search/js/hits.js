@@ -15,6 +15,12 @@ import { repaintPreviewChrome, stopPreview, togglePreview } from "./preview.js";
 let sheetHit = null;
 /** Hit ids imported during this result set; reset on every fresh search. */
 const imported = new Set();
+/** Lyrics candidates per hit id; filled when the detail sheet opens. */
+const hitLyricsCache = new Map();
+/** Lyric edition the singer pinned per hit id; falls back to the scored pick. */
+const selectedLyric = new Map();
+/** Monotonic request id so a slow lyric fetch cannot paint a stale sheet. */
+let sheetLyricsReq = 0;
 
 function hitById(id) {
   return state.searchHits.find((item) => String(item.id) === String(id));
@@ -129,10 +135,10 @@ async function runImport(hit, q) {
     artist: hit.artist,
     language: hit.language || "",
     source: hit.source || "",
-    // Carry the exact lyric candidate selected while scoring this hit; the
-    // importer can still re-check duration, but must not start from an
-    // unrelated same-title result.
-    lyrics_id: hit.lyrics_id || ""
+    // Carry the lyric edition the singer picked in the sheet (or the one
+    // scored during search); the importer can still re-check duration, but
+    // must not start from an unrelated same-title result.
+    lyrics_id: pickedLyricId(hit)
   };
   const {
     ok,
@@ -160,6 +166,85 @@ async function runImport(hit, q) {
   loadWho();
 }
 
+/** Lyric id the import should pin: user's pick, else the scored one. */
+function pickedLyricId(hit) {
+  const key = String(hit.id);
+  if (selectedLyric.has(key)) return selectedLyric.get(key);
+  if (hit.lyrics_id) return String(hit.lyrics_id);
+  const cached = hitLyricsCache.get(key) || [];
+  const best = cached.find((item) => item.recommended);
+  return best ? String(best.id) : "";
+}
+
+function lyricRowHtml(hit, cand) {
+  const score =
+    cand.score == null
+      ? `<i class="meta-pill">${t("phone.search.lyricsUnknown")}</i>`
+      : `<i class="meta-pill ${cand.score >= 80 ? "is-good" : cand.score >= 50 ? "is-mid" : "is-low"}"><span class="lyrics-match">${escapeHtml(t("phone.search.lyricsMatch", { n: Math.round(cand.score) }))}</span></i>`;
+  const best = cand.recommended ? `<i class="lyric-best">${t("phone.search.lyricBest")}</i>` : "";
+  const duration = Number(cand.last_ms || 0);
+  const durationText =
+    duration > 0
+      ? `${Math.floor(duration / 60000)}:${String(Math.floor((duration % 60000) / 1000)).padStart(2, "0")}`
+      : "";
+  const lines = (cand.lines || []).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
+  const on = String(cand.id) === pickedLyricId(hit);
+  return `<button type="button" class="hit-lyric${on ? " on" : ""}" data-lyric="${escapeAttr(cand.id)}">
+    <span class="hit-lyric-top"><b>${escapeHtml(cand.title || hit.title)}</b><span class="tiny">${escapeHtml(cand.artist || "")}</span>${durationText ? `<i>${durationText}</i>` : ""}${score}${best}</span>
+    ${lines ? `<span class="hit-lyric-lines">${lines}</span>` : ""}
+  </button>`;
+}
+
+/** Paint the lyric-version list inside the open sheet. ``candidates`` is
+ *  ``null`` when the request failed so the state reads as an error. */
+function paintSheetLyrics(hit, candidates) {
+  const list = $("hitLyrics");
+  if (!list) return;
+  if (hit.source === "mugen") {
+    list.innerHTML = `<p class="tiny hit-lyrics-note">${t("phone.search.lyricBundled")}</p>`;
+    return;
+  }
+  if (candidates === null) {
+    list.innerHTML = `<p class="tiny hit-lyrics-note">${t("phone.search.lyricFailed")}</p>`;
+    return;
+  }
+  if (!candidates || !candidates.length) {
+    list.innerHTML = `<p class="tiny hit-lyrics-note">${t("phone.search.lyricEmpty")}</p>`;
+    return;
+  }
+  list.innerHTML =
+    `<p class="hit-lyrics-title">${t("phone.search.lyricVersions")}<span class="tiny">${t("phone.search.lyricHint")}</span></p>` +
+    candidates.map((cand) => lyricRowHtml(hit, cand)).join("");
+}
+
+/** Fetch (or reuse) the lyric versions for ``hit`` and paint them. */
+async function loadSheetLyrics(hit, q) {
+  const list = $("hitLyrics");
+  if (!list || !hit) return;
+  const req = ++sheetLyricsReq;
+  const key = String(hit.id);
+  if (hit.source === "mugen") {
+    paintSheetLyrics(hit, []);
+    return;
+  }
+  if (hitLyricsCache.has(key)) {
+    paintSheetLyrics(hit, hitLyricsCache.get(key));
+    return;
+  }
+  list.innerHTML = `<p class="tiny hit-lyrics-note">${t("phone.search.lyricLoading")}</p>`;
+  const loaded = await fetchJson(
+    `/api/lyric_candidates?title=${encodeURIComponent(hit.title || "")}&artist=${encodeURIComponent(hit.artist || "")}&duration=${Number(hit.duration || 0)}&q=${encodeURIComponent(q || "")}`
+  ).catch(() => null);
+  if (req !== sheetLyricsReq || !sheetHit || String(sheetHit.id) !== key) return;
+  if (!loaded || !loaded.ok) {
+    paintSheetLyrics(hit, null);
+    return;
+  }
+  const candidates = Array.isArray(loaded.data.candidates) ? loaded.data.candidates : [];
+  hitLyricsCache.set(key, candidates);
+  paintSheetLyrics(hit, candidates);
+}
+
 /** Paint the detail sheet for ``hit`` and reveal it. */
 export function openHitSheet(hit) {
   if (!hit) return;
@@ -183,6 +268,7 @@ export function openHitSheet(hit) {
   repaintPreviewChrome();
   repaintImportChrome(hit.id);
   $("hitSheet").hidden = false;
+  loadSheetLyrics(hit, $("q").value.trim());
 }
 
 /** Re-paint the open sheet after a locale switch; no-op while it is closed. */
@@ -248,6 +334,8 @@ export async function runSearch(page, append = false) {
     closeHitSheet();
     stopPreview();
     imported.clear();
+    hitLyricsCache.clear();
+    selectedLyric.clear();
     state.searchHits = [];
     state.searchHasMore = false;
     rememberSearch(q);
@@ -357,6 +445,14 @@ export function bindSearch() {
   $("hitSheetAdd").onclick = () => {
     if (sheetHit) runImport(sheetHit, $("q").value.trim());
   };
+  $("hitLyrics").addEventListener("click", (event) => {
+    const row = /** @type {HTMLElement} */ (event.target).closest("[data-lyric]");
+    if (!(row instanceof HTMLElement) || !sheetHit) return;
+    selectedLyric.set(String(sheetHit.id), row.dataset.lyric || "");
+    $("hitLyrics")
+      .querySelectorAll(".hit-lyric")
+      .forEach((item) => item.classList.toggle("on", item === row));
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && $("hitSheet") && !$("hitSheet").hidden) closeHitSheet();
   });

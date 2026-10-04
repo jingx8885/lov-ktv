@@ -29,6 +29,7 @@ _EXC_KEYS = {
     "二维码已过期，请刷新": "api.qr_expired",
     "请先登录": "api.need_login",
     "缺少 q": "api.missing_q",
+    "缺少 title": "api.missing_title",
     "无效的试听 id": "api.bad_preview_id",
     "这首暂时不能试听": "api.preview_unavailable",
     "缺少 query": "api.missing_query",
