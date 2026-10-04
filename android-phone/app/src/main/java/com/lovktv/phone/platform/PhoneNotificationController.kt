@@ -59,6 +59,7 @@ class PhoneNotificationController(private val context: Context) {
     private var lastArtist = ""
     private var lastPlaying = false
     private var lastCover = ""
+    private var lastLyric = ""
     private var lastDurationMs = 0L
     private var lastPositionMs = 0L
 
@@ -103,6 +104,7 @@ class PhoneNotificationController(private val context: Context) {
         lastArtist = payload.optString("artist").trim()
         lastPlaying = payload.optBoolean("playing", false)
         lastCover = payload.optString("cover").trim()
+        lastLyric = payload.optString("lyric").trim()
         lastDurationMs = (payload.optDouble("duration", 0.0) * 1000).toLong().coerceAtLeast(0L)
         lastPositionMs = (payload.optDouble("position", 0.0) * 1000).toLong().coerceIn(0L, if (lastDurationMs > 0) lastDurationMs else Long.MAX_VALUE)
 
@@ -127,21 +129,26 @@ class PhoneNotificationController(private val context: Context) {
         val songTitle = lastTitle.ifBlank { context.getString(if (listening) R.string.notification_idle_listen else R.string.notification_idle_karaoke) }
         val art = artworkFor(songTitle)
 
-        val metaKey = listOf(songTitle, lastArtist, label, lastDurationMs, art != null).joinToString("\u0000")
+        // Lyrics take the second text slot on the card and the lock screen;
+        // the artist name stays attached to the album field so it still shows
+        // where the system renders a third line.
+        val subLine = lastLyric.ifBlank { lastArtist }
+        val albumLine = if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) "$lastArtist · $label" else label
+        val metaKey = listOf(songTitle, subLine, albumLine, lastDurationMs, art != null).joinToString("\u0000")
         if (metaKey != lastMeta) {
             lastMeta = metaKey
             mediaSession.setMetadata(
                 MediaMetadata.Builder()
                     .putString(MediaMetadata.METADATA_KEY_TITLE, songTitle)
-                    .putString(MediaMetadata.METADATA_KEY_ARTIST, lastArtist)
-                    .putString(MediaMetadata.METADATA_KEY_ALBUM, label)
+                    .putString(MediaMetadata.METADATA_KEY_ARTIST, subLine)
+                    .putString(MediaMetadata.METADATA_KEY_ALBUM, albumLine)
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, lastDurationMs)
                     .apply { if (art != null) putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, art) }
                     .build(),
             )
         }
 
-        val key = listOf(lastPage, lastTitle, lastArtist, lastPlaying, lastCover, lastDurationMs, art != null).joinToString("\u0000")
+        val key = listOf(lastPage, lastTitle, lastArtist, lastLyric, lastPlaying, lastCover, lastDurationMs, art != null).joinToString("\u0000")
         if (key == lastPayload) return
         lastPayload = key
 
@@ -156,8 +163,8 @@ class PhoneNotificationController(private val context: Context) {
         }
             .setSmallIcon(R.drawable.ic_notif_small)
             .setContentTitle(songTitle)
-            .setContentText(if (lastArtist.isBlank()) label else lastArtist)
-            .setSubText(label)
+            .setContentText(if (lastLyric.isNotBlank()) lastLyric else if (lastArtist.isBlank()) label else lastArtist)
+            .setSubText(if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) lastArtist else label)
             .setContentIntent(openIntent(lastPage))
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)

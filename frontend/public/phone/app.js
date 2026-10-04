@@ -24,6 +24,7 @@ import { api, installApi } from "./api.js";
 import { installPlatform, phonePlatform } from "./platform.js";
 import { songArtist, songTitle } from "../shared/ui/js/song.js";
 import { songCoverUrl } from "../shared/ui/js/art.js";
+import { cueIndexAt as cueIndexAtCues, cueLine } from "../shared/lyrics/js/paint.js";
 
 const mounted = new WeakSet();
 
@@ -167,6 +168,19 @@ export function mount(root, deps = {}) {
     if (page === "player" && audio && audio.currentSrc) {
       payload.position = audio.currentTime || 0;
       payload.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      // Current sung line for the shade/lock-screen second row.  The desk
+      // page plays on the TV, so there is no local clock to sync lyrics to.
+      const doc = state.playerLyrics || {};
+      const cues = doc.cues || [];
+      const off = Number(doc.offset_ms ?? doc.lyric_offset_ms);
+      const t = Math.max(0, Math.round((audio.currentTime || 0) * 1000) + (Number.isFinite(off) ? off : 0));
+      const idx = cueIndexAtCues(cues, t);
+      const cue = idx >= 0 && t >= cues[idx].start_ms && t < cues[idx].end_ms ? cues[idx] : null;
+      if (cue) {
+        const trans = String(cue.translation || cue.zh || "").trim();
+        const line = cueLine(cue).trim();
+        payload.lyric = line && trans ? line + " / " + trans : line || trans;
+      }
     }
     if (phonePlatform.notification && typeof phonePlatform.notification.update === "function") {
       phonePlatform.notification.update(payload);
