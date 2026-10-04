@@ -19,6 +19,7 @@ import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Build
 import android.os.Handler
+import android.widget.RemoteViews
 import android.os.Looper
 import android.util.LruCache
 import com.lovktv.phone.R
@@ -60,6 +61,8 @@ class PhoneNotificationController(private val context: Context) {
     private var lastPlaying = false
     private var lastCover = ""
     private var lastLyric = ""
+    private var lastLyricTrans = ""
+    private var lastLyricNext = ""
     private var lastDurationMs = 0L
     private var lastPositionMs = 0L
 
@@ -104,7 +107,11 @@ class PhoneNotificationController(private val context: Context) {
         lastArtist = payload.optString("artist").trim()
         lastPlaying = payload.optBoolean("playing", false)
         lastCover = payload.optString("cover").trim()
-        lastLyric = payload.optString("lyric").trim()
+        val lyricRaw = payload.optString("lyric").trim()
+        val split = lyricRaw.split(" / ", limit = 2)
+        lastLyric = split[0].trim()
+        lastLyricTrans = if (split.size > 1) split[1].trim() else ""
+        lastLyricNext = payload.optString("lyricNext").trim()
         lastDurationMs = (payload.optDouble("duration", 0.0) * 1000).toLong().coerceAtLeast(0L)
         lastPositionMs = (payload.optDouble("position", 0.0) * 1000).toLong().coerceIn(0L, if (lastDurationMs > 0) lastDurationMs else Long.MAX_VALUE)
 
@@ -148,7 +155,7 @@ class PhoneNotificationController(private val context: Context) {
             )
         }
 
-        val key = listOf(lastPage, lastTitle, lastArtist, lastLyric, lastPlaying, lastCover, lastDurationMs, art != null).joinToString("\u0000")
+        val key = listOf(lastPage, lastTitle, lastArtist, lastLyric, lastLyricNext, lastPlaying, lastCover, lastDurationMs, art != null).joinToString("\u0000")
         if (key == lastPayload) return
         lastPayload = key
 
@@ -192,12 +199,11 @@ class PhoneNotificationController(private val context: Context) {
                 .addAction(action(R.drawable.ic_notif_mic, context.getString(R.string.notification_mic), ACTION_DESK_MIC))
                 .addAction(action(R.drawable.ic_notif_search, context.getString(R.string.notification_search), ACTION_SEARCH))
         }
-        if (Build.VERSION.SDK_INT >= 21) {
-            builder.setStyle(
-                Notification.MediaStyle()
-                    .setMediaSession(mediaSession.sessionToken)
-                    .setShowActionsInCompactView(0, 1, 2),
-            )
+        builder
+            .setCustomContentView(compactViews(songTitle))
+            .setCustomBigContentView(expandedViews(songTitle, label))
+        if (Build.VERSION.SDK_INT >= 24) {
+            builder.setStyle(Notification.DecoratedCustomViewStyle())
         }
         val notification = builder.build()
         // While a track is actually playing the shade entry is owned by the
@@ -312,12 +318,80 @@ class PhoneNotificationController(private val context: Context) {
         mediaSession.release()
     }
 
-    private fun action(icon: Int, title: String, action: String): Notification.Action {
+    /**
+     * Compact custom row.  The lyric line replaces the artist slot and scrolls
+     * (marquee) so a long line still reads on the lock screen and shade.
+     */
+    private fun compactViews(songTitle: String): RemoteViews {
+        val v = RemoteViews(context.packageName, R.layout.notification_media)
+        v.setImageViewBitmap(R.id.nc_art, artworkFor(songTitle))
+        v.setTextViewText(R.id.nc_title, songTitle)
+        v.setTextViewText(R.id.nc_lyric, lastLyric.ifBlank { if (lastArtist.isBlank()) "" else lastArtist })
+        v.setImageViewResource(R.id.nc_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
+        v.setOnClickPendingIntent(R.id.nc_play, actionPending(if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
+        listOf(R.id.nc_title, R.id.nc_lyric).forEach { v.setInt(it, "setSelected", 1) }
+        return v
+    }
+
+    /**
+     * Expanded card: big current lyric, its translation, then a dimmed preview
+     * of the next line - the karaoke pairing users see on the player page.
+     */
+    private fun expandedViews(songTitle: String, label: String): RemoteViews {
+        val v = RemoteViews(context.packageName, R.layout.notification_media_expanded)
+        v.setImageViewBitmap(R.id.nx_art, artworkFor(songTitle))
+        v.setTextViewText(R.id.nx_title, songTitle)
+        v.setTextViewText(R.id.nx_sub, listOf(lastArtist, label).filter { it.isNotBlank() }.joinToString(" · "))
+        if (lastLyric.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric, lastLyric)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric, android.view.View.GONE)
+        }
+        if (lastLyricTrans.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric_trans, lastLyricTrans)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric_trans, android.view.View.GONE)
+        }
+        if (lastLyricNext.isNotBlank()) {
+            v.setTextViewText(R.id.nx_lyric_next, context.getString(R.string.notification_next_lyric) + "  " + lastLyricNext)
+        } else {
+            v.setViewVisibility(R.id.nx_lyric_next, android.view.View.GONE)
+        }
+        if (lastDurationMs > 0) {
+            val progress = ((lastPositionMs * 1000) / lastDurationMs).toInt().coerceIn(0, 1000)
+            v.setProgressBar(R.id.nx_progress, 1000, progress, false)
+        } else {
+            v.setViewVisibility(R.id.nx_progress, android.view.View.GONE)
+        }
+        val listening = lastPage == "player"
+        v.setImageViewResource(R.id.nx_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
+        v.setImageViewResource(R.id.nx_next, R.drawable.ic_notif_next)
+        if (listening) {
+            v.setImageViewResource(R.id.nx_a1, R.drawable.ic_notif_queue)
+            v.setImageViewResource(R.id.nx_a3, R.drawable.ic_notif_vocal)
+            v.setOnClickPendingIntent(R.id.nx_a1, actionPending(ACTION_TO_DESK))
+            v.setOnClickPendingIntent(R.id.nx_a3, actionPending(ACTION_PLAYER_VOCAL))
+        } else {
+            v.setImageViewResource(R.id.nx_a1, R.drawable.ic_notif_search)
+            v.setImageViewResource(R.id.nx_a3, R.drawable.ic_notif_mic)
+            v.setOnClickPendingIntent(R.id.nx_a1, actionPending(ACTION_SEARCH))
+            v.setOnClickPendingIntent(R.id.nx_a3, actionPending(ACTION_DESK_MIC))
+        }
+        v.setOnClickPendingIntent(R.id.nx_play, actionPending(if (listening) ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
+        v.setOnClickPendingIntent(R.id.nx_next, actionPending(if (listening) ACTION_PLAYER_NEXT else ACTION_DESK_SKIP))
+        listOf(R.id.nx_title, R.id.nx_sub, R.id.nx_lyric, R.id.nx_lyric_trans, R.id.nx_lyric_next).forEach { v.setInt(it, "setSelected", 1) }
+        return v
+    }
+
+    private fun actionPending(action: String): PendingIntent {
         val intent = Intent(context, NotificationActionReceiver::class.java)
             .putExtra(EXTRA_ACTION, action)
             .putExtra(EXTRA_PAGE, lastPage)
-        val pending = PendingIntent.getBroadcast(context, action.hashCode(), intent, pendingFlags())
-        return Notification.Action.Builder(icon, title, pending).build()
+        return PendingIntent.getBroadcast(context, action.hashCode(), intent, pendingFlags())
+    }
+
+    private fun action(icon: Int, title: String, action: String): Notification.Action {
+        return Notification.Action.Builder(icon, title, actionPending(action)).build()
     }
 
     private fun pendingFlags(): Int {

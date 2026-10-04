@@ -182,6 +182,8 @@ export function mount(root, deps = {}) {
         const trans = String(cue.translation || cue.zh || "").trim();
         const line = cueLine(cue).trim();
         payload.lyric = line && trans ? line + " / " + trans : line || trans;
+        const next = cues[idx + 1];
+        if (next) payload.lyricNext = cueLine(next).trim();
       }
     }
     if (phonePlatform.notification && typeof phonePlatform.notification.update === "function") {
