@@ -54,7 +54,7 @@ class PhoneNotificationController(private val context: Context) {
     private val artPending = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val artFailed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val customViewsBroken = detectPreviousCustomViewCrash()
+    private val customViewsBroken = isFragileRemoteViewsRom() || detectPreviousCustomViewCrash()
 
     private var lastPayload = ""
     private var lastMeta = ""
@@ -236,6 +236,16 @@ class PhoneNotificationController(private val context: Context) {
     }
 
     /**
+     * EMUI / MagicOS inflate notification RemoteViews through a stricter
+     * SystemUI pipeline that kills the posting app on anything unusual.  Skip
+     * custom layouts there entirely; the lyric still rides the headline slot.
+     */
+    private fun isFragileRemoteViewsRom(): Boolean {
+        val maker = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
+        return listOf("huawei", "honor", "emui").any { maker.contains(it) }
+    }
+
+    /**
      * A RemoteViews that fails to inflate crashes the POSTING app with a
      * RemoteServiceException one frame later - normal try/catch cannot stop
      * it.  Read the previous process-exit trace once at startup; if the last
@@ -250,11 +260,17 @@ class PhoneNotificationController(private val context: Context) {
         val exits = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 1) }
             .getOrNull() ?: return false
         val info = exits.firstOrNull() ?: return false
-        if (info.reason != ApplicationExitInfo.REASON_CRASH) return false
+        if (info.reason != ApplicationExitInfo.REASON_CRASH &&
+            info.reason != ApplicationExitInfo.REASON_CRASH_NATIVE &&
+            info.reason != ApplicationExitInfo.REASON_ANR
+        ) return false
         val trace = runCatching {
             info.traceInputStream?.bufferedReader()?.use { it.readText() } ?: ""
         }.getOrDefault("")
-        val broken = trace.contains("RemoteViews") || trace.contains("BadNotification") || trace.contains("BadForegroundServiceNotification")
+        val broken = trace.contains("RemoteViews") ||
+            trace.contains("BadNotification") ||
+            trace.contains("BadForegroundServiceNotification") ||
+            trace.contains("notification_media")
         if (broken) prefs.edit().putBoolean(KEY_CUSTOM_BROKEN, true).apply()
         return broken
     }
