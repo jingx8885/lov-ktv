@@ -148,7 +148,12 @@ export function mount(root, deps = {}) {
   // backgrounded.  A small heartbeat also picks up room changes and async
   // player loads without coupling every feature module to the native bridge.
   const syncNotification = () => {
-    const page = state.currentPage === "player" ? "player" : "desk";
+    const audio = $("playerAudio", root);
+    // A loaded local track keeps its controls on the shade while the singer
+    // browses other tabs; the room console only owns it when nothing local
+    // is queued up.
+    const localListening = !!(audio && audio.currentSrc && !audio.ended);
+    const page = state.currentPage === "player" || localListening ? "player" : "desk";
     const card = $("nowCard", root);
     let title = "";
     let artist = "";
@@ -161,7 +166,6 @@ export function mount(root, deps = {}) {
       title = values[0]?.textContent?.trim() || "";
       artist = values[1]?.textContent?.trim() || "";
     }
-    const audio = $("playerAudio", root);
     const playing =
       page === "player"
         ? !!audio && !audio.paused && !!audio.currentSrc
