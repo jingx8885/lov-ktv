@@ -248,6 +248,8 @@ async function loadSheetLyrics(hit, q) {
 /** Paint the detail sheet for ``hit`` and reveal it. */
 export function openHitSheet(hit) {
   if (!hit) return;
+  // A different hit's video preview must not flash inside this sheet.
+  if (sheetHit && String(sheetHit.id) !== String(hit.id)) stopPreview();
   sheetHit = hit;
   $("hitSheetHead").innerHTML =
     artHtml({

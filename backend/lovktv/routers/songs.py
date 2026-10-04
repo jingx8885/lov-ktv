@@ -10,6 +10,7 @@ from lovktv.agents.ja_lyrics import annotate_ja_lines
 from lovktv.catalog.audio import (
     is_preview_id,
     open_preview_stream,
+    open_preview_video,
     resolve_audio_source,
 )
 from lovktv.catalog.index import (
@@ -98,15 +99,36 @@ def api_preview_resolve(
         "id": song_id,
         "kind": source.get("kind"),
         "title": source.get("title") or title,
+        # Bilibili hits carry a DASH video track; the sheet offers the MV
+        # video preview when set.
+        "has_video": source.get("kind") == "bilibili",
     }
 
 
 @router.get("/api/preview/{song_id}")
 def api_preview(
-    request: Request, song_id: str, title: str = "", artist: str = "", media: str = ""
+    request: Request,
+    song_id: str,
+    title: str = "",
+    artist: str = "",
+    media: str = "",
+    format: str = "",
 ):
     if not is_preview_id(song_id):
         fail(request, 400, "api.bad_preview_id")
+    if str(format or "").lower() == "video":
+        # Video previews mux the DASH tracks once per bvid; cached mp4s are
+        # replayable, so allow range requests from <video>.
+        clip = open_preview_video(song_id, title, artist)
+        if clip is None:
+            fail(request, 404, "api.preview_unavailable")
+        from fastapi.responses import FileResponse
+
+        return FileResponse(
+            str(clip),
+            media_type="video/mp4",
+            headers={"Cache-Control": "no-store"},
+        )
     resp, source = open_preview_stream(song_id, title, artist, media=media)
     if resp is None:
         fail(request, 404, "api.preview_unavailable")

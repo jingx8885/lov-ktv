@@ -25,9 +25,10 @@
   backdrop-filter: saturate(160%) blur(16px);
   -webkit-backdrop-filter: saturate(160%) blur(16px);
 }
-.search-row { display: flex; align-items: center; gap: 8px; }
+.search-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .page-search .search-bar {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-width: 0;
   align-items: center;
   gap: 8px;
   min-height: 42px;
@@ -300,6 +301,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* MV 视频预览：bilibili DASH 合并后的 mp4 内嵌在预览卡里。 */
+.hit-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: 14px;
+  background: #000;
+  display: block;
+}
+.hit-video[hidden] { display: none !important; }
 @keyframes hit-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .hit-sheet-play.busy svg { animation: none; }

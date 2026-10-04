@@ -434,3 +434,73 @@ def open_preview_stream(
             return resp, source
         forget_audio_source(song_id)
     return None, source
+
+
+def _preview_video_cache() -> Path:
+    from lovktv.core.config import DATA_DIR
+
+    folder = DATA_DIR / "preview-cache"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder
+
+
+def open_preview_video(song_id: str, title: str = "", artist: str = ""):
+    """Merged audio+video mp4 for the in-sheet MV preview.
+
+    Bilibili serves DASH (separate video/audio), which ``<video>`` cannot
+    play directly, so the first request downloads both tracks and muxes
+    them once into ``data/preview-cache``; later plays reuse the file.
+    Returns a ``Path`` or ``None`` when no video preview is available.
+    """
+    song_id = str(song_id or "").strip()
+    if not bilibili.is_bvid(song_id):
+        return None
+    cache = _preview_video_cache() / f"{song_id}.mp4"
+    if cache.exists() and cache.stat().st_size > 100_000:
+        return cache
+    urls = bilibili.play_urls(song_id, video_height=480)
+    audio_url = str(urls.get("audio_url") or "")
+    video_url = str(urls.get("video_url") or "")
+    if not audio_url or not video_url:
+        return None
+    import os
+    import tempfile
+
+    tmp = Path(
+        tempfile.mkstemp(prefix=f"{song_id}.", dir=str(cache.parent))[1]
+    )
+    video_part = tmp.with_suffix(".v.m4s")
+    audio_part = tmp.with_suffix(".a.m4s")
+    # Keep the in-progress file off the cache name; ``os.replace`` publishes
+    # the finished mp4 atomically so concurrent previews never read a half.
+    out = Path(str(tmp) + ".mp4")
+    try:
+        if not bilibili._curl_download(video_url, video_part, timeout=120):
+            return None
+        if not bilibili._curl_download(audio_url, audio_part, timeout=120):
+            return None
+        ok = bilibili._ffmpeg(
+            "-i",
+            str(video_part),
+            "-i",
+            str(audio_part),
+            "-map",
+            "0:v:0",
+            "-map",
+            "1:a:0",
+            "-c",
+            "copy",
+            "-movflags",
+            "+faststart",
+            str(out),
+        )
+        if not ok or not out.exists() or out.stat().st_size < 50_000:
+            return None
+        os.replace(out, cache)
+        return cache
+    finally:
+        for part in (video_part, audio_part, out, tmp):
+            try:
+                part.unlink()
+            except OSError:
+                pass

@@ -443,7 +443,9 @@ def _pick_audio(items: list[dict[str, Any]]) -> dict[str, Any] | None:
     return usable[0]
 
 
-def _pick_video(items: list[dict[str, Any]]) -> dict[str, Any] | None:
+def _pick_video(
+    items: list[dict[str, Any]], max_height: int = 720
+) -> dict[str, Any] | None:
     usable = [item for item in items if isinstance(item, dict) and _dash_url(item)]
     if not usable:
         return None
@@ -451,15 +453,15 @@ def _pick_video(items: list[dict[str, Any]]) -> dict[str, Any] | None:
     def key(item: dict[str, Any]) -> tuple[int, int, int]:
         height = int(item.get("height") or 0)
         bandwidth = int(item.get("bandwidth") or 0)
-        over = 0 if height and height <= 720 else 1
-        return (over, abs((height or 720) - 720), bandwidth)
+        over = 0 if height and height <= max_height else 1
+        return (over, abs((height or max_height) - max_height), bandwidth)
 
     usable.sort(key=key)
     return usable[0]
 
 
 def play_urls(
-    bvid: str, timeout: float = 12, page: int | None = None
+    bvid: str, timeout: float = 12, page: int | None = None, video_height: int = 720
 ) -> dict[str, Any]:
     bvid = str(bvid or "").strip()
     if not bvid:
@@ -516,13 +518,14 @@ def play_urls(
         else {}
     )
     audio = _pick_audio(dash.get("audio") or [])
-    video = _pick_video(dash.get("video") or [])
+    video = _pick_video(dash.get("video") or [], max_height=video_height)
     audio_url = _dash_url(audio) if audio else ""
     if not audio_url:
         return {}
     return {
         "audio_url": audio_url,
         "video_url": _dash_url(video) if video else "",
+        "has_video": bool(video),
         "title": title or str(data.get("title") or ""),
         "cover": cover or cover_url(str(data.get("pic") or "")),
         "page": selected_page,

@@ -25,9 +25,13 @@ export function repaintPreviewChrome() {
 }
 
 export function stopPreview() {
-  const audio = $("preview");
-  audio.pause();
-  audio.removeAttribute("src");
+  for (const el of [$("preview"), $("hitVideo")]) {
+    if (!el) continue;
+    el.pause();
+    el.removeAttribute("src");
+    el.load();
+    el.hidden = true;
+  }
   state.previewId = "";
   repaintPreviewChrome();
 }
@@ -57,11 +61,45 @@ export async function togglePreview(hit, btn) {
   }
   state.previewId = String(hit.id);
   repaintPreviewChrome();
+  // MV hits get the muxed video stream in the sheet; every other source
+  // keeps the plain audio tag.  A dead video url falls back to audio once.
+  const video = $("hitVideo");
   const audio = $("preview");
-  audio.src = `/api/preview/${encodeURIComponent(hit.id)}?` + params.toString();
-  audio.play().catch(() => {
+  const useVideo = !!(info && info.has_video) && video && sheetOpen();
+  const el = useVideo ? video : audio;
+  const videoParams = new URLSearchParams(params);
+  if (useVideo) videoParams.set("format", "video");
+  el.src = `/api/preview/${encodeURIComponent(hit.id)}?` + videoParams.toString();
+  el.hidden = !useVideo;
+  let retriedAudio = !useVideo;
+  el.onerror = () => {
+    if (state.previewId !== String(hit.id)) return;
+    if (!retriedAudio) {
+      retriedAudio = true;
+      video.hidden = true;
+      audio.src = `/api/preview/${encodeURIComponent(hit.id)}?` + params.toString();
+      audio.play().catch(() => {
+        stopPreview();
+        showToast(t("phone.search.previewFail"));
+      });
+      return;
+    }
+    stopPreview();
+    showToast(t("phone.search.previewFail"));
+  };
+  el.play().catch(() => {
+    if (el.error) {
+      el.onerror();
+      return;
+    }
     stopPreview();
     showToast(t("phone.search.previewFail"));
   });
-  audio.onended = stopPreview;
+  el.onended = stopPreview;
+}
+
+/** Whether the hit detail sheet is up and can host the video element. */
+function sheetOpen() {
+  const sheet = $("hitSheet");
+  return !!sheet && !sheet.hidden;
 }
