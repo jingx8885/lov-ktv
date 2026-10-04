@@ -91,6 +91,12 @@ function syncPlayerSheetTitle() {
   if (api.syncPlayerSheetMeta) api.syncPlayerSheetMeta();
 }
 
+/** Repaint the sheet text after a locale switch without refetching. */
+export function renderPlaylistSheet() {
+  const sheet = $("playlistSheet");
+  if (sheet && !sheet.hidden) renderSheet();
+}
+
 /** Pull the owner's playlists and repaint the chips + the open sheet. */
 export async function refreshPlaylists() {
   const result = await fetchJson("/api/playlists", { cache: "no-store" }).catch(() => null);
@@ -143,7 +149,20 @@ async function toggleMembership(playlist) {
   playlist.count = Math.max(0, (playlist.count || 0) + (inList ? -1 : 1));
   showToast(inList ? t("phone.pl.removedFrom", { name: playlist.name }) : t("phone.pl.addedTo", { name: playlist.name }));
   if (api.renderPlayerSources) api.renderPlayerSources();
-  renderSheet();
+  // Paint just this row: rebuilding the sheet while the tap gesture is still
+  // finishing swaps the node under the pointer and can fire a second toggle.
+  const rowEl =
+    $("playlistList") &&
+    $("playlistList").querySelector(`[data-pl="${CSS.escape(String(playlist.id))}"]`);
+  if (rowEl) {
+    const tiny = rowEl.querySelector(".list-copy .tiny");
+    if (tiny) tiny.textContent = t("phone.desk.nSongs", { n: playlist.count });
+    const tog = rowEl.querySelector(".pl-toggle");
+    if (tog) {
+      tog.classList.toggle("on", playlist.has_song);
+      tog.innerHTML = playlist.has_song ? ICO.check : ICO.plus;
+    }
+  }
   // The player sheet may be showing this very playlist; keep rows in sync.
   if (state.playerSource === "pl:" + playlist.id && api.loadPlayerList) {
     await api.loadPlayerList();

@@ -2308,6 +2308,7 @@ body.phone.player-fullscreen .player-lyrics .next {
   flex: 1 1 auto;
   min-width: 0;
 }
+.sheet .pl-new .btn,
 .pl-new .btn {
   flex: 0 0 auto;
   width: auto;

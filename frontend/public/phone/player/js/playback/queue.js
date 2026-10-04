@@ -156,10 +156,15 @@ export async function setSongFavorite(songId, next, favEl) {
     renderPlayerList();
     return true;
   }
-  if (favEl) {
-    favEl.classList.toggle("on", active);
-    favEl.setAttribute("aria-pressed", String(active));
-    favEl.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
+  const rowEl =
+    favEl ||
+    document.querySelector(
+      `#playerList [data-fav="${CSS.escape(String(songId))}"]`
+    );
+  if (rowEl) {
+    rowEl.classList.toggle("on", active);
+    rowEl.setAttribute("aria-pressed", String(active));
+    rowEl.setAttribute("aria-label", active ? t("phone.desk.unfavorite") : t("phone.desk.favorite"));
   }
   return true;
 }

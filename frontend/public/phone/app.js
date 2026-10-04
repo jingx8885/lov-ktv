@@ -17,7 +17,7 @@ import { bindRoomRtc } from "./room/js/room/rtc.js";
 import { bindPlayback } from "./player/js/playback/ui.js";
 import { updatePlayOrderBtns, bindPlayerList } from "./player/js/playback/queue.js";
 import { bindPlayerSheet, syncPlayerSheetMeta } from "./player/js/playback/sheet.js";
-import { bindPlaylists, refreshPlaylists } from "./player/js/playback/playlists.js";
+import { bindPlaylists, refreshPlaylists, renderPlaylistSheet } from "./player/js/playback/playlists.js";
 import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import { bindLearn } from "./player/js/learn/index.js";
@@ -100,6 +100,8 @@ export function mount(root, deps = {}) {
     paintPhoneMic();
     updatePlayOrderBtns();
     syncPlayerSheetMeta();
+    renderPlaylistSheet();
+    if (api.renderPlayerSources) api.renderPlayerSources();
     must("playerVocalLabel").textContent = state.playerVocal ? t("common.vocal") : t("common.karaoke");
     must("playerVocal").setAttribute(
       "aria-label",
