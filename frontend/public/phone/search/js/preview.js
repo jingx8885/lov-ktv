@@ -5,18 +5,31 @@ import { state } from "../../state.js";
 import { ICO } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
 
+/** Sync every preview control (card badges and the sheet button) with
+ *  ``state.previewId``. Called after playback starts or stops. */
+export function repaintPreviewChrome() {
+  document.querySelectorAll("[data-preview]").forEach((el) => {
+    const playing = !!state.previewId && el.dataset.preview === String(state.previewId);
+    el.classList.remove("busy");
+    el.classList.toggle("on", playing);
+    el.setAttribute("aria-label", playing ? t("phone.search.stopPreview") : t("phone.search.preview"));
+    if (el.id === "hitSheetPlay") {
+      el.innerHTML = playing
+        ? `${ICO.pause}<span>${t("phone.search.stopPreview")}</span>`
+        : `${ICO.play}<span>${t("phone.search.preview")}</span>`;
+    } else {
+      el.innerHTML = playing ? ICO.pause : ICO.play;
+      el.closest(".hit-card")?.classList.toggle("is-playing", playing);
+    }
+  });
+}
+
 export function stopPreview() {
   const audio = $("preview");
   audio.pause();
   audio.removeAttribute("src");
   state.previewId = "";
-  $("hits")
-    .querySelectorAll("[data-preview]")
-    .forEach((btn) => {
-      btn.classList.remove("on", "busy");
-      btn.setAttribute("aria-label", t("phone.search.preview"));
-      btn.innerHTML = ICO.play;
-    });
+  repaintPreviewChrome();
 }
 
 export function previewParams(hit) {
@@ -25,25 +38,25 @@ export function previewParams(hit) {
   return params;
 }
 
+/** Toggle the preview for ``hit``; ``btn`` (the clicked control) shows a busy
+ *  spinner while the resolve request is in flight. Pass null when the toggle
+ *  is driven programmatically. */
 export async function togglePreview(hit, btn) {
-  if (state.previewId === hit.id) {
+  if (state.previewId === String(hit.id)) {
     stopPreview();
     return;
   }
   stopPreview();
-  btn.classList.add("busy");
+  if (btn) btn.classList.add("busy");
   const params = previewParams(hit);
   const { ok, data: info } = await fetchJson(`/api/preview/${encodeURIComponent(hit.id)}/resolve?` + params.toString());
   if (!ok) {
-    btn.classList.remove("busy");
+    if (btn) btn.classList.remove("busy");
     showToast(info.detail || t("phone.search.previewFail"));
     return;
   }
-  state.previewId = hit.id;
-  btn.classList.add("on");
-  btn.classList.remove("busy");
-  btn.setAttribute("aria-label", t("phone.search.stopPreview"));
-  btn.innerHTML = ICO.pause;
+  state.previewId = String(hit.id);
+  repaintPreviewChrome();
   const audio = $("preview");
   audio.src = `/api/preview/${encodeURIComponent(hit.id)}?` + params.toString();
   audio.play().catch(() => {

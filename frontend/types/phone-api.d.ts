@@ -15,7 +15,7 @@ interface PhoneApi {
   loadRoom(opts?: { quiet?: boolean; room?: Room }): Promise<void>;
   runSearch(page: number, append?: boolean): Promise<void>;
   stopPreview(): void;
-  togglePreview(hit: SearchHit, btn: HTMLElement): Promise<void>;
+  togglePreview(hit: SearchHit, btn?: HTMLElement): Promise<void>;
   joinRoom(openScreen?: boolean, quiet?: boolean): Promise<void>;
   openTv(code: string): void;
   requestTvBind(): boolean;

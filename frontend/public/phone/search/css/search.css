@@ -100,9 +100,166 @@
 .search-upload svg { width: 20px; height: 20px; fill: currentColor; }
 .search-upload:active { opacity: .45; }
 .search-upload:disabled { opacity: .35; }
-.hits { margin-top: 4px; }
+.hits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(158px, 1fr));
+  gap: 14px 12px;
+  margin-top: 10px;
+  padding-bottom: 12px;
+}
+.hits > .empty-state,
+.hits > .list-more,
+.hits > .recent-searches { grid-column: 1 / -1; }
 .lyrics-match { color: var(--accent); font-weight: 650; }
 .search-empty { margin: 28px 8px; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.5; }
+
+/* 搜索结果卡片：封面 4:3，下面是标题/歌手/标签与入库按钮。 */
+.hit-card {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.hit-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-m); }
+.hit-artbox {
+  position: relative;
+  border-radius: var(--r-m);
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  container-type: inline-size;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 .5px var(--line);
+}
+.hit-artbox .hit-art {
+  --art-size: 30cqw;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  flex: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.hit-artbox .art-eq { padding-bottom: 9cqw; }
+.hit-play {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(12, 12, 16, .55);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform .15s ease, background .15s ease, opacity .15s ease;
+}
+.hit-play svg { width: 14px; height: 14px; fill: currentColor; }
+.hit-play.on { background: var(--accent); }
+.hit-play.busy { opacity: .6; }
+.hit-card.is-playing .hit-play { background: var(--accent); }
+@media (hover: hover) {
+  .hit-card:hover .hit-artbox { box-shadow: inset 0 0 0 .5px var(--line-strong); }
+  .hit-card:hover .hit-play { transform: scale(1.1); }
+}
+.hit-card:active .hit-play { transform: scale(.94); }
+.hit-foot { display: flex; align-items: flex-start; gap: 6px; padding: 8px 2px 0; }
+.hit-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hit-copy b {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -.01em;
+}
+.hit-copy .tiny { overflow: hidden; font-size: 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.hit-add {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, opacity .15s ease;
+}
+.hit-add svg { width: 16px; height: 16px; fill: currentColor; }
+.hit-add.on { background: rgba(48, 209, 88, .16); color: #30d158; }
+.hit-add.busy { opacity: .5; }
+.hit-add:active { opacity: .6; }
+
+/* 歌曲预览卡：大封面 + 匹配信息 + 试听 / 入库。 */
+.hit-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.hit-sheet-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .08);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.hit-sheet-close svg { width: 14px; height: 14px; fill: currentColor; }
+.hit-sheet-close:active { opacity: .6; }
+.hit-sheet-head { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.hit-sheet-art {
+  --art-size: 96px;
+  flex: 0 0 96px;
+  margin: 0;
+}
+.hit-sheet-copy { flex: 1; min-width: 0; }
+.hit-sheet-copy h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.hit-sheet-copy .tiny { margin: 0; }
+.hit-sheet-meta { margin: 0; font-size: 12px; }
+.hit-sheet-acts { display: flex; gap: 10px; }
+.hit-sheet-acts .btn { flex: 1 1 0; gap: 8px; }
+.hit-sheet-acts .btn svg { width: 18px; height: 18px; fill: currentColor; }
+.hit-sheet-add.on { background: rgba(48, 209, 88, .16); color: #30d158; box-shadow: none; }
+.hit-sheet-play.busy { opacity: .7; }
+.hit-sheet-play.busy svg { animation: hit-spin .8s linear infinite; }
+.hit-sheet-play.busy svg path { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; }
+@keyframes hit-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .hit-sheet-play.busy svg { animation: none; }
+}
 
 @media (min-width: 700px) {
   .page-search {
@@ -152,52 +309,23 @@
   .page-search .hits {
     max-width: 920px;
     margin-top: 4px;
-    padding: 4px 14px;
-    border: 1px solid rgba(255, 255, 255, .08);
-    border-radius: 16px;
-    background: rgba(23, 26, 36, .74);
-  }
-
-  .page-search .hits .list-row {
-    min-height: 60px;
-    padding-top: 11px;
-    padding-bottom: 11px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 16px 14px;
   }
 }
 
-/* 桌面搜歌结果使用卡片网格，给标题、歌手和操作按钮留出稳定空间。 */
+/* 桌面端卡片更宽，留出稳定的标题和操作空间。 */
 @media (min-width: 900px) {
   body.phone .page-search .hits {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    align-content: start;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 18px 16px;
     min-height: 520px;
-    padding: 12px;
-  }
-
-  body.phone .page-search .hits > .list-row {
-    min-width: 0;
-    min-height: 82px;
-    padding: 14px 10px 14px 16px;
-    border: 1px solid rgba(255, 255, 255, .08);
-    border-radius: 12px;
-    background: rgba(255, 255, 255, .035);
-    transition: border-color .16s ease, background .16s ease, transform .16s ease;
-  }
-
-  body.phone .page-search .hits > .list-row::before {
-    display: none;
-  }
-
-  body.phone .page-search .hits > .list-row:hover {
-    border-color: rgba(255, 55, 95, .36);
-    background: rgba(255, 55, 95, .075);
-    transform: translateY(-1px);
+    align-content: start;
   }
 
   body.phone .page-search .hits > .empty-state,
-  body.phone .page-search .hits > .list-more {
+  body.phone .page-search .hits > .list-more,
+  body.phone .page-search .hits > .recent-searches {
     grid-column: 1 / -1;
     width: 100%;
   }
@@ -208,6 +336,8 @@
     align-content: center;
     justify-items: center;
   }
+
+  body.phone .page-search .hits > .skel-list { display: contents; }
 }
 
 @media (min-width: 1100px) {
@@ -228,10 +358,9 @@
   body.phone .page-search .hits {
     flex: 1 1 auto;
     min-height: 0;
+    overflow-y: auto;
   }
 }
-
-/* 最近搜索：空搜索页不再只是一个图标。 */
 .recent-searches { padding: 18px 0 8px; }
 .recent-searches header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
 .recent-searches h3 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
@@ -263,20 +392,23 @@
 .recent-chip:active { transform: scale(.96); }
 .recent-hint { margin: 18px 0 0; color: var(--dim); }
 
-/* 搜索中骨架行。 */
-.skel-list { display: flex; flex-direction: column; }
-.skel-row { pointer-events: none; }
-.skel-row .list-copy { gap: 8px; }
-.skel,
-.art.skel {
+/* 搜索中骨架卡：与真实卡片同形，结果落地不跳版。 */
+.skel-list { display: contents; }
+.skel-card { pointer-events: none; }
+.skel-art {
   display: block;
+  border-radius: var(--r-m);
+  aspect-ratio: 4 / 3;
+  box-shadow: none;
+}
+.skel,
+.skel-art {
   background: linear-gradient(90deg, rgba(255, 255, 255, .05) 20%, rgba(255, 255, 255, .11) 40%, rgba(255, 255, 255, .05) 60%) 0 0 / 300% 100%;
   animation: skel-shimmer 1.3s ease-in-out infinite;
 }
-.art.skel { box-shadow: none; }
-.skel-line { width: 62%; height: 12px; border-radius: 6px; }
-.skel-line.short { width: 36%; height: 10px; }
-.skel-row:nth-child(2n) .skel-line:not(.short) { width: 48%; }
-.skel-row:nth-child(3n) .skel-line:not(.short) { width: 70%; }
+.skel-line { display: block; width: 62%; height: 12px; margin-top: 9px; border-radius: 6px; }
+.skel-line.short { width: 38%; height: 10px; margin-top: 6px; }
+.skel-card:nth-child(2n) .skel-line:not(.short) { width: 48%; }
+.skel-card:nth-child(3n) .skel-line:not(.short) { width: 72%; }
 @keyframes skel-shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
-@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .skel, .skel-art { animation: none; } }

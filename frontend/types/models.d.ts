@@ -25,6 +25,9 @@ interface SearchHit {
   lyrics_ready?: boolean;
   lyrics_match?: "exact" | "close" | "mismatch" | "available" | "none" | "unknown" | string;
   lyrics_match_score?: number | null;
+  lyrics_id?: string;
+  pic?: string;
+  media?: string;
 }
 
 interface Song {
@@ -398,6 +401,7 @@ interface LearnFxRing {
 interface PhoneIcons {
   play: string;
   pause: string;
+  check: string;
   loading: string;
   listen: string;
   plus: string;

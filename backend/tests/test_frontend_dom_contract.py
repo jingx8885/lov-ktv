@@ -52,6 +52,8 @@ def test_phone_entry_has_stable_mount_points_and_boot_module():
         "phone-app",
         "phone-topbar",
         "phone-search",
+        "phone-hit",
+        "phone-hit-sheet",
         "phone-desk",
         "phone-player",
         "phone-tabbar",

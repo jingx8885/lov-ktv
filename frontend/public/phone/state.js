@@ -81,8 +81,8 @@ export function searchEmpty() {
   return `<div class="empty-state"><span class="empty-ico" aria-hidden="true"></span><p>${t("phone.search.empty")}</p><span class="tiny">${t("phone.search.emptyHint")}</span></div>`;
 }
 
-/** Shimmer rows shaped like real hits, so results land without a layout jump. */
-export function searchSkeleton(n = 6) {
-  const row = `<div class="list-row skel-row" aria-hidden="true"><span class="art skel"></span><div class="list-copy"><i class="skel skel-line"></i><i class="skel skel-line short"></i></div></div>`;
-  return `<div class="skel-list" role="status" aria-label="${t("common.searching")}">${row.repeat(n)}</div>`;
+/** Shimmer cards shaped like real hits, so results land without a layout jump. */
+export function searchSkeleton(n = 8) {
+  const card = `<div class="skel-card" aria-hidden="true"><i class="skel skel-art"></i><i class="skel skel-line"></i><i class="skel skel-line short"></i></div>`;
+  return `<div class="skel-list" role="status" aria-label="${t("common.searching")}">${card.repeat(n)}</div>`;
 }

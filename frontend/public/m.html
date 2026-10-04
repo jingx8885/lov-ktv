@@ -83,7 +83,7 @@
         </div>
         <audio id="preview" preload="none"></audio>
         <input type="file" id="file" accept="audio/*,video/*" hidden />
-        <div class="hits inset-list" id="hits">
+        <div class="hits" id="hits">
           <div class="empty-state">
             <span class="empty-ico" aria-hidden="true"></span>
             <p data-i18n="phone.search.empty">搜歌名或歌手</p>
@@ -1093,6 +1093,36 @@
               <em id="micGainVal">80</em>
             </label>
             <p class="tiny" id="micHint"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay" id="hitSheet" data-mount="phone-hit" hidden>
+        <button
+          type="button"
+          class="overlay-backdrop"
+          id="hitSheetBack"
+          data-close-sheet="hitSheet"
+          data-i18n-aria="common.close"
+        ></button>
+        <div class="sheet hit-sheet" data-mount="phone-hit-sheet" role="dialog" aria-labelledby="hitSheetTitle">
+          <div class="sheet-handle" aria-hidden="true"></div>
+          <button type="button" class="hit-sheet-close" id="hitSheetClose" data-i18n-aria="common.close">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 10.6L6.7 5.3 5.3 6.7 10.6 12l-5.3 5.3 1.4 1.4L12 13.4l5.3 5.3 1.4-1.4L13.4 12l5.3-5.3-1.4-1.4z"
+              />
+            </svg>
+          </button>
+          <div class="hit-sheet-head" id="hitSheetHead"></div>
+          <div class="hit-sheet-meta list-meta" id="hitSheetMeta"></div>
+          <div class="hit-sheet-acts">
+            <button type="button" class="btn primary hit-sheet-play" id="hitSheetPlay" data-i18n="phone.search.preview">
+              试听
+            </button>
+            <button type="button" class="btn hit-sheet-add" id="hitSheetAdd" data-i18n="phone.search.add">
+              加入曲库
+            </button>
           </div>
         </div>
       </div>
