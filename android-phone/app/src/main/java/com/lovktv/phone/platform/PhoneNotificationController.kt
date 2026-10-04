@@ -68,6 +68,10 @@ class PhoneNotificationController(private val context: Context) {
     /** DeskActivity wires this to the WebView so the lock-screen seek bar works. */
     var onSeekTo: ((Long) -> Unit)? = null
 
+    /** True while the player page is actually playing - the activity then
+     * shows over the keyguard so the big in-app lyrics face the singer. */
+    var onLyricSurface: ((Boolean) -> Unit)? = null
+
     init {
         if (Build.VERSION.SDK_INT >= 26) {
             // v2 channel: the v1 channel was IMPORTANCE_LOW which some ROMs hide
@@ -126,6 +130,8 @@ class PhoneNotificationController(private val context: Context) {
         val seekable = lastPage == "player" && lastDurationMs > 0
         var sessionActions = PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_SKIP_TO_NEXT
         if (seekable) sessionActions = sessionActions or PlaybackState.ACTION_SEEK_TO
+        onLyricSurface?.invoke(lastPage == "player" && lastPlaying)
+
         mediaSession.setPlaybackState(
             PlaybackState.Builder()
                 .setState(if (lastPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED, lastPositionMs, 1f)
@@ -381,6 +387,7 @@ class PhoneNotificationController(private val context: Context) {
 
     fun close() {
         runCatching { PlaybackService.stop(context) }
+        onLyricSurface?.invoke(false)
         mainHandler.removeCallbacksAndMessages(null)
         runCatching { manager.cancel(NOTIFICATION_ID) }
         runCatching { mediaSession.isActive = false }

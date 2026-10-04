@@ -99,6 +99,10 @@ class DeskActivity : Activity() {
                 }
             }
         }
+        // While a song is playing on the player page the activity floats above
+        // the keyguard, so waking the screen shows the karaoke lyrics
+        // full-size instead of the system media card's single small line.
+        notificationController.onLyricSurface = { show -> runOnUiThread { setShowWhenLockedCompat(show) } }
         playBilling = PlayBillingManager(this) { payload ->
             runOnUiThread { webView.evaluateJavascript("window.dispatchEvent(new CustomEvent('lovktv-play-billing',{detail:$payload}))", null) }
         }
@@ -109,6 +113,19 @@ class DeskActivity : Activity() {
         startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermission(REQ_NOTIFICATIONS, Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    private fun setShowWhenLockedCompat(show: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(show)
+            setTurnScreenOn(show)
+        } else if (show) {
+            @Suppress("DEPRECATION")
+            window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
+        } else {
+            @Suppress("DEPRECATION")
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON)
         }
     }
 
@@ -765,6 +782,11 @@ class DeskActivity : Activity() {
         // be in memory when Android kills the process, losing the login.
         runCatching { CookieManager.getInstance().flush() }
         super.onPause()
+    }
+
+    override fun onStop() {
+        setShowWhenLockedCompat(false)
+        super.onStop()
     }
 
     override fun onDestroy() {
