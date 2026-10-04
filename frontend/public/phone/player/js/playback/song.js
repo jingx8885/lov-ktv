@@ -20,6 +20,7 @@ import { sanitizeLyrics } from "../../../../shared/lyrics/js/paint.js";
 import { kickPlayerPaint, resetPlayerFace } from "./lyrics.js";
 import { markCurrentPlayerPick, renderPlayerList } from "./queue.js";
 import { paintDeskLyrics } from "../../../desk/js/lyrics.js";
+import { prefetchMedia } from "../../../media-cache.js";
 import { syncPlayerSheetMeta } from "./sheet.js";
 
 export async function loadPlayerSong(songId, opts) {
@@ -84,6 +85,10 @@ export async function loadPlayerSong(songId, opts) {
   const karaoke = mediaUrl(song.id, "karaoke.m4a");
   const original = mediaUrl(song.id, "original.mp3");
   const selected = mediaUrl(song.id, playerTrackName());
+  // The playing track is already flowing through the service worker; ask it
+  // to warm the alternate vocal file too when the connection is cheap, so a
+  // mid-song vocal toggle does not spend mobile data.
+  prefetchMedia([karaoke, original]);
   audio.src = selected;
   audio.load();
   audio.onerror = () => {

@@ -136,3 +136,15 @@ def test_pages_inject_same_rev_into_html_and_modules(tmp_path, monkeypatch):
     assert "ja-kanji" not in mix_js.text
     assert "stem2" not in mix_js.text
     assert 'addModule("/shared/audio/js/aec/worklet.js?v=testhash")' in aec_js.text
+
+
+def test_sw_media_script_stays_updatable(tmp_path, monkeypatch):
+    main = _boot(tmp_path, monkeypatch)
+    with TestClient(main.app) as client:
+        sw = client.get("/sw-media.js")
+        app_js = client.get("/phone/app.js")
+    assert sw.status_code == 200
+    assert sw.headers["cache-control"].startswith("no-cache")
+    assert "service worker" in sw.text
+    # Ordinary modules keep the immutable fingerprinted treatment.
+    assert app_js.headers["cache-control"] == "public, max-age=31536000, immutable"

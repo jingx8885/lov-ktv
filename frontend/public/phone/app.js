@@ -21,6 +21,7 @@ import { bindAlign, updateAlignNow } from "./player/js/playback/align.js";
 import { bindPhoneMic, paintPhoneMic } from "./player/js/playback/mic.js";
 import { bindLearn } from "./player/js/learn/index.js";
 import { api, installApi } from "./api.js";
+import { bootMediaCache } from "./media-cache.js";
 import { installPlatform, phonePlatform } from "./platform.js";
 import { songArtist, songTitle } from "../shared/ui/js/song.js";
 import { songCoverUrl } from "../shared/ui/js/art.js";
@@ -60,6 +61,7 @@ export function mount(root, deps = {}) {
   }
   must("room").value = (roomFromUrl || localStorage.getItem("room") || "").toUpperCase();
 
+  bootMediaCache();
   bootI18n();
   const offLang = onLangChange(() => {
     applyDom();
@@ -170,7 +172,7 @@ export function mount(root, deps = {}) {
       payload.duration = Number.isFinite(audio.duration) ? audio.duration : 0;
       // Current sung line for the shade/lock-screen second row.  The desk
       // page plays on the TV, so there is no local clock to sync lyrics to.
-      const doc = state.playerLyrics || {};
+      const doc = /** @type {any} */ (state.playerLyrics || {});
       const cues = doc.cues || [];
       const off = Number(doc.offset_ms ?? doc.lyric_offset_ms);
       const t = Math.max(0, Math.round((audio.currentTime || 0) * 1000) + (Number.isFinite(off) ? off : 0));

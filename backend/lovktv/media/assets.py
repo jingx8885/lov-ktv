@@ -92,6 +92,13 @@ def rewrite_frontend_assets(text: str, rev: str) -> str:
 
 
 def versioned_headers(path: Path) -> dict[str, str]:
+    if path.name == "sw-media.js":
+        # Service worker scripts must update-check freely; pinning them to an
+        # immutable edge/browser cache would stall every media-cache fix.
+        return {
+            "Cache-Control": "no-cache, must-revalidate",
+            "CDN-Cache-Control": "no-store",
+        }
     if path.suffix.lower() == ".html" or path.name == "manifest.json":
         return {
             "Cache-Control": "no-store, max-age=0",
