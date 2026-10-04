@@ -170,7 +170,9 @@ function sendFunnel(kind, meta) {
       keepalive: true,
       credentials: "same-origin"
     }).catch(() => {});
-  } catch (err) { /* telemetry must never break the page */ }
+  } catch (err) {
+    /* telemetry must never break the page */
+  }
 }
 
 const utm = new URLSearchParams(location.search);

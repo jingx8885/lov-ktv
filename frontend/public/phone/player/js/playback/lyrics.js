@@ -181,7 +181,8 @@ export function paintPlayer() {
     if (!seek) return;
     const active = seek.matches(":active");
     const ratio = durSec ? Math.max(0, Math.min(1, time / 1000 / durSec)) : 0;
-    if (!active && durSec && seek.value !== String(Math.round(ratio * 1000))) seek.value = String(Math.round(ratio * 1000));
+    if (!active && durSec && seek.value !== String(Math.round(ratio * 1000)))
+      seek.value = String(Math.round(ratio * 1000));
     const shown = active ? Number(seek.value) / 1000 : ratio;
     // Sub-percent changes repaint the same gradient; halving the precision
     // skips a style write on most frames.
@@ -201,7 +202,8 @@ export function paintPlayer() {
     // The fullscreen affordance follows the same rule as the video surface so
     // it cannot linger after an MV fails to load or a song without MV starts.
     const fullscreen = $("playerFullscreen");
-    if (fullscreen && !document.body.classList.contains("player-fullscreen") && fullscreen.hidden === showMtv) fullscreen.hidden = !showMtv;
+    if (fullscreen && !document.body.classList.contains("player-fullscreen") && fullscreen.hidden === showMtv)
+      fullscreen.hidden = !showMtv;
     // Keep a loaded MV warm while lyrics are shown so switching back is
     // immediate instead of waiting for another decode/buffer cycle.
     if (hasMtv && Number.isFinite(mtv.duration) && mtv.readyState >= 2) {
