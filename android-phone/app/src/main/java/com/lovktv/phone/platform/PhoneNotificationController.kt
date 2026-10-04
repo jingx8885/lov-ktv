@@ -151,17 +151,22 @@ class PhoneNotificationController(private val context: Context) {
         val songTitle = lastTitle.ifBlank { context.getString(if (listening) R.string.notification_idle_listen else R.string.notification_idle_karaoke) }
         val art = artworkFor(songTitle)
 
-        // Lyrics take the second text slot on the card and the lock screen;
-        // the artist name stays attached to the album field so it still shows
-        // where the system renders a third line.
-        val subLine = lastLyric.ifBlank { lastArtist }
-        val albumLine = if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) "$lastArtist · $label" else label
-        val metaKey = listOf(songTitle, subLine, albumLine, lastDurationMs, art != null).joinToString("\u0000")
+        // The system media card renders TITLE in the large bold face and
+        // ARTIST in the small one - so when a lyric line exists it takes the
+        // headline slot and the song title drops to the second row instead.
+        val hasLyric = lastLyric.isNotBlank()
+        val headLine = if (hasLyric) lastLyric else songTitle
+        val subLine = when {
+            hasLyric -> listOf(songTitle, lastArtist).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { label }
+            else -> lastArtist.ifBlank { label }
+        }
+        val albumLine = if (hasLyric && lastArtist.isNotBlank()) "$lastArtist · $label" else label
+        val metaKey = listOf(headLine, subLine, albumLine, lastDurationMs, art != null).joinToString("\u0000")
         if (metaKey != lastMeta) {
             lastMeta = metaKey
             mediaSession.setMetadata(
                 MediaMetadata.Builder()
-                    .putString(MediaMetadata.METADATA_KEY_TITLE, songTitle)
+                    .putString(MediaMetadata.METADATA_KEY_TITLE, headLine)
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, subLine)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, albumLine)
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, lastDurationMs)
@@ -184,9 +189,9 @@ class PhoneNotificationController(private val context: Context) {
             Notification.Builder(context)
         }
             .setSmallIcon(R.drawable.ic_notif_small)
-            .setContentTitle(songTitle)
-            .setContentText(if (lastLyric.isNotBlank()) lastLyric else if (lastArtist.isBlank()) label else lastArtist)
-            .setSubText(if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) lastArtist else label)
+            .setContentTitle(headLine)
+            .setContentText(subLine)
+            .setSubText(label)
             .setContentIntent(openIntent(lastPage))
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -287,9 +292,15 @@ class PhoneNotificationController(private val context: Context) {
             Notification.Builder(context)
         }
             .setSmallIcon(R.drawable.ic_notif_small)
-            .setContentTitle(songTitle)
-            .setContentText(if (lastLyric.isNotBlank()) lastLyric else if (lastArtist.isBlank()) label else lastArtist)
-            .setSubText(if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) lastArtist else label)
+            .setContentTitle(if (lastLyric.isNotBlank()) lastLyric else songTitle)
+            .setContentText(
+                if (lastLyric.isNotBlank()) {
+                    listOf(songTitle, lastArtist).filter { it.isNotBlank() }.joinToString(" · ").ifBlank { label }
+                } else {
+                    lastArtist.ifBlank { label }
+                },
+            )
+            .setSubText(label)
             .setContentIntent(openIntent(lastPage))
             .setCategory(Notification.CATEGORY_TRANSPORT)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
@@ -432,8 +443,13 @@ class PhoneNotificationController(private val context: Context) {
     private fun compactViews(songTitle: String): RemoteViews {
         val v = RemoteViews(context.packageName, R.layout.notification_media)
         v.setImageViewBitmap(R.id.nc_art, artworkFor(songTitle))
-        v.setTextViewText(R.id.nc_title, songTitle)
-        v.setTextViewText(R.id.nc_lyric, lastLyric.ifBlank { lastArtist })
+        if (lastLyric.isNotBlank()) {
+            v.setTextViewText(R.id.nc_title, lastLyric)
+            v.setTextViewText(R.id.nc_lyric, listOf(songTitle, lastArtist).filter { it.isNotBlank() }.joinToString(" · "))
+        } else {
+            v.setTextViewText(R.id.nc_title, songTitle)
+            v.setTextViewText(R.id.nc_lyric, lastArtist)
+        }
         v.setImageViewResource(R.id.nc_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
         v.setOnClickPendingIntent(R.id.nc_play, actionPending(if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
         v.setBoolean(R.id.nc_title, "setSelected", true)
