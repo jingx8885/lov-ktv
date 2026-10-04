@@ -88,6 +88,11 @@ def _remote_asr_model() -> str:
     return configured
 
 
+def _remote_asr_chain() -> list[str]:
+    """Ordered remote providers from the asr_model setting (comma separated)."""
+    return [part.strip().lower() for part in _remote_asr_model().split(",") if part.strip()]
+
+
 def _cache_matches_model(path: Path, remote_model: str) -> bool:
     """Do not reuse a cache produced by a different ASR backend."""
     try:
@@ -95,11 +100,18 @@ def _cache_matches_model(path: Path, remote_model: str) -> bool:
     except (OSError, json.JSONDecodeError):
         return False
     provider = str(data.get("provider") or "").strip().lower()
-    if remote_model not in {_FISH_MODEL, _GROK_MODEL}:
+    # Accept a cache from any configured provider in the chain; the primary
+    # is what we expect to have produced it.
+    chain = [part for part in remote_model.split(",") if part.strip()]
+    known = {
+        _FISH_MODEL: "fish-audio",
+        _GROK_MODEL: "grok-stt",
+    }
+    accepted = {known[p] for p in chain if p in known}
+    if not accepted:
         # Legacy local Whisper caches have no provider marker; remote caches do.
         return provider not in {"fish-audio", "grok-stt"}
-    expected = "fish-audio" if remote_model == _FISH_MODEL else "grok-stt"
-    return provider == expected
+    return provider in accepted
 
 
 def _remote_asr_endpoint() -> tuple[str, str] | None:
@@ -282,8 +294,8 @@ def _audio_duration_seconds(path: Path) -> float:
             ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
             capture_output=True, text=True, timeout=20, check=False,
         )
-        return max(0.0, float((result.stdout or "").strip()))
-    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return max(0.0, float((getattr(result, "stdout", None) or "").strip()))
+    except (OSError, ValueError, subprocess.TimeoutExpired, AttributeError):
         return 0.0
 
 
@@ -401,17 +413,41 @@ def _transcribe_fish(
     all_words: list[dict[str, Any]] = []
     all_segments: list[dict[str, Any]] = []
     duration = _audio_duration_seconds(audio_path)
-    try:
-        for chunk, offset in _remote_chunks(audio_path):
-            if not _audio_has_voice(chunk):
-                continue
-            mime = mimetypes.guess_type(chunk.name)[0] or "application/octet-stream"
-            with chunk.open("rb") as audio:
-                response = httpx.post(url, headers={"Authorization": f"Bearer {key}"}, data={"model": _FISH_MODEL, "language": language, "ignore_timestamps": "false"}, files={"file": (chunk.name, audio, mime)}, timeout=180.0)
-            response.raise_for_status()
-            payload = response.json()
-            if not isinstance(payload, dict):
-                continue
+
+    def request_chunk(request_path: Path) -> tuple[list[dict[str, Any]], dict[str, Any] | None]:
+        """One chunk, up to three attempts.  Returns (words, segments payload)."""
+        for attempt in range(3):
+            try:
+                mime = mimetypes.guess_type(request_path.name)[0] or "application/octet-stream"
+                with request_path.open("rb") as audio:
+                    response = httpx.post(
+                        url,
+                        headers={"Authorization": f"Bearer {key}"},
+                        data={"model": _FISH_MODEL, "language": language, "ignore_timestamps": "false"},
+                        files={"file": (request_path.name, audio, mime)},
+                        timeout=180.0,
+                    )
+                response.raise_for_status()
+                payload = response.json()
+                if isinstance(payload, dict):
+                    words = _parse_fish_payload(payload)
+                    if words:
+                        return words, payload
+            except Exception:  # noqa: BLE001 - retry transient upstream failures
+                pass
+            if attempt < 2:
+                time.sleep(0.5 * (attempt + 1))
+        return [], None
+
+    for chunk, offset in _remote_chunks(audio_path):
+        if not _audio_has_voice(chunk):
+            continue
+        chunk_words, payload = request_chunk(chunk)
+        if not chunk_words:
+            # Recover only this failed slice locally before giving up on the
+            # whole track; a single bad chunk should not lose the song.
+            chunk_words = _transcribe_faster_whisper(chunk, language, None, "")
+        if payload:
             for segment in payload.get("segments") or []:
                 row = dict(segment)
                 row["start"] = float(row.get("start") or 0) + offset
@@ -421,23 +457,21 @@ def _transcribe_fish(
                     row["end"] = min(max(row["end"], row["start"]), duration)
                 if duration <= 0 or row["start"] <= duration + 0.5:
                     all_segments.append(row)
-            for word in _parse_fish_payload(payload):
-                word["start_ms"] += int(offset * 1000)
-                word["end_ms"] += int(offset * 1000)
-                # A few Fish responses contain hallucinated timestamps far
-                # beyond the submitted chunk; never let those corrupt the
-                # merged timeline.
-                if duration > 0:
-                    word["end_ms"] = min(word["end_ms"], int(round(duration * 1000)))
-                if duration <= 0 or word["start_ms"] / 1000.0 <= duration + 0.5:
-                    all_words.append(word)
-        all_words = _dedupe_words(all_words)
-        if cache_path and all_words:
-            cache_path.parent.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(json.dumps({"duration": _audio_duration_seconds(audio_path), "segments": all_segments, "provider": "fish-audio"}, ensure_ascii=False), encoding="utf-8")
-        return all_words
-    except Exception:  # noqa: BLE001 - remote ASR is an optional fallback
-        return []
+        for word in chunk_words:
+            word["start_ms"] += int(offset * 1000)
+            word["end_ms"] += int(offset * 1000)
+            # A few Fish responses contain hallucinated timestamps far
+            # beyond the submitted chunk; never let those corrupt the
+            # merged timeline.
+            if duration > 0:
+                word["end_ms"] = min(word["end_ms"], int(round(duration * 1000)))
+            if duration <= 0 or word["start_ms"] / 1000.0 <= duration + 0.5:
+                all_words.append(word)
+    all_words = _dedupe_words(all_words)
+    if cache_path and all_words:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps({"duration": _audio_duration_seconds(audio_path), "segments": all_segments, "provider": "fish-audio"}, ensure_ascii=False), encoding="utf-8")
+    return all_words
 
 
 def _transcribe_grok(
@@ -472,6 +506,7 @@ def _transcribe_grok(
         # Grok's upstream decoder is sensitive to isolated PCM WAV sections;
         # MP3 chunks preserve the vocal signal and avoid valid-200/empty
         # responses seen in the latter half of this song.
+        dead_chunks = 0
         for chunk_index, (chunk, offset) in enumerate(
             _remote_chunks(audio_path, audio_format="mp3")
         ):
@@ -499,16 +534,15 @@ def _transcribe_grok(
 
             def request_chunk(request_path: Path, phase: str) -> list[dict[str, Any]]:
                 words: list[dict[str, Any]] = []
-                # Keep the initial request plus three retries.  Empty 200
+                # Keep the initial request plus two retries.  Empty 200
                 # responses are treated like transient upstream failures.
-                for attempt in range(4):
+                for attempt in range(3):
                     attempt_debug: dict[str, Any] = {
                         "phase": phase,
                         "attempt": attempt + 1,
                         "file": request_path.name,
                     }
-                    if debug_trace is not None:
-                        chunk_debug["attempts"].append(attempt_debug)
+                    chunk_debug["attempts"].append(attempt_debug)
                     try:
                         mime = mimetypes.guess_type(request_path.name)[0] or "application/octet-stream"
                         attempt_debug["mime"] = mime
@@ -536,11 +570,28 @@ def _transcribe_grok(
                     except Exception as exc:  # noqa: BLE001 - retry transient upstream failures
                         attempt_debug["error"] = f"{type(exc).__name__}: {exc}"
                     persist_debug()
-                    if attempt < 3:
+                    if attempt < 2:
                         time.sleep(0.5)
                 return words
 
             chunk_words = request_chunk(chunk, "mp3")
+            hard_fail = (
+                chunk_debug["attempts"]
+                and all(
+                    isinstance(a.get("status_code"), int) and a["status_code"] >= 500
+                    for a in chunk_debug["attempts"]
+                    if a.get("status_code") is not None
+                )
+                and sum(1 for a in chunk_debug["attempts"] if a.get("status_code") is not None) >= 2
+            )
+            if hard_fail:
+                dead_chunks += 1
+                if dead_chunks >= 2:
+                    chunk_debug["gateway_dead"] = True
+                    persist_debug()
+                    break
+            else:
+                dead_chunks = 0
             if not chunk_words:
                 # Some upstream paths reject MP3 frames while accepting the
                 # equivalent PCM WAV.  Re-encode only this failed slice so
@@ -788,10 +839,19 @@ def transcribe_words(
     if not audio_path.exists():
         return []
 
-    # Remote Fish ASR is opt-in.  Keep local Whisper as the normal path and as
-    # a fallback when the gateway or upstream model is unavailable.
-    if remote_model in {_FISH_MODEL, _GROK_MODEL}:
-        remote_fn = _transcribe_fish if remote_model == _FISH_MODEL else _transcribe_grok
+    # Remote ASR is opt-in.  A comma-separated asr_model selects a provider
+    # chain (each tried in order before local Whisper); a single value keeps
+    # the historical behavior.  Keep local Whisper as the final fallback when
+    # every remote path is unavailable.
+    chain = [part.strip() for part in remote_model.split(",") if part.strip()]
+    remote_fns = {
+        _FISH_MODEL: _transcribe_fish,
+        _GROK_MODEL: _transcribe_grok,
+    }
+    for provider in chain:
+        remote_fn = remote_fns.get(provider)
+        if remote_fn is None:
+            continue
         remote = remote_fn(audio_path, whisper_language(language), cache_path)
         if remote:
             return remote

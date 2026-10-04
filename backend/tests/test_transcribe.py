@@ -3,11 +3,28 @@ import sys
 import types
 import wave
 
+import pytest
+
 from lovktv.pipeline.transcribe import (
     _parse_grok_payload,
     _parse_whisper_json,
     transcribe_words,
 )
+
+
+@pytest.fixture
+def asr_model_env(monkeypatch):
+    """Isolate the asr_model setting from a shared dev database."""
+    from lovktv.storage import settings
+
+    previous = settings.get("asr_model")
+
+    def _set(value):
+        settings.set_value("asr_model", value)
+
+    yield _set
+    settings.set_value("asr_model", previous)
+
 
 
 def test_parse_grok_spreads_collapsed_phrase_timestamps():
@@ -85,11 +102,12 @@ def test_parse_whisper_prefers_word_timestamps(tmp_path):
     assert words[-1]["segment"] == 1
 
 
-def test_transcribe_waits_for_existing_whisper(monkeypatch, tmp_path):
+def test_transcribe_waits_for_existing_whisper(monkeypatch, tmp_path, asr_model_env):
     from lovktv.pipeline import transcribe
 
     audio = tmp_path / "vocals.wav"
     audio.write_bytes(b"x")
+    asr_model_env("")
     started = {"run": 0}
 
     def fake_pids(_path):
@@ -126,11 +144,12 @@ def test_transcribe_waits_for_existing_whisper(monkeypatch, tmp_path):
     assert started["run"] == 0
 
 
-def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path):
+def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path, asr_model_env):
     from lovktv.pipeline import transcribe
 
     audio = tmp_path / "vocals.wav"
     audio.write_bytes(b"x")
+    asr_model_env("")
     started = {"run": 0, "idle": 0}
 
     def fake_pids_for(_path):
@@ -162,7 +181,7 @@ def test_transcribe_waits_for_other_whisper(monkeypatch, tmp_path):
     assert started["run"] == 1
 
 
-def test_transcribe_uses_faster_whisper_when_cli_missing(monkeypatch, tmp_path):
+def test_transcribe_uses_faster_whisper_when_cli_missing(monkeypatch, tmp_path, asr_model_env):
     from lovktv.pipeline import transcribe
 
     class Word:
@@ -181,6 +200,7 @@ def test_transcribe_uses_faster_whisper_when_cli_missing(monkeypatch, tmp_path):
     transcribe._faster_whisper_model.cache_clear()
     audio = tmp_path / "vocals.wav"
     audio.write_bytes(b"x")
+    asr_model_env("")
     words = transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
     assert words == [
         {"text": "hello", "start_ms": 1250, "end_ms": 2500, "segment": 0}
@@ -331,7 +351,8 @@ def test_grok_keeps_successful_chunks_when_a_later_chunk_fails(monkeypatch, tmp_
     monkeypatch.setattr(transcribe.httpx, "post", fake_post)
     words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
 
-    assert calls == 6  # second chunk: Grok retries, then Fish fallback retries once
+    # second chunk: Grok mp3 x3 + wav reencode x3 + Fish fallback x3
+    assert calls == 10
     assert words == [{"text": "kept", "start_ms": 100, "end_ms": 400, "segment": 0}]
     assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
 
@@ -348,7 +369,13 @@ def test_grok_falls_back_per_failed_chunk(monkeypatch, tmp_path):
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
     monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
     monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
-    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_args, **_kwargs: iter([(chunk, 30.0)]))
+    # The Grok loop slices at 30s while the Fish fallback sees the same
+    # chunk as a fresh file (offset 0) so the word shift happens once.
+    monkeypatch.setattr(
+        transcribe,
+        "_remote_chunks",
+        lambda _path, audio_format="wav": iter([(chunk, 0.0 if audio_format == "wav" else 30.0)]),
+    )
     monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _path: True)
 
     class Response:
@@ -451,7 +478,7 @@ def test_grok_retries_wav_before_local_fallback(monkeypatch, tmp_path):
 
     words = transcribe._transcribe_grok(chunk, "en", None)
 
-    assert seen_names == ["chunk.mp3"] * 4 + ["chunk.wav"]
+    assert seen_names == ["chunk.mp3"] * 3 + ["chunk.wav"]
     assert words == [{"text": "wav-ok", "start_ms": 200, "end_ms": 500, "segment": 0}]
 
 
@@ -497,3 +524,195 @@ def test_remote_skips_silent_wav(monkeypatch, tmp_path):
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
     monkeypatch.setattr(transcribe, "httpx", types.SimpleNamespace(post=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("silent chunk must be skipped"))))
     assert transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json") == []
+
+
+def test_fish_retries_then_succeeds(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "fish-transcribe-1")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_a, **_k: iter([(audio, 0.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _p: True)
+    monkeypatch.setattr(transcribe, "_transcribe_faster_whisper", lambda *_a: [])
+
+    calls = {"n": 0}
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"segments": [{"start": 0.0, "end": 1.0, "text": "hello"}]}
+
+    def fake_post(*_a, **_k):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("gateway hiccup")
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    assert calls["n"] == 3
+    assert [w["text"] for w in words] == ["hello"]
+
+
+def test_fish_chunk_falls_back_to_local_whisper(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    chunk = tmp_path / "chunk-0000.wav"
+    chunk.write_bytes(b"c")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "fish-transcribe-1")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_a, **_k: iter([(chunk, 12.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _p: True)
+    monkeypatch.setattr(
+        transcribe,
+        "_transcribe_faster_whisper",
+        lambda *_a: [{"text": "rescued", "start_ms": 100, "end_ms": 400, "segment": 0}],
+    )
+
+    def boom(*_a, **_k):
+        raise RuntimeError("fish down")
+
+    monkeypatch.setattr(transcribe.httpx, "post", boom)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    assert words == [{"text": "rescued", "start_ms": 12100, "end_ms": 12400, "segment": 0}]
+
+
+def test_fish_empty_result_still_recovers_chunk(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    chunk = tmp_path / "chunk-0000.wav"
+    chunk.write_bytes(b"c")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "fish-transcribe-1")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_a, **_k: iter([(chunk, 0.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _p: True)
+    monkeypatch.setattr(
+        transcribe,
+        "_transcribe_faster_whisper",
+        lambda *_a: [{"text": "local", "start_ms": 10, "end_ms": 60, "segment": 0}],
+    )
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"segments": []}
+
+    monkeypatch.setattr(transcribe.httpx, "post", lambda *_a, **_k: Response())
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    assert [w["text"] for w in words] == ["local"]
+
+
+def test_fish_chain_falls_through_to_grok(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "fish-transcribe-1,grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_a, **_k: iter([(audio, 0.0)]))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _p: True)
+    monkeypatch.setattr(transcribe, "_transcribe_faster_whisper", lambda *_a: [])
+
+    seen = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"words": [{"text": "grok", "start": 0.1, "end": 0.4}]}
+
+    def fake_post(_url, data=None, **_k):
+        model = (data or {}).get("model")
+        seen.append(model)
+        if model == "fish-transcribe-1":
+            raise RuntimeError("fish gateway dead")
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    words = transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    assert "fish-transcribe-1" in seen
+    assert "grok-stt" in seen
+    assert words and words[0]["text"] == "grok"
+    assert '"provider": "grok-stt"' in (tmp_path / "asr.json").read_text()
+
+
+def test_grok_stops_when_gateway_dead(monkeypatch, tmp_path):
+    from lovktv.pipeline import transcribe
+
+    audio = tmp_path / "vocals.wav"
+    audio.write_bytes(b"fake audio")
+    chunks = []
+    for i in range(4):
+        c = tmp_path / f"chunk-{i:04d}.mp3"
+        c.write_bytes(b"x")
+        chunks.append((c, i * 30.0))
+    monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
+    monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
+    monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
+    monkeypatch.setattr(transcribe, "whisper_pids_for", lambda _path: [])
+    monkeypatch.setattr(transcribe, "any_whisper_pids", lambda: [])
+    monkeypatch.setattr(transcribe, "_remote_chunks", lambda *_a, **_k: iter(chunks))
+    monkeypatch.setattr(transcribe, "_audio_has_voice", lambda _p: True)
+    monkeypatch.setattr(
+        transcribe,
+        "_transcribe_fish",
+        lambda *_a: [{"text": "fish", "start_ms": 0, "end_ms": 100, "segment": 0}],
+    )
+    monkeypatch.setattr(transcribe, "_transcribe_faster_whisper", lambda *_a: [])
+
+    posts = {"n": 0}
+
+    class Response:
+        status_code = 503
+
+        def raise_for_status(self):
+            raise RuntimeError("503 upstream")
+
+        def json(self):
+            return {}
+
+    def fake_post(*_a, **_k):
+        posts["n"] += 1
+        return Response()
+
+    monkeypatch.setattr(transcribe.httpx, "post", fake_post)
+    transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json")
+    # Without the circuit breaker this would be 4 chunks * 3 attempts;
+    # the breaker must stop after the second hard-failed chunk.
+    assert posts["n"] <= 6
+
+
+def test_chain_cache_accepts_secondary_provider(monkeypatch, tmp_path):
+    from lovktv.pipeline.transcribe import _cache_matches_model
+
+    cache = tmp_path / "asr.json"
+    cache.write_text(json.dumps({"provider": "grok-stt", "words": []}), encoding="utf-8")
+    assert _cache_matches_model(cache, "fish-transcribe-1,grok-stt")
+    assert not _cache_matches_model(cache, "fish-transcribe-1")
+
+    cache2 = tmp_path / "asr2.json"
+    cache2.write_text(json.dumps({"provider": "fish-audio", "words": []}), encoding="utf-8")
+    assert _cache_matches_model(cache2, "fish-transcribe-1,grok-stt")
