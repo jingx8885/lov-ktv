@@ -47,6 +47,6 @@
         android:id="@+id/nc_play"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:background="@android:color/transparent"
         android:contentDescription="@string/notification_play" />
 </LinearLayout>

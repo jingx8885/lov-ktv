@@ -101,6 +101,12 @@ class PhoneNotificationController(private val context: Context) {
     }
 
     fun update(payloadJson: String) {
+        // Notification work must never take the player down: remote views and
+        // bitmaps can throw on some ROMs, so the whole refresh is guarded.
+        runCatching { updateInternal(payloadJson) }
+    }
+
+    private fun updateInternal(payloadJson: String) {
         val payload = runCatching { JSONObject(payloadJson) }.getOrNull() ?: return
         lastPage = payload.optString("page").ifBlank { "desk" }
         lastTitle = payload.optString("title").trim()
@@ -205,12 +211,75 @@ class PhoneNotificationController(private val context: Context) {
         if (Build.VERSION.SDK_INT >= 24) {
             builder.setStyle(Notification.DecoratedCustomViewStyle())
         }
-        val notification = builder.build()
-        // While a track is actually playing the shade entry is owned by the
-        // mediaPlayback foreground service, which also keeps the WebView
-        // (and the JS that advances tracks) alive in the background.
-        PlaybackService.sync(context, lastPlaying, notification)
-        manager.notify(NOTIFICATION_ID, notification)
+        postNotification(builder, songTitle, label)
+    }
+
+    /**
+     * Custom RemoteViews crash SystemUI-side too (bad attr, bitmap over the
+     * binder transaction limit, ROM quirks).  If either path throws we rebuild
+     * the plain media card so listening never takes the app down.
+     */
+    private fun postNotification(builder: Notification.Builder, songTitle: String, label: String) {
+        var notification = runCatching { builder.build() }.getOrElse {
+            rebuildStandard(songTitle, label)
+        }
+        try {
+            // While a track is actually playing the shade entry is owned by the
+            // mediaPlayback foreground service, which also keeps the WebView
+            // (and the JS that advances tracks) alive in the background.
+            PlaybackService.sync(context, lastPlaying, notification)
+            manager.notify(NOTIFICATION_ID, notification)
+        } catch (_: RuntimeException) {
+            notification = rebuildStandard(songTitle, label)
+            runCatching {
+                PlaybackService.sync(context, lastPlaying, notification)
+                manager.notify(NOTIFICATION_ID, notification)
+            }
+        }
+    }
+
+    /** The pre-custom-layout media card: known-safe on every ROM we shipped. */
+    private fun rebuildStandard(songTitle: String, label: String): Notification {
+        val builder = if (Build.VERSION.SDK_INT >= 26) {
+            Notification.Builder(context, CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
+            .setSmallIcon(R.drawable.ic_notif_small)
+            .setContentTitle(songTitle)
+            .setContentText(if (lastLyric.isNotBlank()) lastLyric else if (lastArtist.isBlank()) label else lastArtist)
+            .setSubText(if (lastLyric.isNotBlank() && lastArtist.isNotBlank()) lastArtist else label)
+            .setContentIntent(openIntent(lastPage))
+            .setCategory(Notification.CATEGORY_TRANSPORT)
+            .setVisibility(Notification.VISIBILITY_PUBLIC)
+            .setColor(context.getColor(R.color.accent))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setShowWhen(false)
+        val playIcon = if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play
+        val playLabel = if (lastPlaying) context.getString(R.string.notification_pause) else context.getString(R.string.notification_play)
+        if (lastPage == "player") {
+            builder
+                .addAction(action(playIcon, playLabel, ACTION_PLAYER_PLAY))
+                .addAction(action(R.drawable.ic_notif_next, context.getString(R.string.notification_next), ACTION_PLAYER_NEXT))
+                .addAction(action(R.drawable.ic_notif_vocal, context.getString(R.string.notification_vocal), ACTION_PLAYER_VOCAL))
+                .addAction(action(R.drawable.ic_notif_queue, context.getString(R.string.notification_to_karaoke), ACTION_TO_DESK))
+        } else {
+            builder
+                .addAction(action(playIcon, playLabel, ACTION_DESK_PAUSE))
+                .addAction(action(R.drawable.ic_notif_next, context.getString(R.string.notification_skip), ACTION_DESK_SKIP))
+                .addAction(action(R.drawable.ic_notif_mic, context.getString(R.string.notification_mic), ACTION_DESK_MIC))
+                .addAction(action(R.drawable.ic_notif_search, context.getString(R.string.notification_search), ACTION_SEARCH))
+        }
+        if (Build.VERSION.SDK_INT >= 21) {
+            builder.setStyle(
+                Notification.MediaStyle()
+                    .setMediaSession(mediaSession.sessionToken)
+                    .setShowActionsInCompactView(0, 1, 2),
+            )
+        }
+        return builder.build()
     }
 
     private fun artworkFor(title: String): Bitmap? {
@@ -311,11 +380,11 @@ class PhoneNotificationController(private val context: Context) {
     }
 
     fun close() {
-        PlaybackService.stop(context)
+        runCatching { PlaybackService.stop(context) }
         mainHandler.removeCallbacksAndMessages(null)
-        manager.cancel(NOTIFICATION_ID)
-        mediaSession.isActive = false
-        mediaSession.release()
+        runCatching { manager.cancel(NOTIFICATION_ID) }
+        runCatching { mediaSession.isActive = false }
+        runCatching { mediaSession.release() }
     }
 
     /**
@@ -415,7 +484,7 @@ class PhoneNotificationController(private val context: Context) {
         private const val LEGACY_CHANNEL_ID = "lovktv_playback"
         private const val NOTIFICATION_ID = 4101
         private const val REQUEST_OPEN = 4102
-        private const val ART_SIZE = 512
+        private const val ART_SIZE = 256
 
         /** Same curated gradient pairs as frontend/public/shared/ui/js/art.js. */
         private val PALETTE = listOf(
