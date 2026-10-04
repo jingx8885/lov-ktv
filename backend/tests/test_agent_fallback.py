@@ -125,4 +125,25 @@ def test_agent_read_timeout_defaults_to_six_minutes():
 
 def test_same_fallback_name_is_not_tried_twice(monkeypatch):
     monkeypatch.setattr(ja_lyrics, "agent_model", lambda: "grok-4.6")
-    assert ja_lyrics.agent_model_chain() == ["grok-4.6"]
+    monkeypatch.delenv("LOVKTV_AGENT_FALLBACK_MODEL", raising=False)
+    assert ja_lyrics.agent_model_chain() == ["grok-4.6", "gpt-6-luna", "grok-4.7"]
+
+
+def test_multiple_fallbacks_are_walked_in_order(monkeypatch):
+    monkeypatch.setenv("LOVKTV_AGENT_FALLBACK_MODEL", "gpt-6-luna,grok-4.7")
+    monkeypatch.setattr(ja_lyrics, "agent_model", lambda: "swe-2")
+    assert ja_lyrics.agent_model_chain() == ["swe-2", "gpt-6-luna", "grok-4.7"]
+
+    calls = _install(monkeypatch, [httpx.TimeoutException("timed out")] * 4 + [_response(200, "from-grok47")])
+    monkeypatch.setenv("LOVKTV_AGENT_FALLBACK_MODEL", "gpt-6-luna,grok-4.7")
+    monkeypatch.setattr(ja_lyrics, "agent_model", lambda: "swe-2")
+    text = ja_lyrics.post_chat([{"role": "user", "content": "hi"}], temperature=0.1)
+    assert text == "from-grok47"
+    assert [item["model"] for item in calls] == [
+        "swe-2",
+        "swe-2",
+        "gpt-6-luna",
+        "gpt-6-luna",
+        "grok-4.7",
+    ]
+    assert ja_lyrics.agent_model_used() == "grok-4.7"

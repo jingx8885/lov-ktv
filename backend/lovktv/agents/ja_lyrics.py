@@ -103,9 +103,10 @@ def agent_model() -> str:
     )
 
 
-# gpt-5.6-luna is the production primary. When it times out or the gateway
-# reports it down, lyric annotation and alignment switch to this model.
-FALLBACK_AGENT_MODEL = "grok-4.6"
+# The primary agent model is configured in settings ("agent_model"; production
+# runs swe-2). When it times out or the gateway reports it down, lyric
+# annotation and alignment walk these fallbacks in order.
+FALLBACK_AGENT_MODEL = "gpt-6-luna,grok-4.7"
 _AGENT_ATTEMPTS = 2
 _RETRYABLE_STATUS = {404, 408, 409, 425, 429, 500, 502, 503, 504}
 _used_models: ContextVar[tuple[str, ...] | None] = ContextVar(
@@ -114,23 +115,29 @@ _used_models: ContextVar[tuple[str, ...] | None] = ContextVar(
 
 
 class AgentUnavailable(RuntimeError):
-    """Primary model and grok-4.6 both failed after retries."""
+    """Primary model and every fallback failed after retries."""
 
 
 class _RetryableAgentError(RuntimeError):
     """Transient gateway/model failure; try again, then the fallback model."""
 
 
+def agent_fallback_models() -> list[str]:
+    """Comma-separated fallback chain tried in order after the primary."""
+    raw = os.environ.get("LOVKTV_AGENT_FALLBACK_MODEL") or FALLBACK_AGENT_MODEL
+    return [name.strip() for name in raw.split(",") if name.strip()]
+
+
 def agent_fallback_model() -> str:
-    return (os.environ.get("LOVKTV_AGENT_FALLBACK_MODEL") or FALLBACK_AGENT_MODEL).strip()
+    models = agent_fallback_models()
+    return models[0] if models else ""
 
 
 def agent_model_chain(explicit: str | None = None) -> list[str]:
-    """Primary model first, then the fallback when it is a different name."""
+    """Primary model first, then each configured fallback in order."""
     primary = (explicit or agent_model()).strip()
-    fallback = agent_fallback_model()
     chain: list[str] = []
-    for name in (primary, fallback):
+    for name in [primary, *agent_fallback_models()]:
         if name and name not in chain:
             chain.append(name)
     return chain
@@ -251,7 +258,7 @@ def post_chat(
     model: str | None = None,
     accept: Any = None,
 ) -> str:
-    """Call the lyric agent, retry the primary model, then switch to grok-4.6.
+    """Call the lyric agent, retry the primary model, then walk the fallbacks.
 
     ``accept`` runs on the raw text. Raise ``ValueError`` when the text is not
     usable so a crashed model is retried and then replaced by the fallback.
