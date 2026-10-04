@@ -1,5 +1,5 @@
 import "./install.js";
-import { bootI18n, onLangChange, applyDom } from "../shared/i18n/js/i18n.js";
+import { bootI18n, onLangChange, applyDom, t } from "../shared/i18n/js/i18n.js";
 import { $, setDomRoot } from "../shared/ui/js/dom.js";
 import { state } from "./state.js";
 import { bootAuth, renderUserChip, stopAuthTimers } from "./auth/js/login.js";
@@ -123,8 +123,8 @@ export function mount(root, deps = {}) {
       const qr = $("qr", root);
       if (qr && qr.querySelector("canvas, img, svg")) return;
       const code = $("code", root);
-      if (code) code.textContent = "开房失败";
-      if (qr) qr.textContent = (err && err.message) || "请按菜单键检查处理服务器";
+      if (code) code.textContent = t("tv.openFail");
+      if (qr) qr.textContent = (err && err.message) || t("tv.serverFail");
     });
   return () => {
     active = false;

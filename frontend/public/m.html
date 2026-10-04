@@ -166,7 +166,7 @@
           </span>
           <span class="desk-login-copy"
             ><strong id="deskLoginTitle" data-i18n="phone.who.loginCta">登录账号</strong
-            ><small id="deskLoginHint" data-i18n="phone.who.loginCtaHint">登录后点歌不限量，房间自动记住</small></span
+            ><small id="deskLoginHint" data-i18n="phone.who.loginCtaHint">点歌不限量，自动记住房间</small></span
           >
           <span class="desk-login-arrow" aria-hidden="true">›</span>
         </button>
@@ -237,7 +237,7 @@
               </div>
               <button type="button" class="btn" id="deskStudyBook" data-i18n="phone.lyrics.studyBook">学习本</button>
             </div>
-            <p class="tiny desk-lyrics-hint" data-i18n="phone.lyrics.tapHint">点击歌词里的词，收藏到学习本</p>
+            <p class="tiny desk-lyrics-hint" data-i18n="phone.lyrics.tapHint">点词收藏到学习本</p>
             <div class="desk-lyrics-list inset-list" id="deskLyricsList"></div>
           </div>
         </div>
@@ -392,9 +392,7 @@
             <input type="range" id="playerMicGain" min="0" max="100" value="80" />
             <em id="playerMicVal">80</em>
           </label>
-          <p class="tiny player-hint" id="playerMicHint" data-i18n="phone.player.micHintIdle">
-            戴上耳机。伴奏和人声只在耳机里，不当外放，所以没有回音。
-          </p>
+          <p class="tiny player-hint" id="playerMicHint" data-i18n="phone.player.micHintIdle">戴上耳机唱，不会有回音</p>
           <div class="player-clock player-clock-dock" id="playerClockDock" hidden>
             <b id="playerNowDock">0:00</b>
             <input type="range" id="playerSeekDock" min="0" max="1000" value="0" data-i18n-aria="phone.player.seek" />
@@ -589,10 +587,7 @@
             <button type="button" class="seg-btn" data-lyric-mode="all" data-i18n="phone.lyric.all">全部</button>
           </div>
           <div class="learn-body" id="learnHome">
-            <p class="learn-lead" data-i18n="learn.lead">
-              每关练一段歌词。单词、句意、听写、朗读四项都答对 70%
-              就解锁下一关。答错的题会在本轮末尾再考，也会进错题本。
-            </p>
+            <p class="learn-lead" data-i18n="learn.lead">每关练一段歌词，四项答对 70% 解锁下一关，错题自动复习。</p>
             <div class="learn-daily" id="learnDailyGoal" role="status" aria-live="polite"></div>
             <div class="learn-goals" id="learnGoals" hidden></div>
             <button type="button" class="learn-book-card" id="learnBookBtn" hidden>
@@ -601,7 +596,7 @@
             </button>
             <button type="button" class="learn-book-card is-song-words" id="learnSongWordsBtn">
               <b data-i18n="learn.songWords">背这首歌的词</b>
-              <span id="learnSongWordsMeta" data-i18n="learn.songWordsHint">挑出要背的词，按记忆曲线复习</span>
+              <span id="learnSongWordsMeta" data-i18n="learn.songWordsHint">挑词背诵，按记忆复习</span>
             </button>
             <div class="learn-path" id="learnPath"></div>
             <details class="learn-free" id="learnFree">
@@ -627,7 +622,7 @@
                 <span class="learn-mode-copy">
                   <i>QUIZ</i>
                   <em data-i18n="learn.quiz">歌词测验</em>
-                  <span data-i18n="learn.quizHint">原曲往前走，一句一题。</span>
+                  <span data-i18n="learn.quizHint">跟原曲一句一题</span>
                 </span>
               </button>
               <button type="button" class="learn-mode is-tap" data-learn-mode="tap">
@@ -641,7 +636,7 @@
                 <span class="learn-mode-copy">
                   <i>TAP</i>
                   <em data-i18n="learn.tap">点词音游</em>
-                  <span data-i18n="learn.tapHint">原曲往前走，按歌词顺序点散开的词。</span>
+                  <span data-i18n="learn.tapHint">按歌词顺序点词</span>
                 </span>
               </button>
               <button type="button" class="learn-mode is-echo" data-learn-mode="echo">
@@ -655,7 +650,7 @@
                 <span class="learn-mode-copy">
                   <i>ECHO</i>
                   <em data-i18n="learn.echo">翻唱挑战</em>
-                  <span data-i18n="learn.echoHint">听原唱，对着伴奏翻唱。试听满意再下一句。</span>
+                  <span data-i18n="learn.echoHint">听原唱跟唱，满意再下一句</span>
                 </span>
               </button>
             </details>
@@ -664,7 +659,7 @@
             <div class="learn-library-head">
               <div>
                 <p class="learn-song" data-i18n="learn.libraryKicker">学习中心</p>
-                <p class="learn-lead" data-i18n="learn.libraryLead">先选一首歌，再继续上次的进度。</p>
+                <p class="learn-lead" data-i18n="learn.libraryLead">选歌继续学</p>
               </div>
               <button
                 class="btn ghost learn-library-search-go"
@@ -695,7 +690,7 @@
                     <path d="M6 3h2v18H6zm3 1h10l-2.4 4L19 12H9z" /></svg></span
                 ><span
                   ><b data-i18n="learn.mistakesBook">错题本</b
-                  ><small data-i18n="learn.mistakesBookHint">把易错句再练一遍</small></span
+                  ><small data-i18n="learn.mistakesBookHint">易错句再练一遍</small></span
                 ><strong>›</strong>
               </button>
               <button type="button" class="learn-tool-card is-word" id="learnWordsBtn">
@@ -706,7 +701,7 @@
                     /></svg></span
                 ><span
                   ><b data-i18n="learn.wordsBook">单词背诵</b
-                  ><small data-i18n="learn.wordsBookHint">复习从歌词收藏的词</small></span
+                  ><small data-i18n="learn.wordsBookHint">复习收藏的词</small></span
                 ><strong>›</strong>
               </button>
             </div>
@@ -744,19 +739,15 @@
             </div>
           </div>
           <div class="learn-body" id="learnBook" hidden>
-            <p class="learn-lead" id="learnBookLead" data-i18n="learn.bookHint">0 道待复习，连对两次才移出</p>
+            <p class="learn-lead" id="learnBookLead" data-i18n="learn.bookHint">连对两次移出</p>
             <div class="learn-book-list" id="learnBookList"></div>
             <div class="learn-dock learn-dock-col">
               <button class="btn primary" id="learnBookGo" type="button" data-i18n="learn.bookGo">练错题</button>
             </div>
           </div>
           <div class="learn-body learn-words" id="learnWords" hidden>
-            <p class="learn-lead" id="learnWordsLead" data-i18n="learn.words.lead">
-              默认全部要背。已经会的点「砍」，那一行会消失、不再出题。点「全部放回」还能恢复。
-            </p>
-            <p class="tiny learn-words-thin" id="learnWordsThin" hidden data-i18n="learn.words.thin">
-              这首歌词太少，可能凑不满四选一。
-            </p>
+            <p class="learn-lead" id="learnWordsLead" data-i18n="learn.words.lead">默认全选要背，会的点「砍」，可随时放回。</p>
+            <p class="tiny learn-words-thin" id="learnWordsThin" hidden data-i18n="learn.words.thin">词太少，选项可能不满</p>
             <div class="learn-words-bar">
               <span id="learnWordsCount" role="status" aria-live="polite"></span>
               <span class="learn-words-bulk">
@@ -993,9 +984,7 @@
           <button class="btn primary" id="scanTv" type="button" hidden data-i18n="phone.room.scan">扫电视上的码</button>
           <button class="btn primary" id="join" type="button" data-i18n="phone.room.join">进入房间</button>
           <a class="btn" id="openTv" href="/tv.html" target="lovktv-tv" data-i18n="phone.room.openTv">打开电视</a>
-          <p class="tiny" id="roomState" data-i18n="phone.room.hint">
-            听歌和学习不用绑。点左上角房间或「我的」可绑电视、换电视。
-          </p>
+          <p class="tiny" id="roomState" data-i18n="phone.room.hint">不绑也能搜歌、听歌、学习</p>
         </div>
       </div>
 
@@ -1021,7 +1010,7 @@
             <img class="avatar" id="whoAvatar" alt="" hidden />
             <div>
               <b id="whoName" data-i18n="phone.who.out">未登录</b>
-              <p class="tiny" id="whoHint" data-i18n="phone.who.hint">写个用户名和密码就能进。用户名可用房间号。</p>
+              <p class="tiny" id="whoHint" data-i18n="phone.who.hint">用户名可用房间号，密码自设</p>
             </div>
           </div>
           <form id="whoPassForm">
@@ -1059,7 +1048,7 @@
               <p class="tiny" id="whoPoints" hidden></p>
               <button class="who-earn" id="whoWatchAd" type="button" data-i18n="phone.who.watchAd">看广告 +1</button>
             </div>
-            <p class="tiny who-rule" data-i18n="phone.who.pointsRule">点歌 1 积分 · 处理 5 积分 · 看 30 秒广告 +1</p>
+            <p class="tiny who-rule" data-i18n="phone.who.pointsRule">点歌 1 · 处理 5 · 广告 +1</p>
           </div>
           <button class="btn" id="rebindTv" type="button" hidden data-i18n="phone.room.bind">绑定电视</button>
           <button class="btn" id="whoLogout" type="button" hidden data-i18n="phone.who.logout">退出</button>
