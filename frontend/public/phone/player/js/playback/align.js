@@ -155,7 +155,7 @@ export function enterEdit() {
   const cues = state.playerLyrics.cues || [];
   if (cues.length) {
     const at = cueIndexAt(($("playerAudio").currentTime || 0) * 1000);
-    state.selectedCue = at >= 0 ? at : 0;
+    state.selectedCue = Math.min(Math.max(at, 0), cues.length - 1);
   }
   state.mixTrackOn = false;
   state.voiceTrackOn = true;
@@ -299,7 +299,7 @@ export function markAtPlayhead() {
   const playMs = (audio.currentTime || 0) * 1000;
   let index = state.selectedCue;
   if (index < 0 || index >= cues.length) index = cueIndexAt(playMs);
-  if (index < 0) index = cues.length - 1;
+  if (index < 0 || index >= cues.length) index = cues.length - 1;
   const cue = cues[index];
   if (Math.abs(playMs - cue.start_ms) < 30) return;
   state.selectedCue = index;

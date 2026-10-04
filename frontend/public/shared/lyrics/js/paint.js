@@ -570,7 +570,9 @@ export function cueIndexAt(cues, t) {
     }
   }
   if (at < 0) return 0;
-  if (t >= list[at].end_ms) return Math.min(at + 1, list.length - 1);
+  // Past the final cue there is no upcoming line; callers key off the
+  // insertion point, so report cues.length instead of pinning the last row.
+  if (t >= list[at].end_ms) return at + 1;
   // Overlapping cues still resolve to the first covering line.
   while (at > 0 && list[at - 1].end_ms > t && list[at - 1].start_ms <= t) at -= 1;
   return at;

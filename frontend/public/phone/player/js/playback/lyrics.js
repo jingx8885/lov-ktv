@@ -52,8 +52,11 @@ function paintPlayerScroll(cues, time, mode, index) {
   const lyricTime = lyricClockMs(time);
   // Keep only the previous, current, and next two cues in the DOM. Rendering
   // the complete lyric document here made long songs expensive in WebView.
-  const start = index >= 0 ? Math.max(0, index - 1) : 0;
-  const end = index >= 0 ? Math.min(cues.length, index + 3) : 0;
+  // index can be cues.length once the last cue has ended; anchor the
+  // window on the final rows so the tail still shows the finished lines.
+  const focus = index >= 0 ? Math.min(index, cues.length - 1) : -1;
+  const start = focus >= 0 ? Math.max(0, focus - 1) : 0;
+  const end = focus >= 0 ? Math.min(cues.length, focus + 3) : 0;
   const windowKey = scrollCuesKey + ":" + start + ":" + end + ":" + mode;
   if (list.dataset.windowKey !== windowKey) {
     list.textContent = "";
@@ -116,8 +119,11 @@ export function paintPlayer() {
   });
   const lyricTime = lyricClockMs(time);
   const index = cueIndexAtCues(cues, lyricTime);
-  const idx = index >= 0 && lyricTime >= cues[index].start_ms && lyricTime < cues[index].end_ms ? index : -1;
-  const upcomingIdx = idx < 0 && index >= 0 ? index : -1;
+  const idx =
+    index >= 0 && index < cues.length && lyricTime >= cues[index].start_ms && lyricTime < cues[index].end_ms
+      ? index
+      : -1;
+  const upcomingIdx = idx < 0 && index >= 0 && index < cues.length ? index : -1;
   // Phase 1 writes markup and measures; fills land in phase 2 so no frame
   // reads layout after a style write on the same row.
   const pending = [];
