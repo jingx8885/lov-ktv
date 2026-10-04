@@ -329,7 +329,7 @@ class PhoneNotificationController(private val context: Context) {
         v.setTextViewText(R.id.nc_lyric, lastLyric.ifBlank { if (lastArtist.isBlank()) "" else lastArtist })
         v.setImageViewResource(R.id.nc_play, if (lastPlaying) R.drawable.ic_notif_pause else R.drawable.ic_notif_play)
         v.setOnClickPendingIntent(R.id.nc_play, actionPending(if (lastPage == "player") ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
-        listOf(R.id.nc_title, R.id.nc_lyric).forEach { v.setInt(it, "setSelected", 1) }
+        listOf(R.id.nc_title, R.id.nc_lyric).forEach { v.setBoolean(it, "setSelected", true) }
         return v
     }
 
@@ -379,7 +379,7 @@ class PhoneNotificationController(private val context: Context) {
         }
         v.setOnClickPendingIntent(R.id.nx_play, actionPending(if (listening) ACTION_PLAYER_PLAY else ACTION_DESK_PAUSE))
         v.setOnClickPendingIntent(R.id.nx_next, actionPending(if (listening) ACTION_PLAYER_NEXT else ACTION_DESK_SKIP))
-        listOf(R.id.nx_title, R.id.nx_sub, R.id.nx_lyric, R.id.nx_lyric_trans, R.id.nx_lyric_next).forEach { v.setInt(it, "setSelected", 1) }
+        listOf(R.id.nx_title, R.id.nx_sub, R.id.nx_lyric, R.id.nx_lyric_trans, R.id.nx_lyric_next).forEach { v.setBoolean(it, "setSelected", true) }
         return v
     }
 
