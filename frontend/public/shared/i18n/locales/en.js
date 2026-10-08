@@ -577,6 +577,9 @@ export default {
   "login.logout": "Sign out",
   "login.footerNote": "Signing in means you agree to the usage rules",
   "login.bottom": "Every song deserves a live moment.",
+  "login.appsTitle": "Get the app for smoother queuing",
+  "login.appUpdate": "Check for updates",
+  "login.appUpdateCur": "Current {version}",
   "login.qrExpired": "TV code expired — refresh the TV and scan again",
   "login.deviceFail": "Could not claim this device",
 

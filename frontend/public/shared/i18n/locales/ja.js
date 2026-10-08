@@ -575,6 +575,9 @@ export default {
   "login.logout": "ログアウト",
   "login.footerNote": "ログインは利用ルールへの同意です",
   "login.bottom": "すべての歌に、ライブの瞬間を。",
+  "login.appsTitle": "アプリを入れて快適に選曲",
+  "login.appUpdate": "アップデートを確認",
+  "login.appUpdateCur": "現在 {version}",
   "login.qrExpired": "テレビのコード期限切れ。テレビを更新して再スキャン",
   "login.deviceFail": "この端末のID取得に失敗しました",
 

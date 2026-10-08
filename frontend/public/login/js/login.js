@@ -54,6 +54,74 @@ function signedIn() {
   return isAccount(meUser);
 }
 
+function nativeBridge() {
+  try {
+    const tv = window.LovKtvNative;
+    if (tv) return { api: tv, channel: "tv" };
+    const phone = window.LovKtvPhone;
+    if (phone) return { api: phone, channel: "phone" };
+  } catch (err) {
+    /* bridge probing must never break login */
+  }
+  return null;
+}
+
+function formatSize(bytes) {
+  const n = Number(bytes) || 0;
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)} MB`;
+  if (n >= 1000) return `${Math.round(n / 1000)} KB`;
+  return `${n} B`;
+}
+
+function versionedAppUrl(raw, item) {
+  const href = String(raw || "").trim();
+  if (!href) return "";
+  const version = String((item && (item.version || item.sha256)) || "").trim();
+  if (!version) return href;
+  return `${href}${href.includes("?") ? "&" : "?"}v=${encodeURIComponent(version)}`;
+}
+
+function paintApps(catalog) {
+  const card = $("loginApps");
+  if (!card) return;
+  const data = catalog && typeof catalog === "object" ? catalog : {};
+  let rows = 0;
+  card.querySelectorAll("a[data-app]").forEach((el) => {
+    const item = data[el.getAttribute("data-app") || ""];
+    el.hidden = !item;
+    if (!item) return;
+    rows += 1;
+    if (item.url) el.setAttribute("href", versionedAppUrl(item.url, item));
+    const ver = el.querySelector(".ver");
+    if (ver) ver.textContent = t("landing.apps.ver", { version: item.version || "", size: formatSize(item.size) });
+  });
+  const native = nativeBridge();
+  const upd = $("appUpdate");
+  if (upd) {
+    const can = !!(native && typeof native.api.checkUpdate === "function");
+    upd.hidden = !can;
+    if (can) {
+      rows += 1;
+      let label = "";
+      try {
+        label = String(native.api.version() || "").trim();
+      } catch (err) {
+        label = "";
+      }
+      const updVer = $("appUpdateVer");
+      if (updVer) updVer.textContent = label ? t("login.appUpdateCur", { version: label }) : "";
+    }
+  }
+  card.hidden = rows === 0;
+}
+
+function loadApps() {
+  fetch("/api/apps")
+    .then((resp) => (resp.ok ? resp.json() : null))
+    .then((catalog) => paintApps(catalog))
+    .catch(() => paintApps(null));
+}
+
 function paintQuota() {
   const hint = $("quotaHint");
   if (!hint) return;
@@ -206,6 +274,21 @@ $("passBox").addEventListener("submit", (event) => {
 $("authLoginTab").onclick = () => setAuthMode("login");
 $("authRegisterTab").onclick = () => setAuthMode("register");
 $("passRegister").onclick = () => setAuthMode(authMode === "register" ? "login" : "register");
+const appUpdateBtn = $("appUpdate");
+if (appUpdateBtn) {
+  appUpdateBtn.onclick = () => {
+    const native = nativeBridge();
+    if (native && typeof native.api.checkUpdate === "function") {
+      try {
+        native.api.checkUpdate();
+      } catch (err) {
+        showError(t("login.deviceFail"));
+      }
+    }
+  };
+}
+loadApps();
+
 $("togglePassword").onclick = () => {
   const input = $("password");
   const visible = input.type === "text";

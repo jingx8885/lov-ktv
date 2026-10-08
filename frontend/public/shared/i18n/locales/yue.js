@@ -571,6 +571,9 @@ export default {
   "login.logout": "退出",
   "login.footerNote": "登入即同意使用規則",
   "login.bottom": "令每一首歌，都有現場。",
+  "login.appsTitle": "裝上 App，點歌更順手",
+  "login.appUpdate": "檢查更新",
+  "login.appUpdateCur": "目前 {version}",
   "login.qrExpired": "電視碼過期喇，請重新整理電視再掃",
   "login.deviceFail": "本機認號失敗",
 

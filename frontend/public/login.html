@@ -36,6 +36,44 @@
         <p class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="login.eyebrow">家庭包厢 · 随时开唱</span></p>
         <h1><span data-i18n="login.heroA">把今晚的歌，</span><br /><span class="gradient-text" data-i18n="login.heroB">唱给喜欢的人听。</span></h1>
         <p class="intro-copy" data-i18n="login.heroLead">一个账号连起电视和手机，房间自动记住。</p>
+
+        <div class="lyric-stage" aria-hidden="true">
+          <div class="lyric-tv">
+            <span class="lyric-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <p class="lyric-line dim">唱过的都过去</p>
+            <p class="lyric-line live">正唱的这一句</p>
+            <p class="lyric-line dim small">下一句已经排好</p>
+          </div>
+          <div class="lyric-phone">
+            <span class="lp-glow"></span>
+            <p class="lp-line hot">点歌 · 4 首排队</p>
+            <p class="lp-line">去伴奏</p>
+            <p class="lp-line">切歌</p>
+          </div>
+        </div>
+
+        <div class="apps-card" id="loginApps" hidden>
+          <p class="apps-title"><span class="apps-dot" aria-hidden="true"></span><span data-i18n="login.appsTitle">装上 App，点歌更顺手</span></p>
+          <a class="app-row" data-app="tv" href="/apps/tv.apk" hidden>
+            <span class="app-ic" aria-hidden="true">▤</span>
+            <span class="app-name" data-i18n="landing.apps.tv">下载电视 App</span>
+            <small class="ver"></small>
+            <span class="app-go" aria-hidden="true">↓</span>
+          </a>
+          <a class="app-row" data-app="phone" href="/apps/phone.apk" hidden>
+            <span class="app-ic" aria-hidden="true">▣</span>
+            <span class="app-name" data-i18n="landing.apps.phone">下载手机 App</span>
+            <small class="ver"></small>
+            <span class="app-go" aria-hidden="true">↓</span>
+          </a>
+          <button class="app-row app-update" id="appUpdate" type="button" hidden>
+            <span class="app-ic" aria-hidden="true">↻</span>
+            <span class="app-name" data-i18n="login.appUpdate">检查更新</span>
+            <small class="ver" id="appUpdateVer"></small>
+            <span class="app-go" aria-hidden="true">→</span>
+          </button>
+        </div>
+
         <ol class="auth-steps">
           <li><span>01</span><div><strong data-i18n="login.step1Title">登录或注册</strong><small data-i18n="login.step1Text">用户名可用房间号</small></div></li>
           <li><span>02</span><div><strong data-i18n="login.step2Title">打开电视</strong><small data-i18n="login.step2Text">电视出码，手机扫码进房</small></div></li>

@@ -669,6 +669,9 @@ export default {
   "login.logout": "退出",
   "login.footerNote": "登录即同意使用规则",
   "login.bottom": "让每一首歌，都有现场。",
+  "login.appsTitle": "装上 App，点歌更顺手",
+  "login.appUpdate": "检查更新",
+  "login.appUpdateCur": "当前 {version}",
   "login.qrExpired": "电视码过期了，请刷新电视再扫",
   "login.deviceFail": "本机认号失败",
 
