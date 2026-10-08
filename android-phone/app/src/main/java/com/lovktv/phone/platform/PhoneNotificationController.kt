@@ -54,7 +54,12 @@ class PhoneNotificationController(private val context: Context) {
     private val artPending = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val artFailed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var customViewsBroken = isFragileRemoteViewsRom() || detectArmedPostCrash() || detectPreviousCustomViewCrash()
+    // Custom RemoteViews disabled: even "safe-list" attributes crash some
+    // Android 10 / heavily-skinned SystemUI builds, and a RemoteViews inflate
+    // failure kills the app with RemoteServiceException before any fallback
+    // can run. The standard MediaStyle card still shows lyric, art and
+    // transport keys everywhere.
+    private var customViewsBroken = true
     private var customPostStreak = 0
 
     private var lastPayload = ""
