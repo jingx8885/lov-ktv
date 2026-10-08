@@ -8,6 +8,10 @@ body.tv {
   gap: 0.28em;
   width: 100%;
   max-width: none;
+  padding-top: 4px;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 4px 0 0;
   border-radius: 0;
   background: transparent;
@@ -25,6 +29,10 @@ body.tv.is-waiting .lyric-plate {
   background-image: none !important;
   border: 0 !important;
   box-shadow: none !important;
+  padding-top: 0;
+  padding-right: !important;
+  padding-bottom: 0;
+  padding-left: !important;
   padding: 0 !important;
 }
 body.tv.has-native-mv .lyric-plate,
@@ -36,6 +44,10 @@ body.tv .lyric-plate.bare {
   border-radius: 0 !important;
   box-shadow: none !important;
   outline: none !important;
+  padding-top: 0;
+  padding-right: !important;
+  padding-bottom: 0;
+  padding-left: !important;
   padding: 0 !important;
 }
 body.tv .lyrics .line {
@@ -55,8 +67,16 @@ body.tv .lyrics .line {
   width: max-content;
   max-width: 100%;
   min-width: 0;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   color: #fff;
+  padding-top: 0.12em;
+  padding-right: 0.45em;
+  padding-bottom: 0.16em;
+  padding-left: 0.45em;
   padding: 0.12em 0.45em 0.16em;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.5);

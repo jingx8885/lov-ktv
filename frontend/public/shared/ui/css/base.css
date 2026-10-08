@@ -32,6 +32,10 @@ input, textarea {
   align-items: center;
   justify-content: center;
   gap: 12px;
+  margin-top: 16px;
+  margin-right: 0;
+  margin-bottom: 4px;
+  margin-left: 0;
   margin: 16px 0 4px;
 }
 .pager .btn { min-width: 96px; }
@@ -40,6 +44,10 @@ input, textarea {
 .tabs button.on { background: var(--accent); }
 .btn.wechat { background: #07c160; color: #fff; }
 .sid-display {
+  margin-top: 4px;
+  margin-right: 0;
+  margin-bottom: 8px;
+  margin-left: 0;
   margin: 4px 0 8px;
   font-size: 42px;
   font-weight: 800;
@@ -81,10 +89,18 @@ body.androidtv .btn { min-height: 56px; font-size: 18px; }
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 12px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 12px 0 0;
 }
 .lang-picker button {
   min-height: 32px;
+  padding-top: 0;
+  padding-right: 10px;
+  padding-bottom: 0;
+  padding-left: 10px;
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
@@ -99,9 +115,17 @@ body.androidtv .btn { min-height: 56px; font-size: 18px; }
 }
 select.lang-picker {
   display: inline-block;
+  margin-top: 12px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 12px 0 0;
   min-height: 36px;
   max-width: 9.5em;
+  padding-top: 0;
+  padding-right: 28px;
+  padding-bottom: 0;
+  padding-left: 12px;
   padding: 0 28px 0 12px;
   border: 0;
   border-radius: 999px;

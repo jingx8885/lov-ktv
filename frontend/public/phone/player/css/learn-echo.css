@@ -1,6 +1,10 @@
 .learn-echo-pulse {
   width: 148px;
   height: 148px;
+  margin-top: auto;
+  margin-right: auto;
+  margin-bottom: auto;
+  margin-left: auto;
   margin: auto;
   border-radius: 50%;
   background:

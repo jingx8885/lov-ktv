@@ -1,5 +1,9 @@
 .overlay {
   position: fixed;
+  top: 0;
+  right: 0;
+  bottom: calc(var(--nav-h) + var(--safe-b));
+  left: 0;
   inset: 0 0 calc(var(--nav-h) + var(--safe-b)) 0;
   z-index: 40;
   display: flex;
@@ -8,6 +12,10 @@
 .overlay[hidden] { display: none !important; }
 .overlay-backdrop {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   border: 0;
   background: rgba(0, 0, 0, .46);
@@ -15,8 +23,15 @@
 .sheet {
   position: relative;
   width: 100%;
+  max-height: 720px;
+  max-height: min(86vh, 720px);
+  max-height: 720px;
   max-height: min(86dvh, 720px);
   overflow: auto;
+  padding-top: 8px;
+  padding-right: 20px;
+  padding-bottom: calc(18px + var(--safe-b) + var(--kb));
+  padding-left: 20px;
   padding: 8px 20px calc(18px + var(--safe-b) + var(--kb));
   border-top: 1px solid var(--line-strong);
   border-radius: var(--r-l) var(--r-l) 0 0;
@@ -26,11 +41,19 @@
 .sheet-handle {
   width: 36px;
   height: 5px;
+  margin-top: 4px;
+  margin-right: auto;
+  margin-bottom: 12px;
+  margin-left: auto;
   margin: 4px auto 12px;
   border-radius: 99px;
   background: rgba(235, 235, 245, .22);
 }
 .sheet h2 {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 14px;
+  margin-left: 0;
   margin: 0 0 14px;
   font-size: 20px;
   font-weight: 700;
@@ -52,7 +75,15 @@
 .who-meta {
   display: grid;
   gap: 4px;
+  margin-top: 16px;
+  margin-right: 0;
+  margin-bottom: 6px;
+  margin-left: 0;
   margin: 16px 0 6px;
+  padding-top: 12px;
+  padding-right: 14px;
+  padding-bottom: 12px;
+  padding-left: 14px;
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: var(--r-m);
@@ -64,6 +95,10 @@
 .who-earn {
   flex: 0 0 auto;
   min-height: 28px;
+  padding-top: 0;
+  padding-right: 10px;
+  padding-bottom: 0;
+  padding-left: 10px;
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
@@ -93,6 +128,10 @@
 .action-sheet {
   position: relative;
   width: 100%;
+  padding-top: 8px;
+  padding-right: 10px;
+  padding-bottom: calc(10px + var(--safe-b) + var(--kb));
+  padding-left: 10px;
   padding: 8px 10px calc(10px + var(--safe-b) + var(--kb));
 }
 .action-card,
@@ -123,6 +162,10 @@
   top: calc(var(--safe-t) + 54px);
   z-index: 50;
   max-width: calc(100vw - 48px);
+  padding-top: 10px;
+  padding-right: 16px;
+  padding-bottom: 10px;
+  padding-left: 16px;
   padding: 10px 16px;
   border: 1px solid var(--line-strong);
   border-radius: 12px;
@@ -143,16 +186,30 @@
 
 @media (min-width: 700px) {
   body.phone .overlay {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     inset: 0;
     z-index: 60;
     align-items: center;
     justify-content: center;
+    padding-top: 24px;
+    padding-right: 24px;
+    padding-bottom: 24px;
+    padding-left: 24px;
     padding: 24px;
   }
 
   body.phone .sheet {
+    width: calc(100vw - 48px);
     width: min(500px, calc(100vw - 48px));
+    max-height: 720px;
     max-height: min(82vh, 720px);
+    padding-top: 28px;
+    padding-right: 30px;
+    padding-bottom: 30px;
+    padding-left: 30px;
     padding: 28px 30px 30px;
     border: 1px solid rgba(255, 255, 255, .1);
     border-radius: 22px;
@@ -174,7 +231,12 @@
   }
 
   body.phone .action-sheet {
+    width: calc(100vw - 48px);
     width: min(520px, calc(100vw - 48px));
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
   }
 
@@ -186,6 +248,10 @@
   }
 
   body.phone .action-card {
+    padding-top: 18px;
+    padding-right: 18px;
+    padding-bottom: 10px;
+    padding-left: 18px;
     padding: 18px 18px 10px;
   }
 

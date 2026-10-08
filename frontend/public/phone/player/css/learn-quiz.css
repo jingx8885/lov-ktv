@@ -4,12 +4,17 @@
 #learnQuiz::before {
   content: "";
   position: absolute;
+  top: -8px;
+  right: -16px;
+  bottom: auto;
+  left: -16px;
   inset: -8px -16px auto;
   height: 180px;
   pointer-events: none;
   background: radial-gradient(ellipse at 50% 0%, rgba(255, 77, 141, .18), transparent 70%);
 }
 #learnQuiz .learn-src {
+  font-size: 7vw;
   font-size: clamp(24px, 7vw, 34px);
 }
 .learn-qs {
@@ -29,6 +34,10 @@
 .learn-choice {
   appearance: none;
   min-height: 76px;
+  padding-top: 12px;
+  padding-right: 14px;
+  padding-bottom: 12px;
+  padding-left: 14px;
   padding: 12px 14px;
   border: 0;
   border-radius: 18px;
@@ -65,6 +74,8 @@
     counter-increment: learn-choice;
     content: counter(learn-choice);
     display: inline-grid;
+    align-items: center;
+    justify-items: center;
     place-items: center;
     width: 20px;
     height: 20px;

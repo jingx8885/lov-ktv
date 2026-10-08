@@ -38,6 +38,10 @@ body.tv.is-waiting .party-fx { display: none !important; }
   height: auto;
   display: block;
   text-align: center;
+  padding-top: 0;
+  padding-right: 48px;
+  padding-bottom: 0;
+  padding-left: 48px;
   padding: 0 48px;
   overflow: hidden;
 }
@@ -112,6 +116,10 @@ body.tv.is-waiting .party-fx { display: none !important; }
   height: 168px;
   background: #fff;
   border-radius: 14px;
+  padding-top: 10px;
+  padding-right: 10px;
+  padding-bottom: 10px;
+  padding-left: 10px;
   padding: 10px;
   box-shadow: 0 10px 32px rgba(0,0,0,.55);
 }
@@ -122,9 +130,17 @@ body.tv.is-waiting .party-fx { display: none !important; }
 }
 .qrbox .qr table {
   border-collapse: collapse;
+  margin-top: 0;
+  margin-right: !important;
+  margin-bottom: 0;
+  margin-left: !important;
   margin: 0 !important;
 }
 .qrbox .qr-cap {
+  margin-top: 8px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 8px 0 0;
   font-size: 15px;
   font-weight: 700;
@@ -149,6 +165,10 @@ body.tv:not(.is-waiting) .wait-app-qr {
 }
 .remote-hint {
   display: none;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   font-size: 13px;
   font-weight: 600;
@@ -170,13 +190,22 @@ body.tv:not(.is-waiting) .wait-app-qr {
 }
 .tv-ui header h2,
 .tv-ui header .song-title {
+  margin-top: .15em;
+  margin-right: 0;
+  margin-bottom: .25em;
+  margin-left: 0;
   margin: .15em 0 .25em;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   background: none;
   color: inherit;
   font: inherit;
   font-size: 28px;
+  font-size: 3.2vw;
   font-size: clamp(22px, 3.2vw, 42px);
   font-weight: 700;
   text-align: left;

@@ -1,6 +1,10 @@
 .player-align {
   display: grid;
   gap: 8px;
+  margin-top: 8px;
+  margin-right: 0;
+  margin-bottom: 4px;
+  margin-left: 0;
   margin: 8px 0 4px;
 }
 .player-align[hidden] {
@@ -8,6 +12,10 @@
 }
 .player-lyrics {
   min-height: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
 }
 .align-now {
@@ -35,6 +43,8 @@
   display: inline;
 }
 .align-text .tok.latin {
+  padding-left: 0;
+  padding-right: 0;
   padding-inline: 0;
 }
 .align-text .rt,
@@ -59,6 +69,10 @@
 }
 .tl-icon {
   min-width: 44px;
+  padding-top: 0;
+  padding-right: 12px;
+  padding-bottom: 0;
+  padding-left: 12px;
   padding: 0 12px;
 }
 .tl {
@@ -93,7 +107,15 @@
 }
 button.tl-head {
   appearance: none;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   width: 100%;
@@ -188,6 +210,10 @@ button.tl-head {
   display: block;
   width: 1px;
   height: 6px;
+  margin-top: 2px;
+  margin-right: auto;
+  margin-bottom: 0;
+  margin-left: auto;
   margin: 2px auto 0;
   background: #4a5578;
 }
@@ -230,6 +256,10 @@ button.tl-head {
 .tl-clip-text {
   flex: 1;
   min-width: 0;
+  padding-top: 0;
+  padding-right: 4px;
+  padding-bottom: 0;
+  padding-left: 4px;
   padding: 0 4px;
   overflow: hidden;
   white-space: nowrap;
@@ -261,6 +291,10 @@ button.tl-head {
 .player-list .list-row,
 .player-pick {
   min-height: 56px;
+  padding-top: 6px;
+  padding-right: 6px;
+  padding-bottom: 6px;
+  padding-left: 12px;
   padding: 6px 6px 6px 12px;
   gap: 8px;
 }
@@ -275,6 +309,10 @@ button.tl-head {
   position: sticky;
   top: 0;
   z-index: 3;
+  padding-top: 10px;
+  padding-right: 16px;
+  padding-bottom: 4px;
+  padding-left: 16px;
   padding: 10px 16px 4px;
   background: rgba(28, 28, 30, 0.96);
   color: var(--dim);
@@ -333,6 +371,10 @@ body:not(.player-live) .player-pick .art-eq {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  margin-top: 4px;
+  margin-right: 10px;
+  margin-bottom: 6px;
+  margin-left: 10px;
   margin: 4px 10px 6px;
   border-radius: 10px;
   background: rgba(118, 118, 128, 0.18);
@@ -351,6 +393,10 @@ body:not(.player-live) .player-pick .art-eq {
   flex: 1 1 auto;
   min-width: 0;
   height: 34px;
+  padding-top: 0;
+  padding-right: 6px;
+  padding-bottom: 0;
+  padding-left: 8px;
   padding: 0 6px 0 8px;
   border: 0;
   background: transparent;
@@ -366,11 +412,17 @@ body:not(.player-live) .player-pick .art-eq {
   flex: 0 0 34px;
   width: 34px;
   height: 34px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--dim);
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   cursor: pointer;
 }
@@ -389,6 +441,10 @@ body:not(.player-live) .player-pick .art-eq {
 }
 .player-sheet-scrim {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   z-index: 7;
   border: 0;
@@ -431,6 +487,10 @@ body:not(.player-live) .player-pick .art-eq {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  padding-top: 14px;
+  padding-right: 92px;
+  padding-bottom: 8px;
+  padding-left: 16px;
   padding: 14px 92px 8px 16px;
   border: 0;
   background: transparent;
@@ -487,6 +547,10 @@ body:not(.player-live) .player-pick .art-eq {
   display: flex;
   align-items: stretch;
   gap: 2px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 8px;
+  padding-left: 0;
   padding: 0 0 8px;
 }
 .player-sheet-grab:active {
@@ -514,12 +578,18 @@ body:not(.player-live) .player-pick .art-eq {
   width: 44px;
   height: 44px;
   min-height: 44px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: rgba(120, 120, 128, 0.16);
   color: var(--text);
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   cursor: pointer;
 }
@@ -546,6 +616,10 @@ body:not(.player-live) .player-pick .art-eq {
   width: 56px;
   height: auto;
   border-radius: 16px;
+  padding-top: 8px;
+  padding-right: 0;
+  padding-bottom: 6px;
+  padding-left: 0;
   padding: 8px 0 6px;
   gap: 2px;
 }
@@ -619,6 +693,10 @@ body:not(.player-live) .player-pick .art-eq {
   letter-spacing: -.02em;
 }
 .player-titles p {
+  margin-top: 2px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 2px 0 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -649,6 +727,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
   width: 100%;
   height: 112px;
   max-height: 112px;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   cursor: pointer;
   user-select: none;
@@ -661,6 +743,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
 .player-art::after {
   content: "";
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   pointer-events: none;
   border-radius: inherit;
@@ -690,6 +776,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
 }
 .player-cover {
   position: absolute;
+  top: -8%;
+  right: -8%;
+  bottom: -8%;
+  left: -8%;
   inset: -8%;
   width: 116%;
   height: 116%;
@@ -700,6 +790,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
 }
 .player-mtv {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   z-index: 1;
   width: 100%;
@@ -717,7 +811,13 @@ body.phone[data-page="player"].display-lyrics .player-stage {
   height: 42px;
   min-height: 42px;
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 12px;
@@ -759,6 +859,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
 }
 .player-art-shade {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   background: linear-gradient(180deg, rgba(7, 10, 20, 0.18) 0%, rgba(7, 10, 20, 0.42) 48%, rgba(4, 6, 13, 0.88) 100%);
   pointer-events: none;
@@ -778,6 +882,10 @@ body.phone[data-page="player"].display-lyrics .player-stage {
   align-items: center;
   justify-content: space-between;
   min-height: 28px;
+  padding-top: 0;
+  padding-right: 6px;
+  padding-bottom: 0;
+  padding-left: 6px;
   padding: 0 6px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.06em;
@@ -795,7 +903,15 @@ body.phone[data-page="player"].display-lyrics .player-stage {
   flex: 1 1 auto;
   width: 0;
   min-width: 0;
+  margin-top: 0;
+  margin-right: 8px;
+  margin-bottom: 0;
+  margin-left: 8px;
   margin: 0 8px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   background: transparent;
   accent-color: var(--accent);
@@ -824,6 +940,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
 }
 .page-player .lyric-seg {
   flex: 0 0 auto;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 10px;
+  margin-left: 0;
   margin: 0 0 10px;
 }
 /* 次级偏好行：耳返 / 顺序 / MV / 歌词显示，带文字标签的小胶囊。 */
@@ -832,6 +952,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   align-items: center;
   justify-content: safe center;
   gap: 6px;
+  margin-top: 0;
+  margin-right: 6px;
+  margin-bottom: 8px;
+  margin-left: 6px;
   margin: 0 6px 8px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
@@ -856,6 +980,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   flex: 0 0 auto;
   min-width: 0;
   min-height: 32px;
+  padding-top: 0;
+  padding-right: 10px;
+  padding-bottom: 0;
+  padding-left: 10px;
   padding: 0 10px;
   border: 0;
   border-radius: 999px;
@@ -895,6 +1023,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
 .player-lyric-select {
   position: relative;
   flex: 0 0 auto;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   overflow: hidden;
 }
@@ -904,6 +1036,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   max-width: 100%;
   min-width: 76px;
   height: 32px;
+  padding-top: 0;
+  padding-right: 22px;
+  padding-bottom: 0;
+  padding-left: 10px;
   padding: 0 22px 0 10px;
   border: 0;
   border-radius: 999px;
@@ -930,9 +1066,14 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
+  grid-template-rows: min16px auto min16px;
   grid-template-rows: minmax(16px, 1fr) auto minmax(16px, 1fr);
   align-items: center;
   justify-items: center;
+  padding-top: 0;
+  padding-right: 4px;
+  padding-bottom: 0;
+  padding-left: 4px;
   padding: 0 4px;
   overflow: hidden;
 }
@@ -943,6 +1084,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   width: 100%;
   max-height: 100%;
   overflow: hidden;
+  padding-top: 8px;
+  padding-right: 4px;
+  padding-bottom: 16px;
+  padding-left: 4px;
   padding: 8px 4px 16px;
   /* Scroll position is animated by the player paint loop. Native smooth
      scrolling can be restarted on every cue change in mobile WebViews,
@@ -960,6 +1105,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
   flex: 0 0 auto;
   width: 100%;
   max-width: 100%;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   color: var(--muted);
   opacity: 0.68;
@@ -976,6 +1125,10 @@ body.phone .player-clock input[type="range"]::-moz-range-thumb {
 body.display-lyrics .page-player .player-lyrics {
   display: block;
   overflow: hidden;
+  padding-top: 0;
+  padding-right: 12px;
+  padding-bottom: 12px;
+  padding-left: 12px;
   padding: 0 12px 12px;
 }
 body.display-lyrics .page-player .player-lyrics .prev,
@@ -988,12 +1141,17 @@ body.display-mv .player-lyric-scroll {
 }
 .page-player .player-lyrics .prev,
 .page-player .player-lyrics .next {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   max-width: 96%;
   max-height: 100%;
   overflow: hidden;
   flex-wrap: wrap;
   align-content: center;
+  font-size: 12px, 4.2cqh, 18px;
   font-size: clamp(12px, min(3.6cqi, 4.2cqh), 18px);
   opacity: 0.72;
 }
@@ -1014,11 +1172,16 @@ body.display-mv .player-lyric-scroll {
   display: inline;
 }
 .page-player .player-lyrics .line {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   max-width: 96%;
   max-height: 100%;
   overflow: hidden;
   align-content: center;
+  font-size: 20px, 14cqh, 44px;
   font-size: clamp(20px, min(9cqi, 14cqh), 44px);
   line-height: 1.22;
   letter-spacing: -0.02em;
@@ -1030,11 +1193,13 @@ body.display-mv .player-lyric-scroll {
 }
 .page-player .player-lyrics .lyric-zh {
   /* Keep translations optically consistent when the source line wraps. */
+  font-size: 14px, 2.8cqh, 24px;
   font-size: clamp(14px, min(3.2cqi, 2.8cqh), 24px);
   line-height: 1.25;
   overflow-wrap: anywhere;
 }
 body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
+  font-size: 18px, 9cqh, 32px;
   font-size: clamp(18px, min(6.2cqi, 9cqh), 32px);
   line-height: 1.16;
   letter-spacing: 0;
@@ -1066,7 +1231,15 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   position: relative;
   flex: 0 0 auto;
   z-index: 20;
+  margin-top: 0;
+  margin-right: -16px;
+  margin-bottom: 0;
+  margin-left: -16px;
   margin: 0 -16px;
+  padding-top: 8px;
+  padding-right: 10px;
+  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 8px);
+  padding-left: 10px;
   padding: 8px 10px calc(var(--nav-h) + var(--safe-b) + 8px);
   border-top: 1px solid var(--line);
   background: rgba(9, 9, 12, 0.8);
@@ -1074,6 +1247,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 .player-dock .mix-row {
+  margin-top: 0;
+  margin-right: 8px;
+  margin-bottom: 6px;
+  margin-left: 8px;
   margin: 0 8px 6px;
 }
 .player-clock-dock {
@@ -1084,6 +1261,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
 }
 .player-hint {
   display: none;
+  margin-top: 0;
+  margin-right: 8px;
+  margin-bottom: 6px;
+  margin-left: 8px;
   margin: 0 8px 6px;
   text-align: center;
   font-size: 12px;
@@ -1101,9 +1282,14 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
 }
 .player-transport {
   display: grid;
+  grid-template-columns: repeat(5, min0);
   grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: center;
   justify-items: center;
+  padding-top: 0;
+  padding-right: 6px;
+  padding-bottom: 0;
+  padding-left: 6px;
   padding: 0 6px;
   position: relative;
   z-index: 1;
@@ -1125,6 +1311,8 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   background: #fff;
   color: #000;
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   box-shadow: 0 8px 24px rgba(255, 255, 255, 0.18);
   cursor: pointer;
@@ -1187,12 +1375,23 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
     display: none;
   }
   body.phone[data-page="player"] .page-player {
+    padding-left: 16px;
     padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: 16px;
     padding-right: max(16px, env(safe-area-inset-right));
   }
   body.phone[data-page="player"] .player-dock {
+    margin-left: calc(-1 * 16px);
     margin-left: calc(-1 * max(16px, env(safe-area-inset-left)));
+    margin-right: calc(-1 * 16px);
     margin-right: calc(-1 * max(16px, env(safe-area-inset-right)));
+    padding-top: 4px;
+    padding-right: 10px;
+    padding-right: max(10px, env(safe-area-inset-left));
+    padding-bottom: calc(8px + var(--safe-b));
+    padding-left: 10px;
+    padding-left: max(10px, env(safe-area-inset-right));
+    padding: 4px 10px calc(8px + var(--safe-b)) 10px;
     padding: 4px max(10px, env(safe-area-inset-left)) calc(8px + var(--safe-b)) max(10px, env(safe-area-inset-right));
   }
   /* 横屏高度有限：偏好胶囊和传输键并成一行。 */
@@ -1210,6 +1409,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   body.phone[data-page="player"] .page-player .player-tools {
     flex: 0 1 auto;
     width: auto;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
   }
   body.phone[data-page="player"] .page-player .tool-chip {
@@ -1218,6 +1421,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   body.phone[data-page="player"] .page-player .player-transport {
     flex: 1 1 320px;
     width: auto;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
   }
   body.phone[data-page="player"] .page-player .player-transport .play-btn {
@@ -1227,6 +1434,10 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   .page-player .player-art {
     height: 0;
     max-height: 0;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
     opacity: 0;
     pointer-events: none;
@@ -1243,7 +1454,12 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
     top: 0;
     right: 0;
     z-index: 2;
+    width: 52%;
     width: min(360px, 52%);
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
     opacity: 0.92;
   }
@@ -1252,19 +1468,27 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
     font-size: 12px;
   }
   .page-player .player-lyrics {
+    grid-template-rows: min0;
     grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: min0 min0 min0;
     grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr) minmax(0, 1fr);
     column-gap: 12px;
     align-items: center;
+    padding-top: 0;
+    padding-right: 8px;
+    padding-bottom: 0;
+    padding-left: 8px;
     padding: 0 8px;
   }
   .page-player .player-lyrics .line {
+    font-size: 24px, 28cqh, 58px;
     font-size: clamp(24px, min(6.8cqi, 28cqh), 58px);
     letter-spacing: -0.03em;
     line-height: 1.1;
     max-width: 100%;
   }
   body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line {
+    font-size: 16px, 14cqh, 34px;
     font-size: clamp(16px, min(4.8cqi, 14cqh), 34px);
   }
   body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .roma,
@@ -1279,6 +1503,7 @@ body.phone[data-lyric-mode="all"] .page-player .player-lyrics .line .lyric-zh {
   .page-player .player-lyrics .prev,
   .page-player .player-lyrics .next {
     max-width: 100%;
+    font-size: 12px, 8cqh, 18px;
     font-size: clamp(12px, min(2.4cqi, 8cqh), 18px);
   }
   .page-player .player-lyrics .prev {
@@ -1324,8 +1549,16 @@ body.phone.edit-on .overlay#actionSheet:not([hidden]) {
 body.phone.edit-on #page-player {
   display: block !important;
   position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   z-index: 40;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   overflow: hidden;
   background: #070a14;
@@ -1335,7 +1568,15 @@ body.phone.edit-on #playerAlign {
   grid-template-rows: auto auto 1fr;
   gap: 6px;
   height: 100%;
+  padding-top: 8px;
+  padding-right: 10px;
+  padding-bottom: 8px;
+  padding-left: 10px;
   padding: 8px 10px;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
 }
 .edit-bar {
@@ -1369,9 +1610,14 @@ body.tv .lyric-plate.bare {
   filter: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  padding-top: 0;
+  padding-right: 12px;
+  padding-bottom: 4px;
+  padding-left: !important;
   padding: 0 12px 4px !important;
 }
 body.phone.edit-on .tl {
+  height: calc(100% - 8px);
   height: min(220px, calc(100% - 8px));
 }
 @media (orientation: portrait) {
@@ -1379,10 +1625,16 @@ body.phone.edit-on .tl {
     position: fixed;
     top: 0;
     left: 100vw;
+    width: 100vh;
     width: 100dvh;
+    height: 100vw;
     height: 100dvw;
     transform: rotate(90deg);
     transform-origin: top left;
+    padding-top: 8px;
+    padding-right: 12px;
+    padding-bottom: 8px;
+    padding-left: 12px;
     padding: 8px 12px;
   }
 }
@@ -1400,12 +1652,21 @@ body.phone.edit-on .tl {
   }
 
   body.phone[data-page="player"] .page-player {
+    width: 100%;
     width: min(1320px, 100%);
     /* 由公共 .page flex 参与分配顶栏以下的剩余高度，避免覆盖底部控制条。 */
     min-height: 0;
     height: auto;
     flex: 1 1 auto;
+    margin-top: 0;
+    margin-right: auto;
+    margin-bottom: 0;
+    margin-left: auto;
     margin: 0 auto;
+    padding-top: 28px;
+    padding-right: 32px;
+    padding-bottom: 24px;
+    padding-left: 32px;
     padding: 28px 32px 24px;
     overflow: visible;
   }
@@ -1413,13 +1674,19 @@ body.phone.edit-on .tl {
   body.phone[data-page="player"] .player-main {
     display: grid;
     /* 曲库是辅助栏，宽度随视口小幅增长即可；让播放/歌词区吃掉剩余空间。 */
+    grid-template-columns: min0 32vw;
     grid-template-columns: minmax(0, 1fr) clamp(280px, 32vw, 420px);
     /* 只有一行：MV/封面舞台与歌词层共用第一行左列，右列是曲库。
        不再留第二行给横向进度带，进度条统一在播放键上方的 dock 里。 */
+    grid-template-rows: min0;
     grid-template-rows: minmax(0, 1fr);
     gap: 20px 28px;
     width: 100%;
     max-width: none;
+    margin-top: 0;
+    margin-right: auto;
+    margin-bottom: 0;
+    margin-left: auto;
     margin: 0 auto;
     overflow: visible;
   }
@@ -1430,12 +1697,20 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"] .player-head {
     position: absolute;
+    top: -18px;
+    right: 0;
+    bottom: auto;
+    left: 0;
     inset: -18px 0 auto;
     z-index: 25;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 44px;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     pointer-events: none;
   }
@@ -1464,12 +1739,21 @@ body.phone.edit-on .tl {
     align-self: stretch;
     align-content: stretch;
     justify-items: stretch;
+    grid-template-rows: min0;
     grid-template-rows: minmax(0, 1fr);
     width: auto;
     max-width: none;
     height: auto;
     min-height: 0;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
@@ -1484,6 +1768,10 @@ body.phone.edit-on .tl {
     min-height: 0;
     max-height: none;
     aspect-ratio: auto;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
     /* 面板本身已有圆角和描边，铺满时不再重复圆角。 */
     border-radius: 0;
@@ -1503,6 +1791,10 @@ body.phone.edit-on .tl {
     grid-column: 1;
     grid-row: 1;
     min-height: 0;
+    padding-top: 8px;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 8px 0 0;
     border-radius: 20px;
     background: rgba(23, 26, 36, 0.9);
@@ -1512,6 +1804,10 @@ body.phone.edit-on .tl {
   /* MV 模式下歌词只是叠加层：透明、不拦点击，点击继续落到视频和全屏按钮上。 */
   body.phone[data-page="player"].display-mv .player-lyric-stack {
     z-index: 3;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     overflow: hidden;
     background: transparent;
@@ -1520,6 +1816,10 @@ body.phone.edit-on .tl {
   }
 
   body.phone[data-page="player"].display-mv .player-lyrics {
+    padding-top: 0;
+    padding-right: 24px;
+    padding-bottom: 16px;
+    padding-left: 24px;
     padding: 0 24px 16px;
     background: transparent;
     text-shadow:
@@ -1547,6 +1847,10 @@ body.phone.edit-on .tl {
     position: relative;
     grid-column: 2;
     grid-row: 1;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     width: auto;
     height: 100% !important;
@@ -1564,6 +1868,10 @@ body.phone.edit-on .tl {
   body.phone[data-page="player"] .player-sheet-grab {
     flex-basis: 58px;
     min-height: 58px;
+    padding-top: 14px;
+    padding-right: 16px;
+    padding-bottom: 8px;
+    padding-left: 16px;
     padding: 14px 16px 8px;
     cursor: default;
     padding-right: 92px;
@@ -1593,15 +1901,24 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"] .player-sheet .player-list {
     display: grid;
+    grid-template-columns: repeat(auto-fit, min150px);
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     align-content: start;
     gap: 10px;
+    padding-top: 6px;
+    padding-right: 8px;
+    padding-bottom: 14px;
+    padding-left: 8px;
     padding: 6px 8px 14px;
   }
 
   body.phone[data-page="player"] .player-sheet .player-list > .list-row {
     min-width: 0;
     min-height: 68px;
+    padding-top: 11px;
+    padding-right: 10px;
+    padding-bottom: 11px;
+    padding-left: 13px;
     padding: 11px 10px 11px 13px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 11px;
@@ -1654,6 +1971,10 @@ body.phone.edit-on .tl {
   }
 
   body.phone[data-page="player"] .player-sheet .player-filter {
+    margin-top: 4px;
+    margin-right: 12px;
+    margin-bottom: 10px;
+    margin-left: 12px;
     margin: 4px 12px 10px;
   }
 
@@ -1663,17 +1984,30 @@ body.phone.edit-on .tl {
 
 
   body.phone[data-page="player"] .player-lyrics {
+    padding-top: 0;
+    padding-right: 24px;
+    padding-bottom: 18px;
+    padding-left: 24px;
     padding: 0 24px 18px;
   }
 
   body.phone[data-page="player"] .player-lyrics .line {
+    font-size: 28px, 7.5cqh, 54px;
     font-size: clamp(28px, min(4.2cqi, 7.5cqh), 54px);
   }
 
   body.phone[data-page="player"] .player-dock {
     position: relative;
     bottom: auto;
+    margin-top: 18px;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 18px 0 0;
+    padding-top: 10px;
+    padding-right: 0;
+    padding-bottom: 14px;
+    padding-left: 0;
     padding: 10px 0 14px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 14px 14px 0 0;
@@ -1682,7 +2016,12 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"] .player-transport,
   body.phone[data-page="player"] .player-tools {
+    width: 100%;
     width: min(760px, 100%);
+    margin-top: 0;
+    margin-right: auto;
+    margin-bottom: 0;
+    margin-left: auto;
     margin: 0 auto;
   }
   body.phone[data-page="player"] .player-tools { margin-bottom: 8px; }
@@ -1721,6 +2060,7 @@ body.phone.edit-on .tl {
   }
 
   body.phone[data-page="player"] .player-main {
+    grid-template-columns: min0 28vw;
     grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 460px);
     max-width: none;
   }
@@ -1728,6 +2068,7 @@ body.phone.edit-on .tl {
 
 @media (min-width: 1200px) {
   body.phone[data-page="player"] .player-main {
+    grid-template-columns: min0 28vw;
     grid-template-columns: minmax(0, 1fr) clamp(360px, 28vw, 460px);
   }
 }
@@ -1748,6 +2089,7 @@ body.phone.edit-on .tl {
 
 @media (min-width: 1500px) {
   body.phone[data-page="player"] .player-sheet .player-list {
+    grid-template-columns: repeat(2, min0);
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1764,7 +2106,15 @@ body.phone.edit-on .tl {
     width: 100%;
     min-height: 26px;
     height: 26px;
+    padding-top: 0;
+    padding-right: 8px;
+    padding-bottom: 0;
+    padding-left: 8px;
     padding: 0 8px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 2px;
+    margin-left: 0;
     margin: 0 0 2px;
   }
 
@@ -1775,6 +2125,10 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"] .player-clock-dock input[type="range"] {
     height: 24px;
+    margin-top: 0;
+    margin-right: 6px;
+    margin-bottom: 0;
+    margin-left: 6px;
     margin: 0 6px;
   }
 
@@ -1792,17 +2146,29 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"].display-mv .player-stage {
     position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     inset: 0;
     z-index: 0;
     display: block;
     width: auto;
     height: auto;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
     pointer-events: auto;
   }
 
   body.phone[data-page="player"].display-mv .player-art {
     position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     inset: 0;
     width: auto;
     height: auto;
@@ -1817,10 +2183,18 @@ body.phone.edit-on .tl {
 
   body.phone[data-page="player"].display-mv .player-lyric-stack {
     position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     inset: 0;
     z-index: 3;
     display: flex;
     min-height: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     overflow: hidden;
     background: transparent;
@@ -1834,6 +2208,10 @@ body.phone.edit-on .tl {
     min-height: 0;
     width: 100%;
     box-sizing: border-box;
+    padding-top: 0;
+    padding-right: 8px;
+    padding-bottom: 18%;
+    padding-left: 8px;
     padding: 0 8px 18%;
     background: transparent;
     text-shadow:
@@ -1852,6 +2230,7 @@ body.phone.edit-on .tl {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
+    font-size: 5.2vw;
     font-size: clamp(15px, 5.2vw, 26px);
     line-height: 1.2;
     letter-spacing: 0;
@@ -1878,6 +2257,7 @@ body.phone.edit-on .tl {
     min-width: 0;
     max-width: 100%;
     box-sizing: border-box;
+    font-size: 3.3vw;
     font-size: clamp(11px, 3.3vw, 17px);
   }
 
@@ -1903,14 +2283,28 @@ body.phone.edit-on .tl {
   }
   body.phone[data-page="player"].display-mv .player-stage {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
+    flex: 0 0 32vh;
+    flex: 0 0 clamp(150px, 32vh, 300px);
+    flex: 0 0 32vh;
     flex: 0 0 clamp(150px, 32dvh, 300px);
     width: 100%;
+    height: 32vh;
+    height: clamp(150px, 32vh, 300px);
+    height: 32vh;
     height: clamp(150px, 32dvh, 300px);
     min-height: 0;
   }
   body.phone[data-page="player"].display-mv .player-art {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     width: 100%;
     height: 100%;
@@ -1920,13 +2314,25 @@ body.phone.edit-on .tl {
   }
   body.phone[data-page="player"].display-mv .player-lyric-stack {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     flex: 1 1 auto;
     width: 100%;
     min-height: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
   }
   body.phone[data-page="player"].display-mv .player-lyrics {
+    padding-top: 8px;
+    padding-right: 12px;
+    padding-bottom: 12px;
+    padding-left: 12px;
     padding: 8px 12px 12px;
   }
 }
@@ -1939,11 +2345,20 @@ body.phone.edit-on .tl {
   }
   body.phone.player-fullscreen .page-player {
     position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
     inset: 0;
     z-index: 100;
     width: 100%;
+    height: 100vh;
     height: 100dvh;
     max-height: none;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     overflow: hidden;
     background: #000;
@@ -1968,6 +2383,10 @@ body.phone.edit-on .tl {
   }
   body.phone.player-fullscreen .player-stage {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     flex: 1 1 auto;
     width: 100%;
@@ -1975,10 +2394,18 @@ body.phone.edit-on .tl {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
   }
   body.phone.player-fullscreen .player-art {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     flex: 1 1 auto;
     width: 100%;
@@ -1996,6 +2423,10 @@ body.phone.edit-on .tl {
     bottom: 0;
     z-index: 4;
     width: 100%;
+    padding-top: 4px;
+    padding-right: 14px;
+    padding-bottom: 6px;
+    padding-left: 14px;
     padding: 4px 14px 6px;
     background: rgba(9, 11, 18, 0.82);
   }
@@ -2006,10 +2437,21 @@ body.phone.edit-on .tl {
   }
   body.phone.player-fullscreen .player-lyric-stack {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
+    flex: 0 0 20vh;
+    flex: 0 0 clamp(76px, 20vh, 150px);
+    flex: 0 0 20vh;
     flex: 0 0 clamp(76px, 20dvh, 150px);
     width: 100%;
     min-height: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     background: rgba(0, 0, 0, 0.92);
   }
@@ -2018,19 +2460,27 @@ body.phone.edit-on .tl {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
+    padding-top: 8px;
+    padding-right: 16px;
+    padding-bottom: 12px;
+    padding-left: 16px;
     padding: 8px 16px 12px;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
   }
   body.phone.player-fullscreen .player-lyrics .line {
+    font-size: 4.8vw;
     font-size: clamp(18px, 4.8vw, 34px);
   }
   body.phone.player-fullscreen .player-lyrics .prev,
   body.phone.player-fullscreen .player-lyrics .next {
+    font-size: 2.8vw;
     font-size: clamp(11px, 2.8vw, 17px);
   }
   body.phone.player-fullscreen .player-fullscreen-btn {
     top: auto;
+    bottom: 10px;
     bottom: max(10px, env(safe-area-inset-bottom));
+    right: 10px;
     right: max(10px, env(safe-area-inset-right));
   }
 }
@@ -2059,6 +2509,10 @@ body.phone.edit-on .tl {
 
   body.phone.player-fullscreen .player-stage {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     flex: 1 1 auto;
     width: 100%;
@@ -2066,7 +2520,15 @@ body.phone.edit-on .tl {
     min-height: 0;
     display: flex;
     flex-direction: column;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -2076,6 +2538,10 @@ body.phone.edit-on .tl {
 
   body.phone.player-fullscreen .player-art {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
     flex: 1 1 auto;
     width: 100%;
@@ -2096,6 +2562,10 @@ body.phone.edit-on .tl {
     z-index: 4;
     width: 100%;
     min-height: 36px;
+    padding-top: 4px;
+    padding-right: 14px;
+    padding-bottom: 6px;
+    padding-left: 14px;
     padding: 4px 14px 6px;
     background: rgba(9, 11, 18, 0.82);
   }
@@ -2108,10 +2578,19 @@ body.phone.edit-on .tl {
 
   body.phone.player-fullscreen .player-lyric-stack {
     position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
     inset: auto;
+    flex: 0 0 20vh;
     flex: 0 0 clamp(76px, 20vh, 150px);
     width: 100%;
     min-height: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -2123,16 +2602,22 @@ body.phone.edit-on .tl {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
+    padding-top: 8px;
+    padding-right: 16px;
+    padding-bottom: 12px;
+    padding-left: 16px;
     padding: 8px 16px 12px;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.95);
   }
 
   body.phone.player-fullscreen .player-lyrics .line {
+    font-size: 4.8vw;
     font-size: clamp(18px, 4.8vw, 44px);
   }
 
   body.phone.player-fullscreen .player-lyrics .prev,
   body.phone.player-fullscreen .player-lyrics .next {
+    font-size: 2.8vw;
     font-size: clamp(11px, 2.8vw, 20px);
   }
 }
@@ -2144,13 +2629,25 @@ body.phone.player-fullscreen .player-main {
 
 body.phone.player-fullscreen .player-stage {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   flex: none;
   display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -2160,6 +2657,10 @@ body.phone.player-fullscreen .player-stage {
 
 body.phone.player-fullscreen .player-art {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -2187,18 +2688,30 @@ body.phone.player-fullscreen .player-stage > .player-clock {
   z-index: 4;
   width: 100%;
   min-height: 36px;
+  padding-top: 4px;
+  padding-right: 14px;
+  padding-bottom: 6px;
+  padding-left: 14px;
   padding: 4px 14px 6px;
   background: rgba(9, 11, 18, 0.82);
 }
 
 body.phone.player-fullscreen .player-lyric-stack {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   z-index: 3;
   display: flex;
   flex: none;
   width: 100%;
   min-height: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -2212,6 +2725,10 @@ body.phone.player-fullscreen .player-lyrics {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+  padding-top: 0;
+  padding-right: 16px;
+  padding-bottom: 18%;
+  padding-left: 16px;
   padding: 0 16px 18%;
   background: transparent;
   text-shadow:
@@ -2222,6 +2739,7 @@ body.phone.player-fullscreen .player-lyrics {
 body.phone.player-fullscreen .player-lyrics .line {
   color: #fff;
   opacity: 1;
+  font-size: 4.8vw;
   font-size: clamp(18px, 4.8vw, 44px);
 }
 
@@ -2229,6 +2747,7 @@ body.phone.player-fullscreen .player-lyrics .prev,
 body.phone.player-fullscreen .player-lyrics .next {
   color: rgba(255, 255, 255, 0.78);
   opacity: 0.92;
+  font-size: 2.8vw;
   font-size: clamp(11px, 2.8vw, 20px);
 }
 
@@ -2237,6 +2756,10 @@ body.phone.player-fullscreen .player-lyrics .next {
   display: flex;
   flex: 0 0 auto;
   gap: 6px;
+  margin-top: 8px;
+  margin-right: 12px;
+  margin-bottom: 2px;
+  margin-left: 12px;
   margin: 8px 12px 2px;
   overflow-x: auto;
   scrollbar-width: none;
@@ -2249,6 +2772,10 @@ body.phone.player-fullscreen .player-lyrics .next {
   gap: 5px;
   flex: 0 0 auto;
   min-height: 30px;
+  padding-top: 0;
+  padding-right: 12px;
+  padding-bottom: 0;
+  padding-left: 12px;
   padding: 0 12px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -2272,6 +2799,10 @@ body.phone.player-fullscreen .player-lyrics .next {
 }
 .src-chip.on em { color: #ffb3c6; }
 .src-chip.src-add {
+  padding-top: 0;
+  padding-right: 10px;
+  padding-bottom: 0;
+  padding-left: 10px;
   padding: 0 10px;
   color: var(--dim);
 }
@@ -2292,6 +2823,8 @@ body.phone.player-fullscreen .player-lyrics .next {
   width: 38px;
   height: 38px;
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   border-radius: 10px;
   background: rgba(255, 255, 255, .07);
@@ -2316,6 +2849,7 @@ body.phone.player-fullscreen .player-lyrics .next {
   margin-top: 0;
 }
 .playlist-sheet .pl-list {
+  max-height: 46vh;
   max-height: 46dvh;
   overflow: auto;
 }

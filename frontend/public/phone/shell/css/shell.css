@@ -36,6 +36,10 @@
     min-height: 100vh;
     height: auto;
     max-height: none;
+    margin-top: 0;
+    margin-right: auto;
+    margin-bottom: 0;
+    margin-left: auto;
     margin: 0 auto;
     overflow: visible;
   }
@@ -45,6 +49,10 @@
     top: 0;
     grid-template-columns: 180px 1fr 180px;
     min-height: var(--bar-h);
+    padding-top: 12px;
+    padding-right: 32px;
+    padding-bottom: 12px;
+    padding-left: 32px;
     padding: 12px 32px;
     border-bottom: 1px solid rgba(255, 255, 255, .08);
     background: rgba(11, 13, 19, .82);
@@ -59,6 +67,10 @@
 
   body.phone .nav-chip {
     height: 42px;
+    padding-top: 0;
+    padding-right: 12px;
+    padding-bottom: 0;
+    padding-left: 12px;
     padding: 0 12px;
     border-radius: 999px;
     background: rgba(255, 255, 255, .07);
@@ -68,12 +80,25 @@
   body.phone .who-mini {
     width: 42px;
     height: 42px;
+    padding-top: 5px;
+    padding-right: 5px;
+    padding-bottom: 5px;
+    padding-left: 5px;
     padding: 5px;
   }
 
   body.phone .page {
+    width: 100%;
     width: min(1120px, 100%);
+    margin-top: 0;
+    margin-right: auto;
+    margin-bottom: 0;
+    margin-left: auto;
     margin: 0 auto;
+    padding-top: 28px;
+    padding-right: 32px;
+    padding-bottom: 112px;
+    padding-left: 32px;
     padding: 28px 32px 112px;
     overflow: visible;
   }
@@ -87,8 +112,13 @@
     left: 50%;
     right: auto;
     bottom: 20px;
+    width: calc(100vw - 40px);
     width: min(500px, calc(100vw - 40px));
     height: 64px;
+    padding-top: 6px;
+    padding-right: 6px;
+    padding-bottom: 6px;
+    padding-left: 6px;
     padding: 6px;
     transform: translateX(-50%);
     grid-template-columns: repeat(5, 1fr);
@@ -120,6 +150,10 @@
   }
 
   body.phone .empty-state {
+    padding-top: 80px;
+    padding-right: 32px;
+    padding-bottom: 64px;
+    padding-left: 32px;
     padding: 80px 32px 64px;
   }
 }
@@ -160,6 +194,10 @@
     bottom: 24px;
     width: 80px;
     height: auto;
+    padding-top: 8px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+    padding-left: 8px;
     padding: 8px;
     display: flex;
     flex-direction: column;
@@ -194,6 +232,10 @@
     grid-column: 1;
     grid-row: 4;
     align-self: start;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
     margin: 0;
   }
 }
@@ -224,8 +266,14 @@ body.phone {
   --r-l: 20px;
   --kb: 0px;
   background: var(--bg);
+  height: 100vh;
   height: 100dvh;
+  max-height: 100vh;
   max-height: 100dvh;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   overflow: hidden;
   font-family: -apple-system, "PingFang SC", "Noto Sans SC", sans-serif;
@@ -259,6 +307,10 @@ body.phone .btn:focus-visible {
 }
 body.phone .btn {
   min-height: 48px;
+  padding-top: 0;
+  padding-right: 20px;
+  padding-bottom: 0;
+  padding-left: 20px;
   padding: 0 20px;
   border-radius: var(--r-m);
   font-size: 16px;
@@ -285,6 +337,10 @@ body.phone :where(input:not([type="range"]):not([type="file"])) {
 body.phone .empty-state .btn,
 body.phone .btn.compact {
   min-height: 34px;
+  padding-top: 0;
+  padding-right: 16px;
+  padding-bottom: 0;
+  padding-left: 16px;
   padding: 0 16px;
   border-radius: 999px;
   font-size: 15px;
@@ -313,11 +369,19 @@ body.phone .app {
   align-items: center;
   gap: 8px;
   min-height: calc(var(--bar-h) + var(--safe-t));
+  padding-top: var(--safe-t);
+  padding-right: 8px;
+  padding-bottom: 0;
+  padding-left: 8px;
   padding: var(--safe-t) 8px 0;
   background: transparent;
   z-index: 16;
 }
 .topbar h1 {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   font-size: 17px;
   font-weight: 600;
@@ -333,6 +397,10 @@ body.phone .app {
   min-width: 44px;
   height: 32px;
   max-width: 148px;
+  padding-top: 0;
+  padding-right: 10px;
+  padding-bottom: 0;
+  padding-left: 8px;
   padding: 0 10px 0 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -361,6 +429,10 @@ body.phone .app {
   justify-self: end;
   width: 44px;
   height: 44px;
+  padding-top: 6px;
+  padding-right: 6px;
+  padding-bottom: 6px;
+  padding-left: 6px;
   padding: 6px;
   border: 0;
   background: transparent;
@@ -374,6 +446,8 @@ body.phone .app {
   height: 32px;
   border-radius: 50%;
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   background: rgba(255, 255, 255, .06);
   box-shadow: inset 0 0 0 1px var(--line);
@@ -392,6 +466,10 @@ body.phone .app {
   min-height: 0;
   overflow: auto;
   overflow-x: hidden;
+  padding-top: 6px;
+  padding-right: 16px;
+  padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
+  padding-left: 16px;
   padding: 6px 16px calc(var(--nav-h) + var(--safe-b) + 16px);
   -webkit-overflow-scrolling: touch;
 }
@@ -414,6 +492,10 @@ body.phone .app {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   height: calc(var(--nav-h) + var(--safe-b));
+  padding-top: 4px;
+  padding-right: 0;
+  padding-bottom: var(--safe-b);
+  padding-left: 0;
   padding: 4px 0 var(--safe-b);
   border-top: 1px solid var(--line);
   background: rgba(9, 9, 12, .78);
@@ -427,6 +509,10 @@ body.phone .app {
   justify-content: center;
   gap: 1px;
   min-height: 49px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
@@ -441,6 +527,10 @@ body.phone .app {
 }
 .tabbar button span {
   max-width: 100%;
+  padding-top: 0;
+  padding-right: 2px;
+  padding-bottom: 0;
+  padding-left: 2px;
   padding: 0 2px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -460,7 +550,15 @@ body.phone .app {
   width: 100%;
   min-height: 44px;
   gap: 10px;
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 12px;
+  margin-left: 0;
   margin: 0 0 12px;
+  padding-top: 6px;
+  padding-right: 12px;
+  padding-bottom: 6px;
+  padding-left: 8px;
   padding: 6px 12px 6px 8px;
   border: 1px solid var(--line);
   border-radius: var(--r-m);
@@ -472,6 +570,8 @@ body.phone .app {
 .desk-login-cta:active { background: var(--surface-2); }
 .desk-login-icon {
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   width: 30px;
   height: 30px;
@@ -506,12 +606,18 @@ body.phone .app {
   width: 44px;
   height: 44px;
   min-height: 44px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: rgba(120, 120, 128, .16);
   color: var(--text);
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   cursor: pointer;
 }
@@ -524,6 +630,10 @@ body.phone .app {
   width: 56px;
   height: auto;
   border-radius: 16px;
+  padding-top: 8px;
+  padding-right: 0;
+  padding-bottom: 6px;
+  padding-left: 0;
   padding: 8px 0 6px;
   gap: 2px;
 }
@@ -565,6 +675,10 @@ body.phone[data-page="player"] .topbar { display: none; }
   gap: 2px;
   width: 100%;
   min-height: 52px;
+  padding-top: 9px;
+  padding-right: 4px;
+  padding-bottom: 9px;
+  padding-left: 16px;
   padding: 9px 4px 9px 16px;
   border: 0;
   background: none;
@@ -576,12 +690,18 @@ body.phone[data-page="player"] .topbar { display: none; }
   width: 40px;
   height: 44px;
   min-height: 44px;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--accent);
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   cursor: pointer;
 }
@@ -603,6 +723,8 @@ body.phone[data-page="player"] .topbar { display: none; }
   font-weight: 700;
   letter-spacing: -.02em;
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   flex: 0 0 40px;
   box-shadow: inset 0 0 0 1px var(--line);
@@ -626,6 +748,10 @@ body.phone[data-page="player"] .topbar { display: none; }
 }
 .list-meta i { font-style: normal; }
 .meta-pill {
+  padding-top: 1px;
+  padding-right: 7px;
+  padding-bottom: 1px;
+  padding-left: 7px;
   padding: 1px 7px;
   border-radius: 999px;
   background: rgba(255, 255, 255, .07);
@@ -636,7 +762,15 @@ body.phone[data-page="player"] .topbar { display: none; }
 .meta-pill.is-low { background: rgba(255, 255, 255, .06); color: var(--dim); }
 .meta-pill .lyrics-match { color: inherit; font-weight: 600; }
 body.phone .source-tag {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
   border-radius: 0;
   background: none;
@@ -688,15 +822,25 @@ body.phone .source-tag.youtube { background: #3a2020; color: #ff8a8a; }
   box-sizing: border-box;
   align-self: stretch;
   justify-self: stretch;
+  padding-top: 44px;
+  padding-right: 20px;
+  padding-bottom: 32px;
+  padding-left: 20px;
   padding: 44px 20px 32px;
   text-align: center;
   color: rgba(235, 235, 245, .6);
 }
 .empty-state .empty-ico {
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   width: 64px;
   height: 64px;
+  margin-top: 0;
+  margin-right: auto;
+  margin-bottom: 14px;
+  margin-left: auto;
   margin: 0 auto 14px;
   border-radius: 22px;
   background: radial-gradient(80% 80% at 30% 20%, rgba(255, 55, 95, .32), rgba(255, 55, 95, .08));

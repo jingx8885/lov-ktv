@@ -54,7 +54,8 @@ class PhoneNotificationController(private val context: Context) {
     private val artPending = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val artFailed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val customViewsBroken = isFragileRemoteViewsRom() || detectPreviousCustomViewCrash()
+    private var customViewsBroken = isFragileRemoteViewsRom() || detectArmedPostCrash() || detectPreviousCustomViewCrash()
+    private var customPostStreak = 0
 
     private var lastPayload = ""
     private var lastMeta = ""
@@ -231,6 +232,10 @@ class PhoneNotificationController(private val context: Context) {
             builder.setCustomBigContentView(expandedViews(songTitle, label))
             builder.setStyle(Notification.DecoratedMediaCustomViewStyle()
                 .setMediaSession(mediaSession.sessionToken))
+            // See detectArmedPostCrash: the flag is lifted once several
+            // heartbeat posts have gone by without the process dying.
+            customPostStreak = 0
+            markCustomArmed(true)
         }
         postNotification(builder, songTitle, label)
     }
@@ -243,6 +248,31 @@ class PhoneNotificationController(private val context: Context) {
     private fun isFragileRemoteViewsRom(): Boolean {
         val maker = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
         return listOf("huawei", "honor", "emui").any { maker.contains(it) }
+    }
+
+    /**
+     * getHistoricalProcessExitReasons only exists on API 30+, so the crash
+     * self-heal below cannot see Android 10 deaths.  On those builds a bad
+     * RemoteViews post leaves an "armed" flag behind: the heartbeat posts a
+     * notification roughly once a second while listening, so if the flag is
+     * still set on the next launch the previous card killed us and the custom
+     * layout is retired for good on this ROM.
+     */
+    private fun detectArmedPostCrash(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return false
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (!prefs.getBoolean(KEY_CUSTOM_ARMED, false)) return false
+        prefs.edit()
+            .putBoolean(KEY_CUSTOM_ARMED, false)
+            .putBoolean(KEY_CUSTOM_BROKEN, true)
+            .apply()
+        return true
+    }
+
+    private fun markCustomArmed(armed: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_CUSTOM_ARMED, armed).apply()
     }
 
     /**
@@ -290,6 +320,12 @@ class PhoneNotificationController(private val context: Context) {
             // (and the JS that advances tracks) alive in the background.
             PlaybackService.sync(context, lastPlaying, notification)
             manager.notify(NOTIFICATION_ID, notification)
+            // Survived another post while armed; after a few seconds of
+            // successful refreshes the custom card is trusted again.
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R && !customViewsBroken) {
+                customPostStreak += 1
+                if (customPostStreak >= 5) markCustomArmed(false)
+            }
         } catch (_: RuntimeException) {
             notification = rebuildStandard(songTitle, label)
             runCatching {
@@ -447,6 +483,9 @@ class PhoneNotificationController(private val context: Context) {
     }
 
     fun close() {
+        // Clean shutdown: the last custom card did not kill us, so drop the
+        // armed flag instead of condemning the layout on the next launch.
+        markCustomArmed(false)
         runCatching { PlaybackService.stop(context) }
         onLyricSurface?.invoke(false)
         mainHandler.removeCallbacksAndMessages(null)
@@ -557,6 +596,7 @@ class PhoneNotificationController(private val context: Context) {
         private const val ART_SIZE = 256
         private const val PREFS = "lovktv-notify"
         private const val KEY_CUSTOM_BROKEN = "custom_broken"
+        private const val KEY_CUSTOM_ARMED = "custom_armed"
 
         /** Same curated gradient pairs as frontend/public/shared/ui/js/art.js. */
         private val PALETTE = listOf(

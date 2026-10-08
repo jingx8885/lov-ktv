@@ -11,6 +11,10 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+  margin-top: 4px;
+  margin-right: 0;
+  margin-bottom: 2px;
+  margin-left: 0;
   margin: 4px 0 2px;
 }
 /* 有砍掉的词时多一格，四格挤成五格比换行好读。 */
@@ -21,6 +25,10 @@
   display: grid;
   justify-items: center;
   gap: 2px;
+  padding-top: 12px;
+  padding-right: 4px;
+  padding-bottom: 10px;
+  padding-left: 4px;
   padding: 12px 4px 10px;
   border-radius: var(--r-l);
   background: rgba(18, 16, 28, .5);
@@ -44,7 +52,15 @@
 }
 
 .recite-streak {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
+  padding-top: 10px;
+  padding-right: 12px;
+  padding-bottom: 10px;
+  padding-left: 12px;
   padding: 10px 12px;
   border-radius: var(--r-m);
   color: #fff6df;
@@ -58,6 +74,10 @@
   display: grid;
   grid-auto-flow: column;
   gap: 8px;
+  margin-top: 2px;
+  margin-right: 0;
+  margin-bottom: 2px;
+  margin-left: 0;
   margin: 2px 0;
 }
 .recite-sizes button {
@@ -89,6 +109,10 @@
 .recite-empty {
   display: grid;
   gap: 4px;
+  padding-top: 22px;
+  padding-right: 14px;
+  padding-bottom: 22px;
+  padding-left: 14px;
   padding: 22px 14px;
   text-align: center;
   border-radius: var(--r-l);
@@ -99,6 +123,10 @@
   font-size: 15px;
 }
 .recite-empty p {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   color: var(--muted);
 }
@@ -126,6 +154,10 @@
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 10px;
+  padding-top: 10px;
+  padding-right: 12px;
+  padding-bottom: 10px;
+  padding-left: 12px;
   padding: 10px 12px;
   border-radius: var(--r-m);
   background: rgba(18, 16, 28, .5);
@@ -151,6 +183,10 @@
   white-space: nowrap;
 }
 .recite-box {
+  padding-top: 3px;
+  padding-right: 8px;
+  padding-bottom: 3px;
+  padding-left: 8px;
   padding: 3px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -193,6 +229,10 @@
 }
 .recite-restore {
   appearance: none;
+  padding-top: 6px;
+  padding-right: 12px;
+  padding-bottom: 6px;
+  padding-left: 12px;
   padding: 6px 12px;
   border: 0;
   border-radius: 999px;
@@ -226,10 +266,12 @@
   gap: 8px;
 }
 .recite-card .learn-src {
+  font-size: 9vw;
   font-size: clamp(30px, 9vw, 44px);
 }
 /* 填空题把整句放出来，字号要收，不然一行放不下。 */
 .recite-card.is-blank .learn-src {
+  font-size: 5.4vw;
   font-size: clamp(20px, 5.4vw, 28px);
 }
 .recite-gap {
@@ -240,6 +282,10 @@
   appearance: none;
   align-self: center;
   margin-top: 6px;
+  padding-top: 10px;
+  padding-right: 16px;
+  padding-bottom: 10px;
+  padding-left: 16px;
   padding: 10px 16px;
   border: 0;
   border-radius: 999px;
@@ -272,18 +318,27 @@
   text-align: center;
 }
 .recite-detail-word {
+  font-size: 10vw;
   font-size: clamp(32px, 10vw, 48px);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
 .recite-detail-roma {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   color: var(--muted);
   font-size: 14px;
   letter-spacing: 0.04em;
 }
 .recite-detail-zh {
+  margin-top: 4px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 4px 0 0;
   font-size: 20px;
   font-weight: 650;
@@ -293,7 +348,15 @@
   display: grid;
   gap: 8px;
   justify-items: center;
+  margin-top: 16px;
+  margin-right: 0;
+  margin-bottom: auto;
+  margin-left: 0;
   margin: 16px 0 auto;
+  padding-top: 16px;
+  padding-right: 14px;
+  padding-bottom: 16px;
+  padding-left: 14px;
   padding: 16px 14px;
   border-radius: var(--r-l);
   background: rgba(18, 16, 28, .5);
@@ -306,6 +369,10 @@
   font-weight: 700;
 }
 .recite-anchor p {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   font-size: 17px;
   line-height: 1.45;
@@ -317,6 +384,10 @@
 }
 .recite-anchor-play {
   min-height: 40px;
+  padding-top: 0;
+  padding-right: 18px;
+  padding-bottom: 0;
+  padding-left: 18px;
   padding: 0 18px;
 }
 .recite-anchor-play.is-playing {

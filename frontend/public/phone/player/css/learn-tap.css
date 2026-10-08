@@ -5,6 +5,10 @@
 .learn-tap-fx,
 .learn-tap-wash {
   position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
   width: 100%;
   height: 100%;
@@ -24,6 +28,10 @@
   z-index: 2;
 }
 .learn-tap-combo {
+  margin-top: 2px;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 2px 0 0;
   text-align: center;
   font-size: 15px;
@@ -33,6 +41,10 @@
   text-shadow: 0 1px 12px rgba(0, 0, 0, .55);
 }
 .learn-tap-zh {
+  margin-top: 0;
+  margin-right: 0;
+  margin-bottom: 0;
+  margin-left: 0;
   margin: 0;
   text-align: center;
   color: rgba(255, 255, 255, .72);
@@ -53,6 +65,10 @@
   min-width: 56px;
   min-height: 48px;
   overflow: hidden;
+  padding-top: 8px;
+  padding-right: 10px;
+  padding-bottom: 8px;
+  padding-left: 10px;
   padding: 8px 10px;
   border: 0;
   border-radius: 16px;
@@ -65,6 +81,8 @@
     0 0 0 1.5px var(--tile-line, rgba(255, 255, 255, .2)),
     0 10px 22px rgba(0, 0, 0, .28);
   display: grid;
+  align-items: center;
+  justify-items: center;
   place-items: center;
   gap: 2px;
   cursor: pointer;
@@ -125,10 +143,18 @@
   min-height: 36px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  padding-top: 4px;
+  padding-right: 2px;
+  padding-bottom: 2px;
+  padding-left: 2px;
   padding: 4px 2px 2px;
 }
 .learn-tap-got {
   flex: 0 0 auto;
+  padding-top: 6px;
+  padding-right: 10px;
+  padding-bottom: 6px;
+  padding-left: 10px;
   padding: 6px 10px;
   border-radius: 999px;
   background: rgba(245, 193, 108, .22);
@@ -159,10 +185,18 @@
 .learn-tap-actions {
   display: flex;
   justify-content: center;
+  margin-top: 2px;
+  margin-right: 0;
+  margin-bottom: 4px;
+  margin-left: 0;
   margin: 2px 0 4px;
 }
 .learn-tap-actions .btn {
   min-height: 34px;
+  padding-top: 6px;
+  padding-right: 16px;
+  padding-bottom: 6px;
+  padding-left: 16px;
   padding: 6px 16px;
 }
 .learn-tap-tile b {

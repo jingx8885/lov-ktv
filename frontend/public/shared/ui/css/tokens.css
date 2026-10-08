@@ -51,6 +51,10 @@ h1, h2 { margin: .2em 0 .4em; }
 .source-tag {
   display: inline-block;
   margin-right: 4px;
+  padding-top: 1px;
+  padding-right: 7px;
+  padding-bottom: 1px;
+  padding-left: 7px;
   padding: 1px 7px;
   border-radius: 999px;
   background: #2a3354;

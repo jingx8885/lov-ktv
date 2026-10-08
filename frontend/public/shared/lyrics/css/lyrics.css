@@ -5,6 +5,10 @@
   gap: 10px;
   width: 100%;
   max-width: none;
+  padding-top: 4px;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 4px 0 0;
   border-radius: 0;
   background: transparent;
@@ -20,6 +24,10 @@
   background: none;
   border: none;
   box-shadow: none;
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
 }
 body.tv.is-waiting .lyrics,
@@ -31,6 +39,10 @@ body.tv.is-waiting .lyric-plate {
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+  padding-top: 0;
+  padding-right: !important;
+  padding-bottom: 0;
+  padding-left: !important;
   padding: 0 !important;
 }
 .line, .next, .prev {
@@ -41,6 +53,7 @@ body.tv.is-waiting .lyric-plate {
   column-gap: 0.22em;
   row-gap: 0.16em;
   max-width: 96vw;
+  max-width: 1600px;
   max-width: min(96vw, 1600px);
 }
 .lyrics .line-words {
@@ -64,7 +77,13 @@ body.tv.is-waiting .lyric-plate {
   flex-direction: column;
   align-items: center;
   vertical-align: bottom;
+  padding-top: 0;
+  padding-right: 0.08em;
+  padding-bottom: 0;
+  padding-left: 0.08em;
   padding: 0 0.08em;
+  padding-left: 0.08em;
+  padding-right: 0.08em;
   padding-inline: 0.08em;
 }
 .lyrics .tok.latin { padding: 0 0.02em 0 0; padding-inline: 0.02em 0; }
@@ -163,7 +182,13 @@ body[data-lyric-script="zh"] .lyrics .line-words {
 }
 body[data-lyric-script="zh"] .lyrics .tok,
 body[data-lyric-script="zh"] .lyrics .tok.latin {
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  padding-left: 0;
   padding: 0;
+  padding-left: 0;
+  padding-right: 0;
   padding-inline: 0;
 }
 body[data-lyric-script="zh"] .lyrics .anno .rb {
