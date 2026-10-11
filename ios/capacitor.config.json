@@ -1,0 +1,7 @@
+{
+  "appId": "com.lovktv.phone",
+  "appName": "LovKTV Remote",
+  "webDir": "www",
+  "ios": { "contentInset": "automatic", "allowsLinkPreview": false },
+  "plugins": { "CapacitorHttp": { "enabled": false } }
+}

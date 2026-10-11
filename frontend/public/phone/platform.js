@@ -7,6 +7,10 @@
  */
 import { t } from "../shared/i18n/js/i18n.js";
 
+export function isIOSPhone() {
+  return typeof window !== "undefined" && window.Capacitor?.getPlatform?.() === "ios";
+}
+
 function bridge() {
   try {
     return typeof window !== "undefined" ? window.LovKtvPhone || null : null;
@@ -61,12 +65,14 @@ export function nativeAppVersion() {
 }
 
 export function nativeUpdateAvailable() {
+  if (isIOSPhone()) return false;
   const native = bridge();
   return !!(native && typeof native.checkUpdate === "function");
 }
 
 /** Ask the shell to check the server for a newer APK; result UI is native. */
 export function checkNativeUpdate() {
+  if (isIOSPhone()) return false;
   const native = bridge();
   if (!native || typeof native.checkUpdate !== "function") return false;
   try {

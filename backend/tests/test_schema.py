@@ -6,6 +6,7 @@ from lovktv.core.schema import POSTGRES_DDL, SQLITE_DDL, TABLES
 
 def test_schema_covers_current_tables():
     assert set(TABLES) == {
+        "remote_reports",
         "songs",
         "rooms",
         "queue",

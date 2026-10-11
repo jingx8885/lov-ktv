@@ -101,6 +101,7 @@ from lovktv.routers import (  # noqa: E402
     misc,
     playlists,
     recite,
+    remote,
     rooms,
     songs,
 )
@@ -116,6 +117,7 @@ app.include_router(learn.router)
 app.include_router(recite.router)
 app.include_router(rooms.router)
 app.include_router(media.router)
+app.include_router(remote.router)
 
 if WEB.exists():
     app.mount("/", VersionedStaticFiles(directory=WEB, html=True), name="web")

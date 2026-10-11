@@ -41,3 +41,11 @@ android-tv/gradle/
 android-phone/gradlew
 android-phone/gradlew.bat
 android-phone/gradle/
+# iOS generated web bundle / Xcode local state
+ios/www/
+ios/ios/App/App/public/
+ios/ios/App/App/capacitor.config.json
+ios/ios/App/App/config.xml
+ios/ios/DerivedData/
+*.xcuserstate
+xcuserdata/

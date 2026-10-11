@@ -345,6 +345,7 @@ interface LovKtvPhoneBridge {
 }
 
 interface Window {
+  Capacitor?: { getPlatform?: () => string };
   LovI18n?: { acceptLanguage?: () => string };
   webkitAudioContext?: typeof AudioContext;
   webkitOfflineAudioContext?: typeof OfflineAudioContext;
