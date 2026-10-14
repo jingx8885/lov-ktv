@@ -98,8 +98,8 @@ export async function loadRoom(opts) {
             }</span>
           </div>
           <div class="desk-actions">
+            <button class="row-action queue-action ${playing ? "on" : ""}" data-play="${item.id}" aria-label="${t("phone.desk.playThis")}">${ICO.play}<span>${t("phone.desk.playThis")}</span></button>
             ${canBump ? `<button class="row-action ghost" data-bump="${item.id}" aria-label="${t("phone.desk.bump")}">${ICO.bump}</button>` : ""}
-            <button class="row-action ${playing ? "on" : "ghost"}" data-play="${item.id}" aria-label="${t("phone.desk.playThis")}">${ICO.play}</button>
           </div>
         </div>`;
       })

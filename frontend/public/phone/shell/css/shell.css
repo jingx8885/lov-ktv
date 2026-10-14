@@ -686,8 +686,9 @@ body.phone[data-page="player"] .topbar { display: none; }
   text-align: left;
 }
 .row-action {
-  flex: 0 0 40px;
+  flex: 0 1 40px;
   width: 40px;
+  min-width: 28px;
   height: 44px;
   min-height: 44px;
   padding-top: 0;

@@ -73,9 +73,9 @@ function songRow(song) {
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
+            ${canPlay ? `<button class="row-action queue-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}<span>${t("phone.desk.add")}</span></button>` : ""}
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
             <button class="row-action ghost pladd-action" data-pladd="${song.id}" aria-label="${t("phone.pl.addTo")}">${ICO.plAdd}</button>
-            ${canPlay ? `<button class="row-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}</button>` : ""}
             ${canPlay ? `<button class="row-action ghost" data-edit="${song.id}" aria-label="${t("phone.player.align")}">${ICO.edit}</button>` : ""}
             ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
             ${canRetry ? `<button class="row-action ghost retry-action" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}<span>${t("phone.desk.retry")}</span></button>` : ""}
