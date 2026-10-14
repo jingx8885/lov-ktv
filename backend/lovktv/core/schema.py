@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 TABLES: dict[str, tuple[str, ...]] = {
+    "remote_api_keys": ("id", "user_id", "key_hash", "prefix", "created_at"),
     "remote_reports": ("id", "song_id", "reason", "created_at"),
     "songs": (
         "id",
@@ -289,6 +290,13 @@ CREATE TABLE IF NOT EXISTS learn_migrations (
   owner TEXT NOT NULL, kind TEXT NOT NULL, created_at INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (owner, kind)
 );
+CREATE TABLE IF NOT EXISTS remote_api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL UNIQUE,
+  key_hash TEXT NOT NULL UNIQUE,
+  prefix TEXT NOT NULL,
+  created_at BIGINT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS remote_reports (
     id TEXT PRIMARY KEY,
     song_id TEXT NOT NULL,
@@ -526,6 +534,13 @@ CREATE INDEX IF NOT EXISTS learn_word_sources_song ON learn_word_sources (owner,
 CREATE TABLE IF NOT EXISTS learn_migrations (
   owner TEXT NOT NULL, kind TEXT NOT NULL, created_at BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (owner, kind)
+);
+CREATE TABLE IF NOT EXISTS remote_api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL UNIQUE,
+  key_hash TEXT NOT NULL UNIQUE,
+  prefix TEXT NOT NULL,
+  created_at BIGINT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS remote_reports (
     id TEXT PRIMARY KEY,

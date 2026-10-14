@@ -40,9 +40,11 @@ async function request(path, body) {
   });
   if (result.status < 200 || result.status >= 300)
     throw new Error(
-      result.status === 402
-        ? "服务器未允许点歌，请联系服务器管理员。"
-        : `服务器请求失败（${result.status}）`,
+      config.mode === "official" && [401, 403].includes(result.status)
+        ? "API key 无效或已失效"
+        : result.status === 402
+          ? "服务器未允许点歌，请联系服务器管理员。"
+          : `服务器请求失败（${result.status}）`,
     );
   return JSON.parse(result.body);
 }
@@ -53,7 +55,7 @@ async function action(work) {
     status(error.message || "操作失败，请重试");
   }
 }
-async function connect(candidate) {
+async function connect(candidate, apiKey = "") {
   generation++;
   page = 1;
   config = null;
@@ -61,7 +63,12 @@ async function connect(candidate) {
   $("songs").replaceChildren();
   $("queue").replaceChildren();
   $("now").textContent = "暂无播放";
-  await native.configure({ server: candidate.server });
+  await native.configure({
+    server: candidate.server,
+    official: candidate.mode === "official",
+    apiKey,
+  });
+  $("api-key").value = "";
   config = candidate;
   localStorage.setItem("remote-config", JSON.stringify(config));
   $("server").value = config.server;
@@ -69,7 +76,7 @@ async function connect(candidate) {
   await refresh();
   await search();
   tab("remote");
-  status("已连接自己的服务器");
+  status(config.mode === "official" ? "已连接官方服务" : "已连接自己的服务器");
 }
 async function refresh() {
   if (!config) return;
@@ -78,7 +85,7 @@ async function refresh() {
   if (epoch !== generation) return;
   snapshot = data;
   $("now").textContent = data.now_playing
-    ? hidden(data.now_playing.id)
+    ? hidden(data.now_playing.song_id || data.now_playing.id)
       ? "当前内容已屏蔽"
       : `${data.now_playing.title || "未命名"} · ${data.now_playing.artist || ""}`
     : "暂无播放";
@@ -128,7 +135,7 @@ function render(root, songs, enqueue) {
       ];
       localStorage.setItem("remote-blocked", JSON.stringify(blocked));
       row.remove();
-      if (snapshot?.now_playing?.id === id)
+      if ((snapshot?.now_playing?.song_id || snapshot?.now_playing?.id) === id)
         $("now").textContent = "当前内容已屏蔽";
       status("已在此设备屏蔽该内容");
     });
@@ -145,7 +152,7 @@ function render(root, songs, enqueue) {
       ];
       localStorage.setItem("remote-blocked", JSON.stringify(blocked));
       row.remove();
-      if (snapshot?.now_playing?.id === id)
+      if ((snapshot?.now_playing?.song_id || snapshot?.now_playing?.id) === id)
         $("now").textContent = "当前内容已屏蔽";
       status("举报已送达服务器管理员，内容已在本机屏蔽");
     });
@@ -164,7 +171,21 @@ async function search() {
 }
 $("connect").onsubmit = (event) => {
   event.preventDefault();
-  action(() => connect(connection($("server").value, $("room").value)));
+  action(() => {
+    const mode = $("mode").value;
+    const candidate = connection(
+      mode === "official" ? "https://ktv.lovbrowser.com" : $("server").value,
+      $("room").value,
+    );
+    return connect(
+      {
+        ...candidate,
+        mode:
+          candidate.server === "https://ktv.lovbrowser.com" ? "official" : mode,
+      },
+      $("api-key").value.trim(),
+    );
+  });
 };
 $("scan").onclick = () =>
   action(async () => {
@@ -218,6 +239,7 @@ $("forget").onclick = () =>
     await native.configure({ server: "" });
     $("server").value = "";
     $("room").value = "";
+    $("api-key").value = "";
     $("songs").replaceChildren();
     $("queue").replaceChildren();
     $("now").textContent = "暂无播放";
@@ -243,11 +265,24 @@ setInterval(() => {
   }
 }, 3000);
 tab("settings");
+function connectionFields() {
+  const official = $("mode").value === "official";
+  $("key-field").hidden = !official;
+  $("official-hint").hidden = !official;
+  $("server-field").hidden = official;
+  $("server").required = !official;
+  $("scan").hidden = official;
+  $("api-key").value = "";
+}
+$("mode").onchange = connectionFields;
 const saved = read("remote-config", null);
 if (saved) {
+  $("mode").value = saved.mode === "official" ? "official" : "self";
   $("server").value = saved.server;
   $("room").value = saved.room;
 }
+
+connectionFields();
 
 $("stop-audio").onclick = () =>
   action(async () => {

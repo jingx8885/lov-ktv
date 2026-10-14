@@ -25,12 +25,14 @@ h1 {
 h2 {
   font-size: 1.4rem;
 }
+select,
 input,
 button,
 summary {
   font: inherit;
   min-height: 44px;
 }
+select,
 input {
   display: block;
   width: 100%;
@@ -51,7 +53,8 @@ button:disabled {
   opacity: 0.5;
 }
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid #007aff;
 }
 nav {
@@ -101,4 +104,8 @@ nav button[aria-current="page"] {
   * {
     scroll-behavior: auto;
   }
+}
+
+[hidden] {
+  display: none !important;
 }

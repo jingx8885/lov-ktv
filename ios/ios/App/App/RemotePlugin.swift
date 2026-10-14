@@ -3,6 +3,7 @@ import AVFoundation
 import VisionKit
 import MediaPlayer
 import WebKit
+import Security
 
 @objc(RemotePlugin)
 public class RemotePlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDelegate, DataScannerViewControllerDelegate, AVAudioPlayerDelegate {
@@ -34,6 +35,52 @@ public class RemotePlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDelegate, 
     }
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) { stopAudio() }
     private var origin: URL?
+    private var official = false
+    private var apiKey = ""
+    private let officialOrigin = "https://ktv.lovbrowser.com"
+    private var keyQuery: [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "com.lovktv.phone.official",
+         kSecAttrAccount as String: "remote-api-key"]
+    }
+    private func savedKey() throws -> String {
+        var query = keyQuery
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return "" }
+        guard status == errSecSuccess, let data = result as? Data,
+              let key = String(data: data, encoding: .utf8) else {
+            throw NSError(domain: "RemoteKeychain", code: Int(status))
+        }
+        return key
+    }
+    private func saveKey(_ key: String) throws {
+        var attributes: [String: Any] = [kSecValueData as String: Data(key.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly]
+        let status = SecItemUpdate(keyQuery as CFDictionary, attributes as CFDictionary)
+        if status == errSecItemNotFound {
+            attributes.merge(keyQuery) { _, new in new }
+            let added = SecItemAdd(attributes as CFDictionary, nil)
+            guard added == errSecSuccess else { throw NSError(domain: "RemoteKeychain", code: Int(added)) }
+        } else if status != errSecSuccess { throw NSError(domain: "RemoteKeychain", code: Int(status)) }
+    }
+    private func clearKey() throws {
+        let status = SecItemDelete(keyQuery as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw NSError(domain: "RemoteKeychain", code: Int(status))
+        }
+    }
+    private func authorize(_ request: inout URLRequest) {
+        request.setValue("ios", forHTTPHeaderField: "X-LovKTV-Platform")
+        if official { request.setValue("Bearer " + apiKey, forHTTPHeaderField: "Authorization") }
+    }
+    private func remotePath(_ path: String) -> String {
+        guard official else { return path }
+        return path == "/api/remote/reports" ? "/api/remote/ios/reports"
+            : "/api/remote/ios" + String(path.dropFirst(4))
+    }
     private var scanCall: CAPPluginCall?
     private var player: AVAudioPlayer?
     private var audioGeneration = 0
@@ -57,14 +104,34 @@ public class RemotePlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDelegate, 
             self.session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
             self.stopAudio()
             self.origin = nil
+            self.apiKey = ""
+            self.official = false
             let raw = call.getString("server") ?? ""
-            if raw.isEmpty { call.resolve(); return }
+            if raw.isEmpty {
+                do { try self.clearKey(); call.resolve() }
+                catch { call.reject("无法清除安全存储，请重试") }
+                return
+            }
             guard let url = URL(string: raw), let host = url.host?.lowercased(),
                   url.user == nil, url.password == nil, url.query == nil, url.fragment == nil,
                   url.path.isEmpty || url.path == "/",
                   url.scheme == "https" || (url.scheme == "http" && Self.local(host)) else {
                 call.reject("请使用 HTTPS 或局域网 HTTP 根地址"); return
             }
+            let official = (call.getBool("official") ?? false) || host == "ktv.lovbrowser.com"
+            if official {
+                guard raw == self.officialOrigin else { call.reject("官方服务地址无效"); return }
+                do {
+                    let supplied = call.getString("apiKey") ?? ""
+                    let key = supplied.isEmpty ? try self.savedKey() : supplied
+                    guard key.range(of: #"^lkr_[A-Za-z0-9_-]{43}$"#, options: .regularExpression) != nil else {
+                        call.reject("API key 无效或已失效"); return
+                    }
+                    if !supplied.isEmpty { try self.saveKey(key) }
+                    self.apiKey = key
+                } catch { call.reject("无法读取或保存安全存储，请重试"); return }
+            }
+            self.official = official
             self.origin = url
             call.resolve()
         }
@@ -86,9 +153,10 @@ public class RemotePlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDelegate, 
         DispatchQueue.main.async {
             guard let origin = self.origin, let path = call.getString("path"),
                   let method = call.getString("method"), self.allowed(path, method),
-                  let url = URL(string: origin.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + path),
+                  let url = URL(string: origin.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + self.remotePath(path)),
                   url.host == origin.host else { call.reject("请求不在遥控接口白名单内"); return }
             var request = URLRequest(url: url)
+            self.authorize(&request)
             request.httpMethod = method
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             if method == "POST" { request.httpBody = (call.getString("body") ?? "{}").data(using: .utf8) }
@@ -156,13 +224,18 @@ public class RemotePlugin: CAPPlugin, CAPBridgedPlugin, URLSessionTaskDelegate, 
         DispatchQueue.main.async {
             guard let origin = self.origin, let id = call.getString("id"),
                   id.range(of: #"^[A-Za-z0-9_-]{1,100}$"#, options: .regularExpression) != nil,
-                  let url = URL(string: origin.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/media/" + id + "/original.mp3") else {
+                  let url = URL(string: origin.absoluteString.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + (self.official ? "/api/remote/ios/media/" + id : "/media/" + id + "/original.mp3")) else {
                 call.reject("请先连接服务器"); return
             }
             self.stopAudio()
             let generation = self.audioGeneration
-            self.session.downloadTask(with: url) { file, response, error in
+            var request = URLRequest(url: url)
+            self.authorize(&request)
+            self.session.downloadTask(with: request) { file, response, error in
                 guard generation == self.audioGeneration else { call.reject("试听已取消"); return }
+                if self.official, let status = (response as? HTTPURLResponse)?.statusCode, [401, 403].contains(status) {
+                    call.reject("API key 无效或已失效"); return
+                }
                 guard error == nil, (response as? HTTPURLResponse)?.statusCode == 200,
                       let file = file,
                       let size = try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize,

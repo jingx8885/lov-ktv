@@ -22,8 +22,8 @@ from lovktv.catalog.index import (
 from lovktv.catalog.mugen import is_mugen_kid
 from lovktv.catalog.search import list_lyric_candidates, search_songs
 from lovktv.domain.timeline import normalize_timeline
-from lovktv.identity.plans import processing_priority
 from lovktv.identity.funnel import track
+from lovktv.identity.plans import processing_priority
 from lovktv.identity.points import charge_process
 from lovktv.identity.quota import learn_owner
 from lovktv.identity.song_admin import is_song_admin
@@ -218,6 +218,7 @@ async def api_upload(
     )
     favorite_store.set_favorite(learn_owner(request), song["id"], True)
     song["favorite"] = True
+    update_song(song["id"], audio_source="upload")
     dest = media_root() / song["id"] / "original.mp3"
     with dest.open("wb") as handle:
         shutil.copyfileobj(file.file, handle)

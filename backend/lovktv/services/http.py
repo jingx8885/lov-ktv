@@ -39,7 +39,9 @@ def request_secure(request) -> bool:
 
 
 def current_user(request):
-    return user_from_session(request.cookies.get(SESSION_COOKIE) or "")
+    return getattr(request.state, "remote_user", None) or user_from_session(
+        request.cookies.get(SESSION_COOKIE) or ""
+    )
 
 
 def set_session(response, token: str, request) -> None:

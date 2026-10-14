@@ -60,3 +60,29 @@ test("packaged bundle has no remote HTML, providers or monetization assets", asy
   assert(!/(?:src|href)=["\']https?:\/\//.test(html));
   assert(!/billing|login.html|ads|apk|youtube|netease|bilibili/i.test(html));
 });
+
+test("official mode has input-only credentials and native Keychain isolation", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const app = await readFile(new URL("../web/app.js", import.meta.url), "utf8");
+  const html = await readFile(
+    new URL("../web/index.html", import.meta.url),
+    "utf8",
+  );
+  const native = await readFile(
+    new URL("../ios/App/App/RemotePlugin.swift", import.meta.url),
+    "utf8",
+  );
+  assert.match(html, /官方服务/);
+  assert.match(html, /id="api-key"\s+type="password"/);
+  assert(!/购买|开通会员|价格|申请.*key|billing\.html/i.test(html));
+  assert.match(app, /API key 无效或已失效/);
+  assert(!/localStorage\.setItem\([^\n]*(?:apiKey|api-key)/.test(app));
+  assert.match(native, /SecItemCopyMatching/);
+  assert.match(native, /SecItemUpdate/);
+  assert.match(native, /SecItemDelete/);
+  assert.match(native, /kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly/);
+  assert.match(native, /host == "ktv.lovbrowser.com"/);
+  assert.match(native, /if official \{ request.setValue\("Bearer "/);
+  assert.match(native, /completionHandler\(nil\)/);
+  assert.match(native, /\/api\/remote\/ios\/media\//);
+});

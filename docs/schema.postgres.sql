@@ -214,6 +214,13 @@ CREATE TABLE IF NOT EXISTS learn_migrations (
   owner TEXT NOT NULL, kind TEXT NOT NULL, created_at BIGINT NOT NULL DEFAULT 0,
   PRIMARY KEY (owner, kind)
 );
+CREATE TABLE IF NOT EXISTS remote_api_keys (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL UNIQUE,
+  key_hash TEXT NOT NULL UNIQUE,
+  prefix TEXT NOT NULL,
+  created_at BIGINT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS remote_reports (
     id TEXT PRIMARY KEY,
     song_id TEXT NOT NULL,

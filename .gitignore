@@ -33,6 +33,7 @@ android-phone/local.properties
 # Local tooling artifacts (not part of the documented build)
 .claude/
 .playwright-cli/
+.playwright-mcp/
 output/
 :memory:.ses
 android-tv/gradlew

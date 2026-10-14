@@ -16,8 +16,17 @@
     <p id="paymentHint" class="muted">安全跳转 Stripe 支付。</p>
     <div id="current" class="current">正在读取当前订阅…</div>
     <div id="plans" class="plans"></div>
+    <section id="remote-key-panel" class="current" hidden>
+      <h2>遥控 API key</h2>
+      <p id="remote-key-info" role="status"></p>
+      <p>请妥善保存，仅在生成时显示完整 key；不要分享给他人。会员失效时 key 停止使用。</p>
+      <output id="remote-key-secret" style="display:block;overflow-wrap:anywhere;user-select:all"></output>
+      <button id="remote-key-create" type="button">申请 API key</button>
+      <button id="remote-key-revoke" type="button" hidden>吊销 API key</button>
+    </section>
     <p id="msg" class="muted"></p>
   </div>
+  <script type="module" src="/shared/remote-key.js"></script>
   <script>
     const nativeBilling = window.LovKtvPhone && typeof window.LovKtvPhone.playBillingBuy === "function" ? window.LovKtvPhone : null;
     const productForPlan = { starter: "starter_monthly", pro: "pro_monthly" };
