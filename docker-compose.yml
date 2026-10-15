@@ -47,6 +47,8 @@ services:
       LOVBROWSER_OIDC_SCOPES: ${LOVBROWSER_OIDC_SCOPES:-openid profile email}
       LOVKTV_CORS_ORIGINS: ${LOVKTV_CORS_ORIGINS:-https://ktv.lovbrowser.com,https://lovbrowser.com,https://www.lovbrowser.com}
     restart: unless-stopped
+    # Shared 8-core host. MDX ONNX separation otherwise takes about 4 cores.
+    cpus: "2.0"
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8787/healthz >/dev/null && curl -fsS http://127.0.0.1:8787/api/host >/dev/null"]
       interval: 20s
