@@ -74,6 +74,7 @@ class DeskActivity : Activity() {
     private var pendingNotificationAction = ""
     private lateinit var playBilling: PlayBillingManager
     private lateinit var appUpdater: AppUpdate
+    private var leftApp = true
     // Activity.requestPermissions has no parallel support: a second call while
     // a system dialog is up swallows the request and the result never comes
     // back, leaving WebView getUserMedia pending forever.  Every runtime
@@ -117,11 +118,8 @@ class DeskActivity : Activity() {
         startWatch(immediate = lanOrigin.isBlank() && roomCode.isNotBlank())
         watchNet()
         appUpdater = AppUpdate(this, "phone") {
-            server.ifBlank {
-                Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER }
-            }
+            DeskPage.pageOrigin(server.ifBlank { Prefs.serverUrl(this) })
         }
-        watch.postDelayed({ appUpdater.check(manual = false) }, 3500)
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermission(REQ_NOTIFICATIONS, Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -860,6 +858,27 @@ class DeskActivity : Activity() {
             }
             REQ_NOTIFICATIONS -> Unit
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!::appUpdater.isInitialized) return
+        if (leftApp) {
+            leftApp = false
+            appUpdater.onAppOpened()
+        } else {
+            appUpdater.onAppResumed()
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        leftApp = true
+        super.onUserLeaveHint()
+    }
+
+    override fun onStop() {
+        if (::appUpdater.isInitialized) appUpdater.onHostBackground()
+        super.onStop()
     }
 
     override fun onResume() {

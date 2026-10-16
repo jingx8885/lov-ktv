@@ -279,6 +279,25 @@ def test_tv_cold_start_pause_skip_stall_and_mtv_degrade_contracts():
     assert 'classList.add("has-mtv-cover")' in mtv
     assert "mtv.hidden = true" in mtv
     assert "playNativeMtv" in mtv
+    # Queue refresh of the song already on screen must return before silencing.
+    native_bind = mtv.split("export function bindMtv", 1)[1].split("playNativeMtv(abs)", 1)[0]
+    assert native_bind.index("boundMtvSong === bindKey") < native_bind.index("killHtmlMtv")
+    assert "mtv.volume" not in mtv
+    silent = (
+        ROOT.parent.parent
+        / "android-tv"
+        / "app"
+        / "src"
+        / "main"
+        / "java"
+        / "com"
+        / "lovktv"
+        / "tv"
+        / "media"
+        / "SilentMtv.kt"
+    ).read_text(encoding="utf-8")
+    assert "setVolume" not in silent
+    assert "dropAudioTracks" in silent
 
 
 def test_tv_runtime_lifecycle_and_rendering_are_bounded():

@@ -364,8 +364,8 @@ export function startPlayback() {
   bindKaraokeFallback(karaoke, songId);
   ensureActiveTrack(songId);
   if (srcHasSong(karaoke, songId)) {
-    applyMix();
     silenceMtv($("mtv"));
+    applyMix();
     restoreResume(karaoke);
     if (karaoke.error) {
       recoverSameSrc(karaoke);
@@ -413,8 +413,8 @@ export function startPlayback() {
   karaoke.src = mediaUrl(songId, activeTrackName(songId));
   karaoke.dataset.track = activeTrackName(songId);
   bindKaraokeFallback(karaoke, songId);
-  applyMix();
   silenceMtv($("mtv"));
+  applyMix();
   if (state.audioUnlocked) api.hookAudio();
   if (!nativeMv()) {
     const fx = ensureStageFx();

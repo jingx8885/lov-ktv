@@ -8,8 +8,9 @@ import android.view.SurfaceView
 import android.view.View
 
 /**
- * H.264 MV picture on a hardware SurfaceView. Hisense/Android 9 VideoView.setVolume(0,0) often fails,
- * so this player drops audio tracks and remutes after start.
+ * H.264 MV picture on a hardware SurfaceView. Hisense/Android 9 cannot quiet
+ * this player by zeroing its gain: that call zeros STREAM_MUSIC, so a phone
+ * enqueue that refreshes the picture mutes the song. Drop audio tracks instead.
  */
 class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
     @Volatile
@@ -79,7 +80,6 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
                     .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
                     .build(),
             )
-            nextPlayer.setVolume(0f, 0f)
             nextPlayer.isLooping = false
             nextPlayer.setOnPreparedListener { ready ->
                 if (player !== ready) return@setOnPreparedListener
@@ -203,10 +203,6 @@ class SilentMtv(private val surface: SurfaceView) : SurfaceHolder.Callback {
 
     companion object {
         fun mute(player: MediaPlayer) {
-            try {
-                player.setVolume(0f, 0f)
-            } catch (_: Exception) {
-            }
             dropAudioTracks(player)
         }
 

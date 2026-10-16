@@ -10,9 +10,7 @@ function nativePlayer() {
 
 function killHtmlMtv(mtv) {
   if (!mtv) return;
-  mtv.muted = true;
-  mtv.defaultMuted = true;
-  mtv.volume = 0;
+  if (mtv.muted !== true) mtv.muted = true;
   mtv.hidden = true;
   mtv.pause();
   if (mtv.getAttribute("src") || mtv.src) {
@@ -38,9 +36,7 @@ function glassStage(on) {
 
 export function silenceMtv(mtv) {
   if (!mtv) return;
-  mtv.muted = true;
-  mtv.defaultMuted = true;
-  mtv.volume = 0;
+  if (mtv.muted !== true) mtv.muted = true;
   if (nativePlayer()) killHtmlMtv(mtv);
 }
 
@@ -89,12 +85,14 @@ export function bindMtv(songId) {
   const htmlSrc = mediaUrl(songId, "mtv.mp4");
   const abs = (location.origin || "") + htmlSrc;
   if (nativePlayer()) {
+    const bindKey = songId + ":" + (mediaRevFor(songId) || "");
+    // A phone enqueue refreshes the room while this song is already on screen.
+    // Re-entering here used to zero the video volume and mute the song.
+    if (state.boundMtvSong === bindKey) return;
     killHtmlMtv(mtv);
     document.body.classList.add("has-mtv", "has-native-player");
     glassStage(true);
     syncNativeMv();
-    const bindKey = songId + ":" + (mediaRevFor(songId) || "");
-    if (state.boundMtvSong === bindKey) return;
     state.boundMtvSong = bindKey;
     playNativeMtv(abs);
     return;

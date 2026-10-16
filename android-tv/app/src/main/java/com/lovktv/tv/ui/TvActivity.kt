@@ -28,6 +28,7 @@ class TvActivity : Activity(), TvHost {
     private lateinit var webView: WebView
     private lateinit var silentMtv: SilentMtv
     private lateinit var appUpdate: AppUpdate
+    private var leftApp = true
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +39,6 @@ class TvActivity : Activity(), TvHost {
         appUpdate = AppUpdate(this, "tv") {
             Prefs.serverUrl(this).ifBlank { Prefs.DEFAULT_SERVER }
         }
-        webView.postDelayed({ appUpdate.check(manual = false) }, 2500)
 
         runCatching {
             val cookies = CookieManager.getInstance()
@@ -194,6 +194,27 @@ class TvActivity : Activity(), TvHost {
             "window.LovKtvRemote&&window.LovKtvRemote.$safe&&window.LovKtvRemote.$safe()",
             null,
         )
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (!::appUpdate.isInitialized) return
+        if (leftApp) {
+            leftApp = false
+            appUpdate.onAppOpened()
+        } else {
+            appUpdate.onAppResumed()
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        leftApp = true
+        super.onUserLeaveHint()
+    }
+
+    override fun onStop() {
+        if (::appUpdate.isInitialized) appUpdate.onHostBackground()
+        super.onStop()
     }
 
     override fun onPause() {

@@ -57,8 +57,25 @@ export function renderLibIndex(letters) {
     });
 }
 
+let queuedIds = new Set();
+
+/** Keep the 点歌 button lit only while that song is still in the room queue. */
+export function paintQueuedSongs(room) {
+  if (room) {
+    queuedIds = new Set(
+      (room.queue || []).map((item) => String((item && item.song_id) || "")).filter(Boolean)
+    );
+  }
+  const root = $("songs");
+  if (!root) return;
+  root.querySelectorAll("[data-queue]").forEach((btn) => {
+    btn.classList.toggle("on", queuedIds.has(String(btn.dataset.queue || "")));
+  });
+}
+
 function songRow(song) {
   const canPlay = song.status === "ready";
+  const queued = queuedIds.has(String(song.id || ""));
   const canRetry = song.status === "failed" || (song.status === "ready" && !!String(song.error || "").trim());
   const canRecalculate = song.status === "ready" && state.songAdmin && song.can_realign !== false;
   const canDelete = song.status !== "fetching" && song.status !== "separating";
@@ -73,7 +90,7 @@ function songRow(song) {
             ${song.error ? `<span class="err">${escapeHtml(song.error)}</span>` : ""}
           </div>
           <div class="desk-actions">
-            ${canPlay ? `<button class="row-action queue-action" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}<span>${t("phone.desk.add")}</span></button>` : ""}
+            ${canPlay ? `<button class="row-action queue-action${queued ? " on" : ""}" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}<span>${t("phone.desk.add")}</span></button>` : ""}
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
             <button class="row-action ghost pladd-action" data-pladd="${song.id}" aria-label="${t("phone.pl.addTo")}">${ICO.plAdd}</button>
             ${canPlay ? `<button class="row-action ghost" data-edit="${song.id}" aria-label="${t("phone.player.align")}">${ICO.edit}</button>` : ""}
@@ -166,7 +183,7 @@ function bindSongActions() {
           loadSongs(false);
           return;
         }
-        btn.classList.add("on");
+        paintQueuedSongs(data);
         api.loadRoom({ room: data });
       };
     });
@@ -370,6 +387,7 @@ export async function loadSongs(append = false, force = false) {
   }
   renderLibTail(state.libState.page, state.libPages, data.total || 0);
   bindSongActions();
+  paintQueuedSongs();
 }
 
 export function bindLibrary() {

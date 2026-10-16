@@ -26,9 +26,9 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 /**
- * In-app update: read /api/apps on the configured processing server, download
- * the published APK, then hand it to PackageInstaller so the system shows its
- * own confirmation screen.
+ * In-app update. Each time the app comes to the foreground, read /api/apps.
+ * A newer APK prompts, then downloads and hands the file to PackageInstaller
+ * so the system shows its own confirmation screen.
  */
 class AppUpdate(
     private val activity: Activity,
@@ -48,32 +48,97 @@ class AppUpdate(
     private var progressBar: ProgressBar? = null
     private var progressText: TextView? = null
     private var pendingInstall: File? = null
+    private var promptDialog: AlertDialog? = null
+    private var permissionDialog: AlertDialog? = null
+    private var deferred: Latest? = null
+    private var deferredName = ""
+    private var silentTries = 0
+    private var openedCheckDone = false
+    @Volatile private var foreground = false
 
-    fun check(manual: Boolean) {
-        if (checking || downloading) return
-        val base = serverBase().trim().trimEnd('/')
-        if (base.isBlank()) {
-            if (manual) toast(R.string.upd_check_fail)
+    private val openCheck = Runnable { check(manual = false) }
+
+    /** User opened the app. Check for a newer APK, or show one found while backgrounded. */
+    fun onAppOpened() {
+        foreground = true
+        openedCheckDone = false
+        if (downloading || pendingInstall != null) return
+        if (showDeferred()) return
+        if (promptShowing()) {
+            openedCheckDone = true
             return
         }
+        silentTries = 0
+        scheduleOpenCheck()
+    }
+
+    /** Returned from another screen in this app. Show a waiting prompt, without checking again. */
+    fun onAppResumed() {
+        foreground = true
+        if (downloading || pendingInstall != null || promptShowing()) return
+        if (showDeferred()) return
+        if (!openedCheckDone) scheduleOpenCheck()
+    }
+
+    private fun scheduleOpenCheck() {
+        main.removeCallbacks(openCheck)
+        main.postDelayed(openCheck, OPEN_DELAY_MS)
+    }
+
+    private fun showDeferred(): Boolean {
+        val waiting = deferred ?: return false
+        deferred = null
+        val name = deferredName
+        openedCheckDone = true
+        main.post {
+            if (!activity.isFinishing && !activity.isDestroyed) promptUpdate(waiting, name)
+        }
+        return true
+    }
+
+    fun onHostBackground() {
+        foreground = false
+        main.removeCallbacks(openCheck)
+    }
+
+    fun check(manual: Boolean) {
+        if (checking || downloading || promptShowing()) return
+        if (!manual && (!foreground || pendingInstall != null)) return
         checking = true
         Thread {
-            val latest = runCatching { fetchLatest(base) }.getOrNull()
+            val latest = runCatching { loadLatest() }.getOrNull()
             checking = false
-            when {
-                latest == null -> {
-                    if (manual) main.post { toast(R.string.upd_check_fail) }
-                }
-                else -> {
-                    val local = localVersion()
-                    if (!isNewer(latest, local.first, local.second)) {
-                        if (manual) main.post { toast(R.string.upd_latest) }
-                    } else {
-                        main.post { promptUpdate(latest, local.first) }
-                    }
-                }
-            }
+            main.post { deliver(manual, latest) }
         }.start()
+    }
+
+    private fun deliver(manual: Boolean, latest: Latest?) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        if (latest == null) {
+            if (manual) {
+                openedCheckDone = true
+                toast(R.string.upd_check_fail)
+            } else if (foreground && silentTries < SILENT_RETRIES) {
+                silentTries += 1
+                main.postDelayed(openCheck, RETRY_DELAY_MS)
+            } else {
+                openedCheckDone = true
+            }
+            return
+        }
+        silentTries = 0
+        openedCheckDone = true
+        val local = localVersion()
+        if (!isNewer(latest, local.first, local.second)) {
+            if (manual) toast(R.string.upd_latest)
+            return
+        }
+        if (!manual && !foreground) {
+            deferred = latest
+            deferredName = local.first
+            return
+        }
+        promptUpdate(latest, local.first)
     }
 
     /** Settings for "install unknown apps" returns here; resume a queued install. */
@@ -83,12 +148,22 @@ class AppUpdate(
             activity.packageManager.canRequestPackageInstalls()
         ) {
             pendingInstall = null
+            permissionDialog?.dismiss()
+            permissionDialog = null
             install(apk)
+            return
         }
+        if (permissionDialog?.isShowing != true) showPermissionDialog(apk)
     }
 
     fun close() {
+        foreground = false
+        deferred = null
         main.removeCallbacksAndMessages(null)
+        promptDialog?.dismiss()
+        promptDialog = null
+        permissionDialog?.dismiss()
+        permissionDialog = null
         progressDialog?.dismiss()
         progressDialog = null
     }
@@ -100,6 +175,33 @@ class AppUpdate(
         val sha256: String,
         val size: Long,
     )
+
+    /** Public catalog first. A LAN address is only a fallback when the public host is down. */
+    private fun loadLatest(): Latest? {
+        val primary = runCatching { serverBase().trim().trimEnd('/') }.getOrDefault("")
+        val fallback = Prefs.DEFAULT_SERVER.trim().trimEnd('/')
+        val preferPublic = primary.isBlank() || isPrivateBase(primary)
+        val first = if (preferPublic) fallback else primary
+        val second = when {
+            first.equals(fallback, ignoreCase = true) && !primary.equals(first, ignoreCase = true) -> primary
+            !first.equals(fallback, ignoreCase = true) -> fallback
+            else -> ""
+        }
+        val latest = fetchOrNull(first)
+        if (latest != null) return latest
+        if (second.isBlank() || second.equals(first, ignoreCase = true)) return null
+        return fetchOrNull(second)
+    }
+
+    private fun fetchOrNull(base: String): Latest? {
+        if (base.isBlank()) return null
+        return runCatching { fetchLatest(base) }.getOrNull()
+    }
+
+    private fun isPrivateBase(base: String): Boolean {
+        val host = base.substringAfter("://").substringBefore('/').substringBefore(':')
+        return Prefs.looksLocal(host)
+    }
 
     private fun fetchLatest(base: String): Latest? {
         val body = http.newCall(
@@ -168,10 +270,13 @@ class AppUpdate(
         return latest.name != localName
     }
 
+    private fun promptShowing(): Boolean = promptDialog?.isShowing == true
+
     private fun promptUpdate(latest: Latest, localName: String) {
-        if (activity.isFinishing || activity.isDestroyed) return
-        AlertDialog.Builder(activity)
-            .setTitle(R.string.upd_title)
+        if (activity.isFinishing || activity.isDestroyed || promptShowing()) return
+        deferred = null
+        val dialog = dialog()
+            .setTitle(R.string.upd_found)
             .setMessage(
                 activity.getString(
                     R.string.upd_message,
@@ -181,7 +286,16 @@ class AppUpdate(
             )
             .setPositiveButton(R.string.upd_now) { _, _ -> download(latest) }
             .setNegativeButton(R.string.upd_later, null)
-            .show()
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.requestFocus()
+        }
+        promptDialog = dialog
+        dialog.show()
+    }
+
+    private fun dialog(): AlertDialog.Builder {
+        return AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
     }
 
     private fun download(latest: Latest) {
@@ -229,7 +343,7 @@ class AppUpdate(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
-        progressDialog = AlertDialog.Builder(activity)
+        progressDialog = dialog()
             .setTitle(R.string.upd_downloading)
             .setView(box)
             .setCancelable(true)
@@ -301,18 +415,26 @@ class AppUpdate(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             !activity.packageManager.canRequestPackageInstalls()
         ) {
-            pendingInstall = apk
-            AlertDialog.Builder(activity)
-                .setTitle(R.string.upd_title)
-                .setMessage(R.string.upd_need_permission)
-                .setPositiveButton(R.string.upd_open_settings) { _, _ ->
-                    openInstallSettings()
-                }
-                .setNegativeButton(R.string.upd_later) { _, _ -> pendingInstall = null }
-                .show()
+            showPermissionDialog(apk)
             return
         }
         install(apk)
+    }
+
+    private fun showPermissionDialog(apk: File) {
+        if (activity.isFinishing || activity.isDestroyed) return
+        if (permissionDialog?.isShowing == true) return
+        pendingInstall = apk
+        val dialog = dialog()
+            .setTitle(R.string.upd_found)
+            .setMessage(R.string.upd_need_permission)
+            .setPositiveButton(R.string.upd_open_settings) { _, _ ->
+                openInstallSettings()
+            }
+            .setNegativeButton(R.string.upd_later) { _, _ -> pendingInstall = null }
+            .create()
+        permissionDialog = dialog
+        dialog.show()
     }
 
     private fun openInstallSettings() {
@@ -369,5 +491,11 @@ class AppUpdate(
         } else {
             main.post { toast(resId) }
         }
+    }
+
+    companion object {
+        private const val OPEN_DELAY_MS = 1200L
+        private const val RETRY_DELAY_MS = 5000L
+        private const val SILENT_RETRIES = 2
     }
 }

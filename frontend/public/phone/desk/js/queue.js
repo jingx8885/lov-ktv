@@ -6,7 +6,7 @@ import { STATUS } from "../../../shared/ui/js/status.js";
 import { api } from "../../api.js";
 import { ICO, paintTopRoom } from "../../ui/js/icons.js";
 import { showToast } from "../../ui/js/toast.js";
-import { showDeskPane } from "./library.js";
+import { paintQueuedSongs, showDeskPane } from "./library.js";
 import { songArtist, songTitle } from "../../../shared/ui/js/song.js";
 import { songArt } from "../../../shared/ui/js/art.js";
 import { fetchRoom, roomStamp } from "../../room/js/room/state.js";
@@ -54,6 +54,7 @@ export async function loadRoom(opts) {
     return;
   }
   if (adoptLan(room)) return;
+  paintQueuedSongs(room);
   const stamp = roomStamp(room);
   if (quiet && stamp === lastRoomStamp && $("queue").querySelector(".desk-row, .empty-state")) return;
   lastRoomStamp = stamp;
