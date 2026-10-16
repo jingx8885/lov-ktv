@@ -8,6 +8,8 @@
 .page-desk .now-bar { flex: 0 0 auto; }
 .page-desk .desk-sheet {
   flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -16,11 +18,14 @@
 .page-desk .desk-lib,
 .page-desk .desk-lyrics {
   flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   overflow: hidden;
 }
 .page-desk #queue {
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 /* 播放卡：第一行是状态 + 暂停/切歌，第二行是次级控制。
@@ -662,7 +667,7 @@ body.phone .page-desk > .lyric-seg { display: none; }
 }
 .desk-index.live { color: var(--accent); }
 .desk-index svg { width: 14px; height: 14px; fill: currentColor; display: block; margin: 0 auto; }
-.desk-copy { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.desk-copy { flex: 1 1 0%; min-width: 0; overflow: hidden; }
 .desk-copy b {
   display: block;
   overflow: hidden;
@@ -676,18 +681,21 @@ body.phone .page-desk > .lyric-seg { display: none; }
 .desk-copy .tiny { display: block; margin-top: 2px; overflow: hidden; font-size: 12px; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .desk-copy .err { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .desk-row { max-width: 100%; min-width: 0; overflow: hidden; box-sizing: border-box; }
-/* 操作区按按钮真实数量占宽，不再用假的 88px 上限把按钮挤进歌名区。
+/* 操作区按按钮真实数量占宽，钉在行尾，不跟着歌名伸缩。
    点歌是第一颗主按钮（粉字+浅粉底）；其余是次要图标，窄屏自动收小。 */
 .desk-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 2px;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 62%;
-  overflow: hidden;
+  flex: 0 0 auto;
+  margin-left: auto;
+  max-width: 100%;
+  overflow: visible;
 }
 .desk-actions .row-action { flex: 0 0 40px; }
+/* 已点的「唱这首」始终贴在行尾，置顶排在它左边，避免有无置顶时主按钮左右跳动。 */
+.page-desk #queue .desk-actions .row-action:not(.queue-action) { order: -1; }
 .desk-actions .queue-action {
   flex: 0 0 auto;
   width: max-content;
@@ -914,7 +922,8 @@ body.phone .page-desk > .lyric-seg { display: none; }
   .page-desk #queue,
   .page-desk .desk-lib,
   .page-desk .desk-lyrics {
-    overflow: visible;
+    overflow-x: hidden;
+    overflow-y: visible;
   }
 
   .page-desk #queue,
@@ -1147,36 +1156,33 @@ body.phone .page-desk > .lyric-seg { display: none; }
   body.phone .page-desk .desk-login-copy small { font-size: 10px; }
   body.phone .page-desk .desk-login-arrow { font-size: 21px; }
 
-  /* 曲库是桌面点歌台的主工作区：宽屏时自动展开为 3～4 列，
-     窄一些的桌面窗口也会回落到 2 列，不压缩歌曲标题和操作按钮。 */
+  /* 曲库在桌面按卡片铺开。一列要能同时放下封面、两行歌名和右侧按钮，
+     歌名歌手跟封面垂直居中；窗口更窄时退成一列，不出现横向滚动。 */
   body.phone .page-desk .desk-lib #songs {
     display: grid;
-    grid-template-columns: repeat(auto-fit, min240px);
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
     align-content: start;
     gap: 10px 12px;
-    padding-top: 4px;
-    padding-right: 4px;
-    padding-bottom: 20px;
-    padding-left: 4px;
     padding: 4px 4px 20px;
   }
 
   body.phone .page-desk .desk-lib #songs > .desk-row {
-    flex-wrap: wrap;
-    align-content: flex-start;
-    align-items: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 10px;
     min-width: 0;
-    min-height: 76px;
-    padding-top: 12px;
-    padding-right: 10px;
-    padding-bottom: 12px;
-    padding-left: 14px;
-    padding: 12px 10px 12px 14px;
+    min-height: 72px;
+    padding: 10px 8px 10px 14px;
     border: 1px solid rgba(255, 255, 255, .07);
     border-radius: 12px;
     background: rgba(255, 255, 255, .035);
+    overflow: hidden;
     transition: border-color .16s ease, background .16s ease, transform .16s ease;
+  }
+
+  body.phone .page-desk .desk-lib #songs > .desk-row > .art {
+    margin: 0;
+    flex: 0 0 44px;
   }
 
   body.phone .page-desk .desk-lib #songs > .desk-row::before {
@@ -1194,42 +1200,41 @@ body.phone .page-desk > .lyric-seg { display: none; }
     width: 100%;
   }
 
-  body.phone .page-desk .desk-lib #songs .desk-copy b {
-    font-size: 15px;
-    line-height: 1.35;
-  }
-
-  body.phone .page-desk .desk-lib #songs .desk-actions {
-    /* 桌面窄卡放不下「歌名 + 6 颗按钮」同行：操作区换到第二行整行靠右，
-       每颗按钮都完整露出，不再用封顶裁剪把最后几颗切掉。 */
-    flex: 1 0 100%;
-    width: 100%;
-    max-width: none;
-    justify-content: flex-end;
-    gap: 2px;
-    overflow: visible;
-  }
-
   body.phone .page-desk .desk-lib #songs .desk-copy {
     flex: 1 1 auto;
     min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
-  /* 换到第二行的操作区与封面左缘对齐（44 封面 + 8 间距），和第一行拉开 8px。 */
-  body.phone .page-desk .desk-lib #songs > .desk-row {
-    row-gap: 8px;
-  }
-
-  body.phone .page-desk .desk-lib #songs .desk-actions {
-    padding-left: 52px;
-    box-sizing: border-box;
-  }
-
-  body.phone .page-desk .desk-lib #songs .desk-copy b {
+  body.phone .page-desk .desk-lib #songs .desk-copy b,
+  body.phone .page-desk .desk-lib #songs .desk-copy .tiny {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  body.phone .page-desk .desk-lib #songs .desk-copy b {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  /* 按钮跟封面、歌名同一行垂直居中，钉在行尾。歌名不够宽时只省略文字。 */
+  body.phone .page-desk .desk-lib #songs .desk-actions {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 72%;
+    min-width: 0;
+    margin: 0 0 0 auto;
+    padding: 0;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow: hidden;
   }
 
   body.phone .page-desk .desk-lib #songs .desk-actions .row-action {
@@ -1344,9 +1349,9 @@ body.phone .page-desk > .lyric-seg { display: none; }
 }
 
 /* 窄屏（一列列表）：点歌仍是第一颗，但只留 "+" 图标，给歌名让位；
-   次要操作收进 32px，避免 5-6 颗按钮把标题挤没。 */
+   次要操作收进 32px。按钮宽度固定，长歌名只省略标题，不再把按钮顶出屏幕。 */
 @media (max-width: 699px) {
-  .desk-actions { max-width: 58%; gap: 0; }
+  .desk-actions { max-width: none; gap: 0; }
   .desk-actions .row-action { flex-basis: 32px; width: 32px; min-width: 32px; }
   .desk-actions .queue-action {
     flex: 0 0 36px;
