@@ -483,6 +483,17 @@ def _native_timed_matches_media(out_dir: Path, skeleton: dict, src: Path) -> boo
     )
     if not has_video:
         return False
+    source = skeleton.get("source")
+    if (
+        isinstance(source, dict)
+        and source.get("provider") == "karaoke-mugen"
+        and (out_dir / "lyrics.json").exists()
+    ):
+        # Karaoke Mugen subtitles are authored against this exact mugen.mp4;
+        # OP/ED outros can stretch ~10-30s of instrumental past the last line.
+        # Duration-gating them only sends trusted karaoke timings back through
+        # ASR/agent alignment and scrambles them (see 122579e41669).
+        return True
     lyrics_path = out_dir / "lyrics.json"
     try:
         import json

@@ -271,10 +271,41 @@ def test_native_timed_requires_close_media_duration(tmp_path, monkeypatch):
     (out / "lyrics.json").write_text(
         '{"cues":[{"start_ms":1000,"end_ms":118000}]}', encoding="utf-8"
     )
-    skeleton = {"has_video": True, "source": {"provider": "karaoke-mugen"}}
+    skeleton = {"has_video": True, "source": {"provider": "bilibili"}}
     monkeypatch.setattr(jobs, "probe_duration_ms", lambda path: 120000)
     assert jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
     monkeypatch.setattr(jobs, "probe_duration_ms", lambda path: 180000)
+    assert not jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
+
+
+def test_native_timed_trusts_mugen_outro(tmp_path, monkeypatch):
+    """Mugen ASS clocks are authored for mugen.mp4; long outros are normal."""
+    out = tmp_path / "m"
+    out.mkdir()
+    (out / "mugen.mp4").write_bytes(b"v")
+    (out / "mtv.mp4").write_bytes(b"v")
+    (out / "lyrics.json").write_text(
+        '{"cues":[{"start_ms":1000,"end_ms":80760}]}', encoding="utf-8"
+    )
+    skeleton = {
+        "has_video": True,
+        "source": {"provider": "karaoke-mugen"},
+        "audio": {"source": "mugen"},
+    }
+    monkeypatch.setattr(jobs, "probe_duration_ms", lambda path: 90799)
+    assert jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
+
+
+def test_native_timed_mugen_still_needs_lyrics(tmp_path, monkeypatch):
+    """Without a persisted timeline there is nothing to trust."""
+    out = tmp_path / "m2"
+    out.mkdir()
+    (out / "mugen.mp4").write_bytes(b"v")
+    skeleton = {
+        "has_video": True,
+        "source": {"provider": "karaoke-mugen"},
+        "audio": {"source": "mugen"},
+    }
     assert not jobs._native_timed_matches_media(out, skeleton, out / "original.mp3")
 
 
