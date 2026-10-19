@@ -1894,15 +1894,14 @@ body.phone.edit-on .tl {
     overflow: auto;
   }
 
-  /* 桌面曲库卡片化，宽屏下并排展示更多歌曲；字母索引继续独立贴在右侧。 */
+  /* 桌面曲库卡片化；列宽保证放得下歌名，字母索引独立贴在右侧。 */
   body.phone[data-page="player"] .player-sheet-body {
     gap: 10px;
   }
 
   body.phone[data-page="player"] .player-sheet .player-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, min150px);
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
     align-content: start;
     gap: 10px;
     padding-top: 6px;
@@ -2088,9 +2087,8 @@ body.phone.edit-on .tl {
 }
 
 @media (min-width: 1500px) {
-  body.phone[data-page="player"] .player-sheet .player-list {
-    grid-template-columns: repeat(2, min0);
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  body.phone[data-page="player"] .player-main {
+    grid-template-columns: minmax(0, 1fr) clamp(420px, 34vw, 720px);
   }
 }
 
@@ -2809,14 +2807,12 @@ body.phone.player-fullscreen .player-lyrics .next {
 .src-chip.src-add svg { width: 14px; height: 14px; fill: currentColor; }
 .src-chip.src-add em { color: inherit; font-size: 12px; }
 
-/* 歌曲行：加入歌单 / 从歌单移除 */
-.player-pick .pick-pl,
-.player-pick .pick-plremove {
+/* 歌曲行尾部的"更多"菜单入口（歌单操作都收在这里）。 */
+.player-pick .pick-more {
   flex: 0 0 34px;
   width: 34px;
   height: 42px;
 }
-.player-pick .pick-plremove { color: var(--dim); }
 .pl-row { gap: 10px; }
 .pl-row .pl-ico {
   flex: 0 0 38px;

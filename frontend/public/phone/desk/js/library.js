@@ -76,9 +76,6 @@ export function paintQueuedSongs(room) {
 function songRow(song) {
   const canPlay = song.status === "ready";
   const queued = queuedIds.has(String(song.id || ""));
-  const canRetry = song.status === "failed" || (song.status === "ready" && !!String(song.error || "").trim());
-  const canRecalculate = song.status === "ready" && state.songAdmin && song.can_realign !== false;
-  const canDelete = song.status !== "fetching" && song.status !== "separating";
   const pill = canPlay ? "" : `<em class="desk-pill">${STATUS[song.status] || song.status}</em>`;
   const mv = song.native_video ? `<em class="desk-pill mv">${t("phone.desk.officialMv")}</em>` : "";
   return `
@@ -92,11 +89,7 @@ function songRow(song) {
           <div class="desk-actions">
             ${canPlay ? `<button class="row-action queue-action${queued ? " on" : ""}" data-queue="${song.id}" aria-label="${t("phone.desk.add")}">${ICO.plus}<span>${t("phone.desk.add")}</span></button>` : ""}
             <button class="row-action ghost favorite-action${song.favorite ? " on" : ""}" data-favorite="${song.id}" aria-label="${song.favorite ? t("phone.desk.unfavorite") : t("phone.desk.favorite")}" aria-pressed="${song.favorite ? "true" : "false"}">${ICO.star}</button>
-            <button class="row-action ghost pladd-action" data-pladd="${song.id}" aria-label="${t("phone.pl.addTo")}">${ICO.plAdd}</button>
-            ${canPlay ? `<button class="row-action ghost" data-edit="${song.id}" aria-label="${t("phone.player.align")}">${ICO.edit}</button>` : ""}
-            ${canRecalculate ? `<button class="row-action ghost" data-realign="${song.id}" aria-label="${t("phone.desk.recalculate")}">${ICO.refresh}</button>` : ""}
-            ${canRetry ? `<button class="row-action ghost retry-action" data-retry="${song.id}" aria-label="${t("phone.desk.retry")}">${ICO.listen}<span>${t("phone.desk.retry")}</span></button>` : ""}
-            ${canDelete ? `<button class="row-action ghost" data-del="${song.id}" aria-label="${t("phone.desk.delete")}">${ICO.trash}</button>` : ""}
+            <button class="row-action ghost more-action" data-more="${song.id}" aria-label="${t("phone.desk.more")}">${ICO.more}</button>
           </div>
         </div>`;
 }
@@ -122,6 +115,111 @@ function renderLibTail(page, pages, total) {
   } else {
     $("libPager").innerHTML = `<span class="lib-page-num">${t("phone.desk.nSongs", { n: total })}</span>`;
   }
+}
+
+function libSongById(id) {
+  return (state.libSongs || []).find((song) => libSongId(song) === String(id));
+}
+
+/** Actions that used to be inline buttons now live behind one "more" menu. */
+function songMenuItems(song) {
+  const ready = song.status === "ready";
+  const items = [{ id: "pladd", label: t("phone.pl.addTo") }];
+  if (ready) items.push({ id: "edit", label: t("phone.player.align") });
+  if (ready && state.songAdmin && song.can_realign !== false) {
+    items.push({ id: "realign", label: t("phone.desk.recalculate") });
+  }
+  if (song.status === "failed" || (ready && !!String(song.error || "").trim())) {
+    items.push({ id: "retry", label: t("phone.desk.retry") });
+  }
+  if (song.status !== "fetching" && song.status !== "separating") {
+    items.push({ id: "delete", label: t("phone.desk.delete"), danger: true });
+  }
+  return items;
+}
+
+async function openSongMenu(id, btn) {
+  const song = libSongById(id);
+  if (!song) return;
+  const items = songMenuItems(song);
+  if (!items.length) return;
+  const pick = await showActionSheet({
+    title: songTitle(song),
+    message: songArtist(song),
+    items
+  });
+  if (!pick) return;
+  if (pick === "pladd") {
+    if (api.openPlaylistSheet) api.openPlaylistSheet(String(song.id));
+  } else if (pick === "edit") {
+    if (api.editSong) api.editSong(String(song.id));
+  } else if (pick === "realign") {
+    await realignSong(song, btn);
+  } else if (pick === "retry") {
+    await retrySong(song, btn);
+  } else if (pick === "delete") {
+    await deleteSong(song, btn);
+  }
+}
+
+async function realignSong(song, btn) {
+  const id = encodeURIComponent(String(song.id));
+  if (btn) btn.disabled = true;
+  try {
+    const started = await fetchJson(`/api/songs/${id}/realign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rebuild_mtv: false, force: true })
+    });
+    if (!started.ok) throw new Error(started.data?.detail || t("phone.desk.recalculateFailed"));
+    showToast(t("phone.desk.recalculateStarted"));
+    await loadSongs(false, true);
+    for (let attempt = 0; attempt < 360; attempt += 1) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 1500);
+      });
+      const current = await fetchJson(`/api/songs/${id}`, { cache: "no-store" }).catch(() => null);
+      const status = current?.data?.status;
+      if (status === "failed") throw new Error(t("phone.desk.recalculateFailed"));
+      if (status !== "ready") continue;
+      await loadSongs(false, true);
+      showToast(t("phone.desk.recalculateDone"));
+      return;
+    }
+    throw new Error(t("phone.desk.recalculateFailed"));
+  } catch (err) {
+    showToast(err instanceof Error ? err.message : t("phone.desk.recalculateFailed"));
+    await loadSongs(false, true);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function retrySong(song, btn) {
+  if (btn) btn.disabled = true;
+  const result = await fetchJson(`/api/songs/${encodeURIComponent(String(song.id))}/retry`, {
+    method: "POST"
+  }).catch(() => null);
+  if (!result || !result.ok) {
+    showToast(result?.data?.detail || t("common.saveFailed"));
+    if (btn) btn.disabled = false;
+    return;
+  }
+  showToast(t("phone.desk.retry"));
+  await loadSongs(false, true);
+}
+
+async function deleteSong(song, btn) {
+  const go = await showActionSheet({
+    title: t("phone.desk.deleteTitle"),
+    message: t("phone.desk.deleteMsg"),
+    confirm: t("phone.desk.delete"),
+    danger: true
+  });
+  if (!go) return;
+  if (btn) btn.disabled = true;
+  await fetch(`/api/songs/${encodeURIComponent(String(song.id))}`, { method: "DELETE" });
+  loadSongs(false);
 }
 
 function bindSongActions() {
@@ -152,16 +250,6 @@ function bindSongActions() {
       };
     });
   $("songs")
-    .querySelectorAll("[data-pladd]")
-    .forEach((btn) => {
-      if (btn.dataset.bound === "1") return;
-      btn.dataset.bound = "1";
-      btn.onclick = (event) => {
-        event.stopPropagation();
-        if (api.openPlaylistSheet) api.openPlaylistSheet(btn.dataset.pladd);
-      };
-    });
-  $("songs")
     .querySelectorAll("[data-queue]")
     .forEach((btn) => {
       if (btn.dataset.bound === "1") return;
@@ -188,92 +276,13 @@ function bindSongActions() {
       };
     });
   $("songs")
-    .querySelectorAll("[data-edit]")
+    .querySelectorAll("[data-more]")
     .forEach((btn) => {
       if (btn.dataset.bound === "1") return;
       btn.dataset.bound = "1";
       btn.onclick = (event) => {
         event.stopPropagation();
-        if (api.editSong) api.editSong(btn.dataset.edit);
-      };
-    });
-  $("songs")
-    .querySelectorAll("[data-realign]")
-    .forEach((btn) => {
-      if (btn.dataset.bound === "1") return;
-      btn.dataset.bound = "1";
-      btn.onclick = async (event) => {
-        event.stopPropagation();
-        btn.disabled = true;
-        try {
-          const started = await fetchJson(`/api/songs/${btn.dataset.realign}/realign`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ rebuild_mtv: false, force: true })
-          });
-          if (!started.ok) throw new Error(started.data?.detail || t("phone.desk.recalculateFailed"));
-          showToast(t("phone.desk.recalculateStarted"));
-          await loadSongs(false, true);
-          for (let attempt = 0; attempt < 360; attempt += 1) {
-            await new Promise((resolve) => {
-              setTimeout(resolve, 1500);
-            });
-            const current = await fetchJson(`/api/songs/${btn.dataset.realign}`, { cache: "no-store" }).catch(
-              () => null
-            );
-            const status = current?.data?.status;
-            if (status === "failed") throw new Error(t("phone.desk.recalculateFailed"));
-            if (status !== "ready") continue;
-            await loadSongs(false, true);
-            showToast(t("phone.desk.recalculateDone"));
-            return;
-          }
-          throw new Error(t("phone.desk.recalculateFailed"));
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : t("phone.desk.recalculateFailed"));
-          await loadSongs(false, true);
-        } finally {
-          btn.disabled = false;
-        }
-      };
-    });
-  $("songs")
-    .querySelectorAll("[data-retry]")
-    .forEach((btn) => {
-      if (btn.dataset.bound === "1") return;
-      btn.dataset.bound = "1";
-      btn.onclick = async (event) => {
-        event.stopPropagation();
-        btn.disabled = true;
-        const result = await fetchJson(`/api/songs/${encodeURIComponent(btn.dataset.retry)}/retry`, {
-          method: "POST"
-        }).catch(() => null);
-        if (!result || !result.ok) {
-          showToast(result?.data?.detail || t("common.saveFailed"));
-          btn.disabled = false;
-          return;
-        }
-        showToast(t("phone.desk.retry"));
-        await loadSongs(false, true);
-      };
-    });
-  $("songs")
-    .querySelectorAll("[data-del]")
-    .forEach((btn) => {
-      if (btn.dataset.bound === "1") return;
-      btn.dataset.bound = "1";
-      btn.onclick = async (event) => {
-        event.stopPropagation();
-        const go = await showActionSheet({
-          title: t("phone.desk.deleteTitle"),
-          message: t("phone.desk.deleteMsg"),
-          confirm: t("phone.desk.delete"),
-          danger: true
-        });
-        if (!go) return;
-        btn.disabled = true;
-        await fetch(`/api/songs/${btn.dataset.del}`, { method: "DELETE" });
-        loadSongs(false);
+        openSongMenu(btn.dataset.more, btn);
       };
     });
   const goSearch = $("songs").querySelector("[data-go-search]");

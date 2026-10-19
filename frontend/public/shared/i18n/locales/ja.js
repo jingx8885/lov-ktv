@@ -199,6 +199,7 @@ export default {
   "phone.desk.recalculateDone": "字幕を再計算しました",
   "phone.desk.recalculateFailed": "字幕の再計算に失敗しました",
   "phone.desk.delete": "削除",
+  "phone.desk.more": "その他",
   "phone.desk.deleteTitle": "この曲を削除しますか？",
   "phone.desk.deleteMsg": "曲庫の完成データも消えます。",
   "phone.desk.needRoom": "入室するかテレビのQRを読んでください",

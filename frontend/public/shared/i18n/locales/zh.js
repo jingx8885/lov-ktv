@@ -199,6 +199,7 @@ export default {
   "phone.desk.recalculateDone": "字幕重算完成",
   "phone.desk.recalculateFailed": "字幕重算失败",
   "phone.desk.delete": "删除",
+  "phone.desk.more": "更多",
   "phone.desk.deleteTitle": "删除这首歌？",
   "phone.desk.deleteMsg": "曲库成品一并删除。",
   "phone.desk.needRoom": "先进房，或扫电视上的码",

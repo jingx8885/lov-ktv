@@ -198,6 +198,7 @@ export default {
   "phone.desk.recalculateDone": "字幕重新計算完成",
   "phone.desk.recalculateFailed": "字幕重新計算失敗",
   "phone.desk.delete": "刪除",
+  "phone.desk.more": "更多",
   "phone.desk.deleteTitle": "刪除呢首歌？",
   "phone.desk.deleteMsg": "曲庫成品一併刪走。",
   "phone.desk.needRoom": "先入房，或掃電視上嘅碼",

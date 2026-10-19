@@ -200,6 +200,7 @@ export default {
   "phone.desk.recalculateDone": "Subtitles recalculated",
   "phone.desk.recalculateFailed": "Subtitle recalculation failed",
   "phone.desk.delete": "Delete",
+  "phone.desk.more": "More",
   "phone.desk.deleteTitle": "Delete this song?",
   "phone.desk.deleteMsg": "Finished media in the library is also removed.",
   "phone.desk.needRoom": "Join a room or scan the TV code",

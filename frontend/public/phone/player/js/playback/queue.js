@@ -9,6 +9,7 @@ import { ICO, songLetter } from "../../../ui/js/icons.js";
 import { setPlayerSheet, syncPlayerSheetMeta } from "./sheet.js";
 import { api } from "../../../api.js";
 import { showToast } from "../../../ui/js/toast.js";
+import { showActionSheet } from "../../../ui/js/overlays.js";
 import { togglePlayer, unlockPlayerGesture } from "./controls.js";
 import { loadPlayerSong } from "./song.js";
 import { openPlaylistSheet } from "./playlists.js";
@@ -64,7 +65,6 @@ function filteredCatalog() {
 function playerRowHtml(song) {
   const cur = state.playerSong && state.playerSong.id;
   const fav = song.favorite !== false;
-  const inPlaylist = playerListMode_ === "pl";
   return `
         <button
           type="button"
@@ -86,19 +86,12 @@ function playerRowHtml(song) {
             aria-pressed="${fav ? "true" : "false"}"
           >${ICO.star}</span>
           <span
-            class="row-action ghost pick-pl"
+            class="row-action ghost pick-more"
             role="button"
             tabindex="-1"
-            data-pladd="${escapeHtml(song.id)}"
-            aria-label="${t("phone.pl.addTo")}"
-          >${ICO.plAdd}</span>
-          ${inPlaylist ? `<span
-            class="row-action ghost pick-plremove"
-            role="button"
-            tabindex="-1"
-            data-plremove="${escapeHtml(song.id)}"
-            aria-label="${t("phone.pl.removeSong")}"
-          >${ICO.trash}</span>` : ""}
+            data-more="${escapeHtml(song.id)}"
+            aria-label="${t("phone.desk.more")}"
+          >${ICO.more}</span>
         </button>`;
 }
 
@@ -185,6 +178,22 @@ export async function toggleCurrentFavorite() {
   if (btn) btn.disabled = true;
   await setSongFavorite(song.id, !song.favorite);
   if (btn) btn.disabled = false;
+}
+
+/** Trailing "more" menu: playlist add, plus remove when viewing a playlist. */
+async function openPlayerSongMenu(songId) {
+  const song = (state.playerCatalog || []).find((item) => String(item.id) === String(songId));
+  const items = [{ id: "pladd", label: t("phone.pl.addTo") }];
+  if (playerListMode_ === "pl") {
+    items.push({ id: "plremove", label: t("phone.pl.removeSong"), danger: true });
+  }
+  const pick = await showActionSheet({
+    title: song ? songTitle(song) : "",
+    message: song ? songArtist(song) : "",
+    items
+  });
+  if (pick === "pladd") openPlaylistSheet(songId);
+  else if (pick === "plremove") removeFromActivePlaylist(songId);
 }
 
 async function removeFromActivePlaylist(songId) {
@@ -443,16 +452,10 @@ export function bindPlayerList() {
     box.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
       if (!target) return;
-      const plremove = target.closest("[data-plremove]");
-      if (plremove && box.contains(plremove)) {
+      const more = target.closest("[data-more]");
+      if (more && box.contains(more)) {
         event.stopPropagation();
-        removeFromActivePlaylist(plremove.dataset.plremove);
-        return;
-      }
-      const pladd = target.closest("[data-pladd]");
-      if (pladd && box.contains(pladd)) {
-        event.stopPropagation();
-        openPlaylistSheet(pladd.dataset.pladd);
+        openPlayerSongMenu(more.dataset.more);
         return;
       }
       const fav = target.closest("[data-fav]");
