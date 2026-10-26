@@ -62,9 +62,7 @@ let queuedIds = new Set();
 /** Keep the 点歌 button lit only while that song is still in the room queue. */
 export function paintQueuedSongs(room) {
   if (room) {
-    queuedIds = new Set(
-      (room.queue || []).map((item) => String((item && item.song_id) || "")).filter(Boolean)
-    );
+    queuedIds = new Set((room.queue || []).map((item) => String((item && item.song_id) || "")).filter(Boolean));
   }
   const root = $("songs");
   if (!root) return;

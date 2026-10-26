@@ -10,19 +10,19 @@
  * <style> override element, so dynamic styles and later rules keep working.
  */
 (function () {
-  'use strict';
+  "use strict";
 
   var supportsFlexGap = (function () {
-    if (typeof CSS === 'undefined' || !CSS.supports) return false;
+    if (typeof CSS === "undefined" || !CSS.supports) return false;
     try {
-      var el = document.createElement('div');
-      el.style.display = 'flex';
-      el.style.flexDirection = 'column';
-      el.style.rowGap = '1px';
-      el.style.position = 'absolute';
-      el.style.visibility = 'hidden';
-      var a = document.createElement('div');
-      var b = document.createElement('div');
+      var el = document.createElement("div");
+      el.style.display = "flex";
+      el.style.flexDirection = "column";
+      el.style.rowGap = "1px";
+      el.style.position = "absolute";
+      el.style.visibility = "hidden";
+      var a = document.createElement("div");
+      var b = document.createElement("div");
       el.appendChild(a);
       el.appendChild(b);
       (document.body || document.documentElement).appendChild(el);
@@ -47,12 +47,18 @@
   }
 
   var supportsHas = (function () {
-    try { return typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:has(*))'); }
-    catch (e) { return false; }
+    try {
+      return typeof CSS !== "undefined" && CSS.supports && CSS.supports("selector(:has(*))");
+    } catch (e) {
+      return false;
+    }
   })();
   var supportsWhere = (function () {
-    try { return typeof CSS !== 'undefined' && CSS.supports && CSS.supports('selector(:where(*))'); }
-    catch (e) { return false; }
+    try {
+      return typeof CSS !== "undefined" && CSS.supports && CSS.supports("selector(:where(*))");
+    } catch (e) {
+      return false;
+    }
   })();
 
   // Evaluate a selector containing :has() / :where() against the DOM and
@@ -61,7 +67,7 @@
   function matchesLegacy(rootEl, selector) {
     var out = [];
     try {
-      var parts = selector.split(',');
+      var parts = selector.split(",");
       var set = {};
       for (var pi = 0; pi < parts.length; pi++) {
         var sel = parts[pi].trim();
@@ -69,10 +75,10 @@
         // simplest robust path: strip :where(...) to a plain descendant check.
         var cleaned = sel
           .replace(/:where\(([^()]*)\)/g, function (_, inner) {
-            return inner.split(',')[0].trim() || '*';
+            return inner.split(",")[0].trim() || "*";
           })
-          .replace(/:has\(([^()]*)\)/g, '');
-        var base = cleaned || '*';
+          .replace(/:has\(([^()]*)\)/g, "");
+        var base = cleaned || "*";
         var els = (rootEl || document).querySelectorAll(base);
         var hasRe = /:has\(>?\s*([^()]*)\)/;
         for (var ei = 0; ei < els.length; ei++) {
@@ -83,12 +89,16 @@
             var sub = hm[1].trim();
             var direct = /:has\(>/.test(sel);
             try {
-              ok = direct ? el.querySelector(':scope > ' + sub) !== null
-                          : el.querySelector(sub) !== null;
-            } catch (e) { ok = false; }
+              ok = direct ? el.querySelector(":scope > " + sub) !== null : el.querySelector(sub) !== null;
+            } catch (e) {
+              ok = false;
+            }
             // handle :has(.a + .b)-style siblings only roughly: skip
           }
-          if (ok && !set[ei + ':' + pi]) { set[ei + ':' + pi] = 1; out.push(el); }
+          if (ok && !set[ei + ":" + pi]) {
+            set[ei + ":" + pi] = 1;
+            out.push(el);
+          }
         }
       }
     } catch (e) {}
@@ -102,8 +112,10 @@
     for (var i = 0; i < sheets.length; i++) {
       try {
         visitRules(sheets[i].cssRules, null, function (rule, media) {
-          if (rule.selectorText && (rule.selectorText.indexOf(':has(') >= 0 ||
-              (!supportsWhere && rule.selectorText.indexOf(':where(') >= 0))) {
+          if (
+            rule.selectorText &&
+            (rule.selectorText.indexOf(":has(") >= 0 || (!supportsWhere && rule.selectorText.indexOf(":where(") >= 0))
+          ) {
             jobs.push(rule);
           }
         });
@@ -116,8 +128,7 @@
         for (var k = 0; k < st.length; k++) {
           var prop = st[k];
           try {
-            els[j].style.setProperty(prop, st.getPropertyValue(prop),
-              st.getPropertyPriority(prop));
+            els[j].style.setProperty(prop, st.getPropertyValue(prop), st.getPropertyPriority(prop));
           } catch (e) {}
         }
       }
@@ -128,32 +139,32 @@
     var overrides = [];
 
     function push(sel, prop, val, media) {
-      var decl = prop + ':' + val + ' !important';
-      var rule = sel + '{' + decl + '}';
-      overrides.push(media ? '@media ' + media + '{' + rule + '}' : rule);
+      var decl = prop + ":" + val + " !important";
+      var rule = sel + "{" + decl + "}";
+      overrides.push(media ? "@media " + media + "{" + rule + "}" : rule);
     }
 
     function emit(rule, media) {
       var st = rule.style;
-      var row = st.getPropertyValue('row-gap');
-      var col = st.getPropertyValue('column-gap');
-      var gap = st.getPropertyValue('gap');
+      var row = st.getPropertyValue("row-gap");
+      var col = st.getPropertyValue("column-gap");
+      var gap = st.getPropertyValue("gap");
       if (gap && !row && !col) {
         var parts = gap.trim().split(/\s+/);
         row = parts[0];
         col = parts.length > 1 ? parts[1] : parts[0];
       }
-      var isFlex = /(^|\s)flex/.test(st.display || '');
+      var isFlex = /(^|\s)flex/.test(st.display || "");
       if (!isFlex || (!row && !col)) return;
       var sel = rule.selectorText;
       // Emulate with margins on children. margin-* longhands; last child reset.
-      if (col && col !== '0' && col !== '0px' && col !== 'normal') {
-        push(sel + ' > *', 'margin-right', col, media);
-        push(sel + ' > *:last-child', 'margin-right', '0', media);
+      if (col && col !== "0" && col !== "0px" && col !== "normal") {
+        push(sel + " > *", "margin-right", col, media);
+        push(sel + " > *:last-child", "margin-right", "0", media);
       }
-      if (row && row !== '0' && row !== '0px' && row !== 'normal') {
-        push(sel + ' > *', 'margin-bottom', row, media);
-        push(sel + ' > *:last-child', 'margin-bottom', '0', media);
+      if (row && row !== "0" && row !== "0px" && row !== "normal") {
+        push(sel + " > *", "margin-bottom", row, media);
+        push(sel + " > *:last-child", "margin-bottom", "0", media);
       }
     }
 
@@ -168,15 +179,15 @@
         }
       }
       if (overrides.length) {
-        var style = document.createElement('style');
-        style.id = 'lovktv-legacy-gap';
-        style.textContent = overrides.join('\n');
+        var style = document.createElement("style");
+        style.id = "lovktv-legacy-gap";
+        style.textContent = overrides.join("\n");
         document.head.appendChild(style);
       }
     }
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', scan);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", scan);
     } else {
       scan();
     }
@@ -189,8 +200,8 @@
       setTimeout(applyHasRules, 800);
       setTimeout(applyHasRules, 2500);
     };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', run);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", run);
     } else {
       run();
     }

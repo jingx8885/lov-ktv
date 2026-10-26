@@ -79,10 +79,8 @@ export default {
   "api.username_taken": "That username is taken",
   "api.login_failed": "Wrong username or password",
   "api.guest_limit": "Guests get {limit} songs a day — sign in to continue",
-  "api.plan_quota_exhausted":
-    "This month's {limit}-song quota is used up. Upgrade or wait until next month.",
-  "api.need_points":
-    "Not enough points (need {cost}, have {have}). Watch an ad +1, sign up +10.",
+  "api.plan_quota_exhausted": "This month's {limit}-song quota is used up. Upgrade or wait until next month.",
+  "api.need_points": "Not enough points (need {cost}, have {have}). Watch an ad +1, sign up +10.",
   "api.ad_too_soon": "Watch the ad for 30 seconds first",
   "api.ad_invalid": "This ad expired — start another",
   "api.ad_done": "Points for this ad were already claimed",
@@ -339,14 +337,11 @@ export default {
   "phone.mic.headphoneMsg": "Speaker causes echo. Turn the mic on anyway?",
   "phone.mic.headphoneGo": "Turn mic on anyway",
   "phone.mic.headphoneNeed": "Put on headphones before turning the mic on",
-  "phone.mic.hintIemWired":
-    "Monitor on. Set mic volume to 0 for backing only",
+  "phone.mic.hintIemWired": "Monitor on. Set mic volume to 0 for backing only",
   "phone.mic.hintIemBt": "Monitor on. Bluetooth lags — use wired earphones",
   "phone.mic.hintSpeaker": "Mic on — everything plays from this phone",
-  "phone.mic.idleIem":
-    "Use wired earphones for no-lag monitoring; Bluetooth lags",
-  "phone.mic.idleSpeaker":
-    "Everything plays from this phone; use monitor if echo is loud",
+  "phone.mic.idleIem": "Use wired earphones for no-lag monitoring; Bluetooth lags",
+  "phone.mic.idleSpeaker": "Everything plays from this phone; use monitor if echo is loud",
 
   "learn.pageTitle": "Learn",
   "learn.daily.goal": "Daily goal: {done}/{goal} round · {streak}-day streak",
@@ -524,8 +519,7 @@ export default {
   "login.eyebrow": "Home karaoke · Ready when you are",
   "login.heroA": "Make tonight's songs",
   "login.heroB": "a room to remember.",
-  "login.heroLead":
-    "One account links your TV and phones. Your room is remembered.",
+  "login.heroLead": "One account links your TV and phones. Your room is remembered.",
   "login.step1Title": "Sign in or register",
   "login.step1Text": "Room code works as username",
   "login.step2Title": "Open the TV",
@@ -647,8 +641,7 @@ export default {
   "admin.debugEmpty": "No processing events yet.",
 
   "landing.title": "lov-ktv · Your stage · Sing anytime",
-  "landing.desc":
-    "Sing on TV, pick on your phone.",
+  "landing.desc": "Sing on TV, pick on your phone.",
   "landing.ogDesc": "Sing on TV, pick on your phone.",
   "landing.nav.ritual": "Start in 3 steps",
   "landing.nav.features": "What you get",
@@ -667,8 +660,7 @@ export default {
   "landing.hero.fine": "The TV shows a code; scan it and start singing.",
   "landing.clip.eye": "Real footage · no install needed to watch",
   "landing.clip.h": "Search a song and the screen starts singing.",
-  "landing.clip.p":
-    "A real take: the phone picks a song, the TV downloads it, removes vocals and aligns the lyrics.",
+  "landing.clip.p": "A real take: the phone picks a song, the TV downloads it, removes vocals and aligns the lyrics.",
   "landing.apps.tv": "Download TV app",
   "landing.apps.phone": "Download phone app",
   "landing.apps.ver": "{version} · {size}",
@@ -690,8 +682,7 @@ export default {
   "landing.trust.browser": "Works in a browser",
   "landing.pricing.eye": "Keep tonight for singing",
   "landing.pricing.h": "The price of takeout. A karaoke room all month.",
-  "landing.pricing.lead":
-    "Sing free first; upgrade for more quota. One subscription for the family.",
+  "landing.pricing.lead": "Sing free first; upgrade for more quota. One subscription for the family.",
   "landing.pricing.starter.label": "Starter",
   "landing.pricing.starter.note": "Easy to begin",
   "landing.pricing.starter.h": "Just right for a night together",
@@ -724,13 +715,11 @@ export default {
   "landing.feat.eye": "What you get",
   "landing.feat.h": "A karaoke room made for real homes",
   "landing.feat.1h": "Search what you want on your phone",
-  "landing.feat.1p":
-    "Search, preview, queue — anyone can do it.",
+  "landing.feat.1p": "Search, preview, queue — anyone can do it.",
   "landing.feat.2h": "Turn on the TV and you’re ready",
   "landing.feat.2p": "Lyrics and the room code are on screen; scan to join.",
   "landing.feat.3h": "Clear lyrics that keep you on beat",
-  "landing.feat.3p":
-    "Current and next lines at a glance — easy to follow.",
+  "landing.feat.3p": "Current and next lines at a glance — easy to follow.",
   "landing.feat.4h": "One phone keeps the queue moving",
   "landing.feat.4p": "Everyone queues and bumps their own picks. No remote fights.",
   "landing.feat.5h": "TV, projector, or laptop — all welcome",
@@ -760,8 +749,7 @@ export default {
   "landing.house.eye": "Fits every moment",
   "landing.house.h": "Family nights, friends over, or one quiet practice session.",
   "landing.house.1h": "Guests at home",
-  "landing.house.1p":
-    "TV on after dinner; everyone picks from their own phone.",
+  "landing.house.1p": "TV on after dinner; everyone picks from their own phone.",
   "landing.house.2h": "Friends in a room",
   "landing.house.2p": "Friends scan in and take turns; the queue stays on screen.",
   "landing.house.3h": "Practice alone",
@@ -769,8 +757,7 @@ export default {
   "landing.faq.eye": "Questions before you go on",
   "landing.faq.h": "Clear the usual snags first.",
   "landing.faq.1q": "Do we need special TV hardware?",
-  "landing.faq.1a":
-    "No. Any TV, projector or computer with a browser works; apps just make it smoother.",
+  "landing.faq.1a": "No. Any TV, projector or computer with a browser works; apps just make it smoother.",
   "landing.faq.2q": "How do I add a song?",
   "landing.faq.2a": "Search, preview, queue — or upload local audio.",
   "landing.faq.3q": "What if my family is not techy?",
@@ -860,8 +847,7 @@ export default {
   "learn.songWordsMeta": "{kept} in progress · {due} due",
   "learn.songWordsSetupMeta": "Pick your words first",
   "learn.words.title": "Pick words to learn",
-  "learn.words.lead":
-    "All words are selected. Cut the ones you know; bring them back anytime.",
+  "learn.words.lead": "All words are selected. Cut the ones you know; bring them back anytime.",
   "learn.words.count": "{n} to learn · {cut} already known",
   "learn.words.restoreAll": "Put all back",
   "learn.words.undoAria": "Put \u201c{word}\u201d back into the list",

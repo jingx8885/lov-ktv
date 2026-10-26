@@ -9,8 +9,8 @@ import re
 import shutil
 import subprocess
 import tempfile
-import wave
 import time
+import wave
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -314,7 +314,8 @@ def _audio_has_voice(path: Path) -> bool:
             frames = handle.readframes(handle.getnframes())
         if width != 2 or not frames:
             return True  # unknown encoding: let the provider decide
-        import array, math
+        import array
+        import math
 
         pcm = array.array("h")
         pcm.frombytes(frames[: len(frames) - (len(frames) % 2)])
@@ -353,7 +354,8 @@ def _remote_chunks(path: Path, audio_format: str = "wav"):
         with wave.open(str(normalized), "rb") as handle:
             rate = handle.getframerate()
             samples = handle.readframes(handle.getnframes())
-        import array, math
+        import array
+        import math
 
         pcm = array.array("h")
         pcm.frombytes(samples[: len(samples) - (len(samples) % 2)])

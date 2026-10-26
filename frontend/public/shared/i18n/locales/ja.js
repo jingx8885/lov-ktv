@@ -79,8 +79,7 @@ export default {
   "api.username_taken": "このユーザー名は使われています",
   "api.login_failed": "ユーザー名またはパスワードが違います",
   "api.guest_limit": "未ログインは1日{limit}曲まで。ログインで続けられます",
-  "api.plan_quota_exhausted":
-    "今月の上限 {limit} 曲に達しました。アップグレードか来月までお待ちください",
+  "api.plan_quota_exhausted": "今月の上限 {limit} 曲に達しました。アップグレードか来月までお待ちください",
   "api.need_points": "ポイント不足（必要 {cost}、所持 {have}）。広告で +1、登録で +10。",
   "api.ad_too_soon": "広告を30秒見てください",
   "api.ad_invalid": "この広告は無効です。別の広告を見てください",
@@ -338,13 +337,10 @@ export default {
   "phone.mic.headphoneMsg": "スピーカーだとハウリングします。それでもオンにしますか？",
   "phone.mic.headphoneGo": "そのままオン",
   "phone.mic.headphoneNeed": "イヤホンをつけてからマイクオン",
-  "phone.mic.hintIemWired":
-    "モニターオン。マイクを0にすると伴奏だけ",
-  "phone.mic.hintIemBt":
-    "モニターオン。Bluetoothは遅れます。有線推奨",
+  "phone.mic.hintIemWired": "モニターオン。マイクを0にすると伴奏だけ",
+  "phone.mic.hintIemBt": "モニターオン。Bluetoothは遅れます。有線推奨",
   "phone.mic.hintSpeaker": "マイクオン。このスマホから出ます",
-  "phone.mic.idleIem":
-    "有線イヤホンなら遅れなし。Bluetoothは遅れます",
+  "phone.mic.idleIem": "有線イヤホンなら遅れなし。Bluetoothは遅れます",
   "phone.mic.idleSpeaker": "この端末から出ます。ハウリング時はモニターを",
 
   "learn.pageTitle": "学習",
@@ -405,8 +401,7 @@ export default {
   "learn.retry": "再読み込み",
   "learn.cleared": "単語と行を覚えてクリア",
   "learn.book": "復習ノート",
-  "learn.lead":
-    "各関は歌詞ひと区切り。4項目で 70% 正解すると次へ。間違いは自動で復習されます。",
+  "learn.lead": "各関は歌詞ひと区切り。4項目で 70% 正解すると次へ。間違いは自動で復習されます。",
   "learn.diff": "難易度",
   "learn.diff.easy": "ゆっくり",
   "learn.diff.easyMeta": "0.8× · 確認",
@@ -663,8 +658,7 @@ export default {
   "landing.hero.fine": "テレビにQRを出し、スマホで読めばすぐ歌えます。",
   "landing.clip.eye": "実録・インストール不要で見られる",
   "landing.clip.h": "曲を探すだけで、大画面が歌い始める。",
-  "landing.clip.p":
-    "実際の録画：スマホで選ぶと、テレビが自動で取得・ボーカル除去・歌詞同期。",
+  "landing.clip.p": "実際の録画：スマホで選ぶと、テレビが自動で取得・ボーカル除去・歌詞同期。",
   "landing.apps.tv": "テレビ App をダウンロード",
   "landing.apps.phone": "スマホ App をダウンロード",
   "landing.apps.ver": "{version} · {size}",
@@ -686,8 +680,7 @@ export default {
   "landing.trust.browser": "ブラウザで使える",
   "landing.pricing.eye": "今夜を歌う時間に",
   "landing.pricing.h": "外食一回分で、ひと月まるごとカラオケ。",
-  "landing.pricing.lead":
-    "まず無料で。もっと使いたくなったらアップグレード。家族で使えます。",
+  "landing.pricing.lead": "まず無料で。もっと使いたくなったらアップグレード。家族で使えます。",
   "landing.pricing.starter.label": "スターター",
   "landing.pricing.starter.note": "気軽に始める",
   "landing.pricing.starter.h": "一晩の集まりにちょうどいい",
@@ -852,8 +845,7 @@ export default {
   "learn.songWordsMeta": "{kept} 語が進行中 · {due} 語が復習待ち",
   "learn.songWordsSetupMeta": "まず覚える単語を選ぶ",
   "learn.words.title": "覚える単語を選ぶ",
-  "learn.words.lead":
-    "初期は全て対象。知っている単語は「除く」。いつでも戻せます。",
+  "learn.words.lead": "初期は全て対象。知っている単語は「除く」。いつでも戻せます。",
   "learn.words.count": "{n} 語を学習 · {cut} 語は既知",
   "learn.words.restoreAll": "すべて戻す",
   "learn.words.undoAria": "「{word}」を学習する単語に戻す",

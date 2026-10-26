@@ -2,7 +2,14 @@ import { $ } from "../../../../shared/ui/js/dom.js";
 import { fetchJson } from "../../../../shared/ui/js/http.js";
 import { t } from "../../../../shared/i18n/js/i18n.js";
 import { state } from "../../../state.js";
-import { checkNativeUpdate, nativeAppVersion, nativeSetupAvailable, nativeUpdateAvailable, openNativeSetup, stopNativeMtv } from "../../../platform.js";
+import {
+  checkNativeUpdate,
+  nativeAppVersion,
+  nativeSetupAvailable,
+  nativeUpdateAvailable,
+  openNativeSetup,
+  stopNativeMtv
+} from "../../../platform.js";
 import { roomCode } from "../../../auth/js/login.js";
 import { unlockAudio } from "../../../audio/js/unlock.js";
 import { applyMix, activeTrackName, trackFallbackActive, clearTrackFallback } from "../media/mix.js";

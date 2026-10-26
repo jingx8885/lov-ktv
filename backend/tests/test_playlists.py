@@ -1,7 +1,5 @@
 """Playlist storage + router behaviour on the sqlite test backend."""
 
-import os
-from pathlib import Path
 
 import pytest
 from starlette.requests import Request

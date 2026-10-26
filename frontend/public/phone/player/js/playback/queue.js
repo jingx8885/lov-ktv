@@ -149,11 +149,7 @@ export async function setSongFavorite(songId, next, favEl) {
     renderPlayerList();
     return true;
   }
-  const rowEl =
-    favEl ||
-    document.querySelector(
-      `#playerList [data-fav="${CSS.escape(String(songId))}"]`
-    );
+  const rowEl = favEl || document.querySelector(`#playerList [data-fav="${CSS.escape(String(songId))}"]`);
   if (rowEl) {
     rowEl.classList.toggle("on", active);
     rowEl.setAttribute("aria-pressed", String(active));
@@ -199,10 +195,9 @@ async function openPlayerSongMenu(songId) {
 async function removeFromActivePlaylist(songId) {
   const pid = activePlaylistId();
   if (!pid) return;
-  const result = await fetchJson(
-    `/api/playlists/${encodeURIComponent(pid)}/songs/${encodeURIComponent(songId)}`,
-    { method: "DELETE" }
-  ).catch(() => null);
+  const result = await fetchJson(`/api/playlists/${encodeURIComponent(pid)}/songs/${encodeURIComponent(songId)}`, {
+    method: "DELETE"
+  }).catch(() => null);
   if (!result || !result.ok) {
     showToast((result && result.data && result.data.detail) || t("common.saveFailed"));
     return;
@@ -334,10 +329,9 @@ export async function loadPlayerList() {
   playerListMode_ = "";
   if (source.startsWith("pl:")) {
     const pid = source.slice(3);
-    const res = await fetchJson(
-      `/api/playlists/${encodeURIComponent(pid)}/songs`,
-      { cache: "no-store" }
-    ).catch(() => null);
+    const res = await fetchJson(`/api/playlists/${encodeURIComponent(pid)}/songs`, { cache: "no-store" }).catch(
+      () => null
+    );
     if (res && res.ok && res.data && res.data.playlist) {
       playerListMode_ = "pl";
       state.playerSourceName = String(res.data.playlist.name || "");

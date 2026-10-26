@@ -12,7 +12,7 @@ import hmac
 import json
 import secrets
 from typing import Any
-from urllib.parse import urlparse, urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 

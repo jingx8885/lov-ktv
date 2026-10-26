@@ -18,12 +18,12 @@ from starlette.requests import Request
 
 from lovktv.identity.quota import learn_owner
 from lovktv.locale.i18n import request_lang
+from lovktv.services.http import fail
 from lovktv.storage import learn as learn_store
 from lovktv.storage import recite as recite_store
 from lovktv.storage import words as words_store
 from lovktv.workers import recite as recite_worker
 from lovktv.workers import srs
-from lovktv.services.http import fail
 
 router = APIRouter()
 

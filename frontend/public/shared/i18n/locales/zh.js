@@ -499,8 +499,7 @@ export default {
   "learn.bookSummary": "收藏 {words} 词 · 错题 {mistakes} 道",
   "learn.wordsSummary": "{n} 个词待背诵",
   "learn.mistakesSummary": "{n} 道错题待复习",
-  "learn.lead":
-    "每关练一段歌词，四项答对 70% 解锁下一关，错题自动复习。",
+  "learn.lead": "每关练一段歌词，四项答对 70% 解锁下一关，错题自动复习。",
   "learn.diff": "难度",
   "learn.diff.easy": "轻松",
   "learn.diff.easyMeta": "0.8× · 确认",
@@ -751,8 +750,7 @@ export default {
   "landing.hero.badge": "家庭 KTV · 随时开唱",
   "landing.hero.h1a": "你的舞台",
   "landing.hero.h1b": "随时开唱",
-  "landing.hero.lead":
-    "电视开唱，手机点歌。搜到的歌都能排队，扫码就能加入。",
+  "landing.hero.lead": "电视开唱，手机点歌。搜到的歌都能排队，扫码就能加入。",
   "landing.hero.tv": "现在开唱",
   "landing.hero.phone": "手机点歌",
   "landing.hero.fine": "电视出码，手机扫一下就进房开唱。",

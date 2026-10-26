@@ -171,8 +171,8 @@ def test_manual_timeline_keeps_explicit_line_end(tmp_path):
     assert out["cues"][0]["end_ms"] == 2400
     assert out["cues"][1]["end_ms"] > 9000
 
-    from lovktv.pipeline.lyrics import write_manual_lrc
     from lovktv.catalog.lyrics import parse_lrc
+    from lovktv.pipeline.lyrics import write_manual_lrc
 
     write_manual_lrc(tmp_path, out["cues"])
     raw = (tmp_path / "lyrics.manual.lrc").read_text(encoding="utf-8")

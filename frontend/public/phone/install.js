@@ -35,7 +35,13 @@ import {
   applyPlayerVocalMix,
   hookPlayerAudio
 } from "./player/js/playback/controls.js";
-import { loadPlayerList, playNextSong, renderPlayerSources, selectPlayerSource, toggleCurrentFavorite } from "./player/js/playback/queue.js";
+import {
+  loadPlayerList,
+  playNextSong,
+  renderPlayerSources,
+  selectPlayerSource,
+  toggleCurrentFavorite
+} from "./player/js/playback/queue.js";
 import { openPlaylistSheet, refreshPlaylists } from "./player/js/playback/playlists.js";
 import { loadPlayerSong, openPlayer, bootPlayer } from "./player/js/playback/song.js";
 import { ensureGuideLoaded, ensureMtvLoaded, releasePlayerMtv } from "./player/js/playback/media.js";

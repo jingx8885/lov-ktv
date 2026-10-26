@@ -120,10 +120,9 @@ export async function openPlaylistSheet(songId) {
   if (input) input.value = "";
   openOverlay("playlistSheet");
   renderSheet();
-  const result = await fetchJson(
-    "/api/playlists" + (pickSongId ? `?song_id=${encodeURIComponent(pickSongId)}` : ""),
-    { cache: "no-store" }
-  ).catch(() => null);
+  const result = await fetchJson("/api/playlists" + (pickSongId ? `?song_id=${encodeURIComponent(pickSongId)}` : ""), {
+    cache: "no-store"
+  }).catch(() => null);
   if (result && result.ok && result.data) {
     state.playlists = Array.isArray(result.data.playlists) ? result.data.playlists : [];
     if (api.renderPlayerSources) api.renderPlayerSources();
@@ -147,13 +146,13 @@ async function toggleMembership(playlist) {
   }
   playlist.has_song = !inList;
   playlist.count = Math.max(0, (playlist.count || 0) + (inList ? -1 : 1));
-  showToast(inList ? t("phone.pl.removedFrom", { name: playlist.name }) : t("phone.pl.addedTo", { name: playlist.name }));
+  showToast(
+    inList ? t("phone.pl.removedFrom", { name: playlist.name }) : t("phone.pl.addedTo", { name: playlist.name })
+  );
   if (api.renderPlayerSources) api.renderPlayerSources();
   // Paint just this row: rebuilding the sheet while the tap gesture is still
   // finishing swaps the node under the pointer and can fire a second toggle.
-  const rowEl =
-    $("playlistList") &&
-    $("playlistList").querySelector(`[data-pl="${CSS.escape(String(playlist.id))}"]`);
+  const rowEl = $("playlistList") && $("playlistList").querySelector(`[data-pl="${CSS.escape(String(playlist.id))}"]`);
   if (rowEl) {
     const tiny = rowEl.querySelector(".list-copy .tiny");
     if (tiny) tiny.textContent = t("phone.desk.nSongs", { n: playlist.count });

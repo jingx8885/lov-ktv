@@ -401,8 +401,7 @@ export default {
   "learn.retry": "重新載入",
   "learn.cleared": "通關要詞句都識",
   "learn.book": "錯題本",
-  "learn.lead":
-    "每關練一段歌詞，四項答啱 70% 解鎖下一關，錯題自動複習。",
+  "learn.lead": "每關練一段歌詞，四項答啱 70% 解鎖下一關，錯題自動複習。",
   "learn.diff": "難度",
   "learn.diff.easy": "輕鬆",
   "learn.diff.easyMeta": "0.8× · 確認",

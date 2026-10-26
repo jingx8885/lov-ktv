@@ -40,7 +40,6 @@ import argparse
 import json
 import math
 import re
-from bisect import bisect_left
 from pathlib import Path
 from statistics import median
 from typing import Any
@@ -403,7 +402,6 @@ def score_timeline(
         for c in cues
     ]
     src_text = dict(source_lines or [])
-    onset_list = sorted(line_onset_set)
     lyric_lo = bounds[0][0] if bounds else 0
     lyric_hi = bounds[-1][1] if bounds else 0
     for lo, hi in regions:
