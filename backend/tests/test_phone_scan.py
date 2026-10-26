@@ -19,7 +19,7 @@ def test_phone_app_does_not_force_tv_on_boot():
     # Keep this assertion focused on the actual boot-page assignment below;
     # other features (for example notification metadata) may legitimately use
     # a player/desk ternary without changing the initial page.
-    assert 'bootPage = PAGES.includes(bootHash) ? bootHash : "desk"' in app
+    assert 'bootPage = PAGES.includes(bootHash) ? bootHash : noWifi() ? "player" : "desk"' in app
     assert '!$must("room").value) openOverlay("roomSheet")' not in app
     assert 'if (bootHash === "room") openOverlay("roomSheet")' in app
     assert 'btn.dataset.nav === "desk" && api.requestTvBind' not in pages

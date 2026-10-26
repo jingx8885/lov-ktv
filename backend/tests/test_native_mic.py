@@ -28,6 +28,8 @@ def test_phone_desk_mic_uses_native_udp_not_webrtc():
 def test_native_mic_copy_mentions_lan_not_webrtc():
     zh = (ROOT / "shared" / "i18n" / "locales" / "zh.js").read_text(encoding="utf-8")
     assert '"phone.mic.needTv"' in zh
-    assert "WebRTC" in zh
+    need_tv = zh.split('"phone.mic.needTv":', 1)[1].split("\n", 1)[0]
+    assert "WiFi" in need_tv
+    assert "WebRTC" not in need_tv
     assert '"phone.mic.hintNativeIem"' in zh
     assert zh.count('"phone.mic.needTv"') == 1

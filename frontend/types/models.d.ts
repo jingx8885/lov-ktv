@@ -208,6 +208,7 @@ interface ActionSheetOpts {
   message?: string;
   confirm?: string;
   danger?: boolean;
+  items?: { id: string; label: string; danger?: boolean }[];
 }
 
 interface LoadPlayerOpts {

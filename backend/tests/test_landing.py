@@ -16,9 +16,9 @@ CSS = (
 
 
 def test_landing_has_hooks_and_product_exits():
-    assert "任意一首歌" in HTML
-    assert "当场变成包厢" in HTML
-    assert "搜歌名" in HTML
+    assert "你的舞台" in HTML
+    assert "随时开唱" in HTML
+    assert "手机点歌" in HTML
     assert 'href="/tv.html"' in HTML
     assert 'href="/m.html"' in HTML
     assert 'href="/apps/tv.apk"' in HTML
@@ -60,5 +60,5 @@ def test_root_serves_landing(tmp_path, monkeypatch):
     with TestClient(main.app) as client:
         page = client.get("/")
     assert page.status_code == 200
-    assert "当场变成包厢" in page.text
+    assert "随时开唱" in page.text
     assert "/landing/css/landing.css" in page.text

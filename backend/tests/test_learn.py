@@ -465,9 +465,8 @@ def test_phone_learn_shell_is_wired():
     html = (root / "m.html").read_text(encoding="utf-8")
     app = (root / "phone" / "app.js").read_text(encoding="utf-8")
     assert 'id="playerLearnBtn"' in html
-    transport = html.split('class="player-transport"', 1)[1].split("</div>", 1)[0]
-    assert 'id="playerLearnBtn"' in transport
-    assert transport.index('id="playerPlay"') < transport.index('id="playerLearnBtn"')
+    head = html.split('class="player-head"', 1)[1].split('id="playerAudio"', 1)[0]
+    assert 'id="playerLearnBtn"' in head
     assert 'id="tabLearn"' in html
     assert "data-enter-learn" in html
     assert 'id="playerLearn"' in html
@@ -565,7 +564,7 @@ def test_phone_learn_shell_is_wired():
     assert "fitLyricLine" in paint
     assert "function tvStage()" in paint
     assert "if (tvStage()) return;" in paint
-    assert "fitKey = `${id}:${Math.round(el.clientWidth)}:${sizeKey}`" in paint
+    assert 'fitKey = id + ":" + sizeKey + ":" + lyricFitEpoch' in paint
     assert "el.clientHeight" not in paint
     assert "line-words" in paint
     assert "kickPlayerPaint" in (

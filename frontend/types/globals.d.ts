@@ -304,6 +304,7 @@ interface TvMountDeps {
 type Platform = PhonePlatform | TvPlatform;
 
 interface LovKtvNativeBridge {
+  version?: () => string;
   playMtv?: (url: string) => void;
   stopMtv?: () => void;
   pauseMtv?: () => void;

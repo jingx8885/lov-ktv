@@ -254,6 +254,8 @@ def api_ja_lyrics(request: Request, payload: dict = Body(default={})) -> dict:
 def api_realign(
     request: Request, song_id: str, payload: dict = Body(default={})
 ) -> dict:
+    if not is_song_admin(current_user(request)):
+        fail(request, 403, "api.song_admin_required")
     song = get_song(song_id)
     if not song:
         fail(request, 404, "api.song_not_found")
@@ -294,6 +296,8 @@ def api_save_lyrics(
 
 @router.delete("/api/songs/{song_id}")
 def api_delete_song(request: Request, song_id: str) -> dict:
+    if not is_song_admin(current_user(request)):
+        fail(request, 403, "api.song_admin_required")
     if not get_song(song_id) or not delete_song(song_id):
         fail(request, 404, "api.song_not_found")
     return {"ok": True, "song_id": song_id}

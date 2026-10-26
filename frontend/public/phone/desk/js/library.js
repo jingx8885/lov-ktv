@@ -132,7 +132,7 @@ function songMenuItems(song) {
   if (song.status === "failed" || (ready && !!String(song.error || "").trim())) {
     items.push({ id: "retry", label: t("phone.desk.retry") });
   }
-  if (song.status !== "fetching" && song.status !== "separating") {
+  if (state.songAdmin && song.status !== "fetching" && song.status !== "separating") {
     items.push({ id: "delete", label: t("phone.desk.delete"), danger: true });
   }
   return items;

@@ -99,7 +99,7 @@ def test_tv_does_not_restart_on_network_stall():
     assert 'id="tvLyricSize"' in html
     assert "tv-menu-item" in html
     assert "data-tv-menu" in html
-    assert "确认 暂停/播放" in html
+    assert "确认 播放/暂停" in html
     arrow_up = remote.split('case "ArrowUp":', 1)[1].split("case ", 1)[0]
     assert "moveSettings(-1)" in arrow_up
     assert "nudgeVolume(5)" in arrow_up
