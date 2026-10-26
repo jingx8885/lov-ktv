@@ -522,8 +522,26 @@ def test_remote_skips_silent_wav(monkeypatch, tmp_path):
     monkeypatch.setenv("LOVKTV_ASR_MODEL", "grok-stt")
     monkeypatch.setenv("LOVKTV_AGENT_URL", "https://agent.example")
     monkeypatch.setenv("LOVKTV_AGENT_KEY", "secret")
-    monkeypatch.setattr(transcribe, "httpx", types.SimpleNamespace(post=lambda *_a, **_k: (_ for _ in ()).throw(AssertionError("silent chunk must be skipped"))))
+    calls: list[str] = []
+
+    class Response:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"text": "", "words": []}
+
+    def fake_post(*_args, **_kwargs):
+        calls.append("provider")
+        return Response()
+
+    monkeypatch.setattr(transcribe, "httpx", types.SimpleNamespace(post=fake_post))
+    # 静音门拦的是"要不要打远端"，本地 Whisper 兜底照旧会跑；在装了模型权重的
+    # 机器上它会对着静音幻觉出一段词，于是原来那句 == [] 实际测的是机器上装了什么。
+    # 这里把兜底一起钉住，改成直接断言远端一次都没被调用。
+    monkeypatch.setattr(transcribe, "_transcribe_faster_whisper", lambda *_a, **_k: [])
     assert transcribe.transcribe_words(audio, "en", cache_path=tmp_path / "asr.json") == []
+    assert calls == []
 
 
 def test_fish_retries_then_succeeds(monkeypatch, tmp_path):

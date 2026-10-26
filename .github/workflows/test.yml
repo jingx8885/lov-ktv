@@ -46,4 +46,5 @@ jobs:
         run: npm test
       - name: Run iOS bridge tests
         working-directory: ios
-        run: npm test
+        # policy.test.mjs scans the packaged bundle, so build www first.
+        run: npm ci && npm run build && npm test
