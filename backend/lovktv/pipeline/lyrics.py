@@ -161,8 +161,6 @@ _CN_TO_JP = str.maketrans(
         "书": "書",
         "国": "國",
         "见": "見",
-        "边": "邊",
-        "间": "間",
     }
 )
 
@@ -656,7 +654,7 @@ def validate_timeline(payload: dict[str, Any]) -> dict[str, Any]:
     if not cues:
         raise ValueError("没有歌词")
     repair_cue_order(cues)
-    from lovktv.domain.timeline import LYRICS_SCHEMA, normalize_timeline
+    from lovktv.domain.timeline import normalize_timeline
 
     return normalize_timeline({
         "language": str(payload.get("language") or "zh"),

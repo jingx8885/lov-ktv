@@ -203,6 +203,9 @@ def test_netease_ja_credits_and_simplified_kanji():
         == "目まぐるしい 時間の群れが"
     )
     assert fold_ja_netease_kanji("谁にも止められはしない") == "誰にも止められはしない"
+    # 表里同一个字只能有一条映射：日语路径必须折成日语新字体，
+    # 不能被我后面补的繁体字表覆盖掉。
+    assert fold_ja_netease_kanji("边疆 中间") == "辺疆 中間"
     assert is_credit_lyric("「Give a reason」")
     assert is_credit_lyric("「スレイヤーズNEXT」OP")
     assert is_credit_lyric("発売日：1996/04/24")
