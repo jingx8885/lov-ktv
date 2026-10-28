@@ -34,3 +34,21 @@ struct SongsPage: Decodable, Sendable {
   var songs: [Song]
   var total: Int
 }
+
+/// /api/songs/{id} 详情：files[] 用来判断有无 instrumental.wav / mugen.mp4
+struct SongDetail: Decodable, Sendable {
+  var id: String
+  var title: String?
+  var artist: String?
+  var language: String?
+  var status: String?
+  var native_video: Bool?
+  var media_rev: String?
+  var files: [String]?
+
+  var hasInstrumental: Bool { files?.contains("instrumental.wav") == true }
+  var hasLyrics: Bool { files?.contains("lyrics.json") == true }
+  var hasOriginal: Bool { files?.contains("original.mp3") == true }
+  var displayTitle: String { title?.isEmpty == false ? title! : "未命名" }
+  var displayArtist: String { artist?.isEmpty == false ? artist! : "未知歌手" }
+}

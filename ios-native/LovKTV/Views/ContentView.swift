@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppTab: Hashable { case remote, library, settings }
+enum AppTab: Hashable { case remote, library, listen, learn, settings }
 
 struct ContentView: View {
   @Environment(AppState.self) private var appState
@@ -18,6 +18,14 @@ struct ContentView: View {
       LibraryView(listeningTitle: $listeningTitle)
         .tabItem { Label("曲库", systemImage: "music.note.list") }
         .tag(AppTab.library)
+
+      ListenView()
+        .tabItem { Label("听歌", systemImage: "headphones") }
+        .tag(AppTab.listen)
+
+      LearnView()
+        .tabItem { Label("学习", systemImage: "graduationcap") }
+        .tag(AppTab.learn)
 
       SettingsView(onConnected: { tab = .remote })
         .tabItem { Label("设置", systemImage: "gearshape") }

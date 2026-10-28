@@ -1,4 +1,6 @@
+import AVFoundation
 import Foundation
+import os
 
 /// 遥控接口请求路径白名单——与旧版 Capacitor RemotePlugin.allowed 完全对齐。
 /// 只允许 GET /api/songs、GET/POST /api/rooms/{code}/... 与 POST /api/remote/reports。
@@ -6,9 +8,9 @@ enum APIWhitelist {
   static func allows(path: String, method: String) -> Bool {
     let pattern: String
     if method == "GET" {
-      pattern = #"^/api/(songs\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
+      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?)|search\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
     } else {
-      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports)$"#
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup)))$"#
     }
     return (method == "GET" || method == "POST")
       && path.range(of: pattern, options: .regularExpression) != nil
@@ -52,6 +54,10 @@ actor LovKTVClient {
     config.timeoutIntervalForResource = 60
     config.httpCookieAcceptPolicy = .never
     config.httpShouldSetCookies = false
+    if connection.mode == .selfHosted {
+      // 自建服只许局域网地址，绕过系统代理直连（本机 Clash 会掐内网请求）
+      config.connectionProxyDictionary = [:]
+    }
     self.session = URLSession(configuration: config, delegate: NoRedirectDelegate(), delegateQueue: nil)
   }
 
@@ -75,6 +81,7 @@ actor LovKTVClient {
     guard let url = URL(string: mapped, relativeTo: connection.server) else {
       throw APIError.http(0, "服务器地址无效")
     }
+    let method = body == nil ? "GET" : "POST"
     var request = URLRequest(url: url)
     authorize(&request)
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -88,6 +95,7 @@ actor LovKTVClient {
     do {
       (data, response) = try await session.data(for: request)
     } catch {
+      NSLog("[client] %@ %@ -> %@", method, url.absoluteString, error.localizedDescription)
       throw APIError.network
     }
     guard data.count <= 4_000_000,
@@ -172,6 +180,99 @@ actor LovKTVClient {
                           body: body, as: RoomSnapshot.self)
   }
 
+  // MARK: - 在线搜歌 / 学习 / 歌曲详情
+
+  func search(query: String, page: Int = 1, count: Int = 10) async throws -> SearchResponse {
+    var components = URLComponents(string: "/api/search")!
+    components.queryItems = [
+      URLQueryItem(name: "q", value: query),
+      URLQueryItem(name: "page", value: String(page)),
+      URLQueryItem(name: "count", value: String(count)),
+    ]
+    return try await send(path: components.string!, as: SearchResponse.self)
+  }
+
+  func importHit(_ hit: SearchHit) async throws -> Song {
+    try await send(path: "/api/songs/import", body: [
+      "id": hit.id,
+      "query": hit.displayTitle,
+      "title": hit.displayTitle,
+      "artist": hit.displayArtist == "未知歌手" ? "" : hit.displayArtist,
+    ], as: Song.self)
+  }
+
+  /// 歌曲详情（含 files[] 判断有无 instrumental.wav）
+  func songDetail(_ id: String) async throws -> SongDetail {
+    try await send(path: "/api/songs/\(id)", as: SongDetail.self)
+  }
+
+  func learnCampaign(_ songID: String) async throws -> LearnCampaign {
+    try await send(path: "/api/songs/\(songID)/learn/campaign", as: LearnCampaign.self)
+  }
+
+  func learnLesson(_ songID: String, unit: String, skill: String) async throws -> Lesson {
+    var components = URLComponents(string: "/api/songs/\(songID)/learn/lesson")!
+    components.queryItems = [
+      URLQueryItem(name: "unit", value: unit),
+      URLQueryItem(name: "skill", value: skill),
+    ]
+    return try await send(path: components.string!, as: Lesson.self)
+  }
+
+  func learnReview(_ songID: String) async throws -> Lesson {
+    try await send(path: "/api/songs/\(songID)/learn/review", as: Lesson.self)
+  }
+
+  /// 提交课程结果。非 play_mode 技能必须带 attempt_id 与逐题 answers。
+  func submitLesson(_ songID: String, unit: String, skill: String,
+                    attemptID: String, pct: Int,
+                    answers: [[String: AnyEncodable]]?) async throws -> LessonResult {
+    var body: [String: Encodable] = [
+      "unit_id": unit, "skill": skill, "attempt_id": attemptID, "pct": pct,
+    ]
+    if let answers {
+      body["answers"] = answers
+    }
+    return try await send(path: "/api/songs/\(songID)/learn/lesson",
+                          body: body, as: LessonResult.self)
+  }
+
+  // MARK: - 媒体资源（不在 JSON 白名单，直接构造 URL）
+
+  /// /media/{id}/{name} 的完整 URL；官方服走 /api/remote/ios/media/{id}（仅 original.mp3）。
+  func mediaURL(songID: String, name: String) -> URL? {
+    guard songID.range(of: #"^[A-Za-z0-9_-]{1,100}$"#, options: .regularExpression) != nil else { return nil }
+    let path = connection.mode == .official
+      ? "/api/remote/ios/media/\(songID)"
+      : "/media/\(songID)/\(name)"
+    return URL(string: path, relativeTo: connection.server)
+  }
+
+  /// 预览流地址 /api/preview/{id}（仅自建服可达）
+  func previewURL(hitID: String) -> URL? {
+    guard hitID.range(of: #"^[A-Za-z0-9_:-]{1,100}$"#, options: .regularExpression) != nil else { return nil }
+    return URL(string: "/api/preview/\(hitID)", relativeTo: connection.server)
+  }
+
+  /// 下载歌词时间轴 JSON；不存在/未就绪返回 nil
+  func fetchTimeline(songID: String) async -> LyricsTimeline? {
+    guard let url = mediaURL(songID: songID, name: "lyrics.json") else { return nil }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    guard let (data, response) = try? await session.data(for: request),
+          let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
+    return try? decoder.decode(LyricsTimeline.self, from: data)
+  }
+
+  /// AVURLAsset 可用的授权请求（官方服需要 Bearer 头）
+  func authorizedAsset(url: URL) -> AVURLAsset {
+    var headers: [String: String] = ["X-LovKTV-Platform": "ios"]
+    if connection.mode == .official, !apiKey.isEmpty {
+      headers["Authorization"] = "Bearer \(apiKey)"
+    }
+    return AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
+  }
+
   /// 房间实时快照推送。返回每个 snapshot 的 AsyncStream；连接断开即结束。
   /// URLSession WebSocket 不支持官方服的 Bearer 以外的签名要求，白名单外不走这里。
   func roomSocket() -> URLSessionWebSocketTask? {
@@ -218,5 +319,24 @@ actor LovKTVClient {
     let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
     guard size > 0, size <= 30_000_000 else { throw APIError.http(0, "音频超过 30 MB 或为空") }
     return file
+  }
+}
+
+/// 异构 JSON 值包装器（answers 里 int/string/array 混着来）
+struct AnyEncodable: Encodable, @unchecked Sendable {
+  private let value: Any
+  init(_ value: Any) { self.value = value }
+  func encode(to encoder: Encoder) throws {
+    var container = encoder.singleValueContainer()
+    switch value {
+    case let v as String: try container.encode(v)
+    case let v as Int: try container.encode(v)
+    case let v as Double: try container.encode(v)
+    case let v as Bool: try container.encode(v)
+    case let v as [AnyEncodable]: try container.encode(v)
+    case let v as [Int]: try container.encode(v)
+    case let v as [String: AnyEncodable]: try container.encode(v)
+    default: try container.encodeNil()
+    }
   }
 }

@@ -14,8 +14,11 @@ final class AppState {
   // 房间
   var room: RoomSnapshot?
 
-  // 试听
+  // 试听（下载后播，自建/官方通用）
   let preview = PreviewPlayer()
+  // 在线搜试听流 + 听歌播放器
+  let stream = StreamPreview()
+  let player = PlayerEngine()
 
   // 屏蔽
   let blocklist = SongBlocklist()
@@ -83,6 +86,8 @@ final class AppState {
 
   func disconnect() {
     preview.stop()
+    stream.stop()
+    player.stop()
     connection = nil
     client = nil
     room = nil
