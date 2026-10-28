@@ -62,6 +62,18 @@ sudo docker cp ~/lov-ktv/frontend/public/. lov-ktv-lov-ktv-1:/app/frontend/publi
 
 3. 从公网验收落地页、`/tv.html`、`/m.html` 和 `/api/host`。本机 Cloudflare 请求失败时，从 43 上执行 `curl`，不要据此改 Nginx 或 DNS。
 
+## iPhone 原生端
+
+- 原生 iPhone 应用放在 `ios-native/`（SwiftUI + Swift 6，最低 iOS 17）。`ios/` 目录是旧的 Capacitor 壳 + 网页遥控端（`ios/web`），原生端达到功能对齐前不要删它。
+- 后端与网页/安卓端共用：开发态默认连 `http://<局域网主机>:8790`，生产连 `https://ktv.lovbrowser.com`；复用 `/api/host`、`/api/queue` 等同一套接口，不新造 iOS 专用 API。
+- 工程约定：XcodeGen 或 `xcodeproj` 提交进 git；签名用自动签名 + 免费证书可跑真机 7 天描述文件；不要把 `.env`、密钥、证书打进 git。
+- 本地 agent 技能已装：
+  - `~/.codex/axiom/skills/`：`axiom-swiftui`、`axiom-media`（AVFoundation/NowPlaying/音频路由）、`axiom-networking`、`axiom-concurrency`、`axiom-build`、`axiom-performance`；配套 CLI 在 `~/.codex/axiom/tools/`（`axbuild`、`xclog`、`xcui`、`xcsym`、`xcprof`、`xcproject`）。
+  - `~/.agents/skills/ios-simulator-skill/`：模拟器自动化脚本（build/launch/accessibility 点按/截图/日志），交互功能依赖 `idb`（brew `facebook/fb/idb-cli`）+ `idb_companion`（`~/.local/opt/idb-companion`，已链接进 `~/.local/bin`）。
+  - 环境自检：`bash ~/.agents/skills/ios-simulator-skill/scripts/sim_health_check.sh`。brew 的 `facebook/fb/idb-companion` 配方会因 CLT 版本检查失败，不要为它动 `/Library/Developer/CommandLineTools`，直接用 `~/.local/opt/idb-companion` 里的官方 tarball。
+  - UI 设计规范用 `~/.agents/skills/ios-hig-design`。
+- 构建/测试走 `~/.codex/axiom/tools/axbuild`（包装 xcodebuild，日志落盘 + 短摘要），模拟器交互走 ios-simulator-skill 的脚本；不要在聊天里贴整份 xcodebuild 日志。
+
 ## App 发版
 
 - 版本写在仓库根 `VERSION`：`name=` 给人看，格式为 `YYYY.M.D.N`；其中 `N` 是当天的发版序号，每个自然日从 `1` 重新计数，不能沿用前一天的序号。`code=` 给 Android `versionCode`，格式为 `YYYYMMDDNN`，日期变化时每日序号归零但整体仍必须保持递增。
