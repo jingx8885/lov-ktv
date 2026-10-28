@@ -8,7 +8,7 @@ enum APIWhitelist {
   static func allows(path: String, method: String) -> Bool {
     let pattern: String
     if method == "GET" {
-      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?)|search\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
+      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
     } else {
       pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup)))$"#
     }

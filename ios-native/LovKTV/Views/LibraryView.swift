@@ -35,7 +35,7 @@ struct LibraryView: View {
                   prompt: pane == .local ? "歌名或歌手" : "在线搜歌")
       .onChange(of: library.onlineQuery) { _, _ in if pane == .online { library.scheduleOnlineSearch() } }
     }
-    .task {
+    .task(id: appState.connection) {
           library.client = appState.client
           await library.search(page: 1)
         }

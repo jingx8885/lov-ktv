@@ -63,6 +63,17 @@ struct Lesson: Decodable, Sendable {
     var romaji: String?
     var start_ms: Int?
     var end_ms: Int?
+    var words: [LessonWord]?
+  }
+
+  struct LessonWord: Decodable, Sendable, Identifiable {
+    var id: Int { start_ms ?? 0 }
+    var text: String?
+    var romaji: String?
+    var translation: String?
+    var zh: String?
+    var start_ms: Int?
+    var end_ms: Int?
   }
 
   struct LessonItem: Decodable, Sendable, Identifiable {

@@ -27,7 +27,7 @@ struct LearnView: View {
           .navigationTitle("学习")
       }
     }
-    .task {
+    .task(id: appState.connection) {
           library.client = appState.client
           await library.search(page: 1)
         }
@@ -60,12 +60,16 @@ struct LearnView: View {
 }
 
 /// 一首歌的 campaign：目标进度 + 单元×技能格子 + 错题复习
+struct LessonDest: Hashable { var unit: String; var skill: String }
+
 struct CampaignView: View {
   @Environment(AppState.self) private var appState
   let song: Song
   @State private var campaign: LearnCampaign?
   @State private var error: String?
   @State private var loading = true
+  @State private var practiceEntry: String?
+  @State private var lessonDest: LessonDest?
 
   var body: some View {
     Group {
@@ -80,6 +84,14 @@ struct CampaignView: View {
     }
     .navigationTitle(song.displayTitle)
     .navigationBarTitleDisplayMode(.inline)
+    .navigationDestination(isPresented: Binding(
+      get: { practiceEntry != nil },
+      set: { if !$0 { practiceEntry = nil } })) {
+      PracticeEntryView(song: song)
+    }
+    .navigationDestination(item: $lessonDest) { dest in
+      LessonView(song: song, unitID: dest.unit, skill: dest.skill)
+    }
     .task { await load() }
   }
 
@@ -113,11 +125,16 @@ struct CampaignView: View {
                 if skill.locked {
                   skillChip(skill, enabled: false)
                 } else {
-                  NavigationLink {
-                    LessonView(song: song, unitID: unit.id, skill: skill.id)
+                  Button {
+                    if skill.play_mode == "tap" {
+                      practiceEntry = "practice"
+                    } else {
+                      lessonDest = LessonDest(unit: unit.id, skill: skill.id)
+                    }
                   } label: {
                     skillChip(skill, enabled: true)
                   }
+                  .buttonStyle(.plain)
                 }
               }
             }

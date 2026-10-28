@@ -20,7 +20,7 @@ struct ListenView: View {
           .navigationTitle("听歌")
       }
     }
-    .task {
+    .task(id: appState.connection) {
           library.client = appState.client
           await library.search(page: 1)
         }

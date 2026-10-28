@@ -106,6 +106,18 @@ final class PlayerEngine {
     }
   }
 
+  /// 精确跳到某毫秒（点唱/跟唱重放一句用）
+  func seekMS(_ ms: Int) {
+    guard let player else { return }
+    player.seek(to: CMTime(seconds: Double(ms) / 1000, preferredTimescale: 600),
+                toleranceBefore: .zero, toleranceAfter: .zero)
+    currentMS = ms
+  }
+
+  /// 只播一句：seek 到 start 并在 end 停（靠 timer 在视图层驱动也行，先给引擎能力）
+  func pause() { player?.pause(); playing = false; updateNowPlaying() }
+  func resume() { player?.play(); playing = true; updateNowPlaying() }
+
   func stop() {
     if let player, let timeObserver { player.removeTimeObserver(timeObserver) }
     timeObserver = nil
