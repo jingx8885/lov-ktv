@@ -1,0 +1,183 @@
+import Foundation
+
+/// 遥控接口请求路径白名单——与旧版 Capacitor RemotePlugin.allowed 完全对齐。
+/// 只允许 GET /api/songs、GET/POST /api/rooms/{code}/... 与 POST /api/remote/reports。
+enum APIWhitelist {
+  static func allows(path: String, method: String) -> Bool {
+    let pattern: String
+    if method == "GET" {
+      pattern = #"^/api/(songs\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
+    } else {
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix)|remote/reports)$"#
+    }
+    return (method == "GET" || method == "POST")
+      && path.range(of: pattern, options: .regularExpression) != nil
+  }
+}
+
+/// 官方服务把 /api/* 映射到 /api/remote/ios/* 并附带 Bearer key；
+/// reports 特殊映射到 /api/remote/ios/reports。
+enum RemotePath {
+  static func map(_ path: String, official: Bool) -> String {
+    guard official else { return path }
+    if path == "/api/remote/reports" { return "/api/remote/ios/reports" }
+    return "/api/remote/ios" + path.dropFirst(4)
+  }
+}
+
+private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+  func urlSession(_ session: URLSession, task: URLSessionTask,
+                  willPerformHTTPRedirection response: HTTPURLResponse,
+                  newRequest request: URLRequest,
+                  completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+    // 重定向不允许把配置好的服务器变成外部内容源
+    completionHandler(nil)
+  }
+}
+
+/// 对当前连接发起白名单内请求。actor 保证 session/凭据不可被并发改坏；
+/// JSON 编解码在 actor 内（后台）完成，UI 拿到的都是值类型。
+actor LovKTVClient {
+  private let connection: Connection
+  private let apiKey: String
+  private let session: URLSession
+  private let decoder = JSONDecoder()
+  private let encoder = JSONEncoder()
+
+  init(connection: Connection, apiKey: String = "") {
+    self.connection = connection
+    self.apiKey = apiKey
+    let config = URLSessionConfiguration.ephemeral
+    config.timeoutIntervalForRequest = 20
+    config.timeoutIntervalForResource = 60
+    config.httpCookieAcceptPolicy = .never
+    config.httpShouldSetCookies = false
+    self.session = URLSession(configuration: config, delegate: NoRedirectDelegate(), delegateQueue: nil)
+  }
+
+  var baseURL: URL { connection.server }
+  var isOfficial: Bool { connection.mode == .official }
+
+  private func authorize(_ request: inout URLRequest) {
+    request.setValue("ios", forHTTPHeaderField: "X-LovKTV-Platform")
+    if connection.mode == .official, !apiKey.isEmpty {
+      request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+    }
+  }
+
+  /// 发送 JSON 请求并解码响应。`path` 必须是白名单内的 /api/... 路径。
+  private func send<T: Decodable & Sendable>(path: String, body: [String: Encodable]? = nil,
+                                           as type: T.Type) async throws -> T {
+    guard APIWhitelist.allows(path: path, method: body == nil ? "GET" : "POST") else {
+      throw APIError.http(0, "请求不在遥控接口白名单内")
+    }
+    let mapped = RemotePath.map(path, official: connection.mode == .official)
+    guard let url = URL(string: mapped, relativeTo: connection.server) else {
+      throw APIError.http(0, "服务器地址无效")
+    }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    if let body {
+      request.httpMethod = "POST"
+      request.httpBody = try JSONSerialization.data(withJSONObject: body)
+    }
+
+    let data: Data
+    let response: URLResponse
+    do {
+      (data, response) = try await session.data(for: request)
+    } catch {
+      throw APIError.network
+    }
+    guard data.count <= 4_000_000,
+          let http = response as? HTTPURLResponse else { throw APIError.network }
+    if http.statusCode == 401 || http.statusCode == 403 {
+      throw connection.mode == .official ? APIError.invalidKey : APIError.http(http.statusCode, "")
+    }
+    if http.statusCode == 402 { throw APIError.serverRejected }
+    guard (200..<300).contains(http.statusCode) else {
+      let detail = (try? decoder.decode([String: String].self, from: data))?["detail"] ?? ""
+      throw APIError.http(http.statusCode, detail)
+    }
+    if T.self == Empty.self { return Empty() as! T }
+    do {
+      return try decoder.decode(T.self, from: data)
+    } catch {
+      throw APIError.http(http.statusCode, "响应解析失败")
+    }
+  }
+
+  struct Empty: Decodable, Sendable {}
+
+  // MARK: - API surface（与网页遥控端一一对应）
+
+  func songs(query: String, page: Int, count: Int = 20) async throws -> SongsPage {
+    let items = [URLQueryItem(name: "q", value: query),
+                 URLQueryItem(name: "page", value: String(page)),
+                 URLQueryItem(name: "count", value: String(count))]
+    var components = URLComponents(string: "/api/songs")!
+    components.queryItems = items
+    return try await send(path: components.string!, as: SongsPage.self)
+  }
+
+  func room() async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)", as: RoomSnapshot.self)
+  }
+
+  func enqueue(songID: String) async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/queue",
+                   body: ["song_id": songID], as: RoomSnapshot.self)
+  }
+
+  func play(paused: Bool) async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/mix",
+                   body: ["paused": paused], as: RoomSnapshot.self)
+  }
+
+  func setVolume(_ volume: Int) async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/mix",
+                   body: ["volume": volume], as: RoomSnapshot.self)
+  }
+
+  func skip() async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/skip",
+                   body: [:], as: RoomSnapshot.self)
+  }
+
+  func report(songID: String, reason: String) async throws {
+    let _: Empty = try await send(path: "/api/remote/reports",
+                                  body: ["song_id": songID, "reason": reason],
+                                  as: Empty.self)
+  }
+
+  /// 手机试听：自建服走 /media/{id}/original.mp3，官方走 /api/remote/ios/media/{id}。
+  /// 大小上限 30MB，拒绝重定向；返回本地文件 URL（调用方负责删除）。
+  func downloadPreview(songID: String) async throws -> URL {
+    guard songID.range(of: #"^[A-Za-z0-9_-]{1,100}$"#, options: .regularExpression) != nil else {
+      throw APIError.http(0, "歌曲 ID 无效")
+    }
+    let suffix = connection.mode == .official
+      ? "/api/remote/ios/media/\(songID)"
+      : "/media/\(songID)/original.mp3"
+    guard let url = URL(string: suffix, relativeTo: connection.server) else {
+      throw APIError.http(0, "服务器地址无效")
+    }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    let (file, response): (URL, URLResponse)
+    do {
+      (file, response) = try await session.download(for: request)
+    } catch {
+      throw APIError.network
+    }
+    guard let http = response as? HTTPURLResponse else { throw APIError.network }
+    if connection.mode == .official && [401, 403].contains(http.statusCode) {
+      throw APIError.invalidKey
+    }
+    guard http.statusCode == 200 else { throw APIError.http(http.statusCode, "试听不可用") }
+    let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+    guard size > 0, size <= 30_000_000 else { throw APIError.http(0, "音频超过 30 MB 或为空") }
+    return file
+  }
+}
