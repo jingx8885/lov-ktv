@@ -5,6 +5,7 @@ struct RemoteView: View {
   @Environment(AppState.self) private var appState
   var onGoSettings: () -> Void
   @State private var confirmSkip = false
+  @State private var showMix = false
 
   var body: some View {
     NavigationStack {
@@ -16,9 +17,23 @@ struct RemoteView: View {
         }
       }
       .navigationTitle("遥控")
+      .toolbar {
+        if appState.connection != nil {
+          ToolbarItem(placement: .topBarTrailing) {
+            Button { showMix = true } label: {
+              Image(systemName: "slider.horizontal.3")
+            }
+            .accessibilityLabel("房间设置")
+          }
+        }
+      }
+      .sheet(isPresented: $showMix) {
+        RoomMixSheet()
+      }
     }
     .task {
-      // 3 秒轮询；视图销毁自动取消
+      async let _ = appState.listenRoomSnapshots()
+      // 3 秒轮询兜底（WS 断开/官方服不支持时仍实时）
       while !Task.isCancelled {
         if appState.connection != nil {
           if let error = await appState.refresh() { appState.showStatus(error) }
@@ -122,8 +137,13 @@ struct RemoteView: View {
           .frame(maxWidth: .infinity, alignment: .center)
           .padding(.vertical, 8)
       } else {
-        ForEach(appState.visibleQueue) { song in
-          SongRow(song: song)
+        ForEach(Array(appState.visibleQueue.enumerated()), id: \.element.queueItemID) { index, song in
+          QueueItemRow(
+            song: song,
+            isNowPlaying: index == (appState.room?.now_index ?? 0),
+            canBump: appState.room?.canBump(at: index) == true,
+            onPlay: { Task { await appState.playItem(song.queueItemID) } },
+            onBump: { Task { await appState.bumpItem(song.queueItemID) } })
         }
       }
     } header: {
@@ -159,5 +179,61 @@ private struct VolumeRow: View {
     .accessibilityElement(children: .combine)
     .accessibilityLabel("音量")
     .accessibilityValue("\(Int(volume))")
+  }
+}
+
+/// 队列条目行：封面 + 标题 + 状态 + 唱这首/置顶，对齐网页 desk 队列
+private struct QueueItemRow: View {
+  let song: Song
+  let isNowPlaying: Bool
+  let canBump: Bool
+  let onPlay: () -> Void
+  let onBump: () -> Void
+
+  var body: some View {
+    HStack(spacing: 12) {
+      ArtView(seed: song.displayTitle)
+      VStack(alignment: .leading, spacing: 3) {
+        Text(song.displayTitle)
+          .font(.body.weight(.medium))
+          .lineLimit(1)
+        HStack(spacing: 6) {
+          if isNowPlaying {
+            Text("正在唱")
+              .font(.caption2.weight(.semibold))
+              .padding(.horizontal, 6).padding(.vertical, 2)
+              .background(Color.accentColor.opacity(0.18), in: Capsule())
+              .foregroundStyle(.tint)
+          } else if let badge = song.badge {
+            Text(badge.text)
+              .font(.caption2.weight(.semibold))
+              .padding(.horizontal, 6).padding(.vertical, 2)
+              .background(badge.isError ? Color.red.opacity(0.18) : Color.orange.opacity(0.18),
+                          in: Capsule())
+              .foregroundStyle(badge.isError ? .red : .orange)
+          }
+          Text(song.displayArtist)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        }
+      }
+      Spacer(minLength: 8)
+      Button("唱这首", action: onPlay)
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .disabled(isNowPlaying)
+      if canBump {
+        Button(action: onBump) {
+          Image(systemName: "arrow.up.to.line")
+            .font(.body.weight(.semibold))
+            .frame(width: 30, height: 30)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .accessibilityLabel("置顶")
+      }
+    }
+    .padding(.horizontal, 14).padding(.vertical, 10)
   }
 }

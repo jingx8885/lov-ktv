@@ -126,6 +126,30 @@ final class AppState {
     await run { self.room = try await client.setVolume(Int(volume.rounded())) }
   }
 
+  /// 队列里“唱这首”
+  func playItem(_ itemID: String) async {
+    guard let client else { return }
+    await run { self.room = try await client.playItem(itemID) }
+  }
+
+  /// 置顶到待唱第一位
+  func bumpItem(_ itemID: String) async {
+    guard let client else { return }
+    await run { self.room = try await client.bumpItem(itemID) }
+  }
+
+  /// 房间混音/显示设置（人声开关、麦克风增益、歌词模式/字号、显示模式）
+  func setMix(vocalMix: Double? = nil, micGain: Int? = nil,
+              lyricMode: String? = nil, lyricSize: Int? = nil,
+              displayMode: String? = nil) async {
+    guard let client else { return }
+    await run {
+      self.room = try await client.setMix(
+        vocalMix: vocalMix, micGain: micGain, lyricMode: lyricMode,
+        lyricSize: lyricSize, displayMode: displayMode)
+    }
+  }
+
   func enqueue(song: Song) async {
     guard let client, song.isReady else { return }
     await run { self.room = try await client.enqueue(songID: song.songID) }
@@ -186,6 +210,33 @@ final class AppState {
     self.client = client ?? LovKTVClient(
       connection: connection,
       apiKey: connection.mode == .official ? (KeychainStore.read() ?? "") : "")
+  }
+
+  /// WebSocket 实时快照：连上后在 RemoteView 的 task 里跑，断线自动重连。
+  /// 官方 ios_router 没暴露 /ws，连不上时退回 3s 轮询，两边都安全。
+  func listenRoomSnapshots() async {
+    guard let client else { return }
+    while !Task.isCancelled, self.client != nil {
+      guard let socket = await client.roomSocket() else { return }
+      socket.resume()
+      var connected = true
+      defer { socket.cancel(with: .normalClosure, reason: nil) }
+      while connected, !Task.isCancelled {
+        do {
+          let message = try await socket.receive()
+          if case .string(let text) = message,
+             let data = text.data(using: .utf8),
+             let payload = try? JSONDecoder().decode(RoomPush.self, from: data),
+             payload.type == "snapshot" {
+            self.room = payload.room
+          }
+        } catch {
+          connected = false
+        }
+      }
+      // 断线等 5s 重连；轮询兜底仍在跑，不怕空窗
+      try? await Task.sleep(for: .seconds(5))
+    }
   }
 
   private func persist() {

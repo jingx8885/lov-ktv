@@ -8,7 +8,7 @@ enum APIWhitelist {
     if method == "GET" {
       pattern = #"^/api/(songs\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
     } else {
-      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix)|remote/reports)$"#
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports)$"#
     }
     return (method == "GET" || method == "POST")
       && path.range(of: pattern, options: .regularExpression) != nil
@@ -143,6 +143,45 @@ actor LovKTVClient {
   func skip() async throws -> RoomSnapshot {
     try await send(path: "/api/rooms/\(connection.room)/skip",
                    body: [:], as: RoomSnapshot.self)
+  }
+
+  /// 队列里“唱这首”：POST /play {id}。itemID 是队列条目 id（不是 song_id）。
+  func playItem(_ itemID: String) async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/play",
+                   body: ["id": itemID], as: RoomSnapshot.self)
+  }
+
+  /// 置顶到待唱第一位：POST /bump {id}
+  func bumpItem(_ itemID: String) async throws -> RoomSnapshot {
+    try await send(path: "/api/rooms/\(connection.room)/bump",
+                   body: ["id": itemID], as: RoomSnapshot.self)
+  }
+
+  /// 房间混音/显示设置：vocal_mix 0..1、mic_gain 0..100、
+  /// lyric_mode ja|zh|roma|all、lyric_size 10..250、display_mode lyrics|mv
+  func setMix(vocalMix: Double? = nil, micGain: Int? = nil,
+              lyricMode: String? = nil, lyricSize: Int? = nil,
+              displayMode: String? = nil) async throws -> RoomSnapshot {
+    var body: [String: Encodable] = [:]
+    if let vocalMix { body["vocal_mix"] = vocalMix }
+    if let micGain { body["mic_gain"] = micGain }
+    if let lyricMode { body["lyric_mode"] = lyricMode }
+    if let lyricSize { body["lyric_size"] = lyricSize }
+    if let displayMode { body["display_mode"] = displayMode }
+    return try await send(path: "/api/rooms/\(connection.room)/mix",
+                          body: body, as: RoomSnapshot.self)
+  }
+
+  /// 房间实时快照推送。返回每个 snapshot 的 AsyncStream；连接断开即结束。
+  /// URLSession WebSocket 不支持官方服的 Bearer 以外的签名要求，白名单外不走这里。
+  func roomSocket() -> URLSessionWebSocketTask? {
+    guard var components = URLComponents(url: connection.server, resolvingAgainstBaseURL: true) else { return nil }
+    components.scheme = connection.server.scheme == "https" ? "wss" : "ws"
+    components.path = (connection.mode == .official ? "/api/remote/ios" : "") + "/ws/rooms/\(connection.room)"
+    guard let url = components.url else { return nil }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    return session.webSocketTask(with: request)
   }
 
   func report(songID: String, reason: String) async throws {

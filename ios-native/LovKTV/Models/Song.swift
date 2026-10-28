@@ -11,6 +11,8 @@ struct Song: Decodable, Identifiable, Sendable {
   var favorite: Bool?
 
   var songID: String { song_id ?? id ?? "" }
+  /// 队列操作（唱这首/置顶）用队列条目自身的 id 字段
+  var queueItemID: String { id ?? song_id ?? "" }
   var displayTitle: String { title?.isEmpty == false ? title! : "未命名" }
   var displayArtist: String { artist?.isEmpty == false ? artist! : "未知歌手" }
   var isReady: Bool { status == nil || status == "ready" }

@@ -62,11 +62,11 @@ final class APIWhitelistTests: XCTestCase {
   }
 
   func testPOSTPaths() {
-    for cmd in ["queue", "play", "skip", "mix"] {
+    for cmd in ["queue", "play", "skip", "mix", "bump"] {
       XCTAssertTrue(APIWhitelist.allows(path: "/api/rooms/K7Q2/\(cmd)", method: "POST"), cmd)
     }
     XCTAssertTrue(APIWhitelist.allows(path: "/api/remote/reports", method: "POST"))
-    XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/K7Q2/bump", method: "POST"))
+    XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/K7Q2/remove", method: "POST"))
     XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/K7Q2", method: "POST"))
     XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/k7q2/skip", method: "POST")) // 小写房间码不允许
   }
