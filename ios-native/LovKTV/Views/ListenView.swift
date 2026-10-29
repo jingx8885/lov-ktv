@@ -8,27 +8,29 @@ struct ListenView: View {
 
   var body: some View {
     NavigationStack {
-      if appState.connection == nil {
-        ContentUnavailableView {
-          Label("未连接", systemImage: "headphones")
-        } description: {
-          Text("先在设置里连接服务器。")
+      ZStack {
+        KTVBackground()
+        if appState.connection == nil {
+          ContentUnavailableView {
+            Label("未连接", systemImage: "headphones")
+          } description: {
+            Text("先在设置里连接服务器。")
+          }
+        } else if let client = appState.client {
+          player(client: client)
         }
-        .navigationTitle("听歌")
-      } else if let client = appState.client {
-        player(client: client)
-          .navigationTitle("听歌")
       }
+      .navigationTitle("听歌")
     }
     .task(id: appState.connection) {
-          library.client = appState.client
-          if library.client != nil { await library.search(page: 1) }
-        }
+      library.client = appState.client
+      if library.client != nil { await library.search(page: 1) }
+    }
     .onAppear {
-          library.client = appState.client
-          if library.songs.isEmpty, library.client != nil {
-            Task { await library.search(page: 1) }
-          }
+      library.client = appState.client
+      if library.songs.isEmpty, library.client != nil {
+        Task { await library.search(page: 1) }
+      }
     }
   }
 
@@ -131,6 +133,8 @@ struct ListenView: View {
         }
       }
       .listStyle(.insetGrouped)
+      .scrollContentBackground(.hidden)
+    .scrollContentBackground(.hidden)
       .onChange(of: engine.activeIndex) { _, idx in
         if let idx, let cue = engine.timeline?.cues[safe: idx] {
           withAnimation { proxy.scrollTo(cue.start_ms, anchor: .center) }

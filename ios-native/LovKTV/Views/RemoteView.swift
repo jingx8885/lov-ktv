@@ -9,11 +9,14 @@ struct RemoteView: View {
 
   var body: some View {
     NavigationStack {
-      Group {
-        if appState.connection == nil {
-          NotConnectedView(onConnect: onGoSettings)
-        } else {
-          content
+      ZStack {
+        KTVBackground()
+        Group {
+          if appState.connection == nil {
+            NotConnectedView(onConnect: onGoSettings)
+          } else {
+            content
+          }
         }
       }
       .navigationTitle("遥控")
@@ -33,7 +36,6 @@ struct RemoteView: View {
     }
     .task {
       async let _ = appState.listenRoomSnapshots()
-      // 3 秒轮询兜底（WS 断开/官方服不支持时仍实时）
       while !Task.isCancelled {
         if appState.connection != nil {
           if let error = await appState.refresh() { appState.showStatus(error) }
@@ -45,12 +47,16 @@ struct RemoteView: View {
 
   @ViewBuilder
   private var content: some View {
-    List {
-      nowPlaying
-      controls
-      queueSection
+    ScrollView {
+      VStack(spacing: 16) {
+        nowCard
+        transportCard
+        queueCard
+      }
+      .padding(.horizontal, 16)
+      .padding(.top, 8)
+      .padding(.bottom, 100)
     }
-    .listStyle(.insetGrouped)
     .refreshable { _ = await appState.refresh() }
     .confirmationDialog("切换到下一首？当前歌曲会立即停止。", isPresented: $confirmSkip) {
       Button("下一首", role: .destructive) {
@@ -60,129 +66,101 @@ struct RemoteView: View {
     }
   }
 
-  private var nowPlaying: some View {
-    Section {
+  // MARK: - 正在播放
+
+  private var nowCard: some View {
+    GlassCard {
       VStack(spacing: 14) {
         if let song = appState.room?.now_playing, !appState.isHidden(song) {
-          ArtView(seed: song.displayTitle, size: 120)
-            .padding(.top, 8)
-          VStack(spacing: 4) {
-            Text((appState.room?.paused == true ? "已暂停" : "正在播放")
-              + " · 房间 \(appState.connection?.room ?? "")")
-              .font(.caption.weight(.medium))
-              .foregroundStyle(.secondary)
-              .textCase(.uppercase)
+          GlowArtView(seed: song.displayTitle, size: 140)
+            .padding(.top, 4)
+          VStack(spacing: 6) {
+            HStack(spacing: 8) {
+              NeonTag(text: appState.room?.paused == true ? "已暂停" : "正在播放",
+                      color: appState.room?.paused == true ? .orange : KTV.lime)
+              NeonTag(text: "房间 \(appState.connection?.room ?? "")", color: KTV.cyan)
+            }
             Text(song.displayTitle)
-              .font(.title3.weight(.semibold))
+              .font(.title3.weight(.bold))
             Text(song.displayArtist)
               .font(.subheadline)
               .foregroundStyle(.secondary)
           }
         } else {
-          ArtView(seed: "♪", size: 120)
-            .opacity(0.35)
-            .padding(.top, 8)
-          VStack(spacing: 4) {
-            Text("空闲 · 房间 \(appState.connection?.room ?? "")")
-              .font(.caption.weight(.medium))
-              .foregroundStyle(.secondary)
-            Text("暂无播放")
-              .font(.title3.weight(.semibold))
-            Text("去曲库点一首歌吧")
-              .font(.subheadline)
-              .foregroundStyle(.secondary)
+          GlowArtView(seed: "♪", size: 140).opacity(0.4)
+          VStack(spacing: 6) {
+            NeonTag(text: "空闲", color: KTV.cyan)
+            Text("暂无播放").font(.title3.weight(.bold))
+            Text("去曲库点一首歌吧").font(.subheadline).foregroundStyle(.secondary)
           }
         }
       }
       .frame(maxWidth: .infinity)
-      .padding(.vertical, 4)
     }
   }
 
-  private var controls: some View {
-    Section {
-      HStack(spacing: 28) {
-        Button { Task { await appState.togglePlay() } } label: {
-          Image(systemName: (appState.room?.paused == true ? "play.fill" : "pause.fill"))
-            .font(.title2)
-            .frame(width: 56, height: 56)
-            .background(.primary.opacity(0.08), in: Circle())
-        }
-        .disabled(appState.room?.now_playing == nil)
-        .accessibilityLabel(appState.room?.paused == true ? "继续播放" : "暂停播放")
+  // MARK: - 播控
 
-        Button { confirmSkip = true } label: {
-          Image(systemName: "forward.fill")
-            .font(.title2)
-            .frame(width: 56, height: 56)
-            .background(.primary.opacity(0.08), in: Circle())
+  private var transportCard: some View {
+    GlassCard {
+      VStack(spacing: 18) {
+        HStack(spacing: 36) {
+          BigRoundButton(
+            icon: appState.room?.paused == true ? "play.fill" : "pause.fill",
+            tint: .white, size: 68) {
+            Task { await appState.togglePlay() }
+          }
+          .disabled(appState.room?.now_playing == nil)
+          .accessibilityLabel(appState.room?.paused == true ? "继续播放" : "暂停播放")
+
+          BigRoundButton(icon: "forward.fill", tint: KTV.cyan, size: 68) {
+            confirmSkip = true
+          }
+          .accessibilityLabel("下一首")
         }
-        .accessibilityLabel("下一首")
+        VolumeRow(volume: appState.room?.volume ?? 70) { value in
+          Task { await appState.setVolume(value) }
+        }
       }
       .frame(maxWidth: .infinity)
-      .foregroundStyle(.primary)
-
-      VolumeRow(volume: appState.room?.volume ?? 70) { value in
-        Task { await appState.setVolume(value) }
-      }
     }
   }
 
-  private var queueSection: some View {
-    Section {
-      if appState.visibleQueue.isEmpty {
-        Text("队列空空的，去曲库点首歌吧")
-          .font(.subheadline)
-          .foregroundStyle(.secondary)
-          .frame(maxWidth: .infinity, alignment: .center)
-          .padding(.vertical, 8)
-      } else {
-        ForEach(Array(appState.visibleQueue.enumerated()), id: \.element.queueItemID) { index, song in
-          QueueItemRow(
-            song: song,
-            isNowPlaying: index == (appState.room?.now_index ?? 0),
-            canBump: appState.room?.canBump(at: index) == true,
-            onPlay: { Task { await appState.playItem(song.queueItemID) } },
-            onBump: { Task { await appState.bumpItem(song.queueItemID) } })
+  // MARK: - 队列
+
+  private var queueCard: some View {
+    GlassCard(padding: 8) {
+      VStack(alignment: .leading, spacing: 0) {
+        HStack {
+          Text("待唱队列").font(.subheadline.weight(.semibold))
+          Spacer()
+          if !appState.visibleQueue.isEmpty {
+            NeonTag(text: "\(appState.visibleQueue.count)", color: KTV.pink)
+          }
         }
-      }
-    } header: {
-      HStack {
-        Text("待唱队列")
-        if !appState.visibleQueue.isEmpty {
-          Text("\(appState.visibleQueue.count)")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
+        .padding(.horizontal, 8).padding(.top, 8).padding(.bottom, 4)
+
+        if appState.visibleQueue.isEmpty {
+          Text("队列空空的，去曲库点首歌吧")
+            .font(.subheadline).foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.vertical, 20)
+        } else {
+          ForEach(Array(appState.visibleQueue.enumerated()), id: \.element.queueItemID) { index, song in
+            QueueItemRow(
+              song: song,
+              isNowPlaying: index == (appState.room?.now_index ?? 0),
+              canBump: appState.room?.canBump(at: index) == true,
+              onPlay: { Task { await appState.playItem(song.queueItemID) } },
+              onBump: { Task { await appState.bumpItem(song.queueItemID) } })
+          }
         }
       }
     }
   }
 }
 
-private struct VolumeRow: View {
-  let volume: Double
-  let onCommit: (Double) -> Void
-  @State private var editing = false
-  @State private var draft: Double = 0
-
-  var body: some View {
-    HStack(spacing: 12) {
-      Image(systemName: "speaker.fill").foregroundStyle(.secondary)
-      Slider(value: Binding(
-        get: { editing ? draft : volume },
-        set: { draft = $0; editing = true }),
-        in: 0...100, step: 1) { editing in
-        if !editing { onCommit(draft); self.editing = false }
-      }
-      Image(systemName: "speaker.wave.3.fill").foregroundStyle(.secondary)
-    }
-    .accessibilityElement(children: .combine)
-    .accessibilityLabel("音量")
-    .accessibilityValue("\(Int(volume))")
-  }
-}
-
-/// 队列条目行：封面 + 标题 + 状态 + 唱这首/置顶，对齐网页 desk 队列
+/// 队列条目行
 private struct QueueItemRow: View {
   let song: Song
   let isNowPlaying: Bool
@@ -192,25 +170,16 @@ private struct QueueItemRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      ArtView(seed: song.displayTitle)
+      ArtView(seed: song.displayTitle, size: 40)
       VStack(alignment: .leading, spacing: 3) {
         Text(song.displayTitle)
           .font(.body.weight(.medium))
           .lineLimit(1)
         HStack(spacing: 6) {
           if isNowPlaying {
-            Text("正在唱")
-              .font(.caption2.weight(.semibold))
-              .padding(.horizontal, 6).padding(.vertical, 2)
-              .background(Color.accentColor.opacity(0.18), in: Capsule())
-              .foregroundStyle(.tint)
+            NeonTag(text: "正在唱", color: KTV.lime)
           } else if let badge = song.badge {
-            Text(badge.text)
-              .font(.caption2.weight(.semibold))
-              .padding(.horizontal, 6).padding(.vertical, 2)
-              .background(badge.isError ? Color.red.opacity(0.18) : Color.orange.opacity(0.18),
-                          in: Capsule())
-              .foregroundStyle(badge.isError ? .red : .orange)
+            NeonTag(text: badge.text, color: badge.isError ? .red : .orange)
           }
           Text(song.displayArtist)
             .font(.caption)
@@ -222,6 +191,7 @@ private struct QueueItemRow: View {
       Button("唱这首", action: onPlay)
         .buttonStyle(.bordered)
         .buttonBorderShape(.capsule)
+        .tint(.accentColor)
         .disabled(isNowPlaying)
       if canBump {
         Button(action: onBump) {
@@ -234,6 +204,11 @@ private struct QueueItemRow: View {
         .accessibilityLabel("置顶")
       }
     }
-    .padding(.horizontal, 14).padding(.vertical, 10)
+    .padding(.horizontal, 12).padding(.vertical, 10)
+    .background {
+      if isNowPlaying {
+        RoundedRectangle(cornerRadius: 12).fill(KTV.lime.opacity(0.08))
+      }
+    }
   }
 }

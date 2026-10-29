@@ -10,6 +10,7 @@ struct ContentView: View {
 
   var body: some View {
     TabView(selection: $tab) {
+      
       RemoteView(onGoSettings: { tab = .settings })
         .tabItem { Label("遥控", systemImage: "dot.radiowaves.left.and.right") }
         .tag(AppTab.remote)
@@ -31,6 +32,8 @@ struct ContentView: View {
         .tabItem { Label("设置", systemImage: "gearshape") }
         .tag(AppTab.settings)
     }
+    .background(KTVBackground())
+    .tint(KTV.pink)
     .overlay(alignment: .bottom) {
       // 试听条：正在播放或正在下载时显示
       if appState.preview.playingID != nil || appState.preview.downloading {

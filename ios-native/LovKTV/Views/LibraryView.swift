@@ -18,7 +18,8 @@ struct LibraryView: View {
 
   var body: some View {
     NavigationStack {
-      Group {
+      ZStack {
+        KTVBackground()
         if appState.connection == nil {
           ContentUnavailableView {
             Label("未连接", systemImage: "music.note.list")
@@ -113,6 +114,7 @@ struct LibraryView: View {
       }
     }
     .listStyle(.plain)
+    .scrollContentBackground(.hidden)
     .refreshable { await library.search(page: 1) }
     .confirmationDialog(
       actionSong.map { "\($0.displayTitle) · \($0.displayArtist)" } ?? "",
@@ -184,6 +186,7 @@ struct LibraryView: View {
       }
     }
     .listStyle(.plain)
+    .scrollContentBackground(.hidden)
   }
 
   // MARK: - 动作

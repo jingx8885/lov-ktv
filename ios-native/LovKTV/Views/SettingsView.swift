@@ -16,12 +16,16 @@ struct SettingsView: View {
 
   var body: some View {
     NavigationStack {
-      Form {
-        connectionCard
-        AccountSection()
-        form
-        deviceSection
-        aboutSection
+      ZStack {
+        KTVBackground()
+        Form {
+          connectionCard
+          AccountSection()
+          form
+          deviceSection
+          aboutSection
+        }
+        .scrollContentBackground(.hidden)
       }
       .navigationTitle("设置")
       .sheet(isPresented: $showScanner) {

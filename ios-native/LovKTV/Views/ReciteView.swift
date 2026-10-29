@@ -93,6 +93,7 @@ struct ReciteView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
     .navigationTitle("单词本")
     .refreshable { await load() }
   }
@@ -215,6 +216,7 @@ struct ReciteSessionView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
   }
 
   private func promptFor(_ item: ReciteItem) -> String {
@@ -275,6 +277,7 @@ struct ReciteSessionView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
   }
 
   private func stat(_ label: String, _ value: Int, _ color: Color) -> some View {

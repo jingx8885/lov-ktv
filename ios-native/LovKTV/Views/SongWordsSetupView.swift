@@ -58,6 +58,7 @@ struct SongWordsSetupView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
   }
 
   @ViewBuilder

@@ -94,6 +94,7 @@ struct LessonView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
   }
 
   @ViewBuilder

@@ -8,24 +8,25 @@ struct LearnView: View {
 
   var body: some View {
     NavigationStack {
-      if appState.connection == nil {
-        ContentUnavailableView {
-          Label("未连接", systemImage: "graduationcap")
-        } description: {
-          Text("先在设置里连接服务器。")
+      ZStack {
+        KTVBackground()
+        if appState.connection == nil {
+          ContentUnavailableView {
+            Label("未连接", systemImage: "graduationcap")
+          } description: {
+            Text("先在设置里连接服务器。")
+          }
+        } else if appState.connection?.mode == .official {
+          ContentUnavailableView {
+            Label("暂不可用", systemImage: "graduationcap")
+          } description: {
+            Text("官方服务暂未开放学习接口，连自己的服务器可用。")
+          }
+        } else {
+          songPicker
         }
-        .navigationTitle("学习")
-      } else if appState.connection?.mode == .official {
-        ContentUnavailableView {
-          Label("暂不可用", systemImage: "graduationcap")
-        } description: {
-          Text("官方服务暂未开放学习接口，连自己的服务器可用。")
-        }
-        .navigationTitle("学习")
-      } else {
-        songPicker
-          .navigationTitle("学习")
       }
+      .navigationTitle("学习")
     }
     .task(id: appState.connection) {
           library.client = appState.client
@@ -62,6 +63,7 @@ struct LearnView: View {
       }
     }
     .listStyle(.plain)
+    .scrollContentBackground(.hidden)
   }
 }
 
@@ -162,6 +164,7 @@ struct CampaignView: View {
       }
     }
     .listStyle(.insetGrouped)
+    .scrollContentBackground(.hidden)
   }
 
   private func goalChip(_ label: String, _ g: LearnCampaign.DoneTotal) -> some View {
