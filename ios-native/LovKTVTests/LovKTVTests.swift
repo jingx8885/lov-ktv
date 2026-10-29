@@ -66,6 +66,15 @@ final class APIWhitelistTests: XCTestCase {
       XCTAssertTrue(APIWhitelist.allows(path: "/api/rooms/K7Q2/\(cmd)", method: "POST"), cmd)
     }
     XCTAssertTrue(APIWhitelist.allows(path: "/api/remote/reports", method: "POST"))
+    // 学习/单词本端点
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/deck?deck=word&cards=0", method: "GET"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/session?deck=word&size=10", method: "GET"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/session", method: "POST"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/cards", method: "POST"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/words/restore", method: "POST"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/songs/abc/learn/lesson?unit=u0&skill=read", method: "GET"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/songs/abc/learn/words/setup", method: "POST"))
+    XCTAssertTrue(APIWhitelist.allows(path: "/api/learn/cards/w1", method: "DELETE"))
     XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/K7Q2/remove", method: "POST"))
     XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/K7Q2", method: "POST"))
     XCTAssertFalse(APIWhitelist.allows(path: "/api/rooms/k7q2/skip", method: "POST")) // 小写房间码不允许

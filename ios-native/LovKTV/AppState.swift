@@ -9,6 +9,7 @@ final class AppState {
   // 连接
   var connection: Connection?
   private(set) var client: LovKTVClient?
+  /// 视图的 client 快照（@Observable 观察不到 private(set) 内部，依赖 connection 变更同步）
   var apiKeyValid = true
 
   // 房间

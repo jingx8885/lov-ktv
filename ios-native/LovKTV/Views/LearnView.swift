@@ -29,8 +29,14 @@ struct LearnView: View {
     }
     .task(id: appState.connection) {
           library.client = appState.client
-          await library.search(page: 1)
+          if library.client != nil { await library.search(page: 1) }
         }
+    .onAppear {
+          library.client = appState.client
+          if library.songs.isEmpty, library.client != nil {
+            Task { await library.search(page: 1) }
+          }
+    }
   }
 
   @ViewBuilder
@@ -115,6 +121,18 @@ struct CampaignView: View {
         }
       }
 
+      Section {
+        NavigationLink {
+          ReciteView()
+        } label: {
+          Label("单词本", systemImage: "book.closed")
+        }
+        NavigationLink {
+          SongWordsSetupView(song: song)
+        } label: {
+          Label("选这首歌的词", systemImage: "character.book.closed")
+        }
+      }
       Section("单元") {
         ForEach(c.units) { unit in
           VStack(alignment: .leading, spacing: 10) {

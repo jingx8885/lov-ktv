@@ -37,8 +37,14 @@ struct LibraryView: View {
     }
     .task(id: appState.connection) {
           library.client = appState.client
-          await library.search(page: 1)
+          if library.client != nil { await library.search(page: 1) }
         }
+    .onAppear {
+          library.client = appState.client
+          if library.songs.isEmpty, library.client != nil {
+            Task { await library.search(page: 1) }
+          }
+    }
   }
 
   @ViewBuilder

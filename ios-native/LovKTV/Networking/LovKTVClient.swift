@@ -7,12 +7,16 @@ import os
 enum APIWhitelist {
   static func allows(path: String, method: String) -> Bool {
     let pattern: String
-    if method == "GET" {
-      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12})$"#
-    } else {
-      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup)))$"#
+    if method == "DELETE" {
+      pattern = #"^/api/learn/cards/[A-Za-z0-9_:-]{1,100}$"#
+      return path.range(of: pattern, options: .regularExpression) != nil
     }
-    return (method == "GET" || method == "POST")
+    if method == "GET" {
+      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12}|learn/(deck|session|words|cards|words/restore)(\?[^#]*)?)$"#
+    } else {
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup))|learn/(cards|session|words/restore))$"#
+    }
+    return (method == "GET" || method == "POST" || method == "DELETE")
       && path.range(of: pattern, options: .regularExpression) != nil
   }
 }
@@ -273,6 +277,82 @@ actor LovKTVClient {
     return AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
   }
 
+  // MARK: - 单词本（多邻国式复习）
+
+  func reciteDeck(songID: String = "") async throws -> ReciteDeck {
+    var components = URLComponents(string: "/api/learn/deck")!
+    components.queryItems = [
+      URLQueryItem(name: "deck", value: "word"),
+      URLQueryItem(name: "cards", value: "0"),
+      URLQueryItem(name: "song_id", value: songID),
+    ]
+    return try await send(path: components.string!, as: ReciteDeck.self)
+  }
+
+  func reciteSession(size: Int, songID: String = "") async throws -> ReciteSession {
+    var components = URLComponents(string: "/api/learn/session")!
+    components.queryItems = [
+      URLQueryItem(name: "deck", value: "word"),
+      URLQueryItem(name: "size", value: String(size)),
+      URLQueryItem(name: "song_id", value: songID),
+    ]
+    return try await send(path: components.string!, as: ReciteSession.self)
+  }
+
+  func submitRecite(songID: String, answers: [[String: AnyEncodable]]) async throws -> Empty {
+    try await send(path: "/api/learn/session", body: [
+      "deck": "word",
+      "song_id": songID,
+      "answers": answers,
+    ], as: Empty.self)
+  }
+
+  /// 歌词里点到的词收进单词本（幂等）
+  func collectWord(_ word: SongWord, songID: String, songTitle: String) async throws -> Empty {
+    try await send(path: "/api/learn/cards", body: [
+      "word_id": word.word_id, "language": word.language ?? "",
+      "text": word.text ?? "", "zh": word.zh ?? "",
+      "romaji": word.romaji ?? "", "line_text": word.line_text ?? "",
+      "start_ms": word.start_ms ?? 0, "end_ms": word.end_ms ?? 0,
+      "song_id": songID, "song_title": songTitle,
+    ], as: Empty.self)
+  }
+
+  func songWords(_ songID: String) async throws -> SongWordsPack {
+    try await send(path: "/api/songs/\(songID)/learn/words", as: SongWordsPack.self)
+  }
+
+  func setupSongWords(_ songID: String, keep: [String], skip: [String]) async throws -> Empty {
+    try await send(path: "/api/songs/\(songID)/learn/words/setup", body: [
+      "keep": keep, "skip": skip,
+    ], as: Empty.self)
+  }
+
+  func wordsList(state: String = "all", songID: String = "") async throws -> [ReciteCard] {
+    var components = URLComponents(string: "/api/learn/words")!
+    components.queryItems = [
+      URLQueryItem(name: "state", value: state),
+      URLQueryItem(name: "song_id", value: songID),
+    ]
+    struct Resp: Decodable { var words: [ReciteCard] }
+    return try await send(path: components.string!, as: Resp.self).words
+  }
+
+  func dropWord(_ cardID: String) async throws {
+    let mapped = RemotePath.map("/api/learn/cards/\(cardID)", official: connection.mode == .official)
+    guard let url = URL(string: mapped, relativeTo: connection.server) else {
+      throw APIError.http(0, "请求无效")
+    }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    request.httpMethod = "DELETE"
+    _ = try await session.data(for: request)
+  }
+
+  func restoreWord(_ cardID: String) async throws -> Empty {
+    try await send(path: "/api/learn/words/restore", body: ["word_id": cardID], as: Empty.self)
+  }
+
   /// 房间实时快照推送。返回每个 snapshot 的 AsyncStream；连接断开即结束。
   /// URLSession WebSocket 不支持官方服的 Bearer 以外的签名要求，白名单外不走这里。
   func roomSocket() -> URLSessionWebSocketTask? {
@@ -324,7 +404,7 @@ actor LovKTVClient {
 
 /// 异构 JSON 值包装器（answers 里 int/string/array 混着来）
 struct AnyEncodable: Encodable, @unchecked Sendable {
-  private let value: Any
+  let value: Any
   init(_ value: Any) { self.value = value }
   func encode(to encoder: Encoder) throws {
     var container = encoder.singleValueContainer()

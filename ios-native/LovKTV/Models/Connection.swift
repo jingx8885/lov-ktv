@@ -34,7 +34,7 @@ enum ConnectionValidator {
   static let officialOrigin = URL(string: "https://ktv.lovbrowser.com")!
 
   static func isLocalHost(_ host: String) -> Bool {
-    if host.hasSuffix(".local") { return true }
+    if host.hasSuffix(".local") || host == "localhost" || host == "127.0.0.1" || host == "::1" { return true }
     let parts = host.split(separator: ".").compactMap { Int($0) }
     return parts.count == 4 && parts.allSatisfy { (0...255).contains($0) }
       && (parts[0] == 10

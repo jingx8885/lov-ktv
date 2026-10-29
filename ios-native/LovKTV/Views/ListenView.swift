@@ -22,8 +22,14 @@ struct ListenView: View {
     }
     .task(id: appState.connection) {
           library.client = appState.client
-          await library.search(page: 1)
+          if library.client != nil { await library.search(page: 1) }
         }
+    .onAppear {
+          library.client = appState.client
+          if library.songs.isEmpty, library.client != nil {
+            Task { await library.search(page: 1) }
+          }
+    }
   }
 
   @ViewBuilder
@@ -82,12 +88,13 @@ struct ListenView: View {
           .padding(.vertical, 8)
         }
 
-        // 歌词时间轴
+        // 歌词时间轴；点词收进单词本（自建服）
         if let timeline = engine.timeline {
-          Section("歌词") {
+          Section("歌词 · 点词进单词本") {
             ForEach(timeline.cues) { cue in
               LyricLineView(cue: cue, active: timeline.activeIndex(at: engine.currentMS) == cue.start_ms,
-                            currentMS: engine.currentMS)
+                            currentMS: engine.currentMS,
+                            onTapWord: { collectWord($0, cue: cue) })
                 .id(cue.start_ms)
             }
           }
@@ -144,6 +151,23 @@ struct ListenView: View {
       })
   }
 
+  @State private var collected: Set<String> = []
+
+  private func collectWord(_ token: LyricsTimeline.Token, cue: LyricsTimeline.Cue) {
+    guard let client = appState.client, let songID = appState.player.songID else { return }
+    let text = token.display
+    guard !text.isEmpty else { return }
+    collected.insert(text + "\(token.start_ms)")
+    Task {
+      let word = SongWord(word_id: "\(songID):\(text)", language: appState.player.detail?.language ?? "",
+                          text: text, zh: "", romaji: cue.romaji ?? "",
+                          line_text: cue.display,
+                          start_ms: cue.start_ms, end_ms: cue.end_ms)
+      _ = try? await client.collectWord(word, songID: songID, songTitle: appState.player.detail?.displayTitle ?? "")
+      appState.showStatus("\(text) 已进单词本")
+    }
+  }
+
   private func msText(_ ms: Int) -> String {
     let s = ms / 1000
     return String(format: "%d:%02d", s / 60, s % 60)
@@ -177,15 +201,22 @@ private struct LyricLineView: View {
   }
 
   private func tokensRow(_ tokens: [LyricsTimeline.Token]) -> some View {
-    // tokens 简单横排；唱过的词用主题色
+    // tokens 简单横排；唱过的词用主题色；点词收进单词本
     HStack(spacing: 0) {
       ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
-        Text(token.display)
-          .font(.title3.weight(.semibold))
-          .foregroundStyle(currentMS >= token.start_ms ? Color.accentColor : Color.secondary)
+        Button {
+          onTapWord?(token)
+        } label: {
+          Text(token.display)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(currentMS >= token.start_ms ? Color.accentColor : Color.secondary)
+        }
+        .buttonStyle(.plain)
       }
     }
   }
+
+  var onTapWord: ((LyricsTimeline.Token) -> Void)? = nil
 }
 
 extension Array {
