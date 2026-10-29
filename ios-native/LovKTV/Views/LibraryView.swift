@@ -9,11 +9,12 @@ struct LibraryView: View {
   @State private var pane: Pane = .local
   @State private var actionSong: Song?
   @State private var reportSong: Song?
+  @State private var playlistSong: Song?
   @State private var reportReason = ""
   @State private var enqueued: Set<String> = []
   @State private var imported: Set<String> = []
 
-  enum Pane: String, CaseIterable { case local = "入库", online = "在线搜" }
+  enum Pane: String, CaseIterable { case local = "入库", online = "在线搜", playlists = "歌单" }
 
   var body: some View {
     NavigationStack {
@@ -29,10 +30,11 @@ struct LibraryView: View {
         }
       }
       .navigationTitle("曲库")
-      .searchable(text: Binding(get: { pane == .local ? library.query : library.onlineQuery },
-                                set: { if pane == .local { library.query = $0 } else { library.onlineQuery = $0 } }),
+      .searchable(text: Binding(
+        get: { pane == .local ? library.query : pane == .online ? library.onlineQuery : "" },
+        set: { if pane == .local { library.query = $0 } else if pane == .online { library.onlineQuery = $0 } }),
                   placement: .navigationBarDrawer(displayMode: .always),
-                  prompt: pane == .local ? "歌名或歌手" : "在线搜歌")
+                  prompt: pane == .playlists ? "歌单" : pane == .local ? "歌名或歌手" : "在线搜歌")
       .onChange(of: library.onlineQuery) { _, _ in if pane == .online { library.scheduleOnlineSearch() } }
     }
     .task(id: appState.connection) {
@@ -68,7 +70,9 @@ struct LibraryView: View {
         }
       }
       .padding(.horizontal, 16).padding(.vertical, 8)
-      if pane == .local { localList } else { onlineList }
+      if pane == .local { localList }
+        else if pane == .online { onlineList }
+        else { PlaylistsView() }
     }
     .onChange(of: pane) { _, pane in
       if pane == .online {
@@ -119,6 +123,10 @@ struct LibraryView: View {
       if song.isReady {
         Button("手机试听") { previewLocal(song) }
       }
+      Button("加入歌单") {
+        playlistSong = song
+        actionSong = nil
+      }
       Button("屏蔽", role: .destructive) {
         appState.block(song); actionSong = nil
       }
@@ -126,6 +134,9 @@ struct LibraryView: View {
         reportSong = song; actionSong = nil
       }
       Button("取消", role: .cancel) { actionSong = nil }
+    }
+    .sheet(item: $playlistSong) { song in
+      AddToPlaylistSheet(song: song)
     }
     .alert("举报原因", isPresented: .constant(reportSong != nil), presenting: reportSong) { song in
       TextField("不当内容、侵权或其他（最多 500 字）", text: $reportReason, axis: .vertical)

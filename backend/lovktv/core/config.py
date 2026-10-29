@@ -55,6 +55,7 @@ STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
 STRIPE_PRICE_5 = os.environ.get("STRIPE_PRICE_5", "").strip()
 STRIPE_PRICE_20 = os.environ.get("STRIPE_PRICE_20", "").strip()
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
+APPLE_CLIENT_ID = os.environ.get("APPLE_CLIENT_ID", "").strip()
 # Google Play subscriptions (Android distribution). Keep the service account
 # JSON out of source control; production may provide it inline or via a file.
 GOOGLE_PLAY_PACKAGE = os.environ.get("GOOGLE_PLAY_PACKAGE", "com.lovktv.phone").strip()

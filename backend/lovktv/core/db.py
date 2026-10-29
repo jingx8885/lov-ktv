@@ -120,6 +120,7 @@ def init_schema(conn: Any) -> None:
     # installations have a users table without the Google/billing columns.
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users (google_sub) WHERE google_sub <> ''")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_lovbrowser_sub ON users (lovbrowser_sub) WHERE lovbrowser_sub <> ''")
+    conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_apple_sub ON users (apple_sub) WHERE apple_sub <> ''")
     conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users (email) WHERE email <> ''")
     mistake_cols = table_columns(conn, "learn_mistakes")
     for name, decl in MISTAKE_MIGRATIONS:

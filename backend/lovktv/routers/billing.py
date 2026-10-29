@@ -18,7 +18,7 @@ from fastapi.responses import JSONResponse
 from starlette.requests import Request
 
 from lovktv.core.config import (
-    GOOGLE_CLIENT_ID,
+    APPLE_CLIENT_ID, GOOGLE_CLIENT_ID,
     GOOGLE_PLAY_PACKAGE,
     GOOGLE_PLAY_SERVICE_ACCOUNT_FILE,
     GOOGLE_PLAY_SERVICE_ACCOUNT_JSON,
@@ -36,7 +36,9 @@ from lovktv.storage.store import (
     create_session,
     execute,
     update_billing_user,
+    upsert_apple_user,
     upsert_google_user,
+    user_exists_by_apple,
     user_exists_by_google,
 )
 
@@ -399,6 +401,76 @@ async def webhook(request: Request):
 @router.get("/api/auth/google/config")
 def google_config():
     return {"client_id": GOOGLE_CLIENT_ID, "enabled": bool(GOOGLE_CLIENT_ID)}
+
+
+APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
+APPLE_ISSUER = "https://appleid.apple.com"
+_apple_keys_cache: dict[str, tuple[float, Any]] = {}
+
+
+def _apple_verify(token: str) -> dict:
+    """Verify an Apple identity token: RS256 sig against Apple's JWKS,
+    then iss/aud/exp. Returns decoded claims."""
+    try:
+        import base64
+        import json
+        from Crypto.PublicKey import RSA
+        from Crypto.Signature import pkcs1_15
+        from Crypto.Hash import SHA256
+
+        header_b64, payload_b64, sig_b64 = token.split(".")
+        header = json.loads(base64.urlsafe_b64decode(header_b64 + "=="))
+        claims = json.loads(base64.urlsafe_b64decode(payload_b64 + "=="))
+        if header.get("alg") != "RS256" or not header.get("kid"):
+            raise HTTPException(401, "Apple 凭证格式不对")
+        # JWKS 缓 1 小时
+        import time
+        now = time.time()
+        if "jwks" not in _apple_keys_cache or _apple_keys_cache["jwks"][0] < now:
+            with httpx.Client(timeout=10, trust_env=False) as client:
+                r = client.get(APPLE_JWKS_URL)
+            _apple_keys_cache["jwks"] = (now + 3600, r.json())
+        jwks = _apple_keys_cache["jwks"][1]
+        jwk = next((k for k in jwks.get("keys", []) if k.get("kid") == header["kid"]), None)
+        if not jwk:
+            raise HTTPException(401, "Apple 公钥未找到")
+        key = RSA.construct((
+            int.from_bytes(base64.urlsafe_b64decode(jwk["n"] + "=="), "big"),
+            int.from_bytes(base64.urlsafe_b64decode(jwk["e"] + "=="), "big"),
+        ))
+        digest = SHA256.new(f"{header_b64}.{payload_b64}".encode())
+        signature = base64.urlsafe_b64decode(sig_b64 + "==")
+        pkcs1_15.new(key).verify(digest, signature)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(401, "Apple 凭证校验失败") from exc
+    if claims.get("iss") != APPLE_ISSUER:
+        raise HTTPException(401, "Apple 凭证签发方不对")
+    expected_aud = APPLE_CLIENT_ID or GOOGLE_CLIENT_ID
+    if expected_aud and claims.get("aud") != expected_aud:
+        raise HTTPException(401, "Apple 凭证受众不对")
+    if int(claims.get("exp") or 0) < int(__import__("time").time()):
+        raise HTTPException(401, "Apple 凭证已过期")
+    return claims
+
+
+@router.post("/api/auth/apple")
+def apple_login(request: Request, payload: dict = Body(default={})):
+    if not APPLE_CLIENT_ID:
+        raise HTTPException(503, "Apple 登录尚未配置")
+    token = str(payload.get("identity_token") or payload.get("credential") or payload.get("id_token") or "")
+    if not token:
+        raise HTTPException(400, "缺少 Apple 凭证")
+    claims = _apple_verify(token)
+    apple_sub = str(claims.get("sub") or "")
+    apple_email = str(claims.get("email") or "").lower()
+    new_account = not user_exists_by_apple(apple_sub, apple_email)
+    user = upsert_apple_user(apple_sub, apple_email, str(payload.get("name") or ""), "")
+    track(request, "signup" if new_account else "login", {"method": "apple"})
+    resp = JSONResponse({"user": user})
+    set_session(resp, create_session(user["id"]), request)
+    return resp
 
 
 @router.post("/api/auth/google")

@@ -134,3 +134,62 @@ def test_admin_quota_and_rooms_are_unlimited_and_queue_cost_is_skipped(
         )
         assert queued.status_code == 200
         assert client.get("/api/points").json()["balance"] == balance_before
+
+def test_apple_login_accepts_signed_token(tmp_path, monkeypatch):
+    store = _setup(tmp_path, monkeypatch)
+    import lovktv.routers.billing as billing
+    from lovktv.main import app
+    from Crypto.PublicKey import RSA
+    from Crypto.Signature import pkcs1_15
+    from Crypto.Hash import SHA256
+    import base64, json, time
+
+    # 造一份本地 RSA key + 合法 Apple JWT，预置进 JWKS 缓存绕过外网
+    key = RSA.generate(2048)
+    pub = key.publickey()
+    jwk = {
+        "kty": "RSA", "kid": "test-kid", "use": "sig", "alg": "RS256",
+        "n": base64.urlsafe_b64encode(pub.n.to_bytes(256, "big")).rstrip(b"=").decode(),
+        "e": base64.urlsafe_b64encode(pub.e.to_bytes(3, "big")).rstrip(b"=").decode(),
+    }
+    billing._apple_keys_cache["jwks"] = (time.time() + 3600, {"keys": [jwk]})
+    billing.APPLE_CLIENT_ID = "com.lovktv.phone"
+
+    claims = {
+        "iss": "https://appleid.apple.com", "aud": "com.lovktv.phone",
+        "sub": "001234.testapplesub", "email": "apple@example.com",
+        "exp": int(time.time()) + 3600, "iat": int(time.time()),
+    }
+    header_b64 = base64.urlsafe_b64encode(json.dumps({"alg": "RS256", "kid": "test-kid"}).encode()).rstrip(b"=").decode()
+    payload_b64 = base64.urlsafe_b64encode(json.dumps(claims).encode()).rstrip(b"=").decode()
+    signing_input = f"{header_b64}.{payload_b64}".encode()
+    signature = base64.urlsafe_b64encode(pkcs1_15.new(key).sign(SHA256.new(signing_input))).rstrip(b"=").decode()
+    token = f"{header_b64}.{payload_b64}.{signature}"
+
+    with TestClient(app) as client:
+        resp = client.post("/api/auth/apple", json={"identity_token": token})
+        assert resp.status_code == 200, resp.text
+        user = resp.json()["user"]
+        assert user["email"] == "apple@example.com"
+        assert resp.cookies.get("lovktv_session")
+        # apple_sub 是内部绑定字段，不出现在对外 user 投影里
+        assert store.execute(
+            store.connect(),
+            "SELECT apple_sub FROM users WHERE id=?",
+            (user["id"],),
+        ).fetchone()["apple_sub"] == "001234.testapplesub"
+
+        # 同一 sub 再登返回同一账号
+        again = client.post("/api/auth/apple", json={"identity_token": token})
+        assert again.json()["user"]["id"] == user["id"]
+
+
+def test_apple_login_rejects_bad_token(tmp_path, monkeypatch):
+    _setup(tmp_path, monkeypatch)
+    import lovktv.routers.billing as billing
+    from lovktv.main import app
+    billing.APPLE_CLIENT_ID = "com.lovktv.phone"
+
+    with TestClient(app) as client:
+        resp = client.post("/api/auth/apple", json={"identity_token": "not-a-jwt"})
+        assert resp.status_code == 401

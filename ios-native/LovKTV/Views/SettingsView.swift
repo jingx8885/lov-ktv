@@ -18,6 +18,7 @@ struct SettingsView: View {
     NavigationStack {
       Form {
         connectionCard
+        AccountSection()
         form
         deviceSection
         aboutSection

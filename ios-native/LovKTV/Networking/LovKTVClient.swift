@@ -8,13 +8,17 @@ enum APIWhitelist {
   static func allows(path: String, method: String) -> Bool {
     let pattern: String
     if method == "DELETE" {
-      pattern = #"^/api/learn/cards/[A-Za-z0-9_:-]{1,100}$"#
+      pattern = #"^/api/(learn/cards/[A-Za-z0-9_:-]{1,100}|playlists/[A-Za-z0-9_-]{1,64}(/songs/[A-Za-z0-9_-]{1,100})?)$"#
+      return path.range(of: pattern, options: .regularExpression) != nil
+    }
+    if method == "PATCH" {
+      pattern = #"^/api/playlists/[A-Za-z0-9_-]{1,64}$"#
       return path.range(of: pattern, options: .regularExpression) != nil
     }
     if method == "GET" {
-      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12}|learn/(deck|session|words|cards|words/restore)(\?[^#]*)?)$"#
+      pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12}|learn/(deck|session|words|cards|words/restore)(\?[^#]*)?|auth/(me|status|google/config|qr/[A-Za-z0-9_-]{1,64})|playlists(\?[^#]*|/[A-Za-z0-9_-]{1,64}(/songs)?))$"#
     } else {
-      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup))|learn/(cards|session|words/restore))$"#
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup))|learn/(cards|session|words/restore)|auth/(login|register|logout|device|google|apple|qr)|playlists(/[A-Za-z0-9_-]{1,64}/songs)?)$"#
     }
     return (method == "GET" || method == "POST" || method == "DELETE")
       && path.range(of: pattern, options: .regularExpression) != nil
@@ -46,6 +50,10 @@ private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, Sendab
 actor LovKTVClient {
   private let connection: Connection
   private let apiKey: String
+  /// 登录后端发的 lovktv_session；只随本连接请求走，不落 Keychain 明文。
+  var sessionCookie: String = ""
+
+  func setSessionCookie(_ value: String) { sessionCookie = value }
   private let session: URLSession
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
@@ -73,21 +81,26 @@ actor LovKTVClient {
     if connection.mode == .official, !apiKey.isEmpty {
       request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
     }
+    if !sessionCookie.isEmpty {
+      request.setValue("lovktv_session=\(sessionCookie)", forHTTPHeaderField: "Cookie")
+    }
   }
 
   /// 发送 JSON 请求并解码响应。`path` 必须是白名单内的 /api/... 路径。
-  private func send<T: Decodable & Sendable>(path: String, body: [String: Encodable]? = nil,
+  private func send<T: Decodable & Sendable>(path: String, method: String = "",
+                                           body: [String: Encodable]? = nil,
                                            as type: T.Type) async throws -> T {
-    guard APIWhitelist.allows(path: path, method: body == nil ? "GET" : "POST") else {
+    let verb = method.isEmpty ? (body == nil ? "GET" : "POST") : method
+    guard APIWhitelist.allows(path: path, method: verb) else {
       throw APIError.http(0, "请求不在遥控接口白名单内")
     }
     let mapped = RemotePath.map(path, official: connection.mode == .official)
     guard let url = URL(string: mapped, relativeTo: connection.server) else {
       throw APIError.http(0, "服务器地址无效")
     }
-    let method = body == nil ? "GET" : "POST"
     var request = URLRequest(url: url)
     authorize(&request)
+    request.httpMethod = verb
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
     if let body {
       request.httpMethod = "POST"
@@ -274,6 +287,9 @@ actor LovKTVClient {
     if connection.mode == .official, !apiKey.isEmpty {
       headers["Authorization"] = "Bearer \(apiKey)"
     }
+    if !sessionCookie.isEmpty {
+      headers["Cookie"] = "lovktv_session=\(sessionCookie)"
+    }
     return AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers])
   }
 
@@ -351,6 +367,120 @@ actor LovKTVClient {
 
   func restoreWord(_ cardID: String) async throws -> Empty {
     try await send(path: "/api/learn/words/restore", body: ["word_id": cardID], as: Empty.self)
+  }
+
+  // MARK: - 账号
+
+  /// 登录响应统一形态：{user:{...}} + Set-Cookie
+  func authMe() async throws -> AuthMe {
+    try await send(path: "/api/auth/me", as: AuthMe.self)
+  }
+
+  func authStatus() async throws -> AuthStatus {
+    try await send(path: "/api/auth/status", as: AuthStatus.self)
+  }
+
+  func googleConfig() async throws -> GoogleConfig {
+    try await send(path: "/api/auth/google/config", as: GoogleConfig.self)
+  }
+
+  /// 登录成功后从响应抓 lovktv_session；调用方负责持久化。
+  @discardableResult
+  private func finishLogin<T: Decodable & Sendable>(_ response: T, http: HTTPURLResponse?) -> T {
+    if let http,
+       let cookie = http.value(forHTTPHeaderField: "Set-Cookie"),
+       let token = cookie
+         .split(separator: ";").first?
+         .split(separator: "=").dropFirst().first.map(String.init),
+       !token.isEmpty {
+      sessionCookie = token
+    }
+    return response
+  }
+
+  func loginPassword(username: String, password: String) async throws -> AuthMe {
+    let me = try await send(path: "/api/auth/login",
+                            body: ["username": username, "password": password],
+                            as: AuthMe.self)
+    return finishLogin(me, http: nil)
+  }
+
+  func registerPassword(username: String, password: String) async throws -> AuthMe {
+    let me = try await send(path: "/api/auth/register",
+                            body: ["username": username, "password": password],
+                            as: AuthMe.self)
+    return finishLogin(me, http: nil)
+  }
+
+  func loginApple(identityToken: String, name: String) async throws -> AuthMe {
+    let me = try await send(path: "/api/auth/apple",
+                            body: ["identity_token": identityToken, "name": name],
+                            as: AuthMe.self)
+    return finishLogin(me, http: nil)
+  }
+
+  func loginGoogle(idToken: String) async throws -> AuthMe {
+    let me = try await send(path: "/api/auth/google",
+                            body: ["id_token": idToken], as: AuthMe.self)
+    return finishLogin(me, http: nil)
+  }
+
+  func logout() async throws {
+    _ = try? await send(path: "/api/auth/logout", body: [:], as: Empty.self)
+    sessionCookie = ""
+  }
+
+  // MARK: - 歌单
+
+  func playlists(songID: String = "") async throws -> [Playlist] {
+    var components = URLComponents(string: "/api/playlists")!
+    if !songID.isEmpty {
+      components.queryItems = [URLQueryItem(name: "song_id", value: songID)]
+    }
+    struct Resp: Decodable { var playlists: [Playlist] }
+    return try await send(path: components.string!, as: Resp.self).playlists
+  }
+
+  func createPlaylist(name: String) async throws -> Playlist {
+    try await send(path: "/api/playlists", body: ["name": name], as: Playlist.self)
+  }
+
+  func renamePlaylist(_ id: String, name: String) async throws -> Playlist {
+    try await send(path: "/api/playlists/\(id)", method: "PATCH",
+                   body: ["name": name], as: Playlist.self)
+  }
+
+  func deletePlaylist(_ id: String) async throws {
+    let mapped = RemotePath.map("/api/playlists/\(id)", official: connection.mode == .official)
+    guard let url = URL(string: mapped, relativeTo: connection.server) else {
+      throw APIError.http(0, "请求无效")
+    }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    request.httpMethod = "DELETE"
+    _ = try await session.data(for: request)
+  }
+
+  func playlistSongs(_ id: String) async throws -> (playlist: Playlist, songs: [Song]) {
+    struct Resp: Decodable { var playlist: Playlist; var songs: [Song] }
+    let r = try await send(path: "/api/playlists/\(id)/songs", as: Resp.self)
+    return (r.playlist, r.songs)
+  }
+
+  func playlistAdd(_ id: String, songID: String) async throws -> Playlist {
+    try await send(path: "/api/playlists/\(id)/songs",
+                   body: ["song_id": songID], as: Playlist.self)
+  }
+
+  func playlistRemove(_ id: String, songID: String) async throws {
+    let mapped = RemotePath.map("/api/playlists/\(id)/songs/\(songID)", official: connection.mode == .official)
+    guard let url = URL(string: mapped, relativeTo: connection.server) else {
+      throw APIError.http(0, "请求无效")
+    }
+    var request = URLRequest(url: url)
+    authorize(&request)
+    request.httpMethod = "DELETE"
+    _ = try await session.data(for: request)
   }
 
   /// 房间实时快照推送。返回每个 snapshot 的 AsyncStream；连接断开即结束。

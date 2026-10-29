@@ -9,8 +9,12 @@ final class AppState {
   // 连接
   var connection: Connection?
   private(set) var client: LovKTVClient?
-  /// 视图的 client 快照（@Observable 观察不到 private(set) 内部，依赖 connection 变更同步）
   var apiKeyValid = true
+
+  // 账号
+  var user: UserProfile?
+  var authStatus: AuthStatus?
+  var googleConfig: GoogleConfig?
 
   // 房间
   var room: RoomSnapshot?
@@ -34,6 +38,10 @@ final class AppState {
     if let data = UserDefaults.standard.data(forKey: configKey),
        let saved = try? JSONDecoder().decode(Connection.self, from: data) {
       apply(connection: saved)
+      // 恢复本连接下缓存的会话 cookie 与用户信息
+      if let cookie = SessionStore.read(for: saved.server) {
+        Task { await client?.setSessionCookie(cookie) }
+      }
     }
   }
 
@@ -75,6 +83,11 @@ final class AppState {
       preview.stop()
       apply(connection: candidate, client: newClient)
       room = snapshot
+      // 本连接下如果有旧的会话 cookie 先带着；首次 authMe 再刷新
+      if let savedCookie = SessionStore.read(for: candidate.server) {
+        await newClient.setSessionCookie(savedCookie)
+      }
+      Task { await refreshAuth() }
       apiKeyValid = true
       persist()
       showStatus(candidate.mode == .official ? "已连接官方服务" : "已连接自己的服务器")
@@ -89,10 +102,14 @@ final class AppState {
     preview.stop()
     stream.stop()
     player.stop()
+    user = nil
+    authStatus = nil
+    googleConfig = nil
     connection = nil
     client = nil
     room = nil
     blocklist.clear()
+    if let connection { SessionStore.clear(for: connection.server) }
     KeychainStore.clear()
     UserDefaults.standard.removeObject(forKey: configKey)
     showStatus("已清除本机数据")
@@ -209,6 +226,73 @@ final class AppState {
         withAnimation { statusMessage = nil }
       }
     }
+  }
+
+  // MARK: - 账号
+
+  func refreshAuth() async {
+    guard let client else { return }
+    do {
+      let me = try await client.authMe()
+      user = me.user
+      authStatus = try? await client.authStatus()
+      googleConfig = try? await client.googleConfig()
+    } catch {
+      user = nil
+    }
+  }
+
+  func loginPassword(username: String, password: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      let me = try await client.loginPassword(username: username, password: password)
+      user = me.user
+      await persistSession()
+      return nil
+    } catch { return error.localizedDescription }
+  }
+
+  func registerPassword(username: String, password: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      let me = try await client.registerPassword(username: username, password: password)
+      user = me.user
+      await persistSession()
+      return nil
+    } catch { return error.localizedDescription }
+  }
+
+  func loginApple(identityToken: String, name: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      let me = try await client.loginApple(identityToken: identityToken, name: name)
+      user = me.user
+      await persistSession()
+      return nil
+    } catch { return error.localizedDescription }
+  }
+
+  func loginGoogle(idToken: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      let me = try await client.loginGoogle(idToken: idToken)
+      user = me.user
+      await persistSession()
+      return nil
+    } catch { return error.localizedDescription }
+  }
+
+  func logout() async {
+    guard let client else { return }
+    try? await client.logout()
+    if let connection { SessionStore.clear(for: connection.server) }
+    user = nil
+  }
+
+  private func persistSession() async {
+    guard let connection else { return }
+    let cookie = await client?.sessionCookie ?? ""
+    if !cookie.isEmpty { SessionStore.write(cookie, for: connection.server) }
   }
 
   private func apply(connection: Connection, client: LovKTVClient? = nil) {

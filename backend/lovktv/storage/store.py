@@ -720,6 +720,59 @@ def upsert_google_user(
     return get_user(uid) or {}
 
 
+def upsert_apple_user(
+    sub: str, email: str = "", name: str = "", avatar: str = ""
+) -> dict[str, Any]:
+    """Link an Apple `sub` to a local user. Mirrors upsert_google_user's
+    subject-first matching; a verified email may claim a row only when it
+    is not already bound to another Apple identity."""
+    sub, email = str(sub).strip(), str(email).strip().lower()
+    if not sub:
+        raise ValueError("Apple 账号缺少 subject")
+    with _LOCK, connect() as conn:
+        row = execute(
+            conn, "SELECT * FROM users WHERE apple_sub=? LIMIT 1", (sub,)
+        ).fetchone()
+        if not row and email:
+            row = execute(
+                conn,
+                "SELECT * FROM users WHERE email=? AND email<>'' LIMIT 1",
+                (email,),
+            ).fetchone()
+            if row and str(row["apple_sub"] or ""):
+                raise ValueError("邮箱已绑定其他 Apple 账号")
+        now = now_ms()
+        if row:
+            uid = row["id"]
+            execute(
+                conn,
+                "UPDATE users SET apple_sub=?, email=?, nickname=?, avatar=? WHERE id=?",
+                (sub, email or row["email"], name or row["nickname"], avatar or row["avatar"], uid),
+            )
+        else:
+            uid = new_id()
+            execute(
+                conn,
+                "INSERT INTO users (id,apple_sub,email,nickname,avatar,created_at) VALUES (?,?,?,?,?,?)",
+                (uid, sub, email, name or (email.split("@")[0] if email else "Apple 用户"), avatar, now),
+            )
+    return get_user(uid) or {}
+
+
+def user_exists_by_apple(sub: str, email: str = "") -> bool:
+    sub, email = str(sub).strip(), str(email).strip().lower()
+    if not sub:
+        return False
+    with connect() as conn:
+        return bool(
+            execute(
+                conn,
+                "SELECT 1 FROM users WHERE apple_sub=? OR (email<>'' AND email=?) LIMIT 1",
+                (sub, email),
+            ).fetchone()
+        )
+
+
 def upsert_lovbrowser_user(
     sub: str, email: str = "", name: str = "", avatar: str = ""
 ) -> dict[str, Any]:
