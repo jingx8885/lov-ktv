@@ -287,8 +287,11 @@ struct ListeningBar: View {
 struct NotConnectedView: View {
   var onConnect: () -> Void
   var body: some View {
-    VStack(spacing: 20) {
-      GlowArtView(seed: "♪", size: 96).opacity(0.6)
+    VStack(spacing: 24) {
+      Image("Mascot")
+        .resizable().aspectRatio(contentMode: .fit)
+        .frame(width: 160)
+        .shadow(color: KTV.violet.opacity(0.4), radius: 16)
       VStack(spacing: 8) {
         Text("还没连上")
           .font(.title3.weight(.semibold))
