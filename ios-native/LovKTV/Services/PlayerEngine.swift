@@ -78,8 +78,9 @@ final class PlayerEngine {
   private func addTimeObserver() {
     if let player, let timeObserver { player.removeTimeObserver(timeObserver) }
     guard let player else { return }
+    // 逐词卡拉OK填充按帧刷：30fps 足够顺又不至于每帧触发 SwiftUI 重算
     timeObserver = player.addPeriodicTimeObserver(
-      forInterval: CMTime(seconds: 0.1, preferredTimescale: 30),
+      forInterval: CMTime(seconds: 1.0 / 30.0, preferredTimescale: 600),
       queue: .main
     ) { [weak self] time in
       Task { @MainActor in
@@ -112,6 +113,11 @@ final class PlayerEngine {
     player.seek(to: CMTime(seconds: Double(ms) / 1000, preferredTimescale: 600),
                 toleranceBefore: .zero, toleranceAfter: .zero)
     currentMS = ms
+  }
+
+  /// 相对快进：跳过前奏/间奏用
+  func seekForward(_ deltaMS: Int = 10_000) {
+    seekMS(min(currentMS + deltaMS, max(durationMS - 1, 0)))
   }
 
   /// 只播一句：seek 到 start 并在 end 停（靠 timer 在视图层驱动也行，先给引擎能力）

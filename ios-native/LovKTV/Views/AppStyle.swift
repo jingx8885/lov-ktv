@@ -376,6 +376,9 @@ extension Color {
 struct ArtView: View {
   let seed: String
   var size: CGFloat = KTVLayout.artSize
+  /// 封面 URL；nil 退回渐变占位（对齐网页 songArt 的 has-img 渐进显示）
+  var url: URL? = nil
+
   var body: some View {
     ZStack {
       LinearGradient(colors: ArtPalette.colors(for: seed),
@@ -383,6 +386,17 @@ struct ArtView: View {
       Text(String(seed.trimmingCharacters(in: .whitespaces).first ?? "♪"))
         .font(.system(size: size * 0.5, weight: .semibold, design: .rounded))
         .foregroundStyle(.white.opacity(0.95))
+      if let url {
+        AsyncImage(url: url) { phase in
+          switch phase {
+          case .success(let image):
+            image.resizable().aspectRatio(contentMode: .fill)
+          default:
+            Color.clear
+          }
+        }
+        .transition(.opacity)
+      }
     }
     .frame(width: size, height: size)
     .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
@@ -410,6 +424,8 @@ struct GlowArtView: View {
 
 struct SongRow: View {
   let song: Song
+  /// 封面 URL（nil 时渐变占位）
+  var coverURL: URL? = nil
   var showsEnqueue = false
   var showsFavorite = false
   var onEnqueue: (() -> Void)?
@@ -419,7 +435,7 @@ struct SongRow: View {
 
   var body: some View {
     HStack(spacing: 12) {
-      ArtView(seed: song.displayTitle)
+      ArtView(seed: song.displayTitle, url: coverURL)
       VStack(alignment: .leading, spacing: 3) {
         Text(song.displayTitle)
           .font(.body.weight(.medium))

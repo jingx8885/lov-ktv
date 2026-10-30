@@ -35,6 +35,23 @@ enum RemotePath {
   }
 }
 
+/// 媒体请求允许跟随 302（成品文件托管在 OSS）。跨域重定向时剥掉
+/// Authorization/Cookie，避免把 API key 或会话带进 OSS 请求。
+private final class MediaRedirectDelegate: NSObject, URLSessionTaskDelegate, Sendable {
+  func urlSession(_ session: URLSession, task: URLSessionTask,
+                  willPerformHTTPRedirection response: HTTPURLResponse,
+                  newRequest request: URLRequest,
+                  completionHandler: @escaping @Sendable (URLRequest?) -> Void) {
+    var next = request
+    if request.url?.host != task.originalRequest?.url?.host {
+      next.setValue(nil, forHTTPHeaderField: "Authorization")
+      next.setValue(nil, forHTTPHeaderField: "Cookie")
+      next.setValue(nil, forHTTPHeaderField: "X-LovKTV-Platform")
+    }
+    completionHandler(next)
+  }
+}
+
 private final class NoRedirectDelegate: NSObject, URLSessionTaskDelegate, Sendable {
   func urlSession(_ session: URLSession, task: URLSessionTask,
                   willPerformHTTPRedirection response: HTTPURLResponse,
@@ -55,6 +72,7 @@ actor LovKTVClient {
 
   func setSessionCookie(_ value: String) { sessionCookie = value }
   private let session: URLSession
+  private let mediaSession: URLSession
   private let decoder = JSONDecoder()
   private let encoder = JSONEncoder()
 
@@ -71,6 +89,8 @@ actor LovKTVClient {
       config.connectionProxyDictionary = [:]
     }
     self.session = URLSession(configuration: config, delegate: NoRedirectDelegate(), delegateQueue: nil)
+    // 媒体资源允许 302（OSS），跨域由 MediaRedirectDelegate 剥凭据
+    self.mediaSession = URLSession(configuration: config, delegate: MediaRedirectDelegate(), delegateQueue: nil)
   }
 
   var baseURL: URL { connection.server }
@@ -255,13 +275,29 @@ actor LovKTVClient {
 
   // MARK: - 媒体资源（不在 JSON 白名单，直接构造 URL）
 
-  /// /media/{id}/{name} 的完整 URL；官方服走 /api/remote/ios/media/{id}（仅 original.mp3）。
+  /// /media/{id}/{name} 的完整 URL；官方服走 /api/remote/ios/media/{id}/{name} 白名单代理。
   func mediaURL(songID: String, name: String) -> URL? {
-    guard songID.range(of: #"^[A-Za-z0-9_-]{1,100}$"#, options: .regularExpression) != nil else { return nil }
+    guard songID.range(of: #"^[A-Za-z0-9_-]{1,100}$"#, options: .regularExpression) != nil,
+          name.range(of: #"^[A-Za-z0-9_.-]{1,64}$"#, options: .regularExpression) != nil else { return nil }
     let path = connection.mode == .official
-      ? "/api/remote/ios/media/\(songID)"
+      ? "/api/remote/ios/media/\(songID)/\(name)"
       : "/media/\(songID)/\(name)"
     return URL(string: path, relativeTo: connection.server)
+  }
+
+  /// 歌曲封面：自建服 /media/{id}/cover.jpg?v=rev；官方服 /api/remote/ios/media/{id}/cover.jpg
+  nonisolated func coverURL(song: Song) -> URL? {
+    guard let id = (song.song_id ?? song.id), !id.isEmpty else { return nil }
+    let base = connection.mode == .official
+      ? "/api/remote/ios/media/\(id)/cover.jpg"
+      : "/media/\(id)/cover.jpg"
+    guard let url = URL(string: base, relativeTo: connection.server),
+          var components = URLComponents(url: url, resolvingAgainstBaseURL: true)
+    else { return nil }
+    if let rev = song.media_rev, !rev.isEmpty {
+      components.queryItems = [URLQueryItem(name: "v", value: rev)]
+    }
+    return components.url?.absoluteURL
   }
 
   /// 预览流地址 /api/preview/{id}（仅自建服可达）
@@ -275,7 +311,7 @@ actor LovKTVClient {
     guard let url = mediaURL(songID: songID, name: "lyrics.json") else { return nil }
     var request = URLRequest(url: url)
     authorize(&request)
-    guard let (data, response) = try? await session.data(for: request),
+    guard let (data, response) = try? await mediaSession.data(for: request),
           let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
     return try? decoder.decode(LyricsTimeline.self, from: data)
   }

@@ -9,6 +9,7 @@ struct Song: Decodable, Identifiable, Sendable {
   var artist: String?
   var status: String?
   var favorite: Bool?
+  var media_rev: String?
 
   var songID: String { song_id ?? id ?? "" }
   /// 队列操作（唱这首/置顶）用队列条目自身的 id 字段
@@ -44,6 +45,8 @@ struct SongDetail: Decodable, Sendable {
   var status: String?
   var native_video: Bool?
   var media_rev: String?
+  /// 封面地址（官方服用，服务端给的绝对或相对 URL）
+  var pic: String?
   var files: [String]?
 
   var hasInstrumental: Bool { files?.contains("instrumental.wav") == true }

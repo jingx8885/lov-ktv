@@ -255,6 +255,7 @@ struct DeskView: View {
       List {
         ForEach(library.songs.filter { !appState.isHidden($0) }) { song in
           SongRow(song: song,
+                  coverURL: appState.client?.coverURL(song: song),
                   showsEnqueue: true,
                   showsFavorite: appState.connection?.mode == .selfHosted,
                   onEnqueue: { enqueue(song) },

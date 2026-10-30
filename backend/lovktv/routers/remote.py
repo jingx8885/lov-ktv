@@ -4,7 +4,7 @@ import time
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.requests import Request
 
@@ -12,10 +12,13 @@ from lovktv.api.models import RoomCommandPayload
 from lovktv.core.db import connect, execute
 from lovktv.identity.admin import require_admin
 from lovktv.identity.remote_keys import is_member, issue_key, key_info, require_key
-from lovktv.routers import rooms
+from lovktv.locale.i18n import localize_song, request_lang
+from lovktv.platform.runtime import media_root
+from lovktv.routers import media, rooms
 from lovktv.services.http import current_user
 from lovktv.services.room_runtime import room_view
 from lovktv.storage import store
+from lovktv.storage.store import with_media_flags
 
 router = APIRouter()
 
@@ -118,7 +121,7 @@ def permitted_song(song):
 def safe_song(song):
     return {
         key: song[key]
-        for key in ("id", "song_id", "title", "artist", "status")
+        for key in ("id", "song_id", "title", "artist", "status", "media_rev")
         if key in song
     }
 
@@ -192,18 +195,57 @@ def ios_report(payload: Report):
     return report_content(payload)
 
 
-@ios_router.get("/media/{song_id}")
-def ios_media(song_id: str):
+@ios_router.get("/songs/{song_id}")
+def ios_song(request: Request, song_id: str):
+    song = store.get_song(song_id)
+    if not permitted_song(song):
+        raise HTTPException(404, "内容不可用")
+    song = localize_song(request_lang(request), with_media_flags(song)) or {}
+    folder = media_root() / song_id
+    song["files"] = (
+        sorted(path.name for path in folder.iterdir()) if folder.exists() else []
+    )
+    song.setdefault("id", song_id)
+    return song
+
+
+def _permit_media(song_id: str) -> None:
     import re
 
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,100}", song_id) or not permitted_song(
         store.get_song(song_id)
     ):
         raise HTTPException(404, "内容不可用")
-    path = store.MEDIA_DIR / song_id / "original.mp3"
-    if not path.is_file():
-        raise HTTPException(404, "本地音频不可用")
-    return FileResponse(path, media_type="audio/mpeg")
+
+
+# 成品媒体按文件名放行：歌词/伴奏/封面/视频与自建服 /media 完全同一套逻辑，
+# 已发布的走 OSS 302，未发布的读本机文件。
+IOS_MEDIA_NAMES = {
+    "original.mp3",
+    "instrumental.wav",
+    "karaoke.m4a",
+    "guide.m4a",
+    "mtv.mp4",
+    "cover.jpg",
+    "lyrics.json",
+    "lyrics.lrc",
+    "lyrics.elrc",
+    "lyrics.ass",
+}
+
+
+@ios_router.get("/media/{song_id}")
+def ios_media(song_id: str, request: Request):
+    _permit_media(song_id)
+    return media.media(song_id, "original.mp3", request)
+
+
+@ios_router.get("/media/{song_id}/{name}")
+def ios_media_file(song_id: str, name: str, request: Request):
+    if name not in IOS_MEDIA_NAMES:
+        raise HTTPException(404, "内容不可用")
+    _permit_media(song_id)
+    return media.media(song_id, name, request)
 
 
 router.include_router(ios_router)

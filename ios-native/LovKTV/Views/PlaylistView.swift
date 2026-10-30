@@ -111,7 +111,9 @@ struct PlaylistSongsView: View {
   var body: some View {
     List {
       ForEach(songs) { song in
-        SongRow(song: song, showsEnqueue: true,
+        SongRow(song: song,
+                coverURL: appState.client?.coverURL(song: song),
+                showsEnqueue: true,
                 onEnqueue: { enqueue(song) },
                 enqueued: enqueued.contains(song.songID))
         .swipeActions(edge: .trailing) {
