@@ -332,3 +332,9 @@ struct VolumeRow: View {
     .accessibilityValue("\(Int(volume))")
   }
 }
+
+extension Array {
+  subscript(safe index: Int) -> Element? {
+    indices.contains(index) ? self[index] : nil
+  }
+}
