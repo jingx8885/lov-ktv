@@ -1,24 +1,36 @@
 import SwiftUI
 
-enum AppTab: Hashable { case remote, library, listen, learn, settings }
+enum AppTab: Hashable { case desk, search, listen, learn, settings }
 
 struct ContentView: View {
   @Environment(AppState.self) private var appState
   @Environment(LibraryStore.self) private var library
-  @State private var tab: AppTab = .settings
+  @State private var tab: AppTab = {
+    // 开发调试可用 LOVKTV_TAB 指定落地页；正常从点歌台开始
+    switch ProcessInfo.processInfo.environment["LOVKTV_TAB"] {
+    case "desk", "remote": return .desk
+    case "search", "library": return .search
+    case "listen": return .listen
+    case "learn": return .learn
+    case "settings": return .settings
+    default: return .desk
+    }
+  }()
   @State private var listeningTitle: String?
 
   var body: some View {
     TabView(selection: $tab) {
-      
-      RemoteView(onGoSettings: { tab = .settings })
-        .tabItem { Label("遥控", systemImage: "dot.radiowaves.left.and.right") }
-        .tag(AppTab.remote)
+
+      DeskView(onGoSettings: { tab = .settings },
+               onGoLearn: { tab = .learn },
+               listeningTitle: $listeningTitle)
+        .tabItem { Label("点歌", systemImage: "music.mic") }
+        .tag(AppTab.desk)
         .badge(appState.visibleQueue.count)
 
-      LibraryView(listeningTitle: $listeningTitle)
-        .tabItem { Label("曲库", systemImage: "music.note.list") }
-        .tag(AppTab.library)
+      LibraryView()
+        .tabItem { Label("搜歌", systemImage: "magnifyingglass") }
+        .tag(AppTab.search)
 
       ListenView()
         .tabItem { Label("听歌", systemImage: "headphones") }
@@ -28,12 +40,12 @@ struct ContentView: View {
         .tabItem { Label("学习", systemImage: "graduationcap") }
         .tag(AppTab.learn)
 
-      SettingsView(onConnected: { tab = .remote })
+      SettingsView(onConnected: { tab = .desk })
         .tabItem { Label("设置", systemImage: "gearshape") }
         .tag(AppTab.settings)
     }
     .background(KTVBackground())
-    .tint(KTV.pink)
+    .tint(KTV.accentColor)
     .overlay(alignment: .bottom) {
       // 试听条：正在播放或正在下载时显示
       if appState.preview.playingID != nil || appState.preview.downloading {

@@ -43,6 +43,12 @@ enum KeychainStore {
     return status == errSecSuccess
   }
 
+  /// 官方接入调试注入：跳过 UI，直接写 key 到 Keychain。
+  /// 调用方只拿真 key 调一次，不留在代码里。
+  static func injectOfficialKey(_ key: String) {
+    _ = write(key)
+  }
+
   static func clear() {
     let status = SecItemDelete(query as CFDictionary)
     assert(status == errSecSuccess || status == errSecItemNotFound)

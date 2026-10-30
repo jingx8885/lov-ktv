@@ -157,6 +157,7 @@ struct PasswordSheet: View {
         }
       }
       .navigationTitle(isRegister ? "注册" : "登录")
+      .navigationBarTitleDisplayMode(.inline)
       .toolbar {
         ToolbarItem(placement: .confirmationAction) {
           Button(isRegister ? "注册" : "登录") { submit() }

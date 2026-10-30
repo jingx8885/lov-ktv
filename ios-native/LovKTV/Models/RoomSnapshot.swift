@@ -10,6 +10,7 @@ struct RoomSnapshot: Decodable, Sendable {
   var now_index: Int?
   var vocal_mix: Double?
   var mic_gain: Double?
+  var mic_on: Bool?
   var lyric_mode: String?
   var lyric_size: Int?
   var display_mode: String?

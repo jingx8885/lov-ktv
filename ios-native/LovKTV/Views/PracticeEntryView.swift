@@ -35,6 +35,7 @@ struct PracticeEntryView: View {
       }
     }
     .navigationTitle("练习")
+      .navigationBarTitleDisplayMode(.inline)
     .task { await load() }
   }
 

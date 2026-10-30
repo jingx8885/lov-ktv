@@ -27,6 +27,7 @@ struct LearnView: View {
         }
       }
       .navigationTitle("学习")
+      .navigationBarTitleDisplayMode(.inline)
     }
     .task(id: appState.connection) {
           library.client = appState.client

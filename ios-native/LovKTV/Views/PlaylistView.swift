@@ -16,6 +16,8 @@ struct PlaylistsView: View {
         HStack {
           TextField("新歌单名", text: $newName)
           Button("建") { create() }
+            .buttonStyle(.borderedProminent)
+            .tint(KTV.accentColor)
             .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
         }
       }
@@ -43,6 +45,7 @@ struct PlaylistsView: View {
       }
     }
     .navigationTitle("歌单")
+    .navigationBarTitleDisplayMode(.inline)
     .task { await load() }
     .alert("改名", isPresented: .constant(editing != nil), presenting: editing) { list in
       TextField("歌单名", text: Binding(
@@ -108,7 +111,6 @@ struct PlaylistSongsView: View {
       ForEach(songs) { song in
         SongRow(song: song, showsEnqueue: true,
                 onEnqueue: { enqueue(song) },
-                onMore: nil,
                 enqueued: enqueued.contains(song.songID))
         .swipeActions(edge: .trailing) {
           Button("移出", role: .destructive) { remove(song) }
@@ -119,6 +121,8 @@ struct PlaylistSongsView: View {
       }
     }
     .navigationTitle(playlist.name)
+    .navigationBarTitleDisplayMode(.inline)
+    .scrollContentBackground(.hidden)
     .task { await load() }
   }
 
@@ -165,6 +169,8 @@ struct AddToPlaylistSheet: View {
           HStack {
             TextField("新歌单名", text: $newName)
             Button("建并加入") { createAndAdd() }
+              .buttonStyle(.borderedProminent)
+              .tint(KTV.accentColor)
               .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
           }
         }
@@ -177,7 +183,7 @@ struct AddToPlaylistSheet: View {
                 Text(list.name).foregroundStyle(.primary)
                 Spacer()
                 if added.contains(list.id) {
-                  Image(systemName: "checkmark").foregroundStyle(.green)
+                  Image(systemName: "checkmark").foregroundStyle(KTV.lime)
                 } else {
                   Text("\(list.count ?? 0)").font(.caption).foregroundStyle(.secondary)
                 }

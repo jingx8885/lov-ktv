@@ -61,6 +61,21 @@ final class LibraryStore {
 
   var client: LovKTVClient?
 
+  /// 收藏/取消收藏（自建服务）：乐观改本地，失败回滚并返回错误文案。
+  func toggleFavorite(_ song: Song) async -> String? {
+    guard let index = songs.firstIndex(where: { $0.songID == song.songID }),
+          let client else { return nil }
+    let next = !(songs[index].favorite ?? false)
+    songs[index].favorite = next
+    do {
+      try await client.setFavorite(songID: song.songID, favorite: next)
+      return nil
+    } catch {
+      songs[index].favorite = !next
+      return error.localizedDescription
+    }
+  }
+
   // MARK: - 在线搜歌（GET /api/search）
 
   var onlineQuery = "" { didSet { scheduleOnlineSearch() } }

@@ -18,7 +18,7 @@ enum APIWhitelist {
     if method == "GET" {
       pattern = #"^/api/(songs(\?[^#]*|/[A-Za-z0-9_-]{1,100}(/learn/(campaign|lesson|mistakes|review|words))?(\?[^#]*)?)|search\?[^#]*|rooms/[A-Z0-9]{4,12}|learn/(deck|session|words|cards|words/restore)(\?[^#]*)?|auth/(me|status|google/config|qr/[A-Za-z0-9_-]{1,64})|playlists(\?[^#]*|/[A-Za-z0-9_-]{1,64}(/songs)?))$"#
     } else {
-      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/learn/(lesson|review|words/setup))|learn/(cards|session|words/restore)|auth/(login|register|logout|device|google|apple|qr)|playlists(/[A-Za-z0-9_-]{1,64}/songs)?)$"#
+      pattern = #"^/api/(rooms/[A-Z0-9]{4,12}/(queue|play|skip|mix|bump)|remote/reports|songs(/import|/[A-Za-z0-9_-]{1,100}/(favorite|learn/(lesson|review|words/setup)))|learn/(cards|session|words/restore)|auth/(login|register|logout|device|google|apple|qr)|playlists(/[A-Za-z0-9_-]{1,64}/songs)?)$"#
     }
     return (method == "GET" || method == "POST" || method == "DELETE")
       && path.range(of: pattern, options: .regularExpression) != nil
@@ -470,6 +470,12 @@ actor LovKTVClient {
   func playlistAdd(_ id: String, songID: String) async throws -> Playlist {
     try await send(path: "/api/playlists/\(id)/songs",
                    body: ["song_id": songID], as: Playlist.self)
+  }
+
+  /// 收藏/取消收藏（自建服务接口；官方 ios_router 未开放，UI 层只在自建模式显示）
+  func setFavorite(songID: String, favorite: Bool) async throws {
+    _ = try await send(path: "/api/songs/\(songID)/favorite",
+                       body: ["favorite": favorite ? 1 : 0], as: Empty.self)
   }
 
   func playlistRemove(_ id: String, songID: String) async throws {

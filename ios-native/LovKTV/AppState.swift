@@ -228,6 +228,30 @@ final class AppState {
     }
   }
 
+  /// 官方接入调试：直接注入 API key + 房间码，跳过设置页表单。
+  /// 仅开发用；生产别走这条路。
+  func officialInject(apiKey: String, roomCode: String) async -> String? {
+    guard let connection = try? ConnectionValidator.parse(
+      ConnectionValidator.officialOrigin.absoluteString, room: roomCode) else {
+      return "房间码无效"
+    }
+    let newClient = LovKTVClient(connection: connection, apiKey: apiKey)
+    do {
+      let snapshot = try await newClient.room()
+      preview.stop()
+      apply(connection: connection, client: newClient)
+      room = snapshot
+      persist()
+      apiKeyValid = true
+      // 官方 key 也落 Keychain，下次 connect 走正常链路
+      if connection.mode == .official { _ = KeychainStore.write(apiKey) }
+      Task { await refreshAuth() }
+      return nil
+    } catch {
+      return error.localizedDescription
+    }
+  }
+
   // MARK: - 账号
 
   func refreshAuth() async {

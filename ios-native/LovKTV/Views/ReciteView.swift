@@ -13,16 +13,19 @@ struct ReciteView: View {
         ContentUnavailableView("未连接", systemImage: "book.closed",
                                description: Text("先在设置里连接服务器。"))
           .navigationTitle("单词本")
+          .navigationBarTitleDisplayMode(.inline)
       } else if appState.connection?.mode == .official {
         ContentUnavailableView("暂不可用", systemImage: "book.closed",
                                description: Text("官方服务暂未开放单词本接口。"))
           .navigationTitle("单词本")
+          .navigationBarTitleDisplayMode(.inline)
       } else if loading {
         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
       } else if let error {
         ContentUnavailableView("打不开", systemImage: "exclamationmark.triangle",
                                description: Text(error))
           .navigationTitle("单词本")
+          .navigationBarTitleDisplayMode(.inline)
       } else {
         body_(deck ?? ReciteDeck(deck: "word", total: 0, due: 0, new: 0, learning: 0,
                                  mastered: 0, skipped: 0, streak: 0, today: 0, sizes: [10,20,30], cards: nil))
@@ -95,6 +98,7 @@ struct ReciteView: View {
     .listStyle(.insetGrouped)
     .scrollContentBackground(.hidden)
     .navigationTitle("单词本")
+    .navigationBarTitleDisplayMode(.inline)
     .refreshable { await load() }
   }
 
@@ -385,6 +389,7 @@ struct WordsManageView: View {
       }
     }
     .navigationTitle(state == "mastered" ? "已掌握" : state == "skipped" ? "暂存" : "在学")
+    .navigationBarTitleDisplayMode(.inline)
     .task { await load() }
   }
 

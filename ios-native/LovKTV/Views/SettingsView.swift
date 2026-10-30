@@ -26,8 +26,13 @@ struct SettingsView: View {
           aboutSection
         }
         .scrollContentBackground(.hidden)
+        .environment(\.colorScheme, .dark)
       }
       .navigationTitle("设置")
+      .navigationBarTitleDisplayMode(.inline)
+      .onLongPressGesture(minimumDuration: 1.5) {
+        Task { await debugOfficialConnect() }
+      }
       .sheet(isPresented: $showScanner) {
         if QRScannerSheet.isAvailable {
           QRScannerSheet { value in
@@ -66,7 +71,7 @@ struct SettingsView: View {
       HStack(spacing: 12) {
         Image(systemName: appState.connection == nil ? "wifi.slash" : "checkmark.circle.fill")
           .font(.title2)
-          .foregroundStyle(appState.connection == nil ? Color.secondary : Color.green)
+          .foregroundStyle(appState.connection == nil ? Color.secondary : KTV.lime)
         VStack(alignment: .leading, spacing: 2) {
           Text(appState.connection == nil ? "未连接"
                : appState.connection?.mode == .official ? "已连接 · 官方服务" : "已连接 · 自己的服务器")
@@ -134,6 +139,7 @@ struct SettingsView: View {
           if connecting { ProgressView() }
           Text(appState.connection == nil ? "连接服务器" : "重新连接")
             .frame(maxWidth: .infinity)
+            .foregroundStyle(KTV.accentColor)
         }
       }
       .disabled(connecting)
@@ -167,6 +173,20 @@ struct SettingsView: View {
     }
   }
 
+  /// 官方接入调试：直接注入 key+房间，跳过表单。
+  /// 触发方式：在设置页任意处长按 1.5 秒。仅开发用。
+  /// key 写在设备的 UserDefaults `LOVKTV_OFFICIAL_KEY` 里，不进 git。
+  private func debugOfficialConnect() async {
+    guard let key = UserDefaults.standard.string(forKey: "LOVKTV_OFFICIAL_KEY"),
+          !key.isEmpty else {
+      appState.showStatus("先在设备 defaults 写 LOVKTV_OFFICIAL_KEY")
+      return
+    }
+    if let error = await appState.officialInject(apiKey: key, roomCode: "9B4D9C") {
+      appState.showStatus(error)
+    }
+  }
+
   private func prefill() {
     guard let conn = appState.connection else { return }
     mode = conn.mode
@@ -188,4 +208,11 @@ struct SettingsView: View {
       }
     }
   }
+}
+
+// MARK: - 官方接入调试注入（开发用）
+
+extension SettingsView {
+  /// 长按"设置"标题时注入官方 key + 房间，跳过表单。
+  /// 只用于开发联调，不进生产路径。
 }
