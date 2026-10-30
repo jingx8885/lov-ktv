@@ -3,7 +3,7 @@
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.requests import Request
@@ -13,7 +13,7 @@ from lovktv.core.db import connect, execute
 from lovktv.identity.admin import require_admin
 from lovktv.identity.remote_keys import is_member, issue_key, key_info, require_key
 from lovktv.locale.i18n import localize_song, request_lang
-from lovktv.routers import media, rooms
+from lovktv.routers import learn, media, recite, rooms
 from lovktv.services.http import current_user
 from lovktv.services.room_runtime import room_view
 from lovktv.storage import store
@@ -250,6 +250,170 @@ def ios_media_file(song_id: str, name: str, request: Request):
         raise HTTPException(404, "内容不可用")
     _permit_media(song_id)
     return media._serve_media(song_id, name, request, store.MEDIA_DIR)
+
+
+# 学习模块与自建服 /api/learn/* 完全同一套 handler：这里只做
+# 白名单收口（member key + 曲目来源策略）并把身份落到 remote_user，
+# 让学习进度/单词本挂在登录用户上、跨设备同步。
+
+def _learn_owner(request: Request, user: dict) -> None:
+    request.state.remote_user = user
+
+
+def _permit_learn_song(request: Request, song_id: str, user: dict) -> None:
+    _learn_owner(request, user)
+    if not permitted_song(store.get_song(song_id)):
+        raise HTTPException(404, "内容不可用")
+
+
+@ios_router.get("/songs/{song_id}/learn/campaign")
+def ios_learn_campaign(
+    request: Request, song_id: str, user: dict = Depends(require_key)
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_campaign(request, song_id)
+
+
+@ios_router.get("/songs/{song_id}/learn/lesson")
+def ios_learn_lesson(
+    request: Request,
+    song_id: str,
+    unit: str = "u0",
+    skill: str = "word",
+    user: dict = Depends(require_key),
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_lesson(request, song_id, unit, skill)
+
+
+@ios_router.post("/songs/{song_id}/learn/lesson")
+def ios_learn_lesson_submit(
+    request: Request,
+    song_id: str,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_lesson_submit(request, song_id, body)
+
+
+@ios_router.get("/songs/{song_id}/learn/mistakes")
+def ios_learn_mistakes(
+    request: Request, song_id: str, user: dict = Depends(require_key)
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_mistakes(request, song_id)
+
+
+@ios_router.get("/songs/{song_id}/learn/review")
+def ios_learn_review(
+    request: Request, song_id: str, user: dict = Depends(require_key)
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_review(request, song_id)
+
+
+@ios_router.post("/songs/{song_id}/learn/review")
+def ios_learn_review_submit(
+    request: Request,
+    song_id: str,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_learn_review_submit(request, song_id, body)
+
+
+@ios_router.get("/songs/{song_id}/learn/words")
+def ios_song_words(
+    request: Request, song_id: str, user: dict = Depends(require_key)
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_song_words(request, song_id)
+
+
+@ios_router.post("/songs/{song_id}/learn/words/setup")
+def ios_song_words_setup(
+    request: Request,
+    song_id: str,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _permit_learn_song(request, song_id, user)
+    return learn.api_song_words_setup(request, song_id, body)
+
+
+@ios_router.get("/learn/deck")
+def ios_recite_deck(
+    request: Request,
+    deck: str = "word",
+    cards: int = 1,
+    song_id: str = "",
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_recite_deck(request, deck, cards, song_id)
+
+
+@ios_router.post("/learn/cards")
+def ios_recite_card_add(
+    request: Request,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_recite_card_add(request, body)
+
+
+@ios_router.delete("/learn/cards/{card_id}")
+def ios_recite_card_drop(
+    request: Request, card_id: str, user: dict = Depends(require_key)
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_recite_card_drop(request, card_id)
+
+
+@ios_router.get("/learn/words")
+def ios_words_list(
+    request: Request,
+    state: str = "all",
+    song_id: str = "",
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_words_list(request, state, song_id)
+
+
+@ios_router.post("/learn/words/restore")
+def ios_words_restore(
+    request: Request,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_words_restore(request, body)
+
+
+@ios_router.get("/learn/session")
+def ios_recite_session(
+    request: Request,
+    deck: str = "word",
+    size: int = 0,
+    song_id: str = "",
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_recite_session(request, deck, size, song_id)
+
+
+@ios_router.post("/learn/session")
+def ios_recite_session_submit(
+    request: Request,
+    body: dict = Body(default_factory=dict),
+    user: dict = Depends(require_key),
+) -> dict:
+    _learn_owner(request, user)
+    return recite.api_recite_session_submit(request, body)
 
 
 router.include_router(ios_router)

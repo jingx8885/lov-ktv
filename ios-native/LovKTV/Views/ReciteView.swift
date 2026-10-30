@@ -14,11 +14,6 @@ struct ReciteView: View {
                                description: Text("先在设置里连接服务器。"))
           .navigationTitle("单词本")
           .navigationBarTitleDisplayMode(.inline)
-      } else if appState.connection?.mode == .official {
-        ContentUnavailableView("暂不可用", systemImage: "book.closed",
-                               description: Text("官方服务暂未开放单词本接口。"))
-          .navigationTitle("单词本")
-          .navigationBarTitleDisplayMode(.inline)
       } else if loading {
         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
       } else if let error {

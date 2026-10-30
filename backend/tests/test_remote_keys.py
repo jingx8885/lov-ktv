@@ -224,3 +224,63 @@ def test_ios_sources_are_filtered_for_library_queue_reports_and_media(context):
     )
     # Existing self-hosted / Android / web catalog retains every song.
     assert len(client.get("/api/songs").json()["songs"]) >= 9
+
+
+def test_ios_learn_and_recite_proxies(context, tmp_path, monkeypatch):
+    """官方服学习端点：无 key 401、member key 放行，曲目仍按 ios 白名单过滤。"""
+    import json
+
+    from tests.test_learn import JA_TIMELINE
+    from lovktv.core import config
+    from lovktv.routers.remote import permitted_song
+
+    client, store, user = context
+    monkeypatch.setattr(config, "MEDIA_DIR", store.MEDIA_DIR)
+    key = member_key(client, store, user)
+    headers = {"Authorization": "Bearer " + key}
+
+    # 无 key / 失效 key：学习接口一律 401，不泄漏曲库内容
+    assert client.get("/api/remote/ios/learn/deck").status_code == 401
+    assert client.get("/api/remote/ios/songs/x/learn/campaign").status_code == 401
+    assert (
+        client.get("/api/remote/ios/learn/deck", headers=headers).status_code == 200
+    )
+
+    # 白名单外的歌（audio_source 不在 ios 集合里）→ 404 内容不可用
+    blocked = store.create_song("站外歌", "a", "ja")
+    store.update_song(blocked["id"], status="ready", audio_source="other")
+    assert not permitted_song(store.get_song(blocked["id"]))
+    assert (
+        client.get(
+            f"/api/remote/ios/songs/{blocked['id']}/learn/campaign", headers=headers
+        ).status_code
+        == 404
+    )
+
+    # 白名单内的歌：campaign 与自建服同一 payload
+    song = store.create_song("群青", "YOASOBI", "ja")
+    store.update_song(song["id"], status="ready", audio_source="mugen")
+    folder = store.MEDIA_DIR / song["id"]
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "lyrics.json").write_text(
+        json.dumps(JA_TIMELINE, ensure_ascii=False), encoding="utf-8"
+    )
+    campaign = client.get(
+        f"/api/remote/ios/songs/{song['id']}/learn/campaign", headers=headers
+    )
+    assert campaign.status_code == 200
+    data = campaign.json()
+    assert data["song_id"] == song["id"]
+    assert data["units"] and data["goal"]["words"]["total"] > 0
+
+    lesson = client.get(
+        f"/api/remote/ios/songs/{song['id']}/learn/lesson?unit=u0&skill=word",
+        headers=headers,
+    )
+    assert lesson.status_code == 200
+    assert lesson.json()["items"]
+
+    # 单词本全局端点同 key 下可用
+    assert client.get("/api/remote/ios/learn/words", headers=headers).status_code == 200
+    session = client.get("/api/remote/ios/learn/session", headers=headers)
+    assert session.status_code in (200, 409)  # 409 = 暂无到期卡

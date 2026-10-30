@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 学习页：选歌 → campaign（单元×技能进度）→ lesson（多选/配对/跟读）。
-/// 对齐 m.html 点歌台的学习入口；自建服可用，官方服未暴露 learn 接口会提示。
+/// 对齐 m.html 点歌台的学习入口；官方服经 /api/remote/ios/learn/* 代理同源接口。
 struct LearnView: View {
   @Environment(AppState.self) private var appState
   @Environment(LibraryStore.self) private var library
@@ -16,12 +16,6 @@ struct LearnView: View {
           } description: {
             Text("先在设置里连接服务器。")
           }
-        } else if appState.connection?.mode == .official {
-          ContentUnavailableView {
-            Label("暂不可用", systemImage: "graduationcap")
-          } description: {
-            Text("官方服务暂未开放学习接口，连自己的服务器可用。")
-          }
         } else {
           songPicker
         }
@@ -30,14 +24,19 @@ struct LearnView: View {
       .navigationBarTitleDisplayMode(.inline)
     }
     .task(id: appState.connection) {
-          library.client = appState.client
-          if library.client != nil { await library.search(page: 1) }
-        }
+      library.client = appState.client
+      // 曲库搜索词是全局共享的：点歌台过滤剩下的 query 不能把学习页的歌单也过滤掉。
+      if !library.query.isEmpty {
+        library.query = ""   // didSet 里会防抖触发全量拉取
+      } else if library.client != nil {
+        await library.search(page: 1)
+      }
+    }
     .onAppear {
-          library.client = appState.client
-          if library.songs.isEmpty, library.client != nil {
-            Task { await library.search(page: 1) }
-          }
+      library.client = appState.client
+      if library.songs.isEmpty, library.client != nil {
+        Task { await library.search(page: 1) }
+      }
     }
   }
 
