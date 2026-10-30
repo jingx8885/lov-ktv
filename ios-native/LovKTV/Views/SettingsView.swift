@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// 设置页：连接（自己的服务器 / 官方服务）+ 本机数据管理。
+/// 设置页：连接状态卡（点开弹出连接配置）+ 账号 + 本机数据管理。
+/// 连接表单收敛进 sheet，主页面不再展开一堆字段。
 struct SettingsView: View {
   @Environment(AppState.self) private var appState
   var onConnected: () -> Void
@@ -13,6 +14,7 @@ struct SettingsView: View {
   @State private var connecting = false
   @State private var showScanner = false
   @State private var confirmForget = false
+  @State private var showConnectSheet = false
 
   var body: some View {
     NavigationStack {
@@ -21,7 +23,6 @@ struct SettingsView: View {
         Form {
           connectionCard
           AccountSection()
-          form
           deviceSection
           aboutSection
         }
@@ -32,6 +33,16 @@ struct SettingsView: View {
       .navigationBarTitleDisplayMode(.inline)
       .onLongPressGesture(minimumDuration: 1.5) {
         Task { await debugOfficialConnect() }
+      }
+      .sheet(isPresented: $showConnectSheet, onDismiss: {
+        if appState.connection != nil, fieldError == nil { onConnected() }
+      }) {
+        ConnectionSheet(
+          mode: $mode, server: $server, room: $room, apiKey: $apiKey,
+          fieldError: $fieldError, connecting: $connecting,
+          showScanner: $showScanner, confirmForget: $confirmForget,
+          appState: appState,
+          prefill: prefill, connect: connect)
       }
       .sheet(isPresented: $showScanner) {
         if QRScannerSheet.isAvailable {
@@ -59,109 +70,72 @@ struct SettingsView: View {
           room = ""
           apiKey = ""
           fieldError = nil
+          showConnectSheet = false
         }
         Button("取消", role: .cancel) {}
       }
-      .onAppear { prefill() }
     }
   }
+
+  // MARK: - 连接状态卡（点开弹窗）
 
   private var connectionCard: some View {
     Section {
-      HStack(spacing: 12) {
-        Image(systemName: appState.connection == nil ? "wifi.slash" : "checkmark.circle.fill")
-          .font(.title2)
-          .foregroundStyle(appState.connection == nil ? Color.secondary : KTV.lime)
-        VStack(alignment: .leading, spacing: 2) {
-          Text(appState.connection == nil ? "未连接"
-               : appState.connection?.mode == .official ? "已连接 · 官方服务" : "已连接 · 自己的服务器")
-            .font(.body.weight(.medium))
-          Text(appState.connection.map {
-            "\($0.server.host ?? $0.server.absoluteString) · 房间 \($0.room)"
-          } ?? "连接自己的服务器或官方服务")
-            .font(.caption)
-            .foregroundStyle(.secondary)
-        }
-      }
-      .padding(.vertical, 4)
-      if !appState.apiKeyValid {
-        Label("API key 无效或已失效，请在下方更新后重新连接", systemImage: "key.fill")
-          .font(.caption)
-          .foregroundStyle(.orange)
-      }
-    }
-  }
-
-  private var form: some View {
-    Section {
-      Picker("连接方式", selection: $mode) {
-        Text("自己的服务器").tag(ConnectionMode.selfHosted)
-        Text("官方服务").tag(ConnectionMode.official)
-      }
-      .pickerStyle(.segmented)
-
-      if mode == .selfHosted {
-        HStack {
-          TextField("服务器地址，例如 http://192.168.1.8:8790", text: $server)
-            .keyboardType(.URL)
-            .textInputAutocapitalization(.never)
-            .autocorrectionDisabled()
-          Button { showScanner = true } label: {
-            Image(systemName: "qrcode.viewfinder")
-          }
-          .accessibilityLabel("扫码")
-        }
-        TextField("房间码，例如 K7Q2", text: $room)
-          .textInputAutocapitalization(.characters)
-          .autocorrectionDisabled()
-      } else {
-        SecureField("API key（lkr_ 开头）", text: $apiKey)
-          .textInputAutocapitalization(.never)
-          .autocorrectionDisabled()
-        TextField("房间码，例如 K7Q2", text: $room)
-          .textInputAutocapitalization(.characters)
-          .autocorrectionDisabled()
-        Text("官方服务地址：ktv.lovbrowser.com。API key 只保存在本机钥匙串。")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-      }
-
-      if let fieldError {
-        Text(fieldError)
-          .font(.caption)
-          .foregroundStyle(.red)
-      }
-
       Button {
-        connect()
+        prefill()
+        showConnectSheet = true
       } label: {
-        HStack {
-          if connecting { ProgressView() }
-          Text(appState.connection == nil ? "连接服务器" : "重新连接")
-            .frame(maxWidth: .infinity)
-            .foregroundStyle(KTV.accentColor)
+        HStack(spacing: 12) {
+          Image(systemName: appState.connection == nil ? "wifi.slash" : "checkmark.circle.fill")
+            .font(.title2)
+            .foregroundStyle(appState.connection == nil ? Color.secondary : KTV.lime)
+          VStack(alignment: .leading, spacing: 2) {
+            Text(appState.connection == nil ? "未连接"
+                 : appState.connection?.mode == .official ? "已连接 · 官方服务" : "已连接 · 自己的服务器")
+              .font(.body.weight(.medium))
+              .foregroundStyle(.primary)
+            Text(appState.connection.map {
+              "\($0.server.host ?? $0.server.absoluteString) · 房间 \($0.room)"
+            } ?? "点这里连接自己的服务器或官方服务")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+          }
+          Spacer()
+          if appState.connection == nil {
+            Text("去连接")
+              .font(.caption.weight(.semibold))
+              .foregroundStyle(KTV.accentColor)
+          }
+          Image(systemName: "chevron.right")
+            .font(.caption.weight(.bold))
+            .foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 4)
+      }
+      .buttonStyle(.plain)
+      .listRowBackground(KTV.card)
+      Group {
+        if !appState.apiKeyValid {
+          Label("API key 无效或已失效，请打开连接设置更新", systemImage: "key.fill")
+            .font(.caption)
+            .foregroundStyle(.orange)
         }
       }
-      .disabled(connecting)
-    } header: {
-      Text("连接")
+      .listRowBackground(KTV.card)
     }
   }
 
   private var deviceSection: some View {
     Section("本机") {
-      if appState.connection != nil {
-        Button("断开并清除本机数据", role: .destructive) {
-          confirmForget = true
-        }
-      }
       Button("清除屏蔽列表") {
         appState.clearBlocklist()
       }
+      .listRowBackground(KTV.card)
       if appState.preview.playingID != nil || appState.preview.downloading {
         Button("停止手机试听") {
           appState.preview.stop()
         }
+        .listRowBackground(KTV.card)
       }
     }
   }
@@ -169,7 +143,9 @@ struct SettingsView: View {
   private var aboutSection: some View {
     Section("关于") {
       LabeledContent("版本", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-")
+        .listRowBackground(KTV.card)
       LabeledContent("构建", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-")
+        .listRowBackground(KTV.card)
     }
   }
 
@@ -204,15 +180,124 @@ struct SettingsView: View {
         fieldError = error
       } else {
         apiKey = ""
-        onConnected()
+        showConnectSheet = false   // 成功就收起弹窗；onDismiss 里跳回点歌台
       }
     }
   }
 }
 
-// MARK: - 官方接入调试注入（开发用）
+// MARK: - 连接配置弹窗
 
-extension SettingsView {
-  /// 长按"设置"标题时注入官方 key + 房间，跳过表单。
-  /// 只用于开发联调，不进生产路径。
+private struct ConnectionSheet: View {
+  @Binding var mode: ConnectionMode
+  @Binding var server: String
+  @Binding var room: String
+  @Binding var apiKey: String
+  @Binding var fieldError: String?
+  @Binding var connecting: Bool
+  @Binding var showScanner: Bool
+  @Binding var confirmForget: Bool
+  let appState: AppState
+  let prefill: () -> Void
+  let connect: () -> Void
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    NavigationStack {
+      Form {
+        Section {
+          Picker("连接方式", selection: $mode) {
+            Text("自己的服务器").tag(ConnectionMode.selfHosted)
+            Text("官方服务").tag(ConnectionMode.official)
+          }
+          .pickerStyle(.segmented)
+          .listRowBackground(KTV.card)
+        }
+
+        Section("地址") {
+          if mode == .selfHosted {
+            HStack {
+              TextField("服务器地址，例如 http://192.168.1.8:8790", text: $server)
+                .keyboardType(.URL)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+              Button { showScanner = true } label: {
+                Image(systemName: "qrcode.viewfinder")
+              }
+              .accessibilityLabel("扫码")
+            }
+            .listRowBackground(KTV.card)
+            TextField("房间码，例如 K7Q2", text: $room)
+              .textInputAutocapitalization(.characters)
+              .autocorrectionDisabled()
+              .listRowBackground(KTV.card)
+          } else {
+            Button {
+              Task { _ = await appState.startOfficialConnect(roomCode: room) }
+            } label: {
+              Label("浏览器一键接入", systemImage: "safari")
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(KTV.accentColor)
+            .listRowBackground(KTV.card)
+            SecureField("API key（lkr_ 开头）", text: $apiKey)
+              .textInputAutocapitalization(.never)
+              .autocorrectionDisabled()
+              .listRowBackground(KTV.card)
+            TextField("房间码，例如 K7Q2", text: $room)
+              .textInputAutocapitalization(.characters)
+              .autocorrectionDisabled()
+              .listRowBackground(KTV.card)
+            Text("官方服务地址：ktv.lovbrowser.com。API key 只保存在本机钥匙串。")
+              .font(.caption)
+              .foregroundStyle(.secondary)
+              .listRowBackground(KTV.card)
+          }
+          if let fieldError {
+            Text(fieldError)
+              .font(.caption)
+              .foregroundStyle(.red)
+              .listRowBackground(KTV.card)
+          }
+        }
+
+        Section {
+          Button(action: connect) {
+            HStack {
+              Spacer()
+              if connecting { ProgressView().padding(.trailing, 4) }
+              Text(appState.connection == nil ? "连接" : "重新连接")
+                .fontWeight(.semibold)
+              Spacer()
+            }
+          }
+          .disabled(connecting)
+          .listRowBackground(KTV.card)
+        }
+
+        if appState.connection != nil {
+          Section {
+            Button("断开并清除本机数据", role: .destructive) {
+              confirmForget = true
+            }
+            .listRowBackground(KTV.card)
+          }
+        }
+      }
+      .scrollContentBackground(.hidden)
+      .background(KTV.bg)
+      .environment(\.colorScheme, .dark)
+      .navigationTitle("连接")
+      .navigationBarTitleDisplayMode(.inline)
+      .toolbar {
+        ToolbarItem(placement: .topBarLeading) {
+          Button("取消") { dismiss() }
+        }
+      }
+      .presentationDetents([.large])
+      .presentationDragIndicator(.visible)
+      .onAppear { prefill() }
+    }
+  }
 }

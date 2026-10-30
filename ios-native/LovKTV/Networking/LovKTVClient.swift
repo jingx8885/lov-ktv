@@ -425,6 +425,23 @@ actor LovKTVClient {
     return finishLogin(me, http: nil)
   }
 
+  /// 官方接入：POST /api/auth/qr 拿登录 ticket + 跳转 url（next 为深链回跳）
+  func authQR(room: String, next: String) async throws -> AuthQR {
+    try await send(path: "/api/auth/qr",
+                   body: ["room": room, "next": next], as: AuthQR.self)
+  }
+
+  /// claim ticket：确认登录后拿 api_key + 会话 cookie
+  func authQRClaim(ticket: String, next: String) async throws -> AuthClaim {
+    var components = URLComponents(string: "/api/auth/qr/\(ticket)")!
+    components.queryItems = [
+      URLQueryItem(name: "claim", value: "1"),
+      URLQueryItem(name: "api_key", value: "1"),
+      URLQueryItem(name: "next", value: next),
+    ]
+    return try await send(path: components.string!, as: AuthClaim.self)
+  }
+
   func logout() async throws {
     _ = try? await send(path: "/api/auth/logout", body: [:], as: Empty.self)
     sessionCookie = ""

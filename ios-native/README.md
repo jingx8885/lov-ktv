@@ -1,10 +1,17 @@
 # LovKTV iPhone 原生遥控端
 
 SwiftUI + Swift 6（iOS 17+），与 `ios/`（Capacitor 壳）共存。
-功能对齐 m.html 房间操作面 + ios/web 遥控端：搜索点歌、播放/暂停/切歌/音量、
-待唱队列（唱这首/置顶）、房间设置（人声开关/麦克风增益/歌词模式与字号/显示模式）、
-手机试听、屏蔽/举报、扫码连服务器、官方服务 API key（Keychain）、
+功能对齐 m.html 手机端：点歌台同屏完成点歌全流程（正在唱卡 + 暂停/切歌 +
+伴奏/音量/麦克风 + 歌词字号），分段面板 = 已点/曲库/在线/歌词/歌单；
+搜歌页在线搜试听入库；听歌页歌词高亮跟唱；学习页单词本/抽认卡。
+房间操作：待唱队列（唱这首/置顶）、人声开关、麦克风增益、歌词模式与字号、
+显示模式、手机试听、收藏、屏蔽/举报、扫码连服务器、官方服务 API key（Keychain）、
 WebSocket 快照实时推送（/ws/rooms/{code}）+ 3s 轮询兜底。
+
+UI 基元集中在 `LovKTV/Views/AppStyle.swift`：KTV 调色板、GlassCard、
+SegBar（分段）、ChipButton（胶囊动作）、NowActButton（点歌台/听歌页共用播控）、
+IconCircleButton（行内图标钮）、SearchField、DeskEmpty。新增页面先复用这套，
+不要再造第二套按钮画法。
 
 白名单与连接校验与旧 Capacitor RemotePlugin 同源；bump/play 仅自建服可用
 （官方 ios_router 不暴露，按钮在官方服会返回 404 提示，属预期）。

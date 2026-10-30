@@ -130,7 +130,9 @@ def scan_login_url(
 
 
 def done_login_path(ticket: str = "", room: str = "", next_path: str = "") -> str:
-    if next_path.startswith("/"):
+    # 仅放行站内相对路径与本应用的自定义 scheme；其他一律回登录页，
+    # 防止 open redirect。
+    if next_path.startswith("/") or next_path.startswith("lovktv://"):
         return next_path
     return login_page_url("", ticket=ticket, room=room, ok=True)
 

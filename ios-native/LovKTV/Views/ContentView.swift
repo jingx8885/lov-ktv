@@ -66,6 +66,9 @@ struct ContentView: View {
     .onChange(of: appState.preview.playingID) { _, id in
       if id == nil { listeningTitle = nil }
     }
+    .onOpenURL { url in
+      Task { _ = await appState.handleDeepLink(url) }
+    }
     .onChange(of: appState.connection) { _, conn in
       library.client = appState.client
       if conn == nil { library.songs = []; library.total = 0 }

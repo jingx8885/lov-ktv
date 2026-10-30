@@ -17,6 +17,14 @@ struct LovKTVApp: App {
             _ = await appState.refresh()
           }
         }
+        .onOpenURL { url in
+          // lovktv://official?key=...&room=... —— 官方一键接入回跳
+          Task {
+            if let error = await appState.handleDeepLink(url) {
+              appState.showStatus(error)
+            }
+          }
+        }
     }
   }
 }

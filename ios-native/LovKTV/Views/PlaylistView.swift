@@ -20,6 +20,7 @@ struct PlaylistsView: View {
             .tint(KTV.accentColor)
             .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
         }
+        .listRowBackground(KTV.card)
       }
       Section("歌单") {
         ForEach(playlists) { list in
@@ -35,18 +36,19 @@ struct PlaylistsView: View {
             }
           }
           .swipeActions(edge: .trailing) {
-            Button("改名") { editing = list }.tint(.blue)
+            Button("改名") { editing = list }.tint(KTV.accentColor)
             Button("删除", role: .destructive) { confirmDelete = list }
           }
+          .listRowBackground(KTV.card)
         }
         if playlists.isEmpty && !loading {
           Text("还没有歌单").foregroundStyle(.secondary)
+            .listRowBackground(Color.clear)
         }
       }
     }
-    .navigationTitle("歌单")
-    .navigationBarTitleDisplayMode(.inline)
     .task { await load() }
+    .environment(\.colorScheme, .dark)
     .alert("改名", isPresented: .constant(editing != nil), presenting: editing) { list in
       TextField("歌单名", text: Binding(
         get: { list.name },
@@ -115,9 +117,11 @@ struct PlaylistSongsView: View {
         .swipeActions(edge: .trailing) {
           Button("移出", role: .destructive) { remove(song) }
         }
+        .listRowBackground(KTV.card)
       }
       if songs.isEmpty && !loading {
         Text("这个歌单还没有歌").foregroundStyle(.secondary)
+          .listRowBackground(Color.clear)
       }
     }
     .navigationTitle(playlist.name)
@@ -173,6 +177,7 @@ struct AddToPlaylistSheet: View {
               .tint(KTV.accentColor)
               .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
           }
+          .listRowBackground(KTV.card)
         }
         Section("加到歌单") {
           ForEach(playlists) { list in
@@ -190,12 +195,15 @@ struct AddToPlaylistSheet: View {
               }
             }
             .disabled(added.contains(list.id))
+            .listRowBackground(KTV.card)
           }
           if playlists.isEmpty && !loading {
             Text("还没有歌单，先建一个").foregroundStyle(.secondary)
+              .listRowBackground(Color.clear)
           }
         }
       }
+      .environment(\.colorScheme, .dark)
       .navigationTitle("加入歌单")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {

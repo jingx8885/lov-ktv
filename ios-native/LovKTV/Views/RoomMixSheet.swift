@@ -22,12 +22,14 @@ struct RoomMixSheet: View {
               Image(systemName: (appState.room?.vocal_mix ?? 0) >= 0.5 ? "person.wave.2.fill" : "person.slash.fill")
             }
           }
+          .listRowBackground(KTV.card)
         }
 
         Section("麦克风") {
           MixSliderRow(title: "麦克风增益", value: appState.room?.mic_gain ?? 80) { v in
             Task { await appState.setMix(micGain: Int(v.rounded())) }
           }
+          .listRowBackground(KTV.card)
         }
 
         Section("歌词") {
@@ -40,6 +42,7 @@ struct RoomMixSheet: View {
           Stepper(value: lyricSizeBinding, in: 10...250, step: 10) {
             LabeledContent("歌词字号", value: "\(appState.room?.lyric_size ?? 30)")
           }
+          .listRowBackground(KTV.card)
         }
 
         Section("显示") {
@@ -48,8 +51,12 @@ struct RoomMixSheet: View {
             Text("歌词").tag("lyrics")
           }
           .pickerStyle(.segmented)
+          .listRowBackground(KTV.card)
         }
       }
+      .environment(\.colorScheme, .dark)
+      .scrollContentBackground(.hidden)
+      .background(KTV.bg)
       .navigationTitle("房间设置")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {

@@ -25,6 +25,10 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        CFBundleURLTypes:
+          - CFBundleURLName: com.lovktv.phone
+            CFBundleURLSchemes:
+              - lovktv
         NSCameraUsageDescription: 扫码二维码可以快速填入服务器地址和房间码
         NSLocalNetworkUsageDescription: 连接局域网里的 KTV 服务器时需要访问本地网络
     settings:

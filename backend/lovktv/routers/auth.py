@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Body, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.requests import Request
+from urllib.parse import quote
 
 from lovktv.identity import lovbrowser
 from lovktv.identity.auth import (
@@ -21,6 +22,7 @@ from lovktv.identity.auth import (
 from lovktv.identity.funnel import track
 from lovktv.identity.points import grant_register, points_payload
 from lovktv.identity.quota import guest_key, quota_payload
+from lovktv.identity.remote_keys import is_member, issue_key
 from lovktv.identity.song_admin import is_song_admin
 from lovktv.locale.i18n import localize_exc, request_lang
 from lovktv.services.http import (
@@ -301,16 +303,20 @@ def api_wechat_callback(
 def api_auth_qr(request: Request, payload: dict = Body(default={})) -> dict:
     ticket = create_login_ticket()
     room = str(payload.get("room") or "").upper()
+    next_path = str(payload.get("next") or "")
     return {
         **ticket,
         "url": scan_login_url(
-            request_base(request), ticket=ticket["ticket"], room=room
+            request_base(request), ticket=ticket["ticket"], room=room,
+            next_path=next_path,
         ),
     }
 
 
 @router.get("/api/auth/qr/{ticket}")
-def api_auth_qr_status(ticket: str, request: Request, claim: bool = False):
+def api_auth_qr_status(
+    ticket: str, request: Request, claim: bool = False, api_key: bool = False
+):
     row = get_login_ticket(ticket)
     if not row:
         fail(request, 404, "api.qr_invalid")
@@ -318,7 +324,17 @@ def api_auth_qr_status(ticket: str, request: Request, claim: bool = False):
     if claim and row["status"] == "confirmed":
         user = consume_confirmed_ticket(ticket)
         if user:
-            response = JSONResponse({"status": "ok", "user": user})
+            body: dict[str, Any] = {"status": "ok", "user": user}
+            # iOS 官方接入：claim 时把 member API key 一并回吐，省去手填；
+            # 同时给一个深链，浏览器确认后一键跳回 app。
+            if api_key and is_member(user):
+                key = issue_key(user["id"])
+                body["api_key"] = key
+                # 深链由调用方在 next 里指定（含 room）；照原样回给 app
+                deep = str(request.query_params.get("next") or "")
+                if deep.startswith("lovktv://"):
+                    body["deep_link"] = deep
+            response = JSONResponse(body)
             set_session(response, create_session(user["id"]), request)
             return response
     if row["status"] == "confirmed" and row.get("user_id"):

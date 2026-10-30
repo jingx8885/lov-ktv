@@ -228,6 +228,32 @@ final class AppState {
     }
   }
 
+  /// 官方接入：浏览器登录后跳回 app 拿到 key，或直接注入（开发联调）。
+  /// 流程：app 点"一键接入官方" → Safari 打开 auth/qr → 登录确认 →
+  /// 后端 302 到 lovktv://official?ticket=xxx&key=yyy → app 接住注入。
+  func startOfficialConnect(roomCode: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      // 登录完成后后端 302 回跳 app：lovktv://official?key=...&room=...
+      let deep = "lovktv://official?room=\(roomCode)"
+      let ticket = try await client.authQR(room: roomCode, next: deep)
+      let url = URL(string: ticket.url)!
+      await UIApplication.shared.open(url)
+      return nil
+    } catch { return error.localizedDescription }
+  }
+
+  /// 深链入口：lovktv://official?key=lkr_...&room=CODE
+  /// （浏览器确认后回来，与轮询 claim 是双保险，谁先到谁注入。）
+  func handleDeepLink(_ url: URL) async -> String? {
+    guard url.scheme == "lovktv", url.host == "official" else { return nil }
+    let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+    let key = items.first(where: { $0.name == "key" })?.value ?? ""
+    let room = items.first(where: { $0.name == "room" })?.value ?? ""
+    guard !key.isEmpty else { return "链接里没有 API key" }
+    return await officialInject(apiKey: key, roomCode: room)
+  }
+
   /// 官方接入调试：直接注入 API key + 房间码，跳过设置页表单。
   /// 仅开发用；生产别走这条路。
   func officialInject(apiKey: String, roomCode: String) async -> String? {
@@ -326,7 +352,7 @@ final class AppState {
       apiKey: connection.mode == .official ? (KeychainStore.read() ?? "") : "")
   }
 
-  /// WebSocket 实时快照：连上后在 RemoteView 的 task 里跑，断线自动重连。
+  /// WebSocket 实时快照：连上后在 DeskView 的 task 里跑，断线自动重连。
   /// 官方 ios_router 没暴露 /ws，连不上时退回 3s 轮询，两边都安全。
   func listenRoomSnapshots() async {
     guard let client else { return }

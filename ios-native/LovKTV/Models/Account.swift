@@ -62,3 +62,18 @@ struct Playlist: Decodable, Sendable, Identifiable {
   var created_at: Int?
   var updated_at: Int?
 }
+
+/// POST /api/auth/qr 响应：ticket + 浏览器跳转 url
+struct AuthQR: Decodable, Sendable {
+  var ticket: String
+  var expires_at: Int?
+  var url: String
+}
+
+/// claim 响应：拿到 member key + 深链
+struct AuthClaim: Decodable, Sendable {
+  var status: String
+  var user: UserProfile?
+  var api_key: String?
+  var deep_link: String?
+}
