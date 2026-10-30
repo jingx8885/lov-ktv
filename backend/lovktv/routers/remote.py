@@ -154,6 +154,12 @@ def ios_songs(q: str = "", page: int = 1, count: int = 20):
         if permitted_song(s)
         and q.casefold() in (s.get("title", "") + " " + s.get("artist", "")).casefold()
     ]
+    # 补 media_rev：封面 URL 需要，与 /api/songs 一致
+    for s in songs:
+        song = store.get_song(s["id"]) or {}
+        rev = store.media_flags(s["id"], store.MEDIA_DIR).get("media_rev")
+        if rev:
+            s["media_rev"] = rev
     count = max(1, min(count, 100))
     start = (max(page, 1) - 1) * count
     return {"songs": songs[start : start + count], "total": len(songs)}
