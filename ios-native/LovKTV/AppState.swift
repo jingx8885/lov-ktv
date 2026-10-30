@@ -43,6 +43,14 @@ final class AppState {
         Task { await client?.setSessionCookie(cookie) }
       }
     }
+    // 开发调试：SIMCTL_CHILD_LOVKTV_OFFICIAL_KEY / LOVKTV_OFFICIAL_ROOM 直接
+    // 完成官方接入（等同于深链注入），仅 debug 构建生效。
+    #if DEBUG
+    if let key = ProcessInfo.processInfo.environment["LOVKTV_OFFICIAL_KEY"], !key.isEmpty {
+      let roomCode = ProcessInfo.processInfo.environment["LOVKTV_OFFICIAL_ROOM"] ?? ""
+      Task { _ = await self.officialInject(apiKey: key, roomCode: roomCode) }
+    }
+    #endif
   }
 
   // MARK: - 连接生命周期
