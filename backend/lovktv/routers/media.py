@@ -24,7 +24,12 @@ _MEDIA_TYPES = {
 
 @router.get("/media/{song_id}/{name}")
 def media(song_id: str, name: str, request: Request):
-    root = media_root().resolve()
+    return _serve_media(song_id, name, request, media_root())
+
+
+def _serve_media(song_id: str, name: str, request: Request, root_dir):
+    # 按根目录发媒体：已发布走 OSS 302，否则读本机文件。iOS 代理路由复用。
+    root = root_dir.resolve()
     path = (root / song_id / name).resolve()
     if root not in path.parents:
         raise HTTPException(404)

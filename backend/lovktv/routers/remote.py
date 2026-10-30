@@ -13,7 +13,6 @@ from lovktv.core.db import connect, execute
 from lovktv.identity.admin import require_admin
 from lovktv.identity.remote_keys import is_member, issue_key, key_info, require_key
 from lovktv.locale.i18n import localize_song, request_lang
-from lovktv.platform.runtime import media_root
 from lovktv.routers import media, rooms
 from lovktv.services.http import current_user
 from lovktv.services.room_runtime import room_view
@@ -201,7 +200,7 @@ def ios_song(request: Request, song_id: str):
     if not permitted_song(song):
         raise HTTPException(404, "内容不可用")
     song = localize_song(request_lang(request), with_media_flags(song)) or {}
-    folder = media_root() / song_id
+    folder = store.MEDIA_DIR / song_id
     song["files"] = (
         sorted(path.name for path in folder.iterdir()) if folder.exists() else []
     )
@@ -237,7 +236,7 @@ IOS_MEDIA_NAMES = {
 @ios_router.get("/media/{song_id}")
 def ios_media(song_id: str, request: Request):
     _permit_media(song_id)
-    return media.media(song_id, "original.mp3", request)
+    return media._serve_media(song_id, "original.mp3", request, store.MEDIA_DIR)
 
 
 @ios_router.get("/media/{song_id}/{name}")
@@ -245,7 +244,7 @@ def ios_media_file(song_id: str, name: str, request: Request):
     if name not in IOS_MEDIA_NAMES:
         raise HTTPException(404, "内容不可用")
     _permit_media(song_id)
-    return media.media(song_id, name, request)
+    return media._serve_media(song_id, name, request, store.MEDIA_DIR)
 
 
 router.include_router(ios_router)

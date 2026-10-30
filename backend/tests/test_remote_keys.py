@@ -111,16 +111,8 @@ def test_ios_sources_are_filtered_for_library_queue_reports_and_media(context):
     from lovktv.storage.room_store import enqueue
 
     enqueue("ABCD", owned["id"])
-    for source in [
-        "netease",
-        "youtube",
-        "bilibili",
-        "kugou",
-        "soundcloud",
-        "mugen",
-        "",
-        "unknown",
-    ]:
+    # 白名单之外（netease/youtube/kugou/未知来源）仍然一律 404。
+    for source in ["netease", "youtube", "kugou", "", "unknown"]:
         song = store.create_song(source or "legacy", "Public", "en")
         store.update_song(song["id"], status="ready", audio_source=source)
         enqueue("ABCD", song["id"])
@@ -146,22 +138,53 @@ def test_ios_sources_are_filtered_for_library_queue_reports_and_media(context):
             ).status_code
             == 404
         )
+    # 搜歌来源（bilibili/mugen/soundcloud）与 upload 同权：可点歌、可举报、可取媒体。
+    ready_ids = []
+    for source in ["bilibili", "mugen", "soundcloud"]:
+        song = store.create_song(source, "Public", "en")
+        ready_ids.append(song["id"])
+        store.update_song(song["id"], status="ready", audio_source=source)
+        enqueue("ABCD", song["id"])
+        directory = store.MEDIA_DIR / song["id"]
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "original.mp3").write_bytes(source.encode())
+        assert (
+            client.post(
+                "/api/remote/ios/rooms/ABCD/queue",
+                headers=headers,
+                json={"song_id": song["id"]},
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                "/api/remote/ios/reports",
+                headers=headers,
+                json={"song_id": song["id"], "reason": "test"},
+            ).status_code
+            == 201
+        )
+        assert (
+            client.get(
+                "/api/remote/ios/media/" + song["id"], headers=headers
+            ).content
+            == source.encode()
+        )
     # Namespace remains restricted without a client platform hint.
     headers.pop("X-LovKTV-Platform")
     data = client.get("/api/remote/ios/songs?count=1", headers=headers).json()
-    assert data["total"] == 1 and data["songs"][0]["id"] == owned["id"]
-    assert (
-        client.get("/api/remote/ios/songs?page=2&count=1", headers=headers).json()[
-            "songs"
-        ]
-        == []
-    )
+    assert data["total"] == 4
+    all_songs = client.get("/api/remote/ios/songs?count=10", headers=headers).json()
+    ids = {row["id"] for row in all_songs["songs"]}
+    assert ids == {owned["id"], *ready_ids}
+    page2 = client.get("/api/remote/ios/songs?page=2&count=4", headers=headers).json()
+    assert page2["songs"] == []
     assert (
         client.get("/api/remote/ios/songs?q=missing", headers=headers).json()["total"]
         == 0
     )
     view = client.get("/api/remote/ios/rooms/ABCD", headers=headers).json()
-    assert len(view["queue"]) == 1 and view["now_playing"]["song_id"] == owned["id"]
+    assert len(view["queue"]) == 4 and view["now_playing"]["song_id"] == owned["id"]
     assert (
         client.get("/api/remote/ios/media/" + owned["id"], headers=headers).content
         == b"owned-audio"
