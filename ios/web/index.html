@@ -10,97 +10,238 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
     />
+    <meta name="color-scheme" content="light dark" />
     <title>LovKTV 遥控器</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <header>
-      <img src="icon.png" alt="" width="40" height="40" />
-      <h1>LovKTV 遥控器</h1>
-    </header>
-    <p id="status" role="status" aria-live="polite">选择连接方式即可开始。</p>
-    <main>
-      <section id="settings">
-        <h2>连接设置</h2>
-        <p>
-          连接自己的服务器或官方服务，搜索可用曲库。请只使用拥有使用权的内容。
-        </p>
-        <form id="connect">
-          <label
-            >连接方式<select id="mode">
-              <option value="self">自己的服务器</option>
-              <option value="official">官方服务</option>
-            </select></label
-          >
-          <label id="key-field" hidden
-            >API key<input
-              id="api-key"
-              type="password"
-              autocomplete="off"
-              autocapitalize="none"
-              spellcheck="false"
-              placeholder="输入已有的 API key；留空使用已保存的 key"
-          /></label>
-          <p id="official-hint" hidden>官方服务：ktv.lovbrowser.com</p>
-          <label id="server-field"
-            >服务器地址<input
-              id="server"
-              type="url"
-              placeholder="https://your-server.example"
-              required
-              autocapitalize="none"
-              autocomplete="off" /></label
-          ><label
-            >房间码<input
-              id="room"
-              required
-              maxlength="12"
-              autocapitalize="characters"
-              autocomplete="off" /></label
-          ><button type="submit">连接服务器</button
-          ><button id="scan" type="button">扫描电视二维码</button>
-        </form>
-        <button id="forget">断开并清除本机数据</button
-        ><button id="unblock">清除本机屏蔽列表</button>
-        <details>
-          <summary>隐私与内容安全</summary>
-          <p>
-            本 App 不提供账号注册。API key 保存在设备 Keychain
-            中，服务器地址、房间码和屏蔽列表仅保存在本机。搜索、点歌和举报发送到所选服务器；服务器管理员负责其数据保存和内容处理。相机仅用于本机识别二维码，不上传图像。不采集麦克风、定位或通讯录。断开并清除会删除本机保存的数据。
-          </p>
-          <p>
-            发现不当内容可在歌曲旁举报并屏蔽。举报送至该服务器管理员；第一版不展示用户资料、聊天或用户上传入口。
-          </p>
-        </details>
-      </section>
-      <section id="library" hidden>
-        <h2>服务器曲库</h2>
-        <button id="stop-audio">停止手机试听</button>
-        <form id="search">
-          <label
-            >歌名或歌手<input id="query" type="search" maxlength="100" /></label
-          ><button>搜索</button>
-        </form>
-        <div id="songs"></div>
-        <button id="more" hidden>下一页</button>
-      </section>
-      <section id="remote" hidden>
-        <h2>房间遥控</h2>
-        <p id="now">暂无播放</p>
-        <button id="play">播放 / 暂停</button><button id="skip">下一首</button
-        ><label
-          >音量<input id="volume" type="range" min="0" max="100" value="70"
-        /></label>
-        <h3>待唱队列</h3>
-        <div id="queue"></div>
-        <p>音乐在电视播放；手机锁屏不会中断电视播放。</p>
-      </section>
-    </main>
-    <nav aria-label="主导航">
-      <button data-tab="settings">设置</button
-      ><button data-tab="library">曲库</button
-      ><button data-tab="remote">遥控</button>
-    </nav>
+    <div id="app" data-connected="false">
+      <header id="bar" class="navbar" data-scrolled="false">
+        <span id="bar-title">设置</span>
+      </header>
+      <p id="status" class="toast" role="status" aria-live="polite"></p>
+
+      <main>
+        <!-- ============ 遥控 ============ -->
+        <section id="remote" hidden>
+          <h1 class="large-title">遥控</h1>
+
+          <div class="empty-card when-disconnected">
+            <div class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 20.5h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+            <p class="empty-title">还没有连接房间</p>
+            <p class="empty-text">扫描电视上的二维码，或填写服务器地址和房间码，就能在这里控制播放。</p>
+            <button class="btn-tinted" type="button" data-go="settings">去连接</button>
+          </div>
+
+          <div class="now when-connected">
+            <div id="now-art" class="art art-xl" data-empty="true" aria-hidden="true">
+              <svg class="art-icon" viewBox="0 0 24 24"><rect x="8.5" y="2" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <span id="now-glyph"></span>
+            </div>
+            <p class="eyebrow"><span id="now-label">正在播放</span> · 房间 <span id="now-room"></span></p>
+            <p id="now" class="now-title">暂无播放</p>
+            <p id="now-artist" class="now-artist"></p>
+            <div class="transport">
+              <button class="round" type="button" data-go="library" aria-label="去曲库点歌">
+                <svg viewBox="0 0 24 24"><path d="M3 6h11M3 11h11M3 16h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19.2 16.6V4.2c1.4.3 2.4 1 2.8 2.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="16.6" cy="16.8" r="2.7" fill="currentColor"/></svg>
+              </button>
+              <button id="play" class="round big" type="button" data-paused="true" aria-label="继续播放">
+                <svg class="icon-play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.3-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z" fill="currentColor"/></svg>
+                <svg class="icon-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.2" fill="currentColor"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.2" fill="currentColor"/></svg>
+              </button>
+              <button id="skip" class="round" type="button" aria-label="下一首">
+                <svg viewBox="0 0 24 24"><path d="M2.5 7.2v9.6a1 1 0 0 0 1.55.83L11 13v3.8a1 1 0 0 0 1.55.83l7.9-4.8a1 1 0 0 0 0-1.66l-7.9-4.8A1 1 0 0 0 11 7.2V11L4.05 6.37a1 1 0 0 0-1.55.83z" fill="currentColor"/></svg>
+              </button>
+            </div>
+            <div class="volume">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.2h3.2L11.5 5v14l-4.3-4.2H4z" fill="currentColor"/><path d="M15 9.6a3.4 3.4 0 0 1 0 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+              <input id="volume" type="range" min="0" max="100" value="70" aria-label="音量" />
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.2h3.2L10.5 5v14l-4.3-4.2H3z" fill="currentColor"/><path d="M14 9.6a3.4 3.4 0 0 1 0 4.8M17 7a7 7 0 0 1 0 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+
+          <div class="when-connected">
+            <h2 class="group-header">待唱队列 <span id="queue-count" class="count"></span></h2>
+            <div id="queue" class="group list queue"></div>
+            <p class="footer">音乐在电视播放；手机锁屏不会中断电视播放。</p>
+          </div>
+        </section>
+
+        <!-- ============ 曲库 ============ -->
+        <section id="library" hidden>
+          <h1 class="large-title">曲库</h1>
+
+          <div class="empty-card when-disconnected">
+            <div class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 6h11M3 11h11M3 16h7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M19.2 16.6V4.2c1.4.3 2.4 1 2.8 2.3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="16.6" cy="16.8" r="2.7" fill="currentColor"/></svg>
+            </div>
+            <p class="empty-title">连接后即可浏览曲库</p>
+            <p class="empty-text">曲库来自你连接的服务器，只会显示已经入库的歌曲。</p>
+            <button class="btn-tinted" type="button" data-go="settings">去连接</button>
+          </div>
+
+          <div class="when-connected">
+            <form id="search" class="searchbar" role="search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <input
+                id="query"
+                type="search"
+                maxlength="100"
+                placeholder="歌名或歌手"
+                aria-label="歌名或歌手"
+                enterkeyhint="search"
+                autocomplete="off"
+                autocorrect="off"
+                spellcheck="false"
+              /><button class="visually-hidden">搜索</button>
+            </form>
+            <div id="songs" class="group list"></div>
+            <button id="more" class="load-more" type="button" hidden>加载更多</button>
+          </div>
+        </section>
+
+        <!-- ============ 设置 ============ -->
+        <section id="settings">
+          <h1 class="large-title">设置</h1>
+
+          <div class="group profile">
+            <img src="icon.png" alt="" width="60" height="60" class="app-icon" />
+            <div class="profile-text">
+              <p class="profile-name">LovKTV 遥控器</p>
+              <p id="conn-title" class="profile-state">未连接</p>
+              <p id="conn-detail" class="profile-detail">连接自己的服务器或官方服务</p>
+            </div>
+          </div>
+
+          <h2 class="group-header">连接方式</h2>
+          <select id="mode" class="visually-hidden" tabindex="-1" aria-hidden="true">
+            <option value="self">自己的服务器</option>
+            <option value="official">官方服务</option>
+          </select>
+          <div id="mode-seg" class="segmented" role="radiogroup" aria-label="连接方式" data-value="self">
+            <button type="button" role="radio" data-mode="self" aria-checked="true">自己的服务器</button>
+            <button type="button" role="radio" data-mode="official" aria-checked="false">官方服务</button>
+          </div>
+
+          <form id="connect">
+            <div class="group icons-off">
+              <label id="server-field" class="cell field"
+                ><span>服务器</span
+                ><input
+                  id="server"
+                  type="url"
+                  placeholder="https://your-server.example"
+                  required
+                  autocapitalize="none"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck="false"
+              /></label>
+              <label id="key-field" class="cell field" hidden
+                ><span>API key</span
+                ><input
+                  id="api-key"
+                  type="password"
+                  autocomplete="off"
+                  autocapitalize="none"
+                  spellcheck="false"
+                  placeholder="留空使用已保存的 key"
+              /></label>
+              <label class="cell field"
+                ><span>房间码</span
+                ><input
+                  id="room"
+                  required
+                  maxlength="12"
+                  placeholder="电视上显示的房间码"
+                  autocapitalize="characters"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck="false"
+              /></label>
+              <button id="scan" class="cell action" type="button">
+                <span class="tile blue" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8.5V6a2 2 0 0 1 2-2h2.5M15.5 4H18a2 2 0 0 1 2 2v2.5M20 15.5V18a2 2 0 0 1-2 2h-2.5M8.5 20H6a2 2 0 0 1-2-2v-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8.5 8.5h3v3h-3zM12.5 12.5h3v3h-3z" fill="currentColor"/></svg></span>
+                <span class="cell-label">扫描电视二维码</span>
+                <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <p id="official-hint" class="footer" hidden>官方服务地址：ktv.lovbrowser.com。API key 只保存在本机 Keychain。</p>
+            <p class="footer">请只使用拥有使用权的内容。</p>
+            <button class="btn-primary" type="submit">连接服务器</button>
+          </form>
+
+          <h2 class="group-header">本机数据</h2>
+          <div class="group">
+            <button id="unblock" class="cell action" type="button">
+              <span class="tile orange" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></span>
+              <span class="cell-label">清除本机屏蔽列表</span>
+            </button>
+            <button id="forget" class="cell action danger" type="button">
+              <span class="tile red" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l.9 11.2A2 2 0 0 0 8.9 20h6.2a2 2 0 0 0 2-1.8L18 7M9 7V4.5h6V7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+              <span class="cell-label">断开并清除本机数据</span>
+            </button>
+          </div>
+
+          <h2 class="group-header">关于</h2>
+          <details class="group disclosure">
+            <summary class="cell action">
+              <span class="tile green" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2.2" fill="currentColor"/><path d="M8.2 10.5V7.4a3.8 3.8 0 0 1 7.6 0v3.1" fill="none" stroke="currentColor" stroke-width="2"/></svg></span>
+              <span class="cell-label">隐私与内容安全</span>
+              <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5.5l6.5 6.5L9 18.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </summary>
+            <div class="details-body">
+              <p>
+                本 App 不提供账号注册。API key 保存在设备 Keychain
+                中，服务器地址、房间码和屏蔽列表仅保存在本机。搜索、点歌和举报发送到所选服务器；服务器管理员负责其数据保存和内容处理。相机仅用于本机识别二维码，不上传图像。不采集麦克风、定位或通讯录。断开并清除会删除本机保存的数据。
+              </p>
+              <p>
+                发现不当内容可在歌曲旁举报并屏蔽。举报送至该服务器管理员；第一版不展示用户资料、聊天或用户上传入口。
+              </p>
+            </div>
+          </details>
+        </section>
+      </main>
+
+      <div id="listening" class="mini" hidden>
+        <div id="listening-art" class="art" aria-hidden="true"></div>
+        <div class="mini-text">
+          <p class="mini-eyebrow">手机试听</p>
+          <p id="listening-title" class="mini-title"></p>
+        </div>
+        <button id="stop-audio" class="round small" type="button" aria-label="停止手机试听">
+          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.2" fill="currentColor"/></svg>
+        </button>
+      </div>
+
+      <nav class="tabbar" aria-label="主导航">
+        <button type="button" data-tab="remote">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8.5" y="2" width="7" height="12" rx="3.5" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>
+          <span>遥控</span>
+          <span id="queue-badge" class="badge" hidden></span>
+        </button>
+        <button type="button" data-tab="library">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11M3 11h11M3 16h7" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><path d="M19.2 16.6V4.2c1.4.3 2.4 1 2.8 2.3" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"/><circle cx="16.6" cy="16.8" r="2.8" fill="currentColor"/></svg>
+          <span>曲库</span>
+        </button>
+        <button type="button" data-tab="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+          <span>设置</span>
+        </button>
+      </nav>
+
+      <div id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" data-open="false" hidden>
+        <div class="sheet-backdrop" data-sheet-close></div>
+        <div class="sheet-panel">
+          <div class="sheet-group">
+            <p id="sheet-title" class="sheet-title"></p>
+            <div id="sheet-actions"></div>
+          </div>
+          <button class="sheet-cancel" type="button" data-sheet-close>取消</button>
+        </div>
+      </div>
+    </div>
     <script src="capacitor-runtime.js"></script>
     <script type="module" src="app.js"></script>
   </body>
