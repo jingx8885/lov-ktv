@@ -161,14 +161,14 @@ final class AppState {
     await run { self.room = try await client.bumpItem(itemID) }
   }
 
-  /// 房间混音/显示设置（人声开关、麦克风增益、歌词模式/字号、显示模式）
-  func setMix(vocalMix: Double? = nil, micGain: Int? = nil,
+  /// 房间混音/显示设置（人声开关、歌词模式/字号、显示模式）
+  func setMix(vocalMix: Double? = nil,
               lyricMode: String? = nil, lyricSize: Int? = nil,
               displayMode: String? = nil) async {
     guard let client else { return }
     await run {
       self.room = try await client.setMix(
-        vocalMix: vocalMix, micGain: micGain, lyricMode: lyricMode,
+        vocalMix: vocalMix, lyricMode: lyricMode,
         lyricSize: lyricSize, displayMode: displayMode)
     }
   }
@@ -252,6 +252,25 @@ final class AppState {
     let room = items.first(where: { $0.name == "room" })?.value ?? ""
     guard !key.isEmpty else { return "链接里没有 API key" }
     return await officialInject(apiKey: key, roomCode: room)
+  }
+
+  /// 扫码接入：认到 ?ticket= 直接 claim，member 拿 api_key 注入；
+  /// 非 member 用户拿不到 key 但也会立会话（浏览器端是同一账号）。
+  func claimTicket(_ ticket: String, roomCode: String) async -> String? {
+    guard let client else { return "请先连接服务器" }
+    do {
+      let claim = try await client.authQRClaim(
+        ticket: ticket, next: "lovktv://official?room=\(roomCode)")
+      if let key = claim.api_key, !key.isEmpty {
+        _ = await officialInject(apiKey: key, roomCode: roomCode)
+        return nil
+      }
+      if claim.user != nil {
+        await refreshAuth()
+        return "已确认登录，但该账号没有 member API key"
+      }
+      return "二维码还没在浏览器里确认"
+    } catch { return error.localizedDescription }
   }
 
   /// 官方接入调试：直接注入 API key + 房间码，跳过设置页表单。

@@ -12,7 +12,6 @@ struct DeskView: View {
   @State private var pane: DeskPane = .queue
   @State private var confirmSkip = false
   @State private var showMix = false
-  @State private var expand: ExpandPanel?
 
   // 歌曲动作
   @State private var actionSong: Song?
@@ -29,7 +28,6 @@ struct DeskView: View {
   enum DeskPane: String, CaseIterable {
     case queue = "已点", library = "曲库", online = "在线", lyrics = "歌词", playlists = "歌单"
   }
-  enum ExpandPanel { case volume }
 
   var body: some View {
     NavigationStack {
@@ -145,97 +143,68 @@ struct DeskView: View {
   // MARK: - 正在唱卡
 
   private var nowBar: some View {
-    GlassCard(padding: 12) {
-      VStack(spacing: 10) {
-        nowHeader
-        primaryRow
-        secondaryRow
-        expandedPanel
-      }
-    }
-  }
-
-  private var nowHeader: some View {
-    HStack(spacing: 12) {
-      ArtView(seed: appState.room?.now_playing?.displayTitle ?? "♪",
-              size: KTVLayout.artNowSize)
-        .opacity(appState.room?.now_playing == nil ? 0.4 : 1)
-      VStack(alignment: .leading, spacing: 3) {
-        HStack(spacing: 6) {
-          NeonTag(text: appState.room?.now_playing == nil ? "空闲"
-                  : appState.room?.paused == true ? "已暂停" : "正在唱",
-                  color: appState.room?.now_playing == nil ? .secondary
-                  : appState.room?.paused == true ? .orange : KTV.lime)
-          Text("房间 \(appState.connection?.room ?? "")")
-            .font(.caption2)
-            .foregroundStyle(.secondary)
+    GlassCard(padding: 10) {
+      HStack(spacing: 10) {
+        ArtView(seed: appState.room?.now_playing?.displayTitle ?? "♪",
+                size: 38)
+          .opacity(appState.room?.now_playing == nil ? 0.4 : 1)
+        VStack(alignment: .leading, spacing: 2) {
+          HStack(spacing: 5) {
+            NeonTag(text: appState.room?.now_playing == nil ? "空闲"
+                    : appState.room?.paused == true ? "已暂停" : "正在唱",
+                    color: appState.room?.now_playing == nil ? .secondary
+                    : appState.room?.paused == true ? .orange : KTV.lime)
+            Text("房间 \(appState.connection?.room ?? "")")
+              .font(.caption2)
+              .foregroundStyle(.secondary)
+          }
+          Text(nowLine)
+            .font(.subheadline.weight(.semibold))
+            .lineLimit(1)
         }
-        Text(appState.room?.now_playing?.displayTitle ?? "还没在唱")
-          .font(.body.weight(.semibold))
-          .lineLimit(1)
-        Text(appState.room?.now_playing?.displayArtist ?? "从曲库点一首")
-          .font(.caption)
-          .foregroundStyle(.secondary)
-          .lineLimit(1)
-      }
-      Spacer(minLength: 4)
-    }
-  }
-
-  private var primaryRow: some View {
-    HStack(spacing: 10) {
-      NowActButton(
-        icon: appState.room?.paused == true ? "play.fill" : "pause.fill",
-        label: appState.room?.paused == true ? "继续" : "暂停",
-        prominent: true) {
+        Spacer(minLength: 6)
+        nowButton(icon: appState.room?.paused == true ? "play.fill" : "pause.fill",
+                  prominent: true) {
           KTVHaptics.tap()
           Task { await appState.togglePlay() }
         }
         .disabled(appState.room?.now_playing == nil)
-        .opacity(appState.room?.now_playing == nil ? 0.5 : 1)
-      NowActButton(icon: "forward.fill", label: "切歌") {
-        KTVHaptics.tap()
-        confirmSkip = true
-      }
-    }
-  }
-
-  private var secondaryRow: some View {
-    HStack(spacing: 10) {
-      NowActButton(
-        icon: (appState.room?.vocal_mix ?? 0) >= 0.5 ? "person.wave.2.fill" : "person.slash.fill",
-        label: (appState.room?.vocal_mix ?? 0) >= 0.5 ? "原唱" : "伴奏",
-        active: (appState.room?.vocal_mix ?? 0) < 0.5) {
+        .opacity(appState.room?.now_playing == nil ? 0.45 : 1)
+        .accessibilityLabel(appState.room?.paused == true ? "继续" : "暂停")
+        nowButton(icon: "forward.fill", prominent: false) {
           KTVHaptics.tap()
-          let next = (appState.room?.vocal_mix ?? 0) >= 0.5 ? 0.0 : 1.0
-          Task { await appState.setMix(vocalMix: next) }
+          confirmSkip = true
         }
-      NowActButton(icon: "speaker.wave.2.fill", label: "音量",
-                   active: expand == .volume) {
-        KTVHaptics.select()
-        withAnimation(.spring(duration: 0.25)) {
-          expand = expand == .volume ? nil : .volume
-        }
-      }
-      NowActButton(icon: "mic.fill", label: "麦克风",
-                   active: appState.room?.mic_on == true) {
-        KTVHaptics.tap()
-        showMix = true
+        .accessibilityLabel("切歌")
       }
     }
   }
 
-  @ViewBuilder
-  private var expandedPanel: some View {
-    switch expand {
-    case .volume:
-      VolumeRow(volume: appState.room?.volume ?? 70) { value in
-        Task { await appState.setVolume(value) }
-      }
-      .transition(.opacity.combined(with: .move(edge: .top)))
-    case nil:
-      EmptyView()
+  private var nowLine: String {
+    guard let now = appState.room?.now_playing else {
+      return "还没在唱 · 从曲库点一首"
     }
+    return "\(now.displayTitle) · \(now.displayArtist)"
+  }
+
+  private func nowButton(icon: String, prominent: Bool,
+                         action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      Image(systemName: icon)
+        .font(.system(size: 13, weight: .bold))
+        .frame(width: 32, height: 32)
+        .foregroundStyle(prominent ? Color.white : Color.white.opacity(0.75))
+        .background {
+          if prominent {
+            Circle().fill(KTV.accent)
+              .shadow(color: KTV.pink.opacity(0.3), radius: 5, y: 2)
+          } else {
+            Circle().fill(Color.white.opacity(0.07))
+          }
+        }
+        .contentTransition(.symbolEffect(.replace))
+    }
+    .buttonStyle(.ktvPress)
   }
 
   // MARK: - 已点队列

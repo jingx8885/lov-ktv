@@ -48,13 +48,7 @@ struct SettingsView: View {
         if QRScannerSheet.isAvailable {
           QRScannerSheet { value in
             showScanner = false
-            if let parsed = try? ConnectionValidator.parse(value, room: room) {
-              server = parsed.server.absoluteString
-              room = parsed.room
-              appState.showStatus("二维码已填入，请核对后点连接")
-            } else {
-              appState.showStatus("二维码内容不是有效的服务器地址")
-            }
+            Task { await handleScanned(value) }
           } onDismiss: {
             showScanner = false
           }
@@ -146,6 +140,27 @@ struct SettingsView: View {
         .listRowBackground(KTV.card)
       LabeledContent("构建", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "-")
         .listRowBackground(KTV.card)
+    }
+  }
+
+  /// 扫码分流：
+  /// - URL 里带 ?ticket=xxx（电视/登录码）→ 直接 claim，member 拿 api_key
+  /// - 普通 https/http 根地址或 ?room= → 填进自建服表单
+  private func handleScanned(_ value: String) async {
+    if let components = URLComponents(string: value),
+       let ticket = components.queryItems?.first(where: { $0.name == "ticket" })?.value,
+       !ticket.isEmpty {
+      if let error = await appState.claimTicket(ticket, roomCode: room) {
+        appState.showStatus(error)
+      }
+      return
+    }
+    if let parsed = try? ConnectionValidator.parse(value, room: room) {
+      server = parsed.server.absoluteString
+      room = parsed.room
+      appState.showStatus("二维码已填入，请核对后点连接")
+    } else {
+      appState.showStatus("二维码内容不是有效的服务器地址")
     }
   }
 

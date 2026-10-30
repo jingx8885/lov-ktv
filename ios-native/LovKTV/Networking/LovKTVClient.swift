@@ -182,14 +182,13 @@ actor LovKTVClient {
                    body: ["id": itemID], as: RoomSnapshot.self)
   }
 
-  /// 房间混音/显示设置：vocal_mix 0..1、mic_gain 0..100、
+  /// 房间混音/显示设置：vocal_mix 0..1、
   /// lyric_mode ja|zh|roma|all、lyric_size 10..250、display_mode lyrics|mv
-  func setMix(vocalMix: Double? = nil, micGain: Int? = nil,
+  func setMix(vocalMix: Double? = nil,
               lyricMode: String? = nil, lyricSize: Int? = nil,
               displayMode: String? = nil) async throws -> RoomSnapshot {
     var body: [String: Encodable] = [:]
     if let vocalMix { body["vocal_mix"] = vocalMix }
-    if let micGain { body["mic_gain"] = micGain }
     if let lyricMode { body["lyric_mode"] = lyricMode }
     if let lyricSize { body["lyric_size"] = lyricSize }
     if let displayMode { body["display_mode"] = displayMode }

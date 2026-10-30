@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 房间设置 sheet：人声开关、麦克风增益、歌词模式/字号、显示模式。
+/// 房间设置 sheet：人声开关、电视音量、歌词模式/字号、显示模式。
 /// 对齐 m.html 的 mix 面板；改动直接 POST /mix，服务端回快照。
 struct RoomMixSheet: View {
   @Environment(AppState.self) private var appState
@@ -25,9 +25,9 @@ struct RoomMixSheet: View {
           .listRowBackground(KTV.card)
         }
 
-        Section("麦克风") {
-          MixSliderRow(title: "麦克风增益", value: appState.room?.mic_gain ?? 80) { v in
-            Task { await appState.setMix(micGain: Int(v.rounded())) }
+        Section("音量") {
+          MixSliderRow(title: "电视音量", value: appState.room?.volume ?? 70) { v in
+            Task { await appState.setVolume(v) }
           }
           .listRowBackground(KTV.card)
         }
