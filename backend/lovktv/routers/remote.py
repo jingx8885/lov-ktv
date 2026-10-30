@@ -107,9 +107,11 @@ def delete_key(user=Depends(account)):
 
 
 def permitted_song(song):
-    # Positive provenance allowlist: unknown/legacy sources fail closed as well.
+    # 白名单：上传和搜歌来源都可点；status ready 才进遥控/点歌链路。
     return bool(
-        song and song.get("audio_source") == "upload" and not song.get("netease_id")
+        song
+        and song.get("status") == "ready"
+        and song.get("audio_source") in {"upload", "bilibili", "mugen", "soundcloud"}
     )
 
 
