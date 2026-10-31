@@ -23,7 +23,9 @@ struct LearnView: View {
       .navigationTitle("学习")
       .navigationBarTitleDisplayMode(.inline)
     }
-    .task(id: appState.connection) {
+    // id 用 client 实例身份而不是 connection：换 key 重连时 connection 值不变，
+    // 但客户端对象换了，必须重新拉一次——否则学习页停在旧 key 401 拉空的列表上。
+    .task(id: appState.client.map(ObjectIdentifier.init)) {
       library.client = appState.client
       // 曲库搜索词是全局共享的：点歌台过滤剩下的 query 不能把学习页的歌单也过滤掉。
       if !library.query.isEmpty {
